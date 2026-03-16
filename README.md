@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# DAF Adventures
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Internal travel planning and itinerary management platform for teams. Build, manage, and publish multi-day trip itineraries with flights, hotels, activities, and dining — all in one place.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Trip Dashboard** — Overview with stats, quick actions, upcoming timeline, and recent activity feed
+- **Itinerary Builder** — Day-by-day event management with flights, hotels, activities, and dining
+- **Interactive Map** — Real-time route visualisation powered by Leaflet with OpenStreetMap tiles
+- **Grid & List Views** — Switch between card grid and table layout for trips
+- **Dark / Light Mode** — Instant theme switching with no transition lag
+- **Date Range Picker** — Styled calendar for selecting travel dates
+- **Event Editor** — Side panel for adding and editing itinerary events with category-specific fields
+- **Search & Filter** — Quick search across all trips by name or attendees
+- **Local Persistence** — Trips saved to localStorage so data survives refreshes
 
-## React Compiler
+## Demo Data
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Comes preloaded with 8 fully detailed trips:
 
-## Expanding the ESLint configuration
+- Kenya Luxury Safari (22 events)
+- Japan Discovery (10 events)
+- Maldives Retreat (10 events)
+- Amalfi Coast Tour (8 events)
+- Iceland Coastal FAM (9 events)
+- Bali VIP Retreat (12 events)
+- Swiss Alps Winter FAM (10 events)
+- New York Urban FAM (10 events)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 19 (TypeScript)
+- Vite
+- Tailwind CSS
+- Shadcn UI (Radix primitives)
+- Lucide React icons
+- React Day Picker
+- React Leaflet + Leaflet
+- date-fns
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Opens at [http://localhost:5173](http://localhost:5173).
