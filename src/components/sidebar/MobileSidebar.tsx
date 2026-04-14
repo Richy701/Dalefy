@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Globe, PieChart, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Users, Globe, PieChart, Images, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Travelers", path: "/travelers" },
   { icon: Globe, label: "Destinations", path: "/destinations" },
+  { icon: Images, label: "Media", path: "/media" },
   { icon: PieChart, label: "Reports", path: "/reports" },
 ];
 

@@ -33,6 +33,7 @@ import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
 import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
+import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -106,6 +107,7 @@ export function WorkspacePage() {
   const [isSearchingImages, setIsSearchingImages] = useState(false);
   const [imageSearchSource, setImageSearchSource] = useState<"google" | "unsplash" | "local" | null>(null);
   const [aiZapOpen, setAiZapOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"itinerary" | "media">("itinerary");
   const printRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -481,33 +483,73 @@ export function WorkspacePage() {
               </div>
             </section>
 
-            {/* Events */}
-            <div className="px-4 lg:px-10 pt-10 pb-32 w-full relative">
-              <div className="space-y-16">
-                {groupedEvents.length > 0 ? (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  {groupedEvents.map(([date, events]) => (
-                    <DaySection key={date} date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} eventCount={events.length} onAddEvent={() => handleAddEvent()}>
-                      <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                        <div className="grid grid-cols-1 gap-6 pl-8">
-                          {events.map(event => (
-                            <SortableEventCard key={event.id} event={event} onClick={() => handleEditEvent(event)} onDelete={() => handleDeleteEvent(event.id)} />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DaySection>
-                  ))}
-                </DndContext>
-              ) : (
-                  <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5] transition-colors cursor-pointer group" onClick={() => handleAddEvent()}>
-                    <Plus className="h-12 w-12 mb-4 opacity-20 group-hover:scale-110 group-hover:text-[#0bd2b5] transition-all" />
-                    <p className="font-bold text-xs uppercase tracking-[0.3em]">ADD YOUR FIRST EVENT</p>
-                  </div>
+            {/* Tab bar */}
+            <div className="flex items-center gap-1 px-4 lg:px-10 pt-6 shrink-0">
+              <button
+                onClick={() => setActiveTab("itinerary")}
+                className={`px-5 py-2 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all ${
+                  activeTab === "itinerary"
+                    ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
+                    : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                ITINERARY
+              </button>
+              <button
+                onClick={() => setActiveTab("media")}
+                className={`px-5 py-2 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
+                  activeTab === "media"
+                    ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
+                    : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                MEDIA
+                {(trip.media?.length ?? 0) > 0 && (
+                  <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-[#0bd2b5]/15 text-[#0bd2b5]"}`}>
+                    {trip.media!.length}
+                  </span>
                 )}
-              </div>
+              </button>
             </div>
 
-            <DockBar onAddEvent={handleAddEvent} onAiZap={() => setAiZapOpen(true)} />
+            {/* Itinerary tab */}
+            {activeTab === "itinerary" && (
+              <>
+                <div className="px-4 lg:px-10 pt-10 pb-32 w-full relative">
+                  <div className="space-y-16">
+                    {groupedEvents.length > 0 ? (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      {groupedEvents.map(([date, events]) => (
+                        <DaySection key={date} date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} eventCount={events.length} onAddEvent={() => handleAddEvent()}>
+                          <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                            <div className="grid grid-cols-1 gap-6 pl-8">
+                              {events.map(event => (
+                                <SortableEventCard key={event.id} event={event} onClick={() => handleEditEvent(event)} onDelete={() => handleDeleteEvent(event.id)} />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DaySection>
+                      ))}
+                    </DndContext>
+                  ) : (
+                      <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5] transition-colors cursor-pointer group" onClick={() => handleAddEvent()}>
+                        <Plus className="h-12 w-12 mb-4 opacity-20 group-hover:scale-110 group-hover:text-[#0bd2b5] transition-all" />
+                        <p className="font-bold text-xs uppercase tracking-[0.3em]">ADD YOUR FIRST EVENT</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <DockBar onAddEvent={handleAddEvent} onAiZap={() => setAiZapOpen(true)} />
+              </>
+            )}
+
+            {/* Media tab */}
+            {activeTab === "media" && (
+              <TripMediaGallery
+                media={trip.media ?? []}
+                onUpdate={(media) => updateTrip(trip.id, { media })}
+              />
+            )}
           </main>
 
           {showMap && (

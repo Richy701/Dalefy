@@ -28,6 +28,16 @@ export interface TravelEvent {
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;
 }
 
+export interface TripMedia {
+  id: string;
+  type: "image" | "video";
+  name: string;
+  url: string;
+  size: number;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -42,6 +52,7 @@ export interface Trip {
   status: "Draft" | "Published" | "In Progress";
   image: string;
   events: TravelEvent[];
+  media?: TripMedia[];
 }
 
 export interface ComplianceDoc {

@@ -11,6 +11,7 @@ import { WorkspacePage } from "@/pages/WorkspacePage";
 import { TravelersPage } from "@/pages/TravelersPage";
 import { DestinationsPage } from "@/pages/DestinationsPage";
 import { ReportsPage } from "@/pages/ReportsPage";
+import { MediaPage } from "@/pages/MediaPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -36,6 +37,7 @@ function AppRoutes() {
         <Route path="/travelers" element={<TravelersPage />} />
         <Route path="/destinations" element={<DestinationsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/media" element={<MediaPage />} />
       </Route>
       <Route
         path="/trip/:tripId"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Globe, PieChart, ChevronRight, LogOut, ArrowUpRight } from "lucide-react";
+import { LayoutDashboard, Users, Globe, PieChart, Images, ChevronRight, LogOut, ArrowUpRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Travelers", path: "/travelers" },
   { icon: Globe, label: "Destinations", path: "/destinations" },
+  { icon: Images, label: "Media", path: "/media" },
   { icon: PieChart, label: "Reports", path: "/reports" },
 ];
 

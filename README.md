@@ -12,6 +12,7 @@ Internal travel planning and itinerary management platform for teams. Build, man
 - **Document Compliance** — Per-traveler doc status (Signed / Pending / Expired) with sign & remind actions
 - **HR Documents Tab** — Aggregated doc view with stats across all travelers
 - **Reports Page** — Trip analytics with charts powered by Recharts
+- **Media Library** — Dedicated `/media` page to upload, browse, and manage photos and videos across all trips; per-trip media tab also available in the workspace
 - **Import Itinerary** — Upload PDF, Word, PowerPoint, or plain text — auto-parsed into trip events
 - **AI Zap** — AI-assisted itinerary suggestions within the workspace
 - **Grid & List Views** — Card grid and table layout for trip browsing
