@@ -213,7 +213,6 @@ export function DashboardPage() {
             </h1>
             {upcomingCards[0] ? (
               <div className="flex items-center gap-2.5 mt-2.5">
-                <Plane className="h-3.5 w-3.5 text-[#0bd2b5] shrink-0 -rotate-45" />
                 <span className="text-sm font-bold text-slate-900 dark:text-white truncate leading-none">
                   {upcomingCards[0].destination || upcomingCards[0].name}
                 </span>
