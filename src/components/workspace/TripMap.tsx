@@ -373,7 +373,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 );
               })}
               {points.length > 8 && (
-                <span className="text-xs font-black italic ml-2 shrink-0 text-slate-500 dark:text-[#888]">+{points.length - 8}</span>
+                <span className="text-xs font-black ml-2 shrink-0 text-slate-500 dark:text-[#888]">+{points.length - 8}</span>
               )}
             </div>
           </div>

@@ -70,7 +70,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <div className="space-y-1">
               {MOCK_USERS.map(u => (
                 <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
-                  <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs">{u.initials}</div>
+                  <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black text-xs">{u.initials}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
                     <p className="text-xs text-slate-500 dark:text-[#888]">{u.role}</p>

@@ -1,6 +1,15 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { User } from "@/types";
-import { MOCK_USERS } from "@/data/mock-users";
+
+const DEMO_USER: User = {
+  id: "demo",
+  name: "Ash Murray",
+  email: "ash.murray@dafadventures.com",
+  role: "Trip Manager",
+  avatar: "",
+  initials: "AM",
+  status: "Active",
+};
 
 interface AuthContextType {
   user: User | null;
@@ -27,16 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (_email: string, _password: string) => {
     await new Promise(r => setTimeout(r, 1000));
-    const u = MOCK_USERS[0]; // Always logs in as Ash Murray
-    setUser(u);
-    localStorage.setItem("daf-auth", JSON.stringify(u));
+    setUser(DEMO_USER);
+    localStorage.setItem("daf-auth", JSON.stringify(DEMO_USER));
   };
 
   const demoLogin = async () => {
     await new Promise(r => setTimeout(r, 1000));
-    const u = MOCK_USERS[0];
-    setUser(u);
-    localStorage.setItem("daf-auth", JSON.stringify(u));
+    setUser(DEMO_USER);
+    localStorage.setItem("daf-auth", JSON.stringify(DEMO_USER));
   };
 
   const logout = () => {

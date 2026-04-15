@@ -422,13 +422,13 @@ export function WorkspacePage() {
               {groupedEvents.map(([date], i) => (
                 <button key={date} className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === 0 ? "bg-[#0bd2b5]/10 text-[#0bd2b5]" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}>
                   <div className="flex items-center gap-3 relative z-10 leading-none">
-                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black italic text-[11px] uppercase tracking-tighter ${i === 0 ? "bg-[#0bd2b5] text-slate-900 dark:text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === 0 ? "bg-[#0bd2b5] text-slate-900 dark:text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
                       <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
                       <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">DAY {i + 1}</span>
-                      <span className="text-xs font-bold truncate leading-none mt-1 uppercase tracking-tighter italic">Scheduled</span>
+                      <span className="text-xs font-bold truncate leading-none mt-1 uppercase tracking-tighter ">Scheduled</span>
                     </div>
                   </div>
                 </button>
@@ -489,7 +489,7 @@ export function WorkspacePage() {
             <div className="flex items-center gap-1 px-4 lg:px-10 pt-6 shrink-0">
               <button
                 onClick={() => setActiveTab("itinerary")}
-                className={`px-5 py-2 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all ${
+                className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${
                   activeTab === "itinerary"
                     ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
                     : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
@@ -499,7 +499,7 @@ export function WorkspacePage() {
               </button>
               <button
                 onClick={() => setActiveTab("media")}
-                className={`px-5 py-2 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
+                className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
                   activeTab === "media"
                     ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
                     : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
@@ -637,7 +637,7 @@ export function WorkspacePage() {
                       value={editingEvent?.title || ""}
                       onChange={e => setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null)}
                       placeholder="e.g., Private Maasai Mara Flight"
-                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-[#0bd2b5] focus:outline-none text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#333] transition-colors"
+                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-[#0bd2b5] focus:outline-none text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
                     />
                   </div>
 

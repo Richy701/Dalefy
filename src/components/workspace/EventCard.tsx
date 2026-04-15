@@ -82,7 +82,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
           <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888888] flex items-center justify-center mb-2">
             <Plane className="h-3.5 w-3.5" />
           </div>
-          <span className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.time.split(" ")[0]}</span>
+          <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{event.time.split(" ")[0]}</span>
           <span className="text-[10px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
         </div>
 
@@ -90,7 +90,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-3">
             <div className="text-center shrink-0">
-              <p className="text-2xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
+              <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
@@ -100,7 +100,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
             </div>
             {to && (
               <div className="text-center shrink-0">
-                <p className="text-2xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
+                <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
               </div>
             )}
@@ -167,19 +167,19 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
               <>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
-                  <p className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkin}</p>
+                  <p className="text-sm font-black tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkin}</p>
                 </div>
                 {event.checkout && <ArrowRight className="h-3.5 w-3.5 text-amber-400 shrink-0" />}
                 {event.checkout && (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
-                    <p className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkout}</p>
+                    <p className="text-sm font-black tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkout}</p>
                   </div>
                 )}
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
+                <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
                 <StatusChip status={event.status} />
               </div>
             )}
@@ -236,7 +236,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
           </div>
 
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
-            <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
+            <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
             {event.endTime && (
               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888]">→ {event.endTime}</span>
             )}

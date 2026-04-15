@@ -21,13 +21,7 @@ const NotificationContext = createContext<NotificationContextType>({
   showToast: () => {},
 });
 
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: "n1", message: "Trip created", detail: "Kenya Luxury Safari has been created", time: "2 hours ago", read: false, type: "success" },
-  { id: "n2", message: "Itinerary published", detail: "Maldives Retreat is now live", time: "5 hours ago", read: false, type: "success" },
-  { id: "n3", message: "Flight update", detail: "QR28 to Doha is on time", time: "1 day ago", read: true, type: "info" },
-  { id: "n4", message: "Team invited", detail: "EU Sales Team added to Amalfi Coast Tour", time: "2 days ago", read: true, type: "info" },
-  { id: "n5", message: "New trip draft", detail: "Japan Discovery saved as draft", time: "3 days ago", read: true, type: "info" },
-];
+const INITIAL_NOTIFICATIONS: Notification[] = [];
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);

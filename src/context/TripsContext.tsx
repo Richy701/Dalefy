@@ -26,7 +26,7 @@ const TripsContext = createContext<TripsContextType>({
 });
 
 export function TripsProvider({ children }: { children: ReactNode }) {
-  const [trips, setTrips] = useLocalStorage<Trip[]>("daf-adventures-v3", INITIAL_TRIPS);
+  const [trips, setTrips] = useLocalStorage<Trip[]>("daf-adventures-v4", INITIAL_TRIPS);
 
   const addTrip = useCallback((trip: Trip) => setTrips(prev => [trip, ...prev]), [setTrips]);
 

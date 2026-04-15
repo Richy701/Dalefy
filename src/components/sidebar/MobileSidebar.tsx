@@ -63,7 +63,7 @@ export function MobileSidebar() {
           </nav>
           <div className="p-4 mt-auto absolute bottom-0 left-0 right-0 border-t border-slate-200 dark:border-[#1f1f1f]">
             <div className="flex items-center gap-3 p-3">
-              <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs">{user?.initials || "AM"}</div>
+              <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black text-xs">{user?.initials || "AM"}</div>
               <div className="flex-1">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.name || "Ash Murray"}</p>
                 <p className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-wider">{user?.role || "Lead Designer"}</p>

@@ -137,7 +137,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <p className="text-xs font-black italic uppercase tracking-[0.3em] text-[#0bd2b5]">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-[#0bd2b5]">
               UPLOADING...
             </p>
           </>
@@ -153,7 +153,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
               <Upload className="h-7 w-7" />
             </div>
             <div className="text-center pointer-events-none">
-              <p className="font-black italic text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white">
+              <p className="font-black text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white">
                 {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
               </p>
               <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
@@ -168,7 +168,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
       {media.length > 0 ? (
         <>
           <div className="flex items-center justify-between mb-5">
-            <p className="text-[11px] font-black italic uppercase tracking-[0.3em] text-[#0bd2b5]">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#0bd2b5]">
               {media.length} FILE{media.length !== 1 ? "S" : ""}
             </p>
             <button
@@ -273,7 +273,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
         !uploading && (
           <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-[#888888]">
             <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
-            <p className="text-xs font-black italic uppercase tracking-[0.3em]">
+            <p className="text-xs font-black uppercase tracking-[0.3em]">
               NO MEDIA YET
             </p>
             <p className="text-[11px] mt-1 opacity-70">

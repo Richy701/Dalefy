@@ -61,7 +61,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white dark:bg-[#050505] border border-slate-200 dark:border-[#1a1a1a]">
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-0.5">For</span>
-                <span className="text-xs font-black italic text-slate-900 dark:text-white uppercase tracking-tight">{travelerName}</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">{travelerName}</span>
               </div>
               <div className="h-8 w-px bg-slate-100 dark:bg-[#1a1a1a]" />
               <div className="flex flex-col text-right">
@@ -100,7 +100,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                     {content.sections.length > 4 && (
                       <div className="flex items-center gap-3 pl-8">
                         <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest italic">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ">
                           + {content.sections.length - 4} more sections
                         </span>
                         <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />

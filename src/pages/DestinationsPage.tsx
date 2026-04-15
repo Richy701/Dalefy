@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Calendar as LucideCalendar, Plane, Hotel, Compass, Utensils, Globe } from "lucide-react";
 import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl";
@@ -46,6 +47,7 @@ const DEST_COORDS: Record<string, [number, number]> = {
 export function DestinationsPage() {
   const { trips } = useTrips();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const isDark = theme === "dark";
@@ -146,7 +148,7 @@ export function DestinationsPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
-        left={
+        left={destinations.length > 0 ? (
           <div className="max-w-md w-full relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
@@ -158,13 +160,13 @@ export function DestinationsPage() {
               className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
-        }
+        ) : undefined}
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
 
-        {/* ── World Map ── */}
-        <div
+        {/* ── World Map — only shown when there are destinations ── */}
+        {destinations.length > 0 && <div
           className="dest-world-map relative overflow-hidden shrink-0 h-[440px] mx-4 lg:mx-8 mt-4 rounded-2xl border border-slate-200/60 dark:border-white/[0.06]"
           onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
         >
@@ -248,7 +250,7 @@ export function DestinationsPage() {
           </MapboxMap>
 
 
-        </div>
+        </div>}
 
         {/* Tooltip — fixed to cursor */}
         {hoveredPin && (
@@ -257,16 +259,16 @@ export function DestinationsPage() {
             style={{ left: mousePos.current.x + 14, top: mousePos.current.y - 10 }}
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl px-4 py-3 min-w-[160px]">
-              <p className="text-xs font-black italic uppercase tracking-tight text-[#0bd2b5] leading-none mb-1">{hoveredPin.name}</p>
+              <p className="text-xs font-black uppercase tracking-tight text-[#0bd2b5] leading-none mb-1">{hoveredPin.name}</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-2">{hoveredPin.region}</p>
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-[#1f1f1f]">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Trips</p>
-                  <p className="text-sm font-black italic text-slate-900 dark:text-white leading-none">{hoveredPin.tripCount}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white leading-none">{hoveredPin.tripCount}</p>
                 </div>
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Events</p>
-                  <p className="text-sm font-black italic text-slate-900 dark:text-white leading-none">{hoveredPin.eventCount}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white leading-none">{hoveredPin.eventCount}</p>
                 </div>
               </div>
             </div>
@@ -275,6 +277,21 @@ export function DestinationsPage() {
 
         {/* ── Cards Section ── */}
         <div className="px-4 lg:px-8 py-7 space-y-6">
+          {destinations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-5">
+              <img src="/illus-movement.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+              <div className="text-center space-y-1.5">
+                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
+              </div>
+              <button
+                onClick={() => navigate("/")}
+                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Create a Trip
+              </button>
+            </div>
+          ) : (<>
           <div className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
@@ -323,7 +340,7 @@ export function DestinationsPage() {
                   <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
-                  <h3 className="text-3xl font-black italic uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
+                  <h3 className="text-3xl font-black uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
@@ -368,6 +385,7 @@ export function DestinationsPage() {
               </div>
             ))}
           </div>
+          </>)}
         </div>
       </div>
     </div>

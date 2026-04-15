@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Upload,
   Trash2,
@@ -19,6 +20,7 @@ type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: s
 
 export function MediaPage() {
   const { trips, updateTrip } = useTrips();
+  const navigate = useNavigate();
 
   const [activeTripFilter, setActiveTripFilter] = useState<string>("all");
   const [isDragging, setIsDragging] = useState(false);
@@ -146,13 +148,29 @@ export function MediaPage() {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
         left={
-          <h1 className="text-sm font-black italic uppercase tracking-[0.25em] text-slate-900 dark:text-white">
+          <h1 className="text-sm font-black uppercase tracking-[0.25em] text-slate-900 dark:text-white">
             Media Library
           </h1>
         }
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
+
+        {trips.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-full gap-5 px-4 py-16">
+            <img src="/illus-wavy.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+            <div className="text-center space-y-1.5">
+              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No media yet</p>
+              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create a trip first, then upload your photos and videos</p>
+            </div>
+            <button
+              onClick={() => navigate("/")}
+              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+            >
+              Create a Trip
+            </button>
+          </div>
+        ) : (<>
 
         {/* Hero Banner */}
         <div className="px-6 lg:px-8 pt-6">
@@ -186,25 +204,25 @@ export function MediaPage() {
 
             {/* Content */}
             <div className="relative px-8 py-10 pr-52">
-              <p className="text-[9px] font-black italic uppercase tracking-[0.55em] text-[#0bd2b5] mb-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.55em] text-[#0bd2b5] mb-3">
                 Visual Archive
               </p>
-              <h2 className="text-[2.75rem] font-black italic uppercase leading-none tracking-tight text-white">
+              <h2 className="text-[2.75rem] font-black uppercase leading-none tracking-tight text-white">
                 Captured<br />Moments
               </h2>
               <div className="flex items-center gap-6 mt-6">
                 <div>
-                  <p className="text-2xl font-black italic leading-none text-white">{totalPhotos}</p>
+                  <p className="text-2xl font-black leading-none text-white">{totalPhotos}</p>
                   <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Photos</p>
                 </div>
                 <div className="h-8 w-px bg-[#252525]" />
                 <div>
-                  <p className="text-2xl font-black italic leading-none text-white">{totalVideos}</p>
+                  <p className="text-2xl font-black leading-none text-white">{totalVideos}</p>
                   <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Videos</p>
                 </div>
                 <div className="h-8 w-px bg-[#252525]" />
                 <div>
-                  <p className="text-2xl font-black italic leading-none text-white">{trips.length}</p>
+                  <p className="text-2xl font-black leading-none text-white">{trips.length}</p>
                   <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Trips</p>
                 </div>
               </div>
@@ -217,7 +235,7 @@ export function MediaPage() {
         <div className="space-y-3">
           {/* Trip selector */}
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-black italic uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] shrink-0">
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] shrink-0">
               Upload to:
             </span>
             <div className="relative" ref={pickerRef}>
@@ -290,7 +308,7 @@ export function MediaPage() {
                 <div className="w-40 h-1 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
                   <div className="h-full bg-[#0bd2b5] rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <p className="text-[10px] font-black italic uppercase tracking-[0.3em] text-[#0bd2b5]">UPLOADING…</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0bd2b5]">UPLOADING…</p>
               </div>
             ) : (
               <>
@@ -298,7 +316,7 @@ export function MediaPage() {
                   <Upload className="h-6 w-6" />
                 </div>
                 <div className="pointer-events-none">
-                  <p className="font-black italic text-sm uppercase tracking-[0.15em] text-slate-900 dark:text-white">
+                  <p className="font-black text-sm uppercase tracking-[0.15em] text-slate-900 dark:text-white">
                     {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
@@ -315,7 +333,7 @@ export function MediaPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveTripFilter("all")}
-              className={`px-4 py-1.5 rounded-full text-[10px] font-black italic uppercase tracking-[0.2em] transition-all border ${
+              className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                 activeTripFilter === "all"
                   ? "bg-[#0bd2b5] text-black border-transparent shadow-md shadow-[#0bd2b5]/20"
                   : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/40"
@@ -327,7 +345,7 @@ export function MediaPage() {
               <button
                 key={t.id}
                 onClick={() => setActiveTripFilter(t.id)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black italic uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 ${
                   activeTripFilter === t.id
                     ? "bg-[#0bd2b5] text-black border-transparent shadow-md shadow-[#0bd2b5]/20"
                     : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/40"
@@ -403,7 +421,7 @@ export function MediaPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-[#888888]">
             <Images className="h-16 w-16 mb-4 opacity-15" />
-            <p className="text-xs font-black italic uppercase tracking-[0.3em]">No media yet</p>
+            <p className="text-xs font-black uppercase tracking-[0.3em]">No media yet</p>
             <p className="text-[11px] mt-1 opacity-70">
               {allItems.length === 0
                 ? "Select a trip and upload your first photos or videos"
@@ -412,6 +430,7 @@ export function MediaPage() {
           </div>
         )}
         </div>
+        </>)}
       </div>
 
       <Lightbox

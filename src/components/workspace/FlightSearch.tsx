@@ -56,7 +56,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
   };
 
   const inputCls =
-    "w-full h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#444] focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors";
+    "w-full h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors";
 
   return (
     <div className="border-b border-slate-200 dark:border-[#1f1f1f] bg-blue-50/40 dark:bg-blue-950/10">

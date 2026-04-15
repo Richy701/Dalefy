@@ -229,13 +229,13 @@ export function TravelersPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
-        left={
+        left={travelers.length > 0 ? (
           <div className="max-w-md w-full relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
             <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
-        }
+        ) : undefined}
         cta={
           <Button onClick={() => setInviteOpen(true)} className="rounded-full bg-[#0bd2b5] hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
             <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">ADD TRAVELER</span>
@@ -249,41 +249,61 @@ export function TravelersPage() {
             {/* Page identity */}
             <div>
               <div>
-                <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
+                <h2 className="text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
                 <div className="flex items-center gap-2.5 mt-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
+                  {travelers.length > 0 && (<>
                   <span className="text-slate-200 dark:text-[#333]">·</span>
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" />
                     {travelers.length} Active Members
                   </span>
+                  </>)}
                 </div>
               </div>
             </div>
 
-            {/* Tab switcher */}
-            <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
-              {(["travelers", "hr"] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`relative px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 focus-visible:ring-offset-2 ${
-                    tab === t
-                      ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40"
-                      : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
-                  }`}
-                >
-                  {t === "travelers" ? "Team Overview" : "Documents"}
-                  {tab === t && (
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* Tab switcher — only shown when there's data */}
+            {travelers.length > 0 && (
+              <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
+                {(["travelers", "hr"] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className={`relative px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 focus-visible:ring-offset-2 ${
+                      tab === t
+                        ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40"
+                        : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {t === "travelers" ? "Team Overview" : "Documents"}
+                    {tab === t && (
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
+          {travelers.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-5">
+              <img src="/illus-discussion.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+              <div className="text-center space-y-1.5">
+                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
+              </div>
+              <button
+                onClick={() => setInviteOpen(true)}
+                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Add Traveler
+              </button>
+            </div>
+          )}
+
           {/* ───────── TRAVELERS TAB (TANSTACK TABLE) ───────── */}
-          {tab === "travelers" && (
+          {tab === "travelers" && travelers.length > 0 && (
             <div className="bg-white dark:bg-[#111111] rounded-2xl animate-fade-in border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -296,7 +316,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
+                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -319,6 +339,19 @@ export function TravelersPage() {
                   ))}
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                  {table.getRowModel().rows.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center">
+                            <User className="h-6 w-6 text-[#0bd2b5] opacity-60" />
+                          </div>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members yet</p>
+                          <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add your first traveler using the button above</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {table.getRowModel().rows.map(row => {
                     const user = row.original;
                     const docs = user.compliance.filter(d => d.status !== "Not Required");
@@ -328,9 +361,9 @@ export function TravelersPage() {
                       <tr key={user.id} className="hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3.5">
-                            <div className="h-10 w-10 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs shrink-0">{user.initials}</div>
+                            <div className="h-10 w-10 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
-                              <div className="text-sm font-black italic uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-[#0bd2b5] transition-colors">{user.name}</div>
+                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-[#0bd2b5] transition-colors">{user.name}</div>
                               <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email}</div>
                             </div>
                           </div>
@@ -339,7 +372,7 @@ export function TravelersPage() {
                           <span className="text-xs font-semibold text-slate-600 dark:text-[#aaa]">{user.role}</span>
                         </td>
                         <td className="px-6 py-5">
-                          <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
+                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2.5">
@@ -362,7 +395,7 @@ export function TravelersPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-black italic tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-300 dark:text-[#444]">/{docs.length}</span></span>
+                            <span className="text-xs font-black tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-300 dark:text-[#444]">/{docs.length}</span></span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -420,7 +453,7 @@ export function TravelersPage() {
           )}
 
           {/* ───────── HR MANAGEMENT TAB ───────── */}
-          {tab === "hr" && (
+          {tab === "hr" && travelers.length > 0 && (
             <div className="space-y-8 animate-fade-in">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -438,7 +471,7 @@ export function TravelersPage() {
                           {card.icon}
                         </div>
                       </div>
-                      <p className="text-4xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
+                      <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
                       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-4">{card.sub}</p>
                     </div>
                   </div>
@@ -448,15 +481,24 @@ export function TravelersPage() {
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
                 <div className="pl-8 pr-6 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center gap-4 lg:gap-6">
                   <div className="h-9 w-9 shrink-0" />
-                  <div className="min-w-[140px] text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Traveler</div>
-                  <div className="flex-1 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Document Type</div>
-                  <div className="w-24 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-center">Status</div>
-                  <div className="w-28 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right hidden md:block">Date Signed</div>
-                  <div className="w-48 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Actions</div>
+                  <div className="min-w-[140px] text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Traveler</div>
+                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Document Type</div>
+                  <div className="w-24 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-center">Status</div>
+                  <div className="w-28 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right hidden md:block">Date Signed</div>
+                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Actions</div>
                 </div>
 
                 {/* Docs list */}
                 <div>
+                    {filteredAllDocs.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-16 gap-3">
+                        <div className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center">
+                          <FileCheck className="h-6 w-6 text-[#0bd2b5] opacity-60" />
+                        </div>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No documents yet</p>
+                        <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add team members to track compliance</p>
+                      </div>
+                    )}
                     {filteredAllDocs.map(({ userId, userName, initials, doc }) => {
                       const cfg = DOC_STATUS_CONFIG[doc.status];
                       const Icon = cfg.icon;
@@ -467,9 +509,9 @@ export function TravelersPage() {
                           key={`${userId}-${doc.name}`}
                           className="flex items-center px-6 h-[68px] gap-4 lg:gap-6 hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-all group border-b border-slate-100 dark:border-[#1a1a1a]"
                         >
-                          <div className="h-9 w-9 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs shrink-0">{initials}</div>
+                          <div className="h-9 w-9 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black text-xs shrink-0">{initials}</div>
                           <div className="min-w-[140px]">
-                            <div className="text-xs font-black italic uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</div>
+                            <div className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</div>
                           </div>
                           <div className="flex items-center gap-2.5 flex-1 min-w-0">
                             <div className={`h-7 w-7 rounded-lg ${cfg.bg} ${cfg.color} flex items-center justify-center shrink-0`}>
@@ -481,7 +523,7 @@ export function TravelersPage() {
                             <Badge className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
                           </div>
                           <div className="w-28 text-right hidden md:block">
-                            <span className={`text-xs font-bold uppercase tracking-wider ${doc.date ? "text-slate-500 dark:text-slate-400" : "text-slate-300 italic"}`}>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${doc.date ? "text-slate-500 dark:text-slate-400" : "text-slate-300 "}`}>
                               {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Pending"}
                             </span>
                           </div>
@@ -515,17 +557,17 @@ export function TravelersPage() {
       <Drawer.Root open={inviteOpen} onOpenChange={setInviteOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-[#111111] border-t border-[#1f1f1f] max-h-[90vh] focus:outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[90vh] focus:outline-none">
             {/* Drag handle */}
-            <div className="mx-auto w-12 h-1 rounded-full bg-[#2a2a2a] mt-4 shrink-0" />
+            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
 
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-black italic uppercase tracking-tight text-white">Add Traveler</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#555] mt-1">New team member</p>
+                  <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1">New team member</p>
                 </div>
-                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#555] hover:text-white transition-colors">
+                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -533,7 +575,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
                     <User className="h-3 w-3" /> Full Name
                   </label>
                   <input
@@ -541,13 +583,13 @@ export function TravelersPage() {
                     value={drawerForm.name}
                     onChange={e => setDrawerForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Alex Johnson"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
                   />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
                     <Mail className="h-3 w-3" /> Email Address
                   </label>
                   <input
@@ -556,13 +598,13 @@ export function TravelersPage() {
                     value={drawerForm.email}
                     onChange={e => setDrawerForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="name@dafadventures.com"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
                   />
                 </div>
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
                     <Briefcase className="h-3 w-3" /> Role
                   </label>
                   <input
@@ -570,7 +612,7 @@ export function TravelersPage() {
                     onChange={e => setDrawerForm(f => ({ ...f, role: e.target.value }))}
                     placeholder="e.g. Travel Specialist"
                     list="role-suggestions"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
                   />
                   <datalist id="role-suggestions">
                     {["Lead Designer", "Senior Agent", "Travel Specialist", "Product Manager", "EU Sales Lead", "Content Creator", "Executive Advisor", "Operations Manager"].map(r => (
@@ -584,7 +626,7 @@ export function TravelersPage() {
                   <button
                     type="button"
                     onClick={() => setInviteOpen(false)}
-                    className="flex-1 h-12 rounded-2xl bg-[#0a0a0a] border border-[#1f1f1f] text-[#666] text-xs font-black uppercase tracking-wider hover:text-white hover:border-[#2a2a2a] transition-all"
+                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#666] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all"
                   >
                     Cancel
                   </button>
@@ -598,18 +640,18 @@ export function TravelersPage() {
               </form>
 
               {/* Existing team preview */}
-              <div className="mt-10 pt-8 border-t border-[#1a1a1a]">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#444] mb-4">Current Team · {travelers.length} members</p>
+              <div className="mt-10 pt-8 border-t border-slate-100 dark:border-[#1a1a1a]">
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-400 dark:text-[#444] mb-4">Current Team · {travelers.length} members</p>
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
-                    <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a]">
-                      <div className="h-5 w-5 rounded-md bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-[9px]">{u.initials}</div>
-                      <span className="text-xs font-bold text-[#888] truncate max-w-[100px]">{u.name}</span>
-                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${u.status === "Active" ? "bg-emerald-400" : u.status === "Away" ? "bg-amber-400" : "bg-slate-500"}`} />
+                    <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                      <div className="h-5 w-5 rounded-md bg-[#0bd2b5] text-black flex items-center justify-center font-black text-[9px]">{u.initials}</div>
+                      <span className="text-xs font-bold text-slate-500 dark:text-[#888] truncate max-w-[100px]">{u.name}</span>
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${u.status === "Active" ? "bg-emerald-400" : u.status === "Away" ? "bg-amber-400" : "bg-slate-300 dark:bg-slate-500"}`} />
                     </div>
                   ))}
                   {travelers.length > 8 && (
-                    <div className="px-3 py-1.5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] text-[11px] font-bold text-[#555]">
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] text-[11px] font-bold text-slate-400 dark:text-[#555]">
                       +{travelers.length - 8} more
                     </div>
                   )}

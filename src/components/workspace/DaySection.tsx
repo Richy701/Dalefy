@@ -14,8 +14,8 @@ export function DaySection({ date, eventCount, children, onAddEvent }: { date: s
         <div className="flex items-end justify-between">
           {/* Editorial date treatment */}
           <div className="flex items-baseline gap-3">
-            <span className="text-[10px] font-black italic uppercase tracking-[0.3em] text-[#0bd2b5] leading-none">{weekday}</span>
-            <span className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">{dateInfo}</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0bd2b5] leading-none">{weekday}</span>
+            <span className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{dateInfo}</span>
             {eventCount !== undefined && (
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
                 {eventCount}

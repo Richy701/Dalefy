@@ -56,7 +56,7 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
           <Command.Input
             autoFocus
             placeholder="Type a command or search..."
-            className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-white outline-none placeholder:text-[#444]"
+            className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-white outline-none placeholder:text-[#666]"
           />
           <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-[#444] bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-1.5 py-0.5">
             ESC

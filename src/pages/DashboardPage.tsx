@@ -204,6 +204,21 @@ export function DashboardPage() {
 
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
+        {trips.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-full gap-5 px-4 py-16">
+            <img src="/illus-riding.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+            <div className="text-center space-y-1.5">
+              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No trips yet</p>
+              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create your first trip to get started</p>
+            </div>
+            <button
+              onClick={() => setIsNewTripOpen(true)}
+              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              <Plus className="h-3.5 w-3.5" /> New Trip
+            </button>
+          </div>
+        ) : (
         <div className="px-4 lg:px-8 pt-8 pb-16 space-y-8">
 
           {/* ── Greeting ── */}
@@ -487,19 +502,19 @@ export function DashboardPage() {
                     <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-[#1a1a1a]">
                       <div className="pr-4">
                         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Budget</p>
-                        <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
+                        <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {spotlightTrip.budget ? `$${spotlightTrip.budget}` : "—"}
                         </p>
                       </div>
                       <div className="px-4">
                         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Person</p>
-                        <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
+                        <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {spotlightTrip.paxCount || "—"}
                         </p>
                       </div>
                       <div className="pl-4">
                         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Durations</p>
-                        <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
+                        <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {tripDuration(spotlightTrip.start, spotlightTrip.end)}d, {Math.max(1, tripDuration(spotlightTrip.start, spotlightTrip.end) - 1)}n
                         </p>
                       </div>
@@ -613,6 +628,19 @@ export function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {filteredTrips.length === 0 && (
+                      <TableRow className="hover:bg-transparent border-0">
+                        <TableCell colSpan={6} className="py-20 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center">
+                              <Plane className="h-6 w-6 text-[#0bd2b5] opacity-60" />
+                            </div>
+                            <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips yet</p>
+                            <button onClick={() => setIsNewTripOpen(true)} className="text-[11px] font-bold text-[#0bd2b5] hover:underline">Create your first trip →</button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {filteredTrips.map(trip => {
                       const tStart = new Date(trip.start);
                       const tEnd = new Date(trip.end);
@@ -666,21 +694,22 @@ export function DashboardPage() {
             )}
           </section>
         </div>
+        )}
       </div>
 
       {/* ── New Trip Drawer ── */}
       <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-[#111111] border-t border-[#1f1f1f] max-h-[90vh] focus:outline-none">
-            <div className="mx-auto w-12 h-1 rounded-full bg-[#2a2a2a] mt-4 shrink-0" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[90vh] focus:outline-none">
+            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-black italic uppercase tracking-tight text-white">New Trip</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#555] mt-1">Build your next adventure</p>
+                  <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1">Build your next adventure</p>
                 </div>
-                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#555] hover:text-white transition-colors">
+                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -688,18 +717,18 @@ export function DashboardPage() {
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Itinerary Title</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Itinerary Title</label>
                   <input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip"
-                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-[#1f1f1f] text-white text-2xl font-black italic uppercase tracking-tight focus:outline-none focus:border-[#0bd2b5] placeholder:text-[#333] transition-colors" />
+                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white text-2xl font-black uppercase tracking-tight focus:outline-none focus:border-[#0bd2b5] placeholder:text-slate-300 dark:placeholder:text-[#333] transition-colors" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Trip Type</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Trip Type</label>
                   <div className="flex flex-wrap gap-2">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-[#0bd2b5] text-black border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/20" : "bg-[#0a0a0a] border-[#1f1f1f] text-[#888] hover:border-[#0bd2b5]/40"}`}>
+                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-[#0bd2b5] text-black border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-[#0bd2b5]/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -709,32 +738,32 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
                     <input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa"
-                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
                     <input type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="e.g., 12"
-                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                 </div>
 
                 {/* Group + Dates */}
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
                     <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
-                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>
                     <Popover>
-                      <PopoverTrigger className={cn("w-full h-12 justify-start text-left font-semibold bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl hover:bg-[#151515] transition-colors px-4 flex items-center gap-3 text-sm", !newTripData.dateRange && "text-[#555]")}>
+                      <PopoverTrigger className={cn("w-full h-12 justify-start text-left font-semibold bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:bg-white dark:hover:bg-[#151515] transition-colors px-4 flex items-center gap-3 text-sm", !newTripData.dateRange && "text-slate-400 dark:text-[#555]")}>
                         <LucideCalendar className="h-4 w-4 text-[#0bd2b5] shrink-0" />
-                        {newTripData.dateRange?.from ? (newTripData.dateRange.to ? <span className="text-white">{format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}</span> : <span className="text-white">{format(newTripData.dateRange.from, "MMM d, yyyy")}</span>) : <span>Select dates...</span>}
+                        {newTripData.dateRange?.from ? (newTripData.dateRange.to ? <span className="text-slate-900 dark:text-white">{format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}</span> : <span className="text-slate-900 dark:text-white">{format(newTripData.dateRange.from, "MMM d, yyyy")}</span>) : <span>Select dates...</span>}
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 border border-[#2a2a2a] shadow-2xl rounded-[1.5rem] bg-[#1a1a1a]" align="start">
+                      <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-[1.5rem] bg-white dark:bg-[#1a1a1a]" align="start">
                         <Calendar initialFocus mode="range" defaultMonth={newTripData.dateRange?.from} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={2} className="p-4" />
                       </PopoverContent>
                     </Popover>
@@ -744,14 +773,14 @@ export function DashboardPage() {
                 {/* Budget + Currency */}
                 <div className="grid grid-cols-3 gap-5">
                   <div className="col-span-2 space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
                     <input name="budget" autoComplete="off" value={newTripData.budget} onChange={e => setNewTripData({ ...newTripData, budget: e.target.value })} placeholder="e.g., 45,000"
-                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Currency</label>
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Currency</label>
                     <select value={newTripData.currency} onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-12 w-full px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl font-bold text-white focus:outline-none text-sm appearance-none cursor-pointer">
+                      className="h-12 w-full px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-bold text-slate-900 dark:text-white focus:outline-none text-sm appearance-none cursor-pointer">
                       {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
@@ -759,15 +788,15 @@ export function DashboardPage() {
 
                 {/* Cover Image */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><ImageIcon className="h-3 w-3" /> Cover Image URL (Optional)</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><ImageIcon className="h-3 w-3" /> Cover Image URL (Optional)</label>
                   <input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="https://images.unsplash.com/..."
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-12 rounded-2xl bg-[#0a0a0a] border border-[#1f1f1f] text-[#666] text-xs font-black uppercase tracking-wider hover:text-white hover:border-[#2a2a2a] transition-all">
+                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#666] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all">
                     Cancel
                   </button>
                   <button type="submit"

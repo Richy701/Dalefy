@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { Plane, Hotel, Calendar as LucideCalendar, MapPin, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download } from "lucide-react";
@@ -39,7 +40,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
             {icon}
           </div>
         </div>
-        <p className="text-3xl lg:text-4xl font-black italic tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
+        <p className="text-3xl lg:text-4xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-3">{sub}</p>
       </div>
     </div>
@@ -49,6 +50,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 export function ReportsPage() {
   const { trips } = useTrips();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
   const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>("daf-compliance", {});
@@ -155,12 +157,12 @@ export function ReportsPage() {
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
-              <p className="text-[10px] font-black italic uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
-              <h1 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
+              <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
               {(["operations", "compliance"] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"}`}>
                   {t === "operations" ? "Overview" : "Documents"}
                   {tab === t && <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />}
                 </button>
@@ -169,7 +171,21 @@ export function ReportsPage() {
           </div>
 
           {/* ───────── TRIP OPERATIONS ───────── */}
-          {tab === "operations" && (
+          {tab === "operations" && (trips.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-5">
+              <img src="/illus-sitting.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+              <div className="text-center space-y-1.5">
+                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to see your analytics</p>
+              </div>
+              <button
+                onClick={() => navigate("/")}
+                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Create a Trip
+              </button>
+            </div>
+          ) : (
             <div className="space-y-8 animate-fade-in">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -182,9 +198,18 @@ export function ReportsPage() {
               {/* Trip Pipeline — full-width card with chart + breakdown side by side */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
                 </div>
+                {pipelineData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
+                    <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
+                      <Plane className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips in pipeline</p>
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
+                  </div>
+                ) : (
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                   {/* Donut chart */}
                   <div className="h-56 w-56 shrink-0">
@@ -222,7 +247,7 @@ export function ReportsPage() {
                               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider hidden sm:inline">{s.desc}</span>
                             </div>
                             <div className="flex items-baseline gap-2">
-                              <span className="text-lg font-black italic tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
+                              <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
                               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
                             </div>
                           </div>
@@ -234,17 +259,27 @@ export function ReportsPage() {
                     })}
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Upcoming Departures */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Upcoming Departures</h3>
+                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Upcoming Departures</h3>
                     <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Sorted by departure date</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {stats.tripTimeline.length === 0 && (
+                    <div className="col-span-2 flex flex-col items-center justify-center py-14 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
+                      <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
+                        <LucideCalendar className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                      </div>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No departures scheduled</p>
+                      <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create a trip from the dashboard</p>
+                    </div>
+                  )}
                   {stats.tripTimeline.map(t => (
                     <div key={t.id} className="flex items-center gap-4 py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200/50 dark:border-[#1f1f1f]/50">
                       <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-[#1f1f1f]">
@@ -260,7 +295,7 @@ export function ReportsPage() {
                         {t.daysUntil <= 0 ? (
                           <span className="text-xs font-bold text-[#0bd2b5] uppercase tracking-wider">Now</span>
                         ) : (
-                          <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 not-italic tracking-widest">DAYS</span></span>
+                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 not-italic tracking-widest">DAYS</span></span>
                         )}
                       </div>
                       <Badge className={`text-xs font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider shrink-0`} style={{ background: `${STATUS_COLORS[t.status]}18`, color: STATUS_COLORS[t.status] }}>
@@ -274,20 +309,30 @@ export function ReportsPage() {
               {/* Trips by Month — full width */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Departure schedule</p>
                 </div>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                    <BarChart data={stats.tripsByMonth} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
-                      <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                      <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip />} />
-                      <Bar dataKey="count" fill="#0bd2b5" radius={[6, 6, 0, 0]} background={{ fill: 'transparent' }} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {stats.tripsByMonth.length === 0 ? (
+                  <div className="h-64 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
+                    <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
+                      <BarChart3 className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
+                  </div>
+                ) : (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
+                      <BarChart data={stats.tripsByMonth} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
+                        <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                        <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip />} />
+                        <Bar dataKey="count" fill="#0bd2b5" radius={[6, 6, 0, 0]} background={{ fill: 'transparent' }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
               {/* Top Airlines & Hotels — side by side */}
@@ -299,7 +344,7 @@ export function ReportsPage() {
                       <Plane className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Top Airlines</h3>
+                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Top Airlines</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Most booked carriers</p>
                     </div>
                   </div>
@@ -308,11 +353,11 @@ export function ReportsPage() {
                       const maxCount = stats.topAirlines[0]?.count || 1;
                       return (
                         <div key={a.name} className="flex items-center gap-4">
-                          <span className="text-2xl font-black italic text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
+                          <span className="text-2xl font-black text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</span>
-                              <span className="text-xs font-black italic tracking-tighter text-[#0bd2b5] shrink-0 ml-2">{a.count}</span>
+                              <span className="text-xs font-black tracking-tighter text-[#0bd2b5] shrink-0 ml-2">{a.count}</span>
                             </div>
                             <div className="h-1.5 bg-slate-100 dark:bg-[#050505] rounded-full overflow-hidden">
                               <div className="h-full bg-[#0bd2b5] rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
@@ -331,7 +376,7 @@ export function ReportsPage() {
                       <Hotel className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Top Hotels</h3>
+                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Top Hotels</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Most booked properties</p>
                     </div>
                   </div>
@@ -340,11 +385,11 @@ export function ReportsPage() {
                       const maxCount = stats.topHotels[0]?.count || 1;
                       return (
                         <div key={h.name} className="flex items-center gap-4">
-                          <span className="text-2xl font-black italic text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
+                          <span className="text-2xl font-black text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{h.name}</span>
-                              <span className="text-xs font-black italic tracking-tighter text-[#f59e0b] shrink-0 ml-2">{h.count}</span>
+                              <span className="text-xs font-black tracking-tighter text-[#f59e0b] shrink-0 ml-2">{h.count}</span>
                             </div>
                             <div className="h-1.5 bg-slate-100 dark:bg-[#050505] rounded-full overflow-hidden">
                               <div className="h-full bg-[#f59e0b] rounded-full transition-all duration-700" style={{ width: `${(h.count / maxCount) * 100}%` }} />
@@ -358,10 +403,24 @@ export function ReportsPage() {
                 </div>
               </div>
             </div>
-          )}
+          ))}
 
           {/* ───────── TEAM & COMPLIANCE ───────── */}
-          {tab === "compliance" && (
+          {tab === "compliance" && (complianceData.travelers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-5">
+              <img src="/illus-together.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+              <div className="text-center space-y-1.5">
+                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add travelers to track compliance</p>
+              </div>
+              <button
+                onClick={() => navigate("/travelers")}
+                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Add Travelers
+              </button>
+            </div>
+          ) : (
             <div className="space-y-8 animate-fade-in">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -374,7 +433,7 @@ export function ReportsPage() {
               {/* Overall Compliance — full-width hero with donut + breakdown bars */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
                 </div>
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
@@ -427,7 +486,7 @@ export function ReportsPage() {
                               </div>
                             </div>
                             <div className="flex items-baseline gap-2">
-                              <span className="text-lg font-black italic tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
+                              <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
                               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
                             </div>
                           </div>
@@ -444,7 +503,7 @@ export function ReportsPage() {
               {/* By Document Type — full width */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
                 </div>
                 <div className="space-y-4">
@@ -464,9 +523,9 @@ export function ReportsPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0 w-32 justify-end">
-                            <span className="text-xs font-black italic tracking-tighter text-emerald-400">{doc.signed}</span>
-                            <span className="text-xs font-black italic tracking-tighter text-amber-400">{doc.pending}</span>
-                            <span className="text-xs font-black italic tracking-tighter text-red-400">{doc.expired}</span>
+                            <span className="text-xs font-black tracking-tighter text-emerald-400">{doc.signed}</span>
+                            <span className="text-xs font-black tracking-tighter text-amber-400">{doc.pending}</span>
+                            <span className="text-xs font-black tracking-tighter text-red-400">{doc.expired}</span>
                           </div>
                         </div>
                       </div>
@@ -492,7 +551,7 @@ export function ReportsPage() {
                       <FileCheck className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
+                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Latest signed documents</p>
                     </div>
                   </div>
@@ -522,7 +581,7 @@ export function ReportsPage() {
                       <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
+                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Members with pending or expired docs</p>
                     </div>
                   </div>
@@ -538,7 +597,7 @@ export function ReportsPage() {
                       .slice(0, 6)
                       .map(t => (
                         <div key={t.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
-                          <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-[11px] shrink-0">{t.initials}</div>
+                          <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</div>
                             <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">{t.role}</div>
@@ -567,7 +626,7 @@ export function ReportsPage() {
               {/* Team Compliance Grid / Heatmap */}
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
                 </div>
                 <div className="overflow-x-auto">
@@ -599,7 +658,7 @@ export function ReportsPage() {
                           <tr key={t.id} className="border-t border-slate-200/50 dark:border-[#1f1f1f]/50 hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-[11px] shrink-0">{t.initials}</div>
+                                <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">{t.name}</span>
                                   <span className="text-[11px] text-slate-500 dark:text-[#888]">{t.role}</span>
@@ -643,7 +702,7 @@ export function ReportsPage() {
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
