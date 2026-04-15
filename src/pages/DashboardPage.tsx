@@ -623,9 +623,22 @@ export function DashboardPage() {
                             <div className="h-14 w-20 rounded-xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f]"><img src={trip.image} alt={trip.name} className="h-full w-full object-cover" /></div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-900 dark:text-white text-base group-hover:text-[#0bd2b5] transition-colors leading-none">{trip.name}</span>
-                              <Badge className={`w-fit text-xs font-semibold px-2 py-0.5 h-auto border-none mt-1.5 text-slate-900 dark:text-black ${trip.status === "Published" ? "bg-emerald-400" : "bg-[#0bd2b5]"}`}>{trip.status}</Badge>
+                            <div className="flex flex-col gap-1.5">
+                              <span className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-[#0bd2b5] transition-colors leading-none">{trip.name}</span>
+                              <span className={`inline-flex items-center gap-1.5 w-fit text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
+                                trip.status === "Published"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                  : trip.status === "In Progress"
+                                  ? "bg-[#0bd2b5]/10 text-[#0bd2b5]"
+                                  : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400"
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                                  trip.status === "Published" ? "bg-emerald-500 dark:bg-emerald-400"
+                                  : trip.status === "In Progress" ? "bg-[#0bd2b5]"
+                                  : "bg-slate-400 dark:bg-slate-500"
+                                }`} />
+                                {trip.status}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell><span className="font-medium text-slate-600 dark:text-[#aaa] text-xs">{trip.attendees || "Team"}</span></TableCell>
