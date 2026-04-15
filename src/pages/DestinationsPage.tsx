@@ -108,7 +108,7 @@ export function DestinationsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-20 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-10 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
+      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
         <div className="flex-1 flex items-center gap-4 lg:gap-8">
           <MobileSidebar />
           <div className="max-w-md w-full relative group">
@@ -119,12 +119,12 @@ export function DestinationsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="SEARCH DESTINATIONS..."
-              className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus:outline-none focus:ring-2 focus:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
         </div>
         <div className="flex items-center gap-3 lg:gap-6">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-[background-color,color] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <NotificationPanel />
@@ -140,7 +140,7 @@ export function DestinationsPage() {
           onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
         >
           <ComposableMap
-            projection="geoNaturalEarth1"
+            projection="geoEqualEarth"
             projectionConfig={{ scale: 160, center: [15, 10] }}
             style={{ width: "100%", height: "auto", display: "block" }}
           >
@@ -284,12 +284,12 @@ export function DestinationsPage() {
         )}
 
         {/* ── Cards Section ── */}
-        <div className="px-4 lg:px-10 py-10 space-y-8">
+        <div className="px-4 lg:px-8 py-7 space-y-6">
           <div className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
-                <h2 className="text-4xl lg:text-6xl font-extrabold uppercase tracking-tight leading-none text-slate-900 dark:text-white">Destinations</h2>
+                <h2 className="text-2xl lg:text-4xl font-extrabold uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Destinations</h2>
               </div>
               <div className="flex items-center gap-px rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shrink-0">
                 {[
@@ -309,7 +309,7 @@ export function DestinationsPage() {
                 <button
                   key={r}
                   onClick={() => setFilter(r)}
-                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${filter === r ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/40"}`}
+                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${filter === r ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/40"}`}
                 >
                   {r === "all" ? "All Regions" : r}
                 </button>

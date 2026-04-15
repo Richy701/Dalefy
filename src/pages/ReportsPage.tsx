@@ -33,15 +33,15 @@ function BarTooltip({ active, payload, label }: { active?: boolean; payload?: { 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:border-[#0bd2b5]/30 transition-[border-color,transform] group hover:-translate-y-0.5 duration-300">
-      <div className="p-5 lg:p-7 flex flex-col">
+      <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
           <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-[#0bd2b5]"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
-        <p className="text-5xl font-black italic tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#888] mt-5">{sub}</p>
+        <p className="text-3xl lg:text-4xl font-black italic tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#888] mt-3">{sub}</p>
       </div>
     </div>
   );
@@ -138,7 +138,7 @@ export function ReportsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-20 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-10 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
+      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
         <div className="flex-1 flex items-center gap-4 lg:gap-8">
           <MobileSidebar />
           <h2 className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Reports</h2>
@@ -161,12 +161,12 @@ export function ReportsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 lg:px-10 py-10 space-y-8">
+        <div className="px-4 lg:px-8 py-7 space-y-6">
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
               <p className="text-[10px] font-black italic uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
-              <h2 className="text-4xl lg:text-6xl font-black italic uppercase tracking-tight leading-none text-slate-900 dark:text-white">Reports</h2>
+              <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h2>
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
               {(["operations", "compliance"] as const).map(t => (

@@ -150,13 +150,13 @@ export function MediaPage() {
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050505] overflow-y-auto">
       {/* Header */}
-      <div className="px-6 lg:px-10 pt-8 pb-6 border-b border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shrink-0">
+      <div className="px-6 lg:px-8 pt-6 pb-5 border-b border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shrink-0">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-black italic uppercase tracking-[0.35em] text-[#0bd2b5] mb-1">
               DAF Adventures
             </p>
-            <h1 className="text-3xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
+            <h1 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
               Media Library
             </h1>
             <p className="text-xs text-slate-400 dark:text-[#888888] mt-2 uppercase tracking-wider font-bold">
@@ -182,7 +182,7 @@ export function MediaPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-6 lg:px-10 py-8 space-y-8">
+      <div className="flex-1 px-6 lg:px-8 py-6 space-y-6">
         {/* Upload zone */}
         <div className="space-y-3">
           {/* Trip selector */}

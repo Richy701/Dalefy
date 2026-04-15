@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Sun, Moon, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Wifi } from "lucide-react";
+import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Sun, Moon, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -240,13 +240,13 @@ export function TravelersPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-20 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-10 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
+      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
         <div className="flex-1 flex items-center gap-4 lg:gap-8">
           <MobileSidebar />
           <div className="max-w-md w-full relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus:outline-none focus:ring-2 focus:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
+            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
         </div>
         <div className="flex items-center gap-3 lg:gap-6">
@@ -262,12 +262,12 @@ export function TravelersPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 lg:px-10 py-10 space-y-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-10 border-b border-slate-200 dark:border-[#1a1a1a]">
+        <div className="px-4 lg:px-8 py-7 space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
             {/* Page identity */}
             <div>
               <div>
-                <h2 className="text-4xl lg:text-6xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">Team Directory</h2>
+                <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
                 <div className="flex items-center gap-2.5 mt-2">
                   <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-[#666]">People & Documents</span>
                   <span className="text-slate-200 dark:text-[#333]">·</span>
@@ -610,32 +610,6 @@ export function TravelersPage() {
                       <option key={r} value={r} />
                     ))}
                   </datalist>
-                </div>
-
-                {/* Status */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.35em] text-[#666] flex items-center gap-2">
-                    <Wifi className="h-3 w-3" /> Status
-                  </label>
-                  <div className="flex gap-2">
-                    {(["Active", "Away", "Offline"] as const).map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setDrawerForm(f => ({ ...f, status: s }))}
-                        className={`flex-1 h-11 rounded-2xl text-xs font-black uppercase tracking-wider border transition-all ${
-                          drawerForm.status === s
-                            ? s === "Active" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                              : s === "Away" ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                              : "bg-[#1a1a1a] text-[#888] border-[#2a2a2a]"
-                            : "bg-[#0a0a0a] text-[#444] border-[#1a1a1a] hover:border-[#2a2a2a]"
-                        }`}
-                      >
-                        <span className={`inline-block h-1.5 w-1.5 rounded-full mr-2 ${s === "Active" ? "bg-emerald-400" : s === "Away" ? "bg-amber-400" : "bg-slate-500"}`} />
-                        {s}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Submit */}

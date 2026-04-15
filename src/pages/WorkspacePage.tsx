@@ -35,6 +35,8 @@ import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
+import { FlightSearch } from "@/components/workspace/FlightSearch";
+import { HotelSearch } from "@/components/workspace/HotelSearch";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -386,7 +388,7 @@ export function WorkspacePage() {
           <div className="flex flex-col">
             <h2 className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none max-w-[180px] sm:max-w-[300px] truncate">{trip.name}</h2>
             <div className="flex items-center gap-2 mt-1 leading-none">
-              <Badge className="bg-[#0bd2b5]/10 text-[#0bd2b5] border border-[#0bd2b5]/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">LIVE EDITOR</Badge>
+              <Badge className="bg-[#0bd2b5]/10 text-[#0bd2b5] border border-[#0bd2b5]/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline">ATTENDEES: {trip.attendees}</span>
             </div>
           </div>
@@ -447,7 +449,7 @@ export function WorkspacePage() {
               {/* Top row: status + event count pill */}
               <div className="absolute top-6 left-6 lg:left-8 right-6 lg:right-8 z-20 flex items-center justify-between">
                 <Badge className={`rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] border-none shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-emerald-500 text-white" : trip.status === "In Progress" ? "bg-[#0bd2b5] text-black" : "bg-white/20 text-white"}`}>
-                  {trip.status === "In Progress" ? "● LIVE" : trip.status === "Published" ? "✓ PUBLISHED" : "DRAFT"}
+                  {trip.status === "In Progress" ? "● ACTIVE" : trip.status === "Published" ? "✓ PUBLISHED" : "DRAFT"}
                 </Badge>
                 <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{trip.events.length} events</span>
@@ -609,6 +611,23 @@ export function WorkspacePage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Live search — flight */}
+                {editingEvent?.type === "flight" && (
+                  <FlightSearch
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    defaultDate={editingEvent?.date}
+                  />
+                )}
+
+                {/* Live search — hotel */}
+                {editingEvent?.type === "hotel" && (
+                  <HotelSearch
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    defaultCheckin={trip.start}
+                    defaultCheckout={trip.end}
+                  />
+                )}
 
                 <div className="p-7 space-y-5">
                   {/* Title — large underline style */}
