@@ -55,7 +55,7 @@ const IMAGE_BANK: Record<string, string[]> = {
   activity: [IMG("1527631746610-bca00a040d60"), IMG("1551632811-561732d1e306"), IMG("1564760055775-d63b17a55c44"), IMG("1517649763962-0c623066013b")],
   mountain: [IMG("1531366936337-7c912a4589a7"), IMG("1506905925346-21bda4d32df4"), IMG("1464822759023-fed622ff2c3b")],
   city:     [IMG("1496442226666-8d4d0e62e6e9"), IMG("1477959858617-67f85cf4f1df"), IMG("1534430480872-3498386e7856")],
-  italy:    [IMG("1534445538923-ab38e5b0c99b"), IMG("1516483638261-f4dbaf036963")],
+  italy:    [IMG("1523906834128-a8065567e9a2"), IMG("1516483638261-f4dbaf036963")],
   bali:     [IMG("1537996194471-e657df975ab4"), IMG("1518548419970-58e3b4079ab2")],
 };
 
@@ -64,7 +64,7 @@ const COVER_IMAGES = [
   { url: IMG("1507525428034-b723cf961d3e"), label: "Beach" },
   { url: IMG("1531366936337-7c912a4589a7"), label: "Mountain" },
   { url: IMG("1493976040374-85c8e12f0c0e"), label: "Japan" },
-  { url: IMG("1534445538923-ab38e5b0c99b"), label: "Italy" },
+  { url: IMG("1523906834128-a8065567e9a2"), label: "Italy" },
   { url: IMG("1537996194471-e657df975ab4"), label: "Bali" },
   { url: IMG("1496442226666-8d4d0e62e6e9"), label: "City" },
   { url: IMG("1573843981267-be1999ff37cd"), label: "Maldives" },
@@ -169,63 +169,26 @@ export function WorkspacePage() {
     if (!query.trim()) return;
     setIsSearchingImages(true);
     try {
-      const googleKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
-      const googleCx = import.meta.env.VITE_GOOGLE_CSE_ID as string | undefined;
       const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
-
-      if (googleKey && googleCx) {
-        try {
-          const res = await fetch(
-            `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query + " travel photo")}&searchType=image&num=9&imgSize=xlarge&safe=active`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.items?.length) {
-              setImageResults(data.items.map((i: { link: string }) => i.link));
-              setImageSearchSource("google");
-              return;
-            } else {
-              console.warn("[ImageSearch] Google CSE returned no items:", data);
-            }
-          } else {
-            const err = await res.json().catch(() => ({}));
-            console.warn(`[ImageSearch] Google CSE failed (${res.status}):`, err);
-          }
-        } catch (e) {
-          console.warn("[ImageSearch] Google CSE fetch error:", e);
-        }
-      }
-
       if (unsplashKey) {
-        try {
-          const res = await fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=9&orientation=landscape&client_id=${unsplashKey}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.results?.length) {
-              setImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular));
-              setImageSearchSource("unsplash");
-              return;
-            } else {
-              console.warn("[ImageSearch] Unsplash returned no results:", data);
-            }
-          } else {
-            const err = await res.json().catch(() => ({}));
-            console.warn(`[ImageSearch] Unsplash failed (${res.status}):`, err);
+        const res = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=9&orientation=landscape&client_id=${unsplashKey}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results?.length) {
+            setImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular));
+            setImageSearchSource("unsplash");
+            return;
           }
-        } catch (e) {
-          console.warn("[ImageSearch] Unsplash fetch error:", e);
         }
       }
-
       // Local bank fallback
       const cat = getEventImageCategory(query, editingEvent?.type || "activity");
       const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
-      setImageResults([...bank, ...(IMAGE_BANK.activity)].slice(0, 9));
+      setImageResults([...bank, ...IMAGE_BANK.activity].slice(0, 9));
       setImageSearchSource("local");
-    } catch (e) {
-      console.error("[ImageSearch] Unexpected error:", e);
+    } catch {
       const cat = getEventImageCategory(query, editingEvent?.type || "activity");
       setImageResults(IMAGE_BANK[cat] ?? IMAGE_BANK.activity);
     } finally {
@@ -405,24 +368,14 @@ export function WorkspacePage() {
     if (!query.trim()) { setTripImageResults([]); return; }
     setIsTripImageSearching(true);
     try {
-      const googleKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
-      const googleCx  = import.meta.env.VITE_GOOGLE_CSE_ID as string | undefined;
       const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
-      if (googleKey && googleCx) {
-        try {
-          const res = await fetch(`https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query + " travel landscape")}&searchType=image&num=12&imgSize=xlarge&safe=active`);
-          if (res.ok) { const data = await res.json(); if (data.items?.length) { setTripImageResults(data.items.map((i: { link: string }) => i.link)); return; } }
-        } catch {}
-      }
       if (unsplashKey) {
-        try {
-          const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
-          if (res.ok) { const data = await res.json(); if (data.results?.length) { setTripImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
-        } catch {}
+        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
+        if (res.ok) { const data = await res.json(); if (data.results?.length) { setTripImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
       }
-      const cat = getEventImageCategory(query, "activity");
-      const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
-      setTripImageResults([...bank, ...IMAGE_BANK.hotel, ...IMAGE_BANK.activity].slice(0, 12));
+      setTripImageResults(COVER_IMAGES.map(i => i.url));
+    } catch {
+      setTripImageResults(COVER_IMAGES.map(i => i.url));
     } finally {
       setIsTripImageSearching(false);
     }
@@ -1053,13 +1006,6 @@ export function WorkspacePage() {
                     ))
                   )}
                 </div>
-                {/* Custom URL */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-[#252525]" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555]">or paste URL</span>
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-[#252525]" />
-                </div>
-                <Input value={editingTrip.image ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, image: e.target.value }))} placeholder="https://..." className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</label>

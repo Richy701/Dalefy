@@ -56,7 +56,7 @@ const COVER_IMGS = [
   { url: IMG("1507525428034-b723cf961d3e"), label: "Beach" },
   { url: IMG("1531366936337-7c912a4589a7"), label: "Mountain" },
   { url: IMG("1493976040374-85c8e12f0c0e"), label: "Japan" },
-  { url: IMG("1534445538923-ab38e5b0c99b"), label: "Italy" },
+  { url: IMG("1523906834128-a8065567e9a2"), label: "Italy" },
   { url: IMG("1537996194471-e657df975ab4"), label: "Bali" },
   { url: IMG("1496442226666-8d4d0e62e6e9"), label: "City" },
   { url: IMG("1573843981267-be1999ff37cd"), label: "Maldives" },
@@ -175,6 +175,23 @@ export function DashboardPage() {
   }, [spotlightTrip]);
 
 
+  const runCoverSearch = async (query: string) => {
+    if (!query.trim()) { setCoverResults([]); return; }
+    setIsCoverSearching(true);
+    try {
+      const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
+      if (unsplashKey) {
+        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
+        if (res.ok) { const data = await res.json(); if (data.results?.length) { setCoverResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
+      }
+      setCoverResults(COVER_IMGS.map(i => i.url));
+    } catch {
+      setCoverResults(COVER_IMGS.map(i => i.url));
+    } finally {
+      setIsCoverSearching(false);
+    }
+  };
+
   const handleCreateTripSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTripData.dateRange?.from || !newTripData.dateRange?.to) {
@@ -204,6 +221,7 @@ export function DashboardPage() {
     addTrip(newTrip);
     setIsNewTripOpen(false);
     setNewTripData({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: "USD" });
+    setCoverSearch(""); setCoverResults([]);
     showToast("Trip created successfully");
     toast.success("Trip created successfully");
     addNotification({ message: "Trip created", detail: newTrip.name, time: "Just now", type: "success" });
@@ -897,21 +915,63 @@ export function DashboardPage() {
                 </div>
 
                 {/* Cover Image */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
-                    <ImageIcon className="h-3 w-3" /> Cover Image — URL or destination name
+                    <ImageIcon className="h-3 w-3" /> Cover Image
                   </label>
+                  {/* Preview */}
+                  {newTripData.image?.startsWith("http") && (
+                    <div className="h-28 rounded-2xl overflow-hidden relative">
+                      <img src={newTripData.image} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    </div>
+                  )}
+                  {/* Search bar */}
                   <div className="flex gap-2">
-                    <input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="e.g. Bali, Paris at sunset, or paste a URL"
-                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
-                    {newTripData.destination && !newTripData.image && (
-                      <button
-                        type="button"
-                        onClick={() => setNewTripData({ ...newTripData, image: newTripData.destination })}
-                        className="h-12 px-4 rounded-2xl text-[11px] font-black uppercase tracking-wider border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-all whitespace-nowrap"
-                      >
-                        Use destination
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+                      <input
+                        value={coverSearch}
+                        onChange={e => setCoverSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
+                        placeholder="Search destinations…"
+                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5]/50 transition-colors"
+                      />
+                    </div>
+                    <button type="button" onClick={() => runCoverSearch(coverSearch)}
+                      className="h-10 px-4 rounded-2xl bg-[#0bd2b5] text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0">
+                      {isCoverSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                    </button>
+                    {coverResults.length > 0 && (
+                      <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); }}
+                        className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                        <X className="h-3.5 w-3.5" />
                       </button>
+                    )}
+                  </div>
+                  {/* Thumbnail grid */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {isCoverSearching ? (
+                      <div className="col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
+                      </div>
+                    ) : coverResults.length > 0 ? (
+                      coverResults.map((url, i) => (
+                        <button key={i} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
+                          className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                          <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </button>
+                      ))
+                    ) : (
+                      COVER_IMGS.map(({ url, label }) => (
+                        <button key={url} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
+                          className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                          <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+                          <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
+                        </button>
+                      ))
                     )}
                   </div>
                 </div>
