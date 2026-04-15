@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Plane, Hotel, Calendar as LucideCalendar, MapPin, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, Sun, Moon, CircleAlert, CheckCircle2, Clock4, Download } from "lucide-react";
+import { Plane, Hotel, Calendar as LucideCalendar, MapPin, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -9,8 +9,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
-import { NotificationPanel } from "@/components/shared/NotificationPanel";
-import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
+import { PageHeader } from "@/components/shared/PageHeader";
 import type { ComplianceDoc } from "@/types";
 
 type Tab = "operations" | "compliance";
@@ -49,7 +48,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 
 export function ReportsPage() {
   const { trips } = useTrips();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
   const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>("daf-compliance", {});
@@ -138,27 +137,18 @@ export function ReportsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
-        <div className="flex-1 flex items-center gap-4 lg:gap-8">
-          <MobileSidebar />
-          <h2 className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Reports</h2>
-        </div>
-        <div className="flex items-center gap-3 lg:gap-6">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <NotificationPanel />
-          <div className="h-8 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden lg:block" />
+      <PageHeader
+        cta={
           <button
             onClick={handleExportCsv}
-            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-[#0bd2b5] hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-all shadow-sm shadow-[#0bd2b5]/20"
+            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-[#0bd2b5] hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-all shadow-sm shadow-[#0bd2b5]/20 shrink-0"
             aria-label="Export trips as CSV"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Export CSV</span>
           </button>
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 lg:px-8 py-7 space-y-6">
@@ -166,7 +156,7 @@ export function ReportsPage() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
               <p className="text-[10px] font-black italic uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
-              <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h2>
+              <h1 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
               {(["operations", "compliance"] as const).map(t => (

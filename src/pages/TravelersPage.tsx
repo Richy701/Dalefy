@@ -11,16 +11,14 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Sun, Moon, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
+import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
-import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
-import { NotificationPanel } from "@/components/shared/NotificationPanel";
-import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
@@ -42,7 +40,6 @@ const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string 
 
 export function TravelersPage() {
   const { trips } = useTrips();
-  const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -240,26 +237,20 @@ export function TravelersPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
-        <div className="flex-1 flex items-center gap-4 lg:gap-8">
-          <MobileSidebar />
+      <PageHeader
+        left={
           <div className="max-w-md w-full relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
+            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
-        </div>
-        <div className="flex items-center gap-3 lg:gap-6">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <NotificationPanel />
-          <div className="h-8 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden lg:block" />
-          <Button onClick={() => setInviteOpen(true)} className="rounded-full bg-[#0bd2b5] hover:opacity-90 text-black font-bold h-12 px-4 lg:px-8 gap-2 text-xs uppercase tracking-wider shadow-sm">
+        }
+        cta={
+          <Button onClick={() => setInviteOpen(true)} className="rounded-full bg-[#0bd2b5] hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
             <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">ADD TRAVELER</span>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-4 lg:px-8 py-7 space-y-6">

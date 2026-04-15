@@ -1,12 +1,13 @@
-import { useState, useMemo, useRef } from "react";
-import { Search, MapPin, Calendar as LucideCalendar, Plane, Hotel, Compass, Utensils, Sun, Moon, Globe } from "lucide-react";
-import { ComposableMap, Geographies, Geography, Graticule, Line, Marker, Sphere } from "react-simple-maps";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { Search, MapPin, Calendar as LucideCalendar, Plane, Hotel, Compass, Utensils, Globe } from "lucide-react";
+import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
+import type { MapRef } from "react-map-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { NotificationPanel } from "@/components/shared/NotificationPanel";
-import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
+import { PageHeader } from "@/components/shared/PageHeader";
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 interface Destination {
   name: string;
@@ -44,7 +45,7 @@ const DEST_COORDS: Record<string, [number, number]> = {
 
 export function DestinationsPage() {
   const { trips } = useTrips();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const isDark = theme === "dark";
@@ -105,148 +106,171 @@ export function DestinationsPage() {
   type MapPin = typeof mapPins[0];
   const [hoveredPin, setHoveredPin] = useState<MapPin | null>(null);
   const mousePos = useRef({ x: 0, y: 0 });
+  const mapRef = useRef<MapRef>(null);
+
+  // On load: strip all text/symbol layers for a clean minimal look
+  const onMapLoad = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.getStyle().layers.forEach(layer => {
+      if (layer.type === "symbol") {
+        map.setLayoutProperty(layer.id, "visibility", "none");
+      }
+    });
+  }, []);
+
+  const connectionLines = useMemo(() => {
+    const added = new Set<string>();
+    type LineFeature = { type: "Feature"; geometry: { type: "LineString"; coordinates: [number, number][] }; properties: Record<string, never> };
+    const features: LineFeature[] = [];
+    for (const from of mapPins) {
+      const nearest = [...mapPins]
+        .filter(p => p.name !== from.name)
+        .sort((a, b) => {
+          const da = Math.hypot(from.coords[0] - a.coords[0], from.coords[1] - a.coords[1]);
+          const db = Math.hypot(from.coords[0] - b.coords[0], from.coords[1] - b.coords[1]);
+          return da - db;
+        })
+        .slice(0, 2);
+      for (const to of nearest) {
+        const key = [from.name, to.name].sort().join("-");
+        if (!added.has(key)) {
+          added.add(key);
+          features.push({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: [from.coords, to.coords] },
+            properties: {},
+          });
+        }
+      }
+    }
+    return { type: "FeatureCollection" as const, features };
+  }, [mapPins]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
-      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
-        <div className="flex-1 flex items-center gap-4 lg:gap-8">
-          <MobileSidebar />
+      <PageHeader
+        left={
           <div className="max-w-md w-full relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input
               id="search-destinations"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="SEARCH DESTINATIONS..."
-              className="pl-12 h-12 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
-        </div>
-        <div className="flex items-center gap-3 lg:gap-6">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-[background-color,color] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <NotificationPanel />
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto min-h-0">
 
         {/* ── World Map ── */}
         <div
-          className="relative w-full overflow-hidden shrink-0"
-          style={{ background: isDark ? "#050505" : "#f8fafc" }}
+          className="relative w-full overflow-hidden shrink-0 h-[440px]"
           onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
         >
-          <ComposableMap
-            projection="geoEqualEarth"
-            projectionConfig={{ scale: 160, center: [15, 10] }}
-            style={{ width: "100%", height: "auto", display: "block" }}
+          <MapboxMap
+            ref={mapRef}
+            initialViewState={{ longitude: 10, latitude: 15, zoom: 0.35 }}
+            mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
+            mapboxAccessToken={MAPBOX_TOKEN}
+            projection="mercator"
+            attributionControl={false}
+            style={{ width: "100%", height: "100%" }}
+            scrollZoom={false}
+            dragPan={false}
+            dragRotate={false}
+            touchZoomRotate={false}
+            keyboard={false}
+            renderWorldCopies={false}
+            onLoad={onMapLoad}
           >
-            {/* Ocean fill */}
-            <Sphere id="ocean" fill={isDark ? "#0a0a0a" : "#e8edf2"} stroke="none" />
-
-            {/* Lat/lng graticule grid */}
-            <Graticule stroke={isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.03)"} strokeWidth={0.3} />
-
-            <Geographies geography={GEO_URL}>
-              {({ geographies }) =>
-                geographies.map(geo => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={isDark ? "#161616" : "#f8fafc"}
-                    stroke={isDark ? "#252525" : "#dde3ea"}
-                    strokeWidth={0.4}
-                    style={{
-                      default: { outline: "none" },
-                      hover: { outline: "none", fill: isDark ? "#1e1e1e" : "#f1f5f9" },
-                      pressed: { outline: "none" },
-                    }}
-                  />
-                ))
-              }
-            </Geographies>
-
-            {/* Nearest-neighbour connections — each pin links to its 2 closest only */}
-            {mapPins.flatMap(from => {
-              const dist = ([ax, ay]: [number, number], [bx, by]: [number, number]) =>
-                Math.hypot(ax - bx, ay - by);
-              const nearest = [...mapPins]
-                .filter(p => p.name !== from.name)
-                .sort((a, b) => dist(from.coords, a.coords) - dist(from.coords, b.coords))
-                .slice(0, 2);
-              return nearest.map(to => {
-                const key = [from.name, to.name].sort().join("-");
-                return (
-                  <Line
-                    key={key}
-                    from={from.coords}
-                    to={to.coords}
-                    stroke="#0bd2b5"
-                    strokeWidth={0.35}
-                    strokeOpacity={0.2}
-                    strokeLinecap="round"
-                    style={{ fill: "none", pointerEvents: "none" }}
-                  />
-                );
-              });
-            })}
+            {/* Connection lines — outer glow + sharp core */}
+            <Source id="connections" type="geojson" data={connectionLines}>
+              <Layer
+                id="connections-glow"
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": "#0bd2b5", "line-width": 8, "line-opacity": 0.07 }}
+              />
+              <Layer
+                id="connections-mid"
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": "#0bd2b5", "line-width": 2, "line-opacity": 0.25 }}
+              />
+              <Layer
+                id="connections-core"
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": "#0bd2b5", "line-width": 0.8, "line-opacity": 0.7 }}
+              />
+            </Source>
 
             {/* Destination markers */}
             {mapPins.map((pin, i) => (
-              <Marker key={pin.name} coordinates={pin.coords}>
-                {/* Animated pulse ring */}
-                <circle
-                  r={10}
-                  fill="rgba(11,210,181,0.15)"
-                  style={{
-                    animation: `dest-ring-pulse 2.5s ease-in-out ${i * 0.3}s infinite`,
-                    transformBox: "fill-box",
-                    transformOrigin: "center",
-                    pointerEvents: "none",
-                  }}
-                />
-                {/* Hover hit area */}
-                <circle
-                  r={14}
-                  fill="transparent"
-                  style={{ cursor: "pointer" }}
+              <Marker
+                key={pin.name}
+                longitude={pin.coords[0]}
+                latitude={pin.coords[1]}
+                anchor="center"
+              >
+                <div
+                  style={{ position: "relative", width: 48, height: 48, cursor: "pointer" }}
                   onMouseEnter={() => setHoveredPin(pin)}
                   onMouseLeave={() => setHoveredPin(null)}
-                />
-                {/* Main dot */}
-                <circle
-                  r={7}
-                  fill="#0bd2b5"
-                  stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)"}
-                  strokeWidth={1.5}
-                  style={{ filter: "drop-shadow(0 0 6px rgba(11,210,181,0.8))", cursor: "pointer", pointerEvents: "none" }}
-                />
-                <text
-                  textAnchor="middle"
-                  y={3}
-                  style={{
-                    fontFamily: "'Barlow Condensed', system-ui, sans-serif",
-                    fontSize: 7, fontWeight: 900, fontStyle: "italic",
-                    fill: "#050505", pointerEvents: "none", userSelect: "none",
-                  }}
                 >
-                  {pin.tripCount}
-                </text>
+                  {/* Outermost slow pulse */}
+                  <div style={{
+                    position: "absolute", top: "50%", left: "50%",
+                    width: 48, height: 48, marginLeft: -24, marginTop: -24,
+                    borderRadius: "50%",
+                    border: "1px solid rgba(11,210,181,0.2)",
+                    background: "rgba(11,210,181,0.06)",
+                    animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35}s infinite`,
+                    pointerEvents: "none",
+                  }} />
+                  {/* Mid ring */}
+                  <div style={{
+                    position: "absolute", top: "50%", left: "50%",
+                    width: 28, height: 28, marginLeft: -14, marginTop: -14,
+                    borderRadius: "50%",
+                    background: "rgba(11,210,181,0.18)",
+                    animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35 + 0.4}s infinite`,
+                    pointerEvents: "none",
+                  }} />
+                  {/* Core dot */}
+                  <div style={{
+                    position: "absolute", top: "50%", left: "50%",
+                    width: 18, height: 18, marginLeft: -9, marginTop: -9,
+                    borderRadius: "50%",
+                    background: "#0bd2b5",
+                    border: `2px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)"}`,
+                    boxShadow: "0 0 12px rgba(11,210,181,1), 0 0 28px rgba(11,210,181,0.4)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 2,
+                  }}>
+                    <span style={{
+                      fontFamily: "'Barlow Condensed', system-ui, sans-serif",
+                      fontSize: 9, fontWeight: 900, fontStyle: "italic",
+                      color: "#050505", lineHeight: 1,
+                    }}>{pin.tripCount}</span>
+                  </div>
+                </div>
               </Marker>
             ))}
-          </ComposableMap>
+          </MapboxMap>
 
           {/* Edge vignette */}
           <div
             className="absolute inset-0 pointer-events-none z-10"
-            style={{ boxShadow: `inset 0 0 80px 30px ${isDark ? "#050505" : "#f8fafc"}` }}
+            style={{ boxShadow: `inset 0 0 100px 35px ${isDark ? "#050505" : "#f8fafc"}` }}
           />
-          {isDark && (
-            <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(11,210,181,0.04) 0%, transparent 70%)" }} />
-          )}
+          {/* Subtle teal radial glow */}
+          <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(11,210,181,0.05) 0%, transparent 65%)" }} />
 
           {/* Top-left label */}
           <div className="absolute top-6 left-6 z-20 pointer-events-none flex items-center gap-3">

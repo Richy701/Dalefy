@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
-  MoreVertical, LayoutGrid, List, ExternalLink, Users, Sun, Moon,
+  MoreVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Expand, Hotel, Utensils, Compass, Globe,
   Heart, Share2, Star
 } from "lucide-react";
@@ -27,38 +27,17 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useTripStats } from "@/hooks/useTripStats";
-import { NotificationPanel } from "@/components/shared/NotificationPanel";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
-import { ComposableMap, Geographies, Geography, Marker, Sphere, Graticule } from "react-simple-maps";
+import MapboxMap from "react-map-gl/mapbox";
+import "mapbox-gl/dist/mapbox-gl.css";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
-const DEST_COORDS: Record<string, [number, number]> = {
-  "Kenya":        [ 36.8219,  -1.2921],
-  "Japan":        [139.6503,  35.6762],
-  "Maldives":     [ 73.2207,   3.2028],
-  "Amalfi Coast": [ 14.6027,  40.6340],
-  "Iceland":      [-21.8954,  64.1355],
-  "Bali":         [115.0920,  -8.3405],
-  "Swiss Alps":   [  8.2275,  46.8182],
-  "New York":     [-74.0060,  40.7128],
-};
-
-const TRIP_DEST: Record<string, string> = {
-  "Kenya Luxury Safari":   "Kenya",
-  "Japan Discovery":       "Japan",
-  "Maldives Retreat":      "Maldives",
-  "Amalfi Coast Tour":     "Amalfi Coast",
-  "Iceland Coastal FAM":   "Iceland",
-  "Bali VIP Retreat":      "Bali",
-  "Swiss Alps Winter FAM": "Swiss Alps",
-  "New York Urban FAM":    "New York",
-};
 
 const EVENT_TAGS: Record<string, string[]> = {
   activity: ["Experience", "Adventure", "Culture"],
@@ -90,7 +69,7 @@ function fakeReviews(seed: number) {
 
 export function DashboardPage() {
   const { trips, addTrip, deleteTrip } = useTrips();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
   const stats = useTripStats(trips);
@@ -154,12 +133,6 @@ export function DashboardPage() {
       .slice(0, 4);
   }, [spotlightTrip]);
 
-  // Map pins
-  const mapPins = useMemo(() =>
-    Object.entries(DEST_COORDS)
-      .filter(([name]) => trips.some(t => TRIP_DEST[t.name] === name))
-      .map(([name, coords]) => ({ name, coords })),
-    [trips]);
 
   const handleCreateTripSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,27 +189,20 @@ export function DashboardPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
 
-      {/* ── Header ── */}
-      <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <MobileSidebar />
-        </div>
-        <div className="flex-1 flex items-center justify-end gap-3 lg:gap-4">
-          <div className="max-w-xs w-full relative group hidden md:block">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888] group-focus-within:text-[#0bd2b5] transition-colors" />
+      <PageHeader
+        left={
+          <div className="max-w-xs w-full relative group hidden md:flex items-center">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trips..." className="pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trips..." className="pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-medium shadow-inner" />
           </div>
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-10 w-10 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-[background-color,color] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm shrink-0">
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <NotificationPanel />
-          <div className="h-7 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden lg:block shrink-0" />
-          <Button onClick={() => setIsNewTripOpen(true)} className="rounded-full bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0">
+        }
+        cta={
+          <Button onClick={() => setIsNewTripOpen(true)} className="rounded-full bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0">
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Trip</span>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -245,9 +211,11 @@ export function DashboardPage() {
           {/* ── Greeting ── */}
           <div>
             <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-              {greeting}, {firstName} 👋
+              {greeting}, {firstName}
             </h1>
-            <p className="text-sm text-slate-400 dark:text-[#666] mt-2 font-medium">Plan your itinerary with us</p>
+            <p className="text-sm text-slate-400 dark:text-[#666] mt-2 font-medium">
+              {filteredTrips.length > 0 ? `${filteredTrips.length} ${filteredTrips.length === 1 ? "trip" : "trips"} — ${stats.activeTrips} active` : "No trips scheduled"}
+            </p>
           </div>
 
           {/* ── Story Strip ── */}
@@ -262,6 +230,7 @@ export function DashboardPage() {
                 <button
                   key={trip.id}
                   onClick={() => handleOpenTrip(trip)}
+                  aria-label={trip.name}
                   className="shrink-0 group cursor-pointer"
                 >
                   <div className="relative w-[112px] h-[72px] rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-[#2a2a2a] group-hover:ring-2 group-hover:ring-[#0bd2b5] transition-[box-shadow]">
@@ -272,7 +241,7 @@ export function DashboardPage() {
                 </button>
               );
             })}
-            <button onClick={() => setIsNewTripOpen(true)} className="shrink-0 group cursor-pointer">
+            <button onClick={() => setIsNewTripOpen(true)} aria-label="Add new trip" className="shrink-0 group cursor-pointer">
               <div className="w-[112px] h-[72px] rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#2a2a2a] group-hover:border-[#0bd2b5] flex items-center justify-center transition-colors">
                 <Plus className="h-5 w-5 text-slate-300 dark:text-[#444] group-hover:text-[#0bd2b5] transition-colors" />
               </div>
@@ -290,7 +259,7 @@ export function DashboardPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
-                    <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">Remember your upcoming trips!</p>
+                    <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">Departing within 30 days</p>
                   </div>
                   <button
                     onClick={() => setIsNewTripOpen(true)}
@@ -348,7 +317,7 @@ export function DashboardPage() {
                         <span className="text-[#0bd2b5] italic">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
                         {" "}Trip
                       </h2>
-                      <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">These can't be missed places</p>
+                      <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">Key events on your itinerary</p>
                     </div>
                     <button
                       onClick={() => handleOpenTrip(spotlightTrip)}
@@ -465,41 +434,23 @@ export function DashboardPage() {
                     Expand
                   </button>
                 </div>
-                <div className="relative" style={{ background: isDark ? "#0d0d0d" : "#f5f7fa" }}>
-                  <ComposableMap
-                    projection="geoEqualEarth"
-                    projectionConfig={{ scale: 128, center: [15, 5] }}
-                    style={{ width: "100%", height: "auto", display: "block" }}
+                <div className="relative h-[220px]">
+                  <MapboxMap
+                    initialViewState={{ longitude: 15, latitude: 5, zoom: 0 }}
+                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
+                    mapboxAccessToken={MAPBOX_TOKEN}
+                    projection="mercator"
+                    attributionControl={false}
+                    style={{ width: "100%", height: "100%" }}
+                    scrollZoom={false}
+                    dragPan={false}
+                    dragRotate={false}
+                    touchZoomRotate={false}
+                    keyboard={false}
                   >
-                    <Sphere id="rsm-sphere-dash" fill={isDark ? "#0d0d0d" : "#f5f7fa"} stroke="none" />
-                    <Graticule stroke={isDark ? "rgba(255,255,255,0.015)" : "rgba(0,0,0,0.02)"} strokeWidth={0.25} />
-                    <Geographies geography={GEO_URL}>
-                      {({ geographies }) =>
-                        geographies.map(geo => (
-                          <Geography
-                            key={geo.rsmKey}
-                            geography={geo}
-                            fill={isDark ? "#1a1a1a" : "#e8ecf1"}
-                            stroke={isDark ? "#252525" : "#d0d8e4"}
-                            strokeWidth={0.4}
-                            style={{
-                              default: { outline: "none" },
-                              hover: { outline: "none" },
-                              pressed: { outline: "none" },
-                            }}
-                          />
-                        ))
-                      }
-                    </Geographies>
-                    {mapPins.map((pin, i) => (
-                      <Marker key={pin.name} coordinates={pin.coords}>
-                        {/* Pulse ring */}
-                        <circle r={7} fill="rgba(11,210,181,0.15)" style={{ animation: `dest-ring-pulse 2.5s ease-in-out ${i * 0.4}s infinite`, transformBox: "fill-box", transformOrigin: "center" }} />
-                        {/* Pin dot */}
-                        <circle r={4} fill="#0bd2b5" stroke={isDark ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.9)"} strokeWidth={1.5} style={{ filter: "drop-shadow(0 0 4px rgba(11,210,181,0.7))" }} />
-                      </Marker>
-                    ))}
-                  </ComposableMap>
+                  </MapboxMap>
+                  {/* Edge vignette to blend into card */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 40px 12px ${isDark ? "#111111" : "#f5f7fa"}` }} />
                 </div>
               </div>
 

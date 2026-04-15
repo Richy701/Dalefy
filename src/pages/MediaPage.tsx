@@ -14,6 +14,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { useTrips } from "@/context/TripsContext";
+import { PageHeader } from "@/components/shared/PageHeader";
 import type { TripMedia } from "@/types";
 
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
@@ -148,41 +149,33 @@ export function MediaPage() {
   const tripsWithMedia = trips.filter((t) => (t.media?.length ?? 0) > 0);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050505] overflow-y-auto">
-      {/* Header */}
-      <div className="px-6 lg:px-8 pt-6 pb-5 border-b border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shrink-0">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black italic uppercase tracking-[0.35em] text-[#0bd2b5] mb-1">
-              DAF Adventures
-            </p>
-            <h1 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
-              Media Library
-            </h1>
-            <p className="text-xs text-slate-400 dark:text-[#888888] mt-2 uppercase tracking-wider font-bold">
-              All trip photos and videos in one place
-            </p>
-          </div>
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
+      <PageHeader
+        left={
+          <h1 className="text-sm font-black italic uppercase tracking-[0.25em] text-slate-900 dark:text-white">
+            Media Library
+          </h1>
+        }
+      />
 
-          {/* Stats */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="flex flex-col items-center bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-              <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{totalPhotos}</span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Photos</span>
-            </div>
-            <div className="flex flex-col items-center bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-              <span className="text-xl font-black italic text-pink-500 leading-none">{totalVideos}</span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Videos</span>
-            </div>
-            <div className="flex flex-col items-center bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-              <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{fmtSize(totalSize)}</span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Storage</span>
-            </div>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Stats strip */}
+        <div className="px-6 lg:px-8 pt-5 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center gap-3">
+          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
+            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{totalPhotos}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Photos</span>
+          </div>
+          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
+            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{totalVideos}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Videos</span>
+          </div>
+          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
+            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{fmtSize(totalSize)}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Storage</span>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 px-6 lg:px-8 py-6 space-y-6">
+        <div className="px-6 lg:px-8 py-6 space-y-6">
         {/* Upload zone */}
         <div className="space-y-3">
           {/* Trip selector */}
@@ -388,6 +381,7 @@ export function MediaPage() {
             </p>
           </div>
         )}
+        </div>
       </div>
 
       <Lightbox
