@@ -25,9 +25,5 @@
       "edgeToEdgeEnabled": true,
       "package": "com.dafadventures.app"
     },
-    "plugins": [
-      "expo-router",
-      ["@rnmapbox/maps", { "RNMapboxMapsDownloadToken": "MAPBOX_DOWNLOAD_TOKEN" }]
-    ]
   }
 }
