@@ -55,23 +55,23 @@ const IMAGE_BANK: Record<string, string[]> = {
   activity: [IMG("1527631746610-bca00a040d60"), IMG("1551632811-561732d1e306"), IMG("1564760055775-d63b17a55c44"), IMG("1517649763962-0c623066013b")],
   mountain: [IMG("1531366936337-7c912a4589a7"), IMG("1506905925346-21bda4d32df4"), IMG("1464822759023-fed622ff2c3b")],
   city:     [IMG("1496442226666-8d4d0e62e6e9"), IMG("1477959858617-67f85cf4f1df"), IMG("1534430480872-3498386e7856")],
-  italy:    [IMG("1523906834128-a8065567e9a2"), IMG("1516483638261-f4dbaf036963")],
+  italy:    [IMG("1680454769871-f58768c6187b"), IMG("1516483638261-f4dbaf036963")],
   bali:     [IMG("1537996194471-e657df975ab4"), IMG("1518548419970-58e3b4079ab2")],
 };
 
 const COVER_IMAGES = [
-  { url: IMG("1516426122078-c23e76319801"), label: "Safari" },
-  { url: IMG("1507525428034-b723cf961d3e"), label: "Beach" },
-  { url: IMG("1531366936337-7c912a4589a7"), label: "Mountain" },
-  { url: IMG("1493976040374-85c8e12f0c0e"), label: "Japan" },
-  { url: IMG("1523906834128-a8065567e9a2"), label: "Italy" },
-  { url: IMG("1537996194471-e657df975ab4"), label: "Bali" },
-  { url: IMG("1496442226666-8d4d0e62e6e9"), label: "City" },
-  { url: IMG("1573843981267-be1999ff37cd"), label: "Maldives" },
-  { url: IMG("1545569341-9eb8b30979d9"), label: "Kyoto" },
-  { url: IMG("1551882547-ff40c63fe5fa"), label: "Resort" },
-  { url: IMG("1506905925346-21bda4d32df4"), label: "Alps" },
-  { url: IMG("1464037866556-6812c9d1c72e"), label: "Flight" },
+  { url: IMG("1763878119119-aff0820121fd"), label: "Safari" },
+  { url: IMG("1603477849227-705c424d1d80"), label: "Beach" },
+  { url: IMG("1604223190546-a43e4c7f29d7"), label: "Mountain" },
+  { url: IMG("1677254817050-cb9b29fbb16e"), label: "Japan" },
+  { url: IMG("1680454769871-f58768c6187b"), label: "Italy" },
+  { url: IMG("1643718220983-d6499832d422"), label: "Bali" },
+  { url: IMG("1514939775307-d44e7f10cabd"), label: "City" },
+  { url: IMG("1637576308588-6647bf80944d"), label: "Maldives" },
+  { url: IMG("1669711671489-3f181b312531"), label: "Kyoto" },
+  { url: IMG("1629711129507-d09c820810b1"), label: "Resort" },
+  { url: IMG("1612638945907-1cb1d758f2d3"), label: "Alps" },
+  { url: IMG("1647363377737-8d0ad7c2f494"), label: "Flight" },
 ];
 
 const KEYWORD_MAP: Array<[string, string]> = [

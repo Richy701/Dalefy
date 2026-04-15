@@ -95,8 +95,17 @@ function parseDate(str: string): string | null {
   return null;
 }
 
+// Supports: "9:50am", "9.50am", "17:30", "10.00:", "1pm", "2am"
 function parseTime(str: string): string {
-  const t = str.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  const simple = str.trim().match(/^(\d{1,2})\s*(am|pm)$/i);
+  if (simple) {
+    let h = parseInt(simple[1]);
+    const ampm = simple[2].toLowerCase();
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    return `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
+  }
+  const t = str.match(/(\d{1,2})[.:](\d{2})\s*(am|pm)?/i);
   if (!t) return "12:00 PM";
   let h = parseInt(t[1]);
   const m = t[2];
@@ -106,13 +115,21 @@ function parseTime(str: string): string {
   return `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
 }
 
+// Default times for standalone meal lines with no time
+const MEAL_DEFAULTS: Record<string, string> = {
+  breakfast: "8:00 AM",
+  lunch: "1:00 PM",
+  dinner: "7:00 PM",
+  brunch: "10:30 AM",
+};
+
 type EventType = "flight" | "hotel" | "activity" | "dining";
 
 function guessEventType(line: string): EventType {
   const l = line.toLowerCase();
-  if (/\b(flight|fly|depart|arrive|airport|airline|airways|air\s|boarding|check-in flight|gate)\b/.test(l)) return "flight";
-  if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay)\b/.test(l)) return "hotel";
-  if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|café|cafe|dining|meal|eat)\b/.test(l)) return "dining";
+  if (/\b(flight|fly|depart|arrive|airport|airline|airways|boarding|gate|xq|ba\d|lh\d|ek\d)\b/.test(l)) return "flight";
+  if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx)\b/.test(l)) return "hotel";
+  if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail)\b/.test(l)) return "dining";
   return "activity";
 }
 
@@ -139,6 +156,7 @@ interface ParsedEvent {
 interface ParsedTrip {
   name: string;
   attendees: string;
+  paxCount: number;
   start: string;
   end: string;
   destination: string;
@@ -151,11 +169,33 @@ function parseItinerary(text: string): ParsedTrip {
   // Trip name: first meaningful line (not a date, not too short)
   const nameLine = lines.find(l => l.length > 5 && l.length < 120 && !/^\d/.test(l)) ?? "Imported Trip";
 
-  // Attendees: look for keywords
-  const attendeeLine = lines.find(l => /\b(pax|guest|travell?er|client|passenger|group|team|person)\b/i.test(l));
-  const attendees = attendeeLine ? attendeeLine.replace(/^.*?:\s*/, "").slice(0, 60) : "Imported Group";
+  // Attendees: parse "Attendees:" section — collect names listed one per line below it
+  let attendees = "Imported Group";
+  let paxCount = 0;
+  const attendeesIdx = lines.findIndex(l => /^attendees?:?\s*$/i.test(l));
+  if (attendeesIdx >= 0) {
+    const names: string[] = [];
+    const SECTION_BREAK = /^(accommodation|rooms?|single|twin|double|triple|flights?|monday|tuesday|wednesday|thursday|friday|saturday|sunday|additional|notes?|important)/i;
+    for (let i = attendeesIdx + 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (SECTION_BREAK.test(l) || /:\s*$/.test(l)) break;
+      // Strip parenthetical notes like "(Sun Express) (only staying...)"
+      const name = l.replace(/\(.*?\)/g, "").trim();
+      if (name.length > 2 && name.length < 60 && /^[A-Z]/.test(name)) names.push(name);
+    }
+    if (names.length > 0) {
+      paxCount = names.length;
+      attendees = names.slice(0, 6).join(", ") + (names.length > 6 ? ` +${names.length - 6} more` : "");
+    }
+  } else {
+    // Fallback: look for pax/traveller/client keywords
+    const attendeeLine = lines.find(l => /\b(pax|guest|travell?er|client|passenger|group|team)\b/i.test(l));
+    if (attendeeLine) attendees = attendeeLine.replace(/^.*?:\s*/, "").slice(0, 60);
+    const paxMatch = text.match(/\b(\d+)\s*(?:pax|guests?|travell?ers?|passengers?|people|persons?)\b/i);
+    if (paxMatch) paxCount = parseInt(paxMatch[1]);
+  }
 
-  // Collect all dates in the document
+  // Collect all dates
   const allDates: string[] = [];
   for (const line of lines) {
     for (const pat of DATE_PATTERNS) {
@@ -171,53 +211,86 @@ function parseItinerary(text: string): ParsedTrip {
   const start = uniqueDates[0] ?? new Date().toISOString().split("T")[0];
   const end = uniqueDates[uniqueDates.length - 1] ?? start;
 
-  // Destination: look for "to/in/at [City/Country]" near name or start
+  // Destination: "Arrive in Antalya", "Arriving in X", "in X" near flight info
   let destination = "";
-  const destMatch = text.match(/\b(?:to|in|at|visiting|destination:?\s*)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-  if (destMatch) destination = destMatch[1];
+  const arrMatch = text.match(/\b(?:arrive[sd]?\s+in|arriving\s+in|arrival\s+in|to\s+)\s*([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)?)/);
+  if (arrMatch) destination = arrMatch[1];
+  if (!destination) {
+    const destMatch = text.match(/\b(?:in|at|visiting|destination:?\s*)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)?)/);
+    if (destMatch) destination = destMatch[1];
+  }
 
-  // Build events: scan for lines with dates or time patterns
+  // Build events
   const events: ParsedEvent[] = [];
   let currentDate = start;
+  const DAY_SECTION = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d/i;
+  const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|additional activities|notes?)/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Update running date
+    // Update running date from day headers like "Tuesday 21st April:"
     for (const pat of DATE_PATTERNS) {
       pat.lastIndex = 0;
       const m = line.match(pat)?.[0];
-      if (m) {
-        const d = parseDate(m);
-        if (d) currentDate = d;
-      }
+      if (m) { const d = parseDate(m); if (d) currentDate = d; }
     }
 
-    const hasTime = /\d{1,2}:\d{2}/.test(line);
-    const hasEventKeyword = /\b(flight|fly|depart|arrive|airport|hotel|resort|check.?in|check.?out|dinner|lunch|breakfast|restaurant|tour|visit|transfer|activity|excursion|safari|cruise|museum|drive|hike|boat|spa)\b/i.test(line);
+    if (DAY_SECTION.test(line) || SKIP_SECTION.test(line)) continue;
 
-    if ((hasTime || hasEventKeyword) && line.length > 8 && line.length < 200) {
-      const type = guessEventType(line);
-      const timeMatch = line.match(/\d{1,2}:\d{2}\s*(?:am|pm)?/i);
-      const time = timeMatch ? parseTime(timeMatch[0]) : "12:00 PM";
-      const title = line
-        .replace(/\d{1,2}:\d{2}\s*(?:am|pm)?/gi, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 80) || "Event";
+    // Detect time: colon or dot notation, with optional am/pm; or bare "1pm"/"9am"
+    const TIME_RE = /\b(\d{1,2})[.:](\d{2})\s*(?:am|pm)?|\b(\d{1,2})\s*(am|pm)\b/i;
+    const hasTime = TIME_RE.test(line);
 
-      // Try to extract location from next line or parenthetical
-      const locMatch = line.match(/(?:at|@|,)\s+([A-Z][^,\n]{3,40})/);
-      const location = locMatch ? locMatch[1].trim() : (lines[i + 1]?.length < 60 ? lines[i + 1] : "");
+    const hasEventKeyword = /\b(flight|fly|depart|arrive|airport|hotel|resort|check.?in|check.?out|dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|tour|visit|transfer|excursion|safari|cruise|museum|drive|hike|boat|spa|golf|meeting|welcome|drinks|cocktail|experience|beach club|aquapark)\b/i.test(line);
 
+    // Standalone meal lines (e.g. just "Breakfast" on its own line)
+    const mealOnly = line.match(/^(breakfast|lunch|dinner|brunch)$/i);
+
+    if (mealOnly) {
+      const meal = mealOnly[1].toLowerCase();
       events.push({
         id: `imp-${Date.now()}-${events.length}`,
-        type, date: currentDate, time, title, location,
+        type: "dining",
+        date: currentDate,
+        time: MEAL_DEFAULTS[meal] ?? "12:00 PM",
+        title: mealOnly[1].charAt(0).toUpperCase() + mealOnly[1].slice(1).toLowerCase(),
+        location: "",
       });
+      continue;
+    }
+
+    if ((hasTime || hasEventKeyword) && line.length > 4 && line.length < 250) {
+      const type = guessEventType(line);
+
+      // Extract time — support "9.50am", "17:30", "10.00:", "1pm"
+      const timeMatch = line.match(/\b(\d{1,2})[.:](\d{2})\s*(?:am|pm)?|\b(\d{1,2})\s*(am|pm)\b/i);
+      let time = "12:00 PM";
+      if (timeMatch) time = parseTime(timeMatch[0]);
+
+      // Strip leading "17:30 –" or "10.00:" prefix then clean up
+      const title = line
+        .replace(/^\d{1,2}[.:]\d{2}\s*(?:am|pm)?\s*[-–:]\s*/i, "")
+        .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm)?\b/gi, "")
+        .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, "")
+        .replace(/[-–]\s*$/, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 100) || "Event";
+
+      const locMatch = line.match(/(?:\bat\b|@|,)\s+([A-Z][^,\n]{3,40})/);
+      const location = locMatch ? locMatch[1].trim() : "";
+
+      if (title.length > 2) {
+        events.push({
+          id: `imp-${Date.now()}-${events.length}`,
+          type, date: currentDate, time, title, location,
+        });
+      }
     }
   }
 
-  return { name: nameLine.slice(0, 80), attendees, start, end, destination, events };
+  return { name: nameLine.slice(0, 80), attendees, paxCount, start, end, destination, events };
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -283,15 +356,19 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
 
   const handleImport = () => {
     if (!parsed) return;
+    const coverImage = parsed.destination
+      ? `https://source.unsplash.com/1600x900/?${encodeURIComponent(parsed.destination)},travel`
+      : "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop";
     const trip: Trip = {
       id: Date.now().toString(),
       name: parsed.name,
       attendees: parsed.attendees,
+      paxCount: parsed.paxCount > 0 ? String(parsed.paxCount) : undefined,
       start: parsed.start,
       end: parsed.end,
       status: "Draft",
       destination: parsed.destination,
-      image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop",
+      image: coverImage,
       events: parsed.events.map(e => ({ ...e } as TravelEvent)),
     };
     addTrip(trip);
@@ -384,7 +461,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
                 </button>
               </div>
               <p className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{parsed.name}</p>
-              <div className="flex items-center gap-6 pt-1">
+              <div className="flex items-center gap-6 pt-1 flex-wrap">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Start</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.start}</p>
@@ -393,6 +470,18 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">End</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.end}</p>
                 </div>
+                {parsed.destination && (
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Destination</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.destination}</p>
+                  </div>
+                )}
+                {parsed.paxCount > 0 && (
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Pax</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.paxCount}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Travelers</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[140px]">{parsed.attendees}</p>
