@@ -5,18 +5,16 @@ import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
   MoreVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Expand, Hotel, Utensils, Compass, Globe,
-  Heart, Share2, Star
+  Heart, Share2, Star, X
 } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Drawer } from "vaul";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -213,11 +211,19 @@ export function DashboardPage() {
             <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
               {greeting}, {firstName} 👋
             </h1>
-            <p className="text-sm text-slate-500 dark:text-[#888888] mt-2 font-medium">
-              {upcomingCards[0]
-                ? `Next departure — ${upcomingCards[0].destination || upcomingCards[0].name} · ${daysUntil(upcomingCards[0].start) === 0 ? "Today" : `${daysUntil(upcomingCards[0].start)}d`}`
-                : "No upcoming departures"}
-            </p>
+            {upcomingCards[0] ? (
+              <div className="flex items-center gap-2.5 mt-2.5">
+                <Plane className="h-3.5 w-3.5 text-[#0bd2b5] shrink-0 -rotate-45" />
+                <span className="text-sm font-bold text-slate-900 dark:text-white truncate leading-none">
+                  {upcomingCards[0].destination || upcomingCards[0].name}
+                </span>
+                <span className="shrink-0 text-[10px] font-black bg-[#0bd2b5] text-black px-2.5 py-1 rounded-full leading-none tracking-wide">
+                  {daysUntil(upcomingCards[0].start) === 0 ? "Today" : `${daysUntil(upcomingCards[0].start)}d`}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">No upcoming departures</p>
+            )}
           </div>
 
           {/* ── Story Strip ── */}
@@ -650,97 +656,118 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ── New Trip Modal ── */}
-      <Dialog open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
-        <DialogContent className="max-w-3xl w-[95vw] bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-0 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
-          <div className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
-            <h2 className="text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white text-balance">Create New Trip</h2>
-            <p className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em] mt-1">Set up the details for your team's upcoming travel experience.</p>
-          </div>
-          <form onSubmit={handleCreateTripSubmit} className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-              <div className="space-y-3">
-                <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Itinerary Title</Label>
-                <Input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip" className="h-14 text-xl font-extrabold uppercase tracking-tight bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] rounded-none focus-visible:border-[#0bd2b5] px-1 transition-[border-color] placeholder:text-slate-400 dark:text-white dark:placeholder:text-[#555]" />
-              </div>
-              <div className="space-y-3">
-                <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Trip Type</Label>
-                <div className="flex flex-wrap gap-2">
-                  {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
-                    <button key={t} type="button" onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                      className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] border ${newTripData.tripType === t ? "bg-[#0bd2b5] text-black border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-[#0bd2b5]/40"}`}>
-                      {t}
-                    </button>
-                  ))}
+      {/* ── New Trip Drawer ── */}
+      <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-[#111111] border-t border-[#1f1f1f] max-h-[90vh] focus:outline-none">
+            <div className="mx-auto w-12 h-1 rounded-full bg-[#2a2a2a] mt-4 shrink-0" />
+            <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
+              <div className="pt-6 pb-8 flex items-start justify-between">
+                <div>
+                  <Drawer.Title className="text-3xl font-black italic uppercase tracking-tight text-white">New Trip</Drawer.Title>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#555] mt-1">Build your next adventure</p>
                 </div>
+                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#555] hover:text-white transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Destination</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
-                    <Input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa" className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 focus-visible:border-[#0bd2b5]" />
+
+              <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
+                {/* Title */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Itinerary Title</label>
+                  <input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip"
+                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-[#1f1f1f] text-white text-2xl font-black italic uppercase tracking-tight focus:outline-none focus:border-[#0bd2b5] placeholder:text-[#333] transition-colors" />
+                </div>
+
+                {/* Trip Type */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Trip Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
+                      <button key={t} type="button" onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
+                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-[#0bd2b5] text-black border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/20" : "bg-[#0a0a0a] border-[#1f1f1f] text-[#888] hover:border-[#0bd2b5]/40"}`}>
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">No. of Travelers</Label>
-                  <div className="relative">
-                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
-                    <Input type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="e.g., 12" className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 focus-visible:border-[#0bd2b5]" />
+
+                {/* Destination + Pax */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
+                    <input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa"
+                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
+                    <input type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="e.g., 12"
+                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Group / Client Name</Label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
-                    <Input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents" className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 focus-visible:border-[#0bd2b5]" />
+
+                {/* Group + Dates */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
+                    <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
+                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>
+                    <Popover>
+                      <PopoverTrigger className={cn("w-full h-12 justify-start text-left font-semibold bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl hover:bg-[#151515] transition-colors px-4 flex items-center gap-3 text-sm", !newTripData.dateRange && "text-[#555]")}>
+                        <LucideCalendar className="h-4 w-4 text-[#0bd2b5] shrink-0" />
+                        {newTripData.dateRange?.from ? (newTripData.dateRange.to ? <span className="text-white">{format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}</span> : <span className="text-white">{format(newTripData.dateRange.from, "MMM d, yyyy")}</span>) : <span>Select dates...</span>}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 border border-[#2a2a2a] shadow-2xl rounded-[1.5rem] bg-[#1a1a1a]" align="start">
+                        <Calendar initialFocus mode="range" defaultMonth={newTripData.dateRange?.from} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={2} className="p-4" />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Travel Dates</Label>
-                  <Popover>
-                    <PopoverTrigger className={cn("w-full h-12 justify-start text-left font-semibold bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:bg-white dark:hover:bg-[#111111] transition-[background-color] px-4 flex items-center gap-3", !newTripData.dateRange && "text-slate-500 dark:text-[#888]")}>
-                      <LucideCalendar className="h-4 w-4 text-[#0bd2b5] shrink-0" />
-                      {newTripData.dateRange?.from ? (newTripData.dateRange.to ? <>{format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}</> : format(newTripData.dateRange.from, "MMM d, yyyy")) : <span className="opacity-50 text-sm">Select dates...</span>}
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-[1.5rem] bg-white dark:bg-[#1a1a1a]" align="start">
-                      <Calendar initialFocus mode="range" defaultMonth={newTripData.dateRange?.from} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={2} className="p-4" />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-5">
-                <div className="col-span-2 space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Total Budget (Optional)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
-                    <Input name="budget" autoComplete="off" value={newTripData.budget} onChange={e => setNewTripData({ ...newTripData, budget: e.target.value })} placeholder="e.g., 45,000" className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 focus-visible:border-[#0bd2b5]" />
+
+                {/* Budget + Currency */}
+                <div className="grid grid-cols-3 gap-5">
+                  <div className="col-span-2 space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
+                    <input name="budget" autoComplete="off" value={newTripData.budget} onChange={e => setNewTripData({ ...newTripData, budget: e.target.value })} placeholder="e.g., 45,000"
+                      className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666]">Currency</label>
+                    <select value={newTripData.currency} onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
+                      className="h-12 w-full px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl font-bold text-white focus:outline-none text-sm appearance-none cursor-pointer">
+                      {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Currency</Label>
-                  <select value={newTripData.currency} onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })} className="h-12 w-full px-4 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-bold text-slate-900 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 text-sm appearance-none cursor-pointer">
-                    {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+
+                {/* Cover Image */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2"><ImageIcon className="h-3 w-3" /> Cover Image URL (Optional)</label>
+                  <input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="https://images.unsplash.com/..."
+                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-[#555] transition-all" />
                 </div>
-              </div>
-              <div className="space-y-3">
-                <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Cover Image URL (Optional)</Label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
-                  <Input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="https://images.unsplash.com/..." className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-medium text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 focus-visible:border-[#0bd2b5]" />
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setIsNewTripOpen(false)}
+                    className="flex-1 h-12 rounded-2xl bg-[#0a0a0a] border border-[#1f1f1f] text-[#666] text-xs font-black uppercase tracking-wider hover:text-white hover:border-[#2a2a2a] transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit"
+                    className="flex-[2] h-12 rounded-2xl bg-[#0bd2b5] text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-[#0bd2b5]/20 flex items-center justify-center gap-2">
+                    <Plus className="h-4 w-4" /> Create Itinerary
+                  </button>
                 </div>
-              </div>
+              </form>
             </div>
-            <div className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0 bg-white dark:bg-[#111111]">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setIsNewTripOpen(false)}>Cancel</button>
-              <Button type="submit" className="rounded-2xl h-10 px-8 font-bold bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black shadow-xl shadow-[#0bd2b5]/20 transition-opacity uppercase tracking-wider text-xs">Create Itinerary</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
 
       <ConfirmDialog
         open={!!deletingTripId}
