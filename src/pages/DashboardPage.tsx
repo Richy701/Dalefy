@@ -211,10 +211,12 @@ export function DashboardPage() {
           {/* ── Greeting ── */}
           <div>
             <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-              {greeting}, {firstName}
+              {greeting}, {firstName} 👋
             </h1>
             <p className="text-sm text-slate-400 dark:text-[#666] mt-2 font-medium">
-              {filteredTrips.length > 0 ? `${filteredTrips.length} ${filteredTrips.length === 1 ? "trip" : "trips"} — ${stats.activeTrips} active` : "No trips scheduled"}
+              {upcomingCards[0]
+                ? `Next departure — ${upcomingCards[0].destination || upcomingCards[0].name} · ${daysUntil(upcomingCards[0].start) === 0 ? "Today" : `${daysUntil(upcomingCards[0].start)}d`}`
+                : "No upcoming departures"}
             </p>
           </div>
 
