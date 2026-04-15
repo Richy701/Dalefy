@@ -2,6 +2,7 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface PageHeaderProps {
   /** Content placed after MobileSidebar — page title, search, etc. */
@@ -16,7 +17,10 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
 
   return (
     <header className="h-16 shrink-0 border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-8 flex items-center gap-3 sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
-      <MobileSidebar />
+      <div className="lg:hidden">
+        <MobileSidebar />
+      </div>
+      <SidebarTrigger className="hidden lg:flex" />
       <div className="flex-1 min-w-0 flex items-center">
         {left}
       </div>

@@ -4,24 +4,26 @@ Internal travel planning and itinerary management platform for teams. Build, man
 
 ## Features
 
-- **Trip Dashboard** — Stats, upcoming trip carousel, live activity feed, and quick actions
-- **Itinerary Builder** — Day-by-day event management with flights, hotels, activities, and dining
+- **Trip Dashboard** — Stats, upcoming trip carousel, live activity feed, quick actions, and drag-and-drop file import
+- **Itinerary Builder** — Day-by-day event management with flights, hotels, activities, and dining; Tabs for view switching
 - **Interactive Map** — Route visualisation powered by Mapbox GL with marching-ants arc animation
 - **World Destinations Map** — Mapbox globe with connection lines and pulsing destination markers
-- **Team Directory** — Member table with sortable columns, compliance tracking, and reminder sending
+- **Team Directory** — Member table with sortable columns, compliance tracking, and reminder sending; drawer-based add form
 - **Document Compliance** — Per-traveler doc status (Signed / Pending / Expired) with sign & remind actions
-- **HR Documents Tab** — Aggregated compliance view with stats across all travelers
-- **Reports Page** — Trip analytics and charts powered by Recharts
-- **Media Library** — Upload, browse, and manage photos and videos across all trips with drag & drop; per-trip media tab also available in the workspace
-- **Import Itinerary** — Upload PDF, Word, PowerPoint, or plain text — auto-parsed into trip events
+- **HR Documents Tab** — Aggregated compliance view with stats across all travelers; virtual scrolling for large lists
+- **Reports Page** — Trip analytics and charts powered by Recharts with tab switcher
+- **Media Library** — Upload, browse, and manage photos and videos across all trips with drag & drop; per-trip media tab in workspace
+- **Import Itinerary** — Drag-and-drop or upload PDF, Word, PowerPoint, or plain text — auto-parsed into trip events
 - **AI Zap** — AI-assisted itinerary suggestions within the workspace
 - **Command Palette** — Global ⌘K search across trips, pages, and actions
 - **Grid & List Views** — Card grid and table layout for trip browsing
-- **Dark / Light Mode** — Instant theme switching
-- **Date Range Picker** — Calendar for selecting travel dates when creating trips
+- **Dark / Light Mode** — Instant theme switching with system preference detection
+- **Full-Width Date Range Picker** — Calendar expands to fill the form with seamless range highlight
 - **Search & Filter** — Live search across trips, travelers, and destinations
 - **Local Persistence** — All data saved to localStorage (no backend needed)
 - **Recent Trip Shortcut** — Sidebar quick-link to the last accessed trip workspace
+- **Notification Panel** — Bell popover with unread count and mark-all-read
+- **Cover Image from Destination** — Type a place name (e.g. "Bali") to auto-generate a banner image
 
 ## Demo Data
 
@@ -41,7 +43,7 @@ Comes preloaded with 8 fully detailed trips:
 - React 19 + TypeScript
 - Vite 8
 - Tailwind CSS 3
-- Shadcn-style components (Dialog, DropdownMenu, Popover, Calendar, Badge)
+- Shadcn-style components (Base UI v1) — Dialog, DropdownMenu, Popover, Calendar, Badge, Tabs, Select, Avatar, Tooltip
 - Lucide React icons
 - Mapbox GL JS via `react-map-gl/mapbox` — workspace trip map + destinations globe
 - Recharts — reports charts
@@ -49,10 +51,10 @@ Comes preloaded with 8 fully detailed trips:
 - TanStack Table — travelers table with sorting & pagination
 - TanStack Virtual — virtual scrolling for large lists
 - cmdk — command palette
-- vaul — bottom drawer (add traveler form)
+- vaul — bottom drawer (new trip form + add traveler)
 - motion — page transitions
 - @number-flow/react — animated stat counters
-- react-hotkeys-hook — keyboard shortcuts
+- react-hotkeys-hook — keyboard shortcuts (⌘K)
 - yet-another-react-lightbox — trip image lightbox
 - date-fns + React Day Picker — date selection
 - html2canvas + jsPDF — PDF export

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, ChevronRight, X, Plane, Hotel, Compass, Utensils } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import type { Trip, TravelEvent } from "@/types";
 interface ImportItineraryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFile?: File | null;
 }
 
 // ─── Text extraction ───────────────────────────────────────────────────────────
@@ -223,7 +224,7 @@ function parseItinerary(text: string): ParsedTrip {
 
 type Step = "upload" | "extracting" | "review";
 
-export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDialogProps) {
+export function ImportItineraryDialog({ open, onOpenChange, initialFile }: ImportItineraryDialogProps) {
   const [step, setStep] = useState<Step>("upload");
   const [error, setError] = useState("");
   const [parsed, setParsed] = useState<ParsedTrip | null>(null);
@@ -231,6 +232,14 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addTrip } = useTrips();
   const { showToast, addNotification } = useNotifications();
+
+  // Auto-process a file dropped from the dashboard
+  useEffect(() => {
+    if (open && initialFile) {
+      handleFile(initialFile);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFile]);
 
   const ACCEPTED = ".pdf,.docx,.pptx,.txt,.doc";
 

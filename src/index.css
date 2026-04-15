@@ -25,6 +25,13 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 171 85% 43%;
     --radius: 1rem;
+    /* Sidebar (light) */
+    --sidebar: 220 16% 96%;
+    --sidebar-foreground: 220 13% 22%;
+    --sidebar-accent: 220 13% 90%;
+    --sidebar-accent-foreground: 220 13% 22%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 171 85% 43%;
   }
 
   /* EXECUTIVE CYBER DARK MODE */
@@ -48,6 +55,13 @@
     --border: 0 0% 12%; /* #1f1f1f */
     --input: 0 0% 12%;
     --ring: 171 85% 43%;
+    /* Sidebar (dark) */
+    --sidebar: 0 0% 3%; /* #080808 */
+    --sidebar-foreground: 0 0% 75%;
+    --sidebar-accent: 0 0% 100% / 0.06;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 10%; /* #1a1a1a */
+    --sidebar-ring: 171 85% 43%;
   }
 }
 
@@ -153,6 +167,15 @@
   background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Marquee scrolling strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
 }
 
 /* Respect reduced motion preference */

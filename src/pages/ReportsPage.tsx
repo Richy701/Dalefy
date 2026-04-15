@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Plane, Hotel, Calendar as LucideCalendar, MapPin, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripStats } from "@/hooks/useTripStats";
@@ -153,27 +154,32 @@ export function ReportsPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 lg:px-8 py-7 space-y-6">
+        <div className="px-4 lg:px-8 py-7 flex flex-col min-h-full">
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
-            <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
-              {(["operations", "compliance"] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"}`}>
-                  {t === "operations" ? "Overview" : "Documents"}
-                  {tab === t && <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />}
-                </button>
-              ))}
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="shrink-0">
+              <TabsList className="bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] h-auto gap-0">
+                {(["operations", "compliance"] as const).map(t => (
+                  <TabsTrigger
+                    key={t}
+                    value={t}
+                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-[#0bd2b5] dark:data-active:text-[#0bd2b5] data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
+                  >
+                    {t === "operations" ? "Overview" : "Documents"}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* ───────── TRIP OPERATIONS ───────── */}
           {tab === "operations" && (trips.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <img src="/illus-sitting.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+              <img src="/illus-sitting.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to see your analytics</p>
@@ -407,8 +413,8 @@ export function ReportsPage() {
 
           {/* ───────── TEAM & COMPLIANCE ───────── */}
           {tab === "compliance" && (complianceData.travelers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <img src="/illus-together.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+              <img src="/illus-together.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add travelers to track compliance</p>

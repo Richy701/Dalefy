@@ -13,6 +13,7 @@ import { Drawer } from "vaul";
 import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -244,66 +245,51 @@ export function TravelersPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
+        {travelers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
+            <img src="/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <div className="text-center space-y-1.5">
+              <p className="text-base font-black italic uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
+            </div>
+            <button
+              onClick={() => setInviteOpen(true)}
+              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+            >
+              Add Traveler
+            </button>
+          </div>
+        ) : (
         <div className="px-4 lg:px-8 py-7 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
-            {/* Page identity */}
             <div>
-              <div>
-                <h2 className="text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
-                <div className="flex items-center gap-2.5 mt-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
-                  {travelers.length > 0 && (<>
-                  <span className="text-slate-200 dark:text-[#333]">·</span>
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" />
-                    {travelers.length} Active Members
-                  </span>
-                  </>)}
-                </div>
+              <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
+              <div className="flex items-center gap-2.5 mt-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
+                <span className="text-slate-200 dark:text-[#333]">·</span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" />
+                  {travelers.length} Active Members
+                </span>
               </div>
             </div>
-
-            {/* Tab switcher — only shown when there's data */}
-            {travelers.length > 0 && (
-              <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="shrink-0">
+              <TabsList className="bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] h-auto gap-0">
                 {(["travelers", "hr"] as const).map(t => (
-                  <button
+                  <TabsTrigger
                     key={t}
-                    onClick={() => setTab(t)}
-                    className={`relative px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 focus-visible:ring-offset-2 ${
-                      tab === t
-                        ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40"
-                        : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
-                    }`}
+                    value={t}
+                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-[#0bd2b5] dark:data-active:text-[#0bd2b5] data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
                   >
                     {t === "travelers" ? "Team Overview" : "Documents"}
-                    {tab === t && (
-                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />
-                    )}
-                  </button>
+                  </TabsTrigger>
                 ))}
-              </div>
-            )}
+              </TabsList>
+            </Tabs>
           </div>
 
-          {travelers.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <img src="/illus-discussion.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
-              <div className="text-center space-y-1.5">
-                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
-                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
-              </div>
-              <button
-                onClick={() => setInviteOpen(true)}
-                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
-              >
-                Add Traveler
-              </button>
-            </div>
-          )}
-
           {/* ───────── TRAVELERS TAB (TANSTACK TABLE) ───────── */}
-          {tab === "travelers" && travelers.length > 0 && (
+          {tab === "travelers" && (
             <div className="bg-white dark:bg-[#111111] rounded-2xl animate-fade-in border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -453,7 +439,7 @@ export function TravelersPage() {
           )}
 
           {/* ───────── HR MANAGEMENT TAB ───────── */}
-          {tab === "hr" && travelers.length > 0 && (
+          {tab === "hr" && (
             <div className="space-y-8 animate-fade-in">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -551,6 +537,7 @@ export function TravelersPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Add Traveler — Vaul Drawer */}

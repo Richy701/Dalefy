@@ -5,7 +5,7 @@ import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
   MoreVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Expand, Hotel, Utensils, Compass, Globe,
-  Heart, Share2, Star, X, Upload
+  Heart, Share2, Star, X, Upload, Loader2
 } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import { useNotifications } from "@/context/NotificationContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import MapboxMap from "react-map-gl/mapbox";
@@ -50,6 +49,22 @@ const EVENT_COLORS = {
   dining:   { bg: "bg-pink-400/10",   text: "text-pink-500",   Icon: Utensils },
   flight:   { bg: "bg-blue-400/10",   text: "text-blue-500",   Icon: Plane },
 };
+
+const IMG = (id: string) => `https://images.unsplash.com/photo-${id}?q=80&w=1200&auto=format&fit=crop`;
+const COVER_IMGS = [
+  { url: IMG("1516426122078-c23e76319801"), label: "Safari" },
+  { url: IMG("1507525428034-b723cf961d3e"), label: "Beach" },
+  { url: IMG("1531366936337-7c912a4589a7"), label: "Mountain" },
+  { url: IMG("1493976040374-85c8e12f0c0e"), label: "Japan" },
+  { url: IMG("1534445538923-ab38e5b0c99b"), label: "Italy" },
+  { url: IMG("1537996194471-e657df975ab4"), label: "Bali" },
+  { url: IMG("1496442226666-8d4d0e62e6e9"), label: "City" },
+  { url: IMG("1573843981267-be1999ff37cd"), label: "Maldives" },
+  { url: IMG("1545569341-9eb8b30979d9"), label: "Kyoto" },
+  { url: IMG("1551882547-ff40c63fe5fa"), label: "Resort" },
+  { url: IMG("1506905925346-21bda4d32df4"), label: "Alps" },
+  { url: IMG("1464037866556-6812c9d1c72e"), label: "Flight" },
+];
 
 function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
@@ -110,6 +125,9 @@ export function DashboardPage() {
     name: string; attendees: string; dateRange: DateRange | undefined; image: string;
     destination: string; paxCount: string; tripType: string; budget: string; currency: string;
   }>({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: "USD" });
+  const [coverSearch, setCoverSearch] = useState("");
+  const [coverResults, setCoverResults] = useState<string[]>([]);
+  const [isCoverSearching, setIsCoverSearching] = useState(false);
 
   const isDark = theme === "dark";
   const hour = new Date().getHours();
@@ -175,7 +193,12 @@ export function DashboardPage() {
       start: format(newTripData.dateRange.from, "yyyy-MM-dd"),
       end: format(newTripData.dateRange.to, "yyyy-MM-dd"),
       status: "Draft",
-      image: newTripData.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop",
+      image: (() => {
+        const raw = newTripData.image.trim();
+        if (!raw) return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop";
+        if (raw.startsWith("http")) return raw;
+        return `https://source.unsplash.com/1600x900/?${encodeURIComponent(raw)},travel`;
+      })(),
       events: [],
     };
     addTrip(newTrip);
@@ -836,38 +859,61 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] w-fit">
-                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} />
+                  <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] w-full">
+                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="w-full" />
                   </div>
                 </div>
 
                 {/* Budget + Currency */}
-                <div className="grid grid-cols-3 gap-5">
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
-                    <input name="budget" autoComplete="off" value={newTripData.budget} onChange={e => setNewTripData({ ...newTripData, budget: e.target.value })} placeholder="e.g., 45,000"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Currency</label>
-                    <Select value={newTripData.currency} onValueChange={(v) => setNewTripData({ ...newTripData, currency: v })}>
-                      <SelectTrigger className="h-12 w-full px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-bold text-slate-900 dark:text-white text-sm focus:border-[#0bd2b5]/50 dark:bg-input/0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      name="budget"
+                      autoComplete="off"
+                      inputMode="numeric"
+                      value={newTripData.budget}
+                      onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
+                      placeholder="e.g. 45000"
+                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
+                    />
+                    <div className="flex gap-1 flex-wrap items-center">
+                      {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setNewTripData({ ...newTripData, currency: c })}
+                          className={`h-12 px-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border ${
+                            newTripData.currency === c
+                              ? "bg-[#0bd2b5]/10 border-[#0bd2b5]/40 text-[#0bd2b5]"
+                              : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#555] hover:text-slate-800 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#333]"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Cover Image */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><ImageIcon className="h-3 w-3" /> Cover Image URL (Optional)</label>
-                  <input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="https://images.unsplash.com/..."
-                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
+                    <ImageIcon className="h-3 w-3" /> Cover Image — URL or destination name
+                  </label>
+                  <div className="flex gap-2">
+                    <input name="cover-image" autoComplete="off" value={newTripData.image} onChange={e => setNewTripData({ ...newTripData, image: e.target.value })} placeholder="e.g. Bali, Paris at sunset, or paste a URL"
+                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-medium focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                    {newTripData.destination && !newTripData.image && (
+                      <button
+                        type="button"
+                        onClick={() => setNewTripData({ ...newTripData, image: newTripData.destination })}
+                        className="h-12 px-4 rounded-2xl text-[11px] font-black uppercase tracking-wider border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-all whitespace-nowrap"
+                      >
+                        Use destination
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Actions */}

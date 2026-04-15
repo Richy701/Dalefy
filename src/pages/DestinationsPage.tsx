@@ -165,8 +165,24 @@ export function DestinationsPage() {
 
       <div className="flex-1 overflow-y-auto min-h-0">
 
-        {/* ── World Map — only shown when there are destinations ── */}
-        {destinations.length > 0 && <div
+        {destinations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
+            <img src="/illus-movement.svg" alt="" className="w-72 h-72 object-contain translate-x-10 dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <div className="text-center space-y-1.5">
+              <p className="text-base font-black italic uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
+              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
+            </div>
+            <button
+              onClick={() => navigate("/")}
+              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+            >
+              Create a Trip
+            </button>
+          </div>
+        ) : (<>
+
+        {/* ── World Map ── */}
+        <div
           className="dest-world-map relative overflow-hidden shrink-0 h-[440px] mx-4 lg:mx-8 mt-4 rounded-2xl border border-slate-200/60 dark:border-white/[0.06]"
           onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
         >
@@ -250,7 +266,7 @@ export function DestinationsPage() {
           </MapboxMap>
 
 
-        </div>}
+        </div>
 
         {/* Tooltip — fixed to cursor */}
         {hoveredPin && (
@@ -277,21 +293,6 @@ export function DestinationsPage() {
 
         {/* ── Cards Section ── */}
         <div className="px-4 lg:px-8 py-7 space-y-6">
-          {destinations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <img src="/illus-movement.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
-              <div className="text-center space-y-1.5">
-                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
-                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
-              </div>
-              <button
-                onClick={() => navigate("/")}
-                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
-              >
-                Create a Trip
-              </button>
-            </div>
-          ) : (<>
           <div className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
@@ -385,8 +386,8 @@ export function DestinationsPage() {
               </div>
             ))}
           </div>
-          </>)}
         </div>
+        </>)}
       </div>
     </div>
   );

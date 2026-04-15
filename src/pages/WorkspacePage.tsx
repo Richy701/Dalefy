@@ -12,19 +12,20 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Sparkles, Search, X, Upload, Video, Image as ImageIcon2
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Sparkles, Search, X, Upload, Video, Image as ImageIcon2, Trash2, Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { TravelEvent } from "@/types";
+import type { TravelEvent, Trip } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -35,6 +36,7 @@ import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
 import html2canvas from "html2canvas";
@@ -56,6 +58,21 @@ const IMAGE_BANK: Record<string, string[]> = {
   italy:    [IMG("1534445538923-ab38e5b0c99b"), IMG("1516483638261-f4dbaf036963")],
   bali:     [IMG("1537996194471-e657df975ab4"), IMG("1518548419970-58e3b4079ab2")],
 };
+
+const COVER_IMAGES = [
+  { url: IMG("1516426122078-c23e76319801"), label: "Safari" },
+  { url: IMG("1507525428034-b723cf961d3e"), label: "Beach" },
+  { url: IMG("1531366936337-7c912a4589a7"), label: "Mountain" },
+  { url: IMG("1493976040374-85c8e12f0c0e"), label: "Japan" },
+  { url: IMG("1534445538923-ab38e5b0c99b"), label: "Italy" },
+  { url: IMG("1537996194471-e657df975ab4"), label: "Bali" },
+  { url: IMG("1496442226666-8d4d0e62e6e9"), label: "City" },
+  { url: IMG("1573843981267-be1999ff37cd"), label: "Maldives" },
+  { url: IMG("1545569341-9eb8b30979d9"), label: "Kyoto" },
+  { url: IMG("1551882547-ff40c63fe5fa"), label: "Resort" },
+  { url: IMG("1506905925346-21bda4d32df4"), label: "Alps" },
+  { url: IMG("1464037866556-6812c9d1c72e"), label: "Flight" },
+];
 
 const KEYWORD_MAP: Array<[string, string]> = [
   ["kenya","safari"],["safari","safari"],["mara","safari"],["masai","safari"],["amboseli","safari"],
@@ -92,7 +109,7 @@ function generateEventImage(title: string, type: string, seed: number): string {
 export function WorkspacePage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
-  const { trips, updateTrip, updateEvent, deleteEvent } = useTrips();
+  const { trips, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
 
@@ -111,6 +128,12 @@ export function WorkspacePage() {
   const [aiZapOpen, setAiZapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media">("itinerary");
   const printRef = useRef<HTMLDivElement>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [editTripOpen, setEditTripOpen] = useState(false);
+  const [editingTrip, setEditingTrip] = useState<Partial<Trip>>({});
+  const [tripImageSearch, setTripImageSearch] = useState("");
+  const [tripImageResults, setTripImageResults] = useState<string[]>([]);
+  const [isTripImageSearching, setIsTripImageSearching] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -378,6 +401,62 @@ export function WorkspacePage() {
     }
   };
 
+  const runTripImageSearch = async (query: string) => {
+    if (!query.trim()) { setTripImageResults([]); return; }
+    setIsTripImageSearching(true);
+    try {
+      const googleKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined;
+      const googleCx  = import.meta.env.VITE_GOOGLE_CSE_ID as string | undefined;
+      const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
+      if (googleKey && googleCx) {
+        try {
+          const res = await fetch(`https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCx}&q=${encodeURIComponent(query + " travel landscape")}&searchType=image&num=12&imgSize=xlarge&safe=active`);
+          if (res.ok) { const data = await res.json(); if (data.items?.length) { setTripImageResults(data.items.map((i: { link: string }) => i.link)); return; } }
+        } catch {}
+      }
+      if (unsplashKey) {
+        try {
+          const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
+          if (res.ok) { const data = await res.json(); if (data.results?.length) { setTripImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
+        } catch {}
+      }
+      const cat = getEventImageCategory(query, "activity");
+      const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
+      setTripImageResults([...bank, ...IMAGE_BANK.hotel, ...IMAGE_BANK.activity].slice(0, 12));
+    } finally {
+      setIsTripImageSearching(false);
+    }
+  };
+
+  const handleOpenEditTrip = () => {
+    setEditingTrip({
+      name: trip.name,
+      destination: trip.destination ?? "",
+      attendees: trip.attendees,
+      start: trip.start,
+      end: trip.end,
+      status: trip.status,
+      image: trip.image,
+      currency: trip.currency ?? "USD",
+    });
+    setTripImageSearch("");
+    setTripImageResults([]);
+    setEditTripOpen(true);
+  };
+
+  const handleSaveTrip = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateTrip(trip.id, editingTrip);
+    setEditTripOpen(false);
+    toast.success("Trip updated");
+  };
+
+  const handleDeleteTrip = () => {
+    deleteTrip(trip.id);
+    navigate("/");
+    toast.success("Trip deleted");
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
       {/* Header */}
@@ -396,6 +475,12 @@ export function WorkspacePage() {
         <div className="flex items-center gap-2 lg:gap-4">
           <button aria-label="Toggle theme" onClick={toggleTheme} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+            <Trash2 className="h-4 w-4" />
           </button>
           <Button variant="ghost" onClick={() => setShowMap(!showMap)} className={`font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 gap-2 border transition-all hidden lg:flex ${showMap ? "bg-[#0bd2b5] text-slate-900 dark:text-black border-transparent shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <MapIcon className="h-4 w-4" /> {showMap ? "HIDE MAP" : "SHOW MAP"}
@@ -486,32 +571,28 @@ export function WorkspacePage() {
             </section>
 
             {/* Tab bar */}
-            <div className="flex items-center gap-1 px-4 lg:px-10 pt-6 shrink-0">
-              <button
-                onClick={() => setActiveTab("itinerary")}
-                className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${
-                  activeTab === "itinerary"
-                    ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
-                    : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                ITINERARY
-              </button>
-              <button
-                onClick={() => setActiveTab("media")}
-                className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
-                  activeTab === "media"
-                    ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
-                    : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                MEDIA
-                {(trip.media?.length ?? 0) > 0 && (
-                  <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-[#0bd2b5]/15 text-[#0bd2b5]"}`}>
-                    {trip.media!.length}
-                  </span>
-                )}
-              </button>
+            <div className="px-4 lg:px-10 pt-6 shrink-0">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "itinerary" | "media")}>
+                <TabsList className="bg-transparent h-auto p-0 gap-1">
+                  <TabsTrigger
+                    value="itinerary"
+                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all data-active:bg-[#0bd2b5] dark:data-active:bg-[#0bd2b5] data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-[#0bd2b5]/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                  >
+                    ITINERARY
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="media"
+                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-[#0bd2b5] dark:data-active:bg-[#0bd2b5] data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-[#0bd2b5]/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                  >
+                    MEDIA
+                    {(trip.media?.length ?? 0) > 0 && (
+                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-[#0bd2b5]/15 text-[#0bd2b5]"}`}>
+                        {trip.media!.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             {/* Itinerary tab */}
@@ -905,6 +986,169 @@ export function WorkspacePage() {
       </Dialog>
 
       <AiZapDialog open={aiZapOpen} onOpenChange={setAiZapOpen} />
+
+      {/* Edit Trip Dialog */}
+      <Dialog open={editTripOpen} onOpenChange={setEditTripOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
+          <form onSubmit={handleSaveTrip}>
+            <DialogHeader className="px-8 pt-8 pb-6 border-b border-slate-200 dark:border-[#1f1f1f]">
+              <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
+            </DialogHeader>
+            <div className="p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+              {/* Cover image */}
+              <div className="space-y-2.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">Cover Image</label>
+                {/* Preview */}
+                {editingTrip.image && (
+                  <div className="h-32 rounded-2xl overflow-hidden relative">
+                    <img src={editingTrip.image} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  </div>
+                )}
+                {/* Search bar */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+                    <input
+                      value={tripImageSearch}
+                      onChange={e => setTripImageSearch(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runTripImageSearch(tripImageSearch); } }}
+                      placeholder="Search destinations…"
+                      className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] transition-colors"
+                    />
+                  </div>
+                  <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
+                    className="h-9 px-3 rounded-xl bg-[#0bd2b5] text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
+                    {isTripImageSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                  </button>
+                  {tripImageResults.length > 0 && (
+                    <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); }}
+                      className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Grid */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {isTripImageSearching ? (
+                    <div className="col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
+                    </div>
+                  ) : tripImageResults.length > 0 ? (
+                    tripImageResults.map((url, i) => (
+                      <button key={i} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
+                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                        <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      </button>
+                    ))
+                  ) : (
+                    COVER_IMAGES.map(({ url, label }) => (
+                      <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
+                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                        <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+                        <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+                {/* Custom URL */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-[#252525]" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555]">or paste URL</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-[#252525]" />
+                </div>
+                <Input value={editingTrip.image ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, image: e.target.value }))} placeholder="https://..." className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</label>
+                <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Destination</label>
+                  <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Attendees</label>
+                  <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
+                  <Input type="date" value={editingTrip.start ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, start: e.target.value }))} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
+                  <Input type="date" value={editingTrip.end ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, end: e.target.value }))} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Currency</label>
+                <select
+                  value={editingTrip.currency ?? "USD"}
+                  onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
+                  className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors appearance-none cursor-pointer"
+                >
+                  {[
+                    ["USD", "USD — US Dollar"],
+                    ["EUR", "EUR — Euro"],
+                    ["GBP", "GBP — British Pound"],
+                    ["AED", "AED — UAE Dirham"],
+                    ["AUD", "AUD — Australian Dollar"],
+                    ["CAD", "CAD — Canadian Dollar"],
+                    ["CHF", "CHF — Swiss Franc"],
+                    ["CNY", "CNY — Chinese Yuan"],
+                    ["INR", "INR — Indian Rupee"],
+                    ["JPY", "JPY — Japanese Yen"],
+                    ["KES", "KES — Kenyan Shilling"],
+                    ["MXN", "MXN — Mexican Peso"],
+                    ["NGN", "NGN — Nigerian Naira"],
+                    ["SGD", "SGD — Singapore Dollar"],
+                    ["THB", "THB — Thai Baht"],
+                    ["ZAR", "ZAR — South African Rand"],
+                  ].map(([code, label]) => (
+                    <option key={code} value={code}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Status</label>
+                <div className="flex gap-2">
+                  {(["Draft", "In Progress", "Published"] as const).map(s => (
+                    <button key={s} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, status: s }))}
+                      className={`flex-1 h-10 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+                        editingTrip.status === s
+                          ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                            : s === "In Progress" ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
+                            : "bg-slate-800 dark:bg-white text-white dark:text-black shadow-lg"
+                          : "bg-slate-100 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
+                      }`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
+              <Button type="submit" className="h-11 px-10 rounded-xl bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-[#0bd2b5]/20">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Trip"
+        description={`Are you sure you want to delete "${trip.name}"? This cannot be undone.`}
+        confirmLabel="Delete Trip"
+        onConfirm={handleDeleteTrip}
+        destructive
+      />
     </div>
   );
 }
