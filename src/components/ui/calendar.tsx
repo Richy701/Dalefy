@@ -17,20 +17,20 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row gap-4",
-        month: "space-y-2",
-        caption: "flex justify-center relative items-center h-8",
-        caption_label: "text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white",
+        months: "flex flex-col sm:flex-row gap-6",
+        month: "space-y-3",
+        caption: "flex justify-center relative items-center h-10",
+        caption_label: "text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white",
         nav: "flex items-center",
-        nav_button: "h-7 w-7 rounded-lg bg-slate-100 dark:bg-[#2a2a2a] hover:bg-slate-200 dark:hover:bg-[#3a3a3a] text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition-colors inline-flex items-center justify-center border border-slate-200 dark:border-[#3a3a3a] cursor-pointer",
+        nav_button: "h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#2a2a2a] hover:bg-slate-200 dark:hover:bg-[#3a3a3a] text-slate-600 dark:text-[#ccc] hover:text-slate-900 dark:hover:text-white transition-colors inline-flex items-center justify-center border border-slate-200 dark:border-[#3a3a3a] cursor-pointer",
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse",
         head_row: "flex",
-        head_cell: "text-slate-500 dark:text-[#888] rounded-md w-8 font-bold text-[10px] uppercase tracking-wider",
-        row: "flex w-full mt-0.5",
-        cell: "h-8 w-8 text-center text-xs p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-[#0bd2b5]/15 [&:has([aria-selected])]:bg-[#0bd2b5]/15 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: "h-8 w-8 p-0 font-medium rounded-md text-slate-700 dark:text-[#d0d0d0] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] hover:text-slate-900 dark:hover:text-white transition-colors inline-flex items-center justify-center aria-selected:opacity-100 cursor-pointer text-xs",
+        head_cell: "text-slate-500 dark:text-[#888] rounded-md w-10 font-bold text-xs uppercase tracking-wider",
+        row: "flex w-full mt-1",
+        cell: "h-10 w-10 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-lg [&:has([aria-selected].day-outside)]:bg-[#0bd2b5]/15 [&:has([aria-selected])]:bg-[#0bd2b5]/15 first:[&:has([aria-selected])]:rounded-l-lg last:[&:has([aria-selected])]:rounded-r-lg focus-within:relative focus-within:z-20",
+        day: "h-10 w-10 p-0 font-medium rounded-lg text-slate-700 dark:text-[#d0d0d0] hover:bg-slate-100 dark:hover:bg-[#2a2a2a] hover:text-slate-900 dark:hover:text-white transition-colors inline-flex items-center justify-center aria-selected:opacity-100 cursor-pointer",
         day_range_end: "day-range-end",
         day_selected: "bg-[#0bd2b5] text-black hover:bg-[#0bd2b5] hover:text-black focus:bg-[#0bd2b5] focus:text-black font-bold rounded-lg",
         day_today: "font-bold text-[#0bd2b5] dark:text-[#0bd2b5] underline underline-offset-2 decoration-[#0bd2b5]/40",
@@ -41,8 +41,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: () => <ChevronLeft className="h-3 w-3" />,
-        IconRight: () => <ChevronRight className="h-3 w-3" />,
+        IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+        IconRight: () => <ChevronRight className="h-4 w-4" />,
       }}
       {...props}
     />

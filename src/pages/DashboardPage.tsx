@@ -836,9 +836,7 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden flex justify-center">
-                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="p-3" />
-                  </div>
+                  <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="p-0" />
                 </div>
 
                 {/* Budget + Currency */}
