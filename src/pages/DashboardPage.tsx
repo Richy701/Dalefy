@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
   MoreVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Expand, Hotel, Utensils, Compass, Globe,
-  Heart, Share2, Star, X
+  Heart, Share2, Star, X, Upload
 } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer } from "vaul";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -27,6 +26,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import MapboxMap from "react-map-gl/mapbox";
@@ -81,6 +81,31 @@ export function DashboardPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const dragCounter = useRef(0);
+
+  const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragCounter.current++;
+    if (e.dataTransfer.items.length > 0) setIsDragging(true);
+  }, []);
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setIsDragging(false);
+  }, []);
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    const file = e.dataTransfer.files[0];
+    if (file) { setDroppedFile(file); setImportOpen(true); }
+  }, []);
+
   const [newTripData, setNewTripData] = useState<{
     name: string; attendees: string; dateRange: DateRange | undefined; image: string;
     destination: string; paxCount: string; tripType: string; budget: string; currency: string;
@@ -185,7 +210,27 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
+    <div
+      className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505] relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* ── Drag-to-import overlay ── */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#050505]/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-[2rem] border-2 border-dashed border-[#0bd2b5] bg-[#0bd2b5]/[0.04]">
+            <div className="h-16 w-16 rounded-2xl bg-[#0bd2b5]/15 flex items-center justify-center">
+              <Upload className="h-7 w-7 text-[#0bd2b5]" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-xl font-black uppercase tracking-[0.15em] text-white">Drop to Import</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0bd2b5]/70">PDF · DOCX · PPTX · TXT</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <PageHeader
         left={
@@ -205,8 +250,8 @@ export function DashboardPage() {
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {trips.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-full gap-5 px-4 py-16">
-            <img src="/illus-riding.svg" alt="" className="w-72 h-72 object-contain opacity-90" draggable={false} />
+          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
+            <img src="/illus-riding.svg" alt="" className="w-72 h-72 object-contain dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No trips yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create your first trip to get started</p>
@@ -217,6 +262,28 @@ export function DashboardPage() {
             >
               <Plus className="h-3.5 w-3.5" /> New Trip
             </button>
+            {/* Drag-to-import hint */}
+            <div className="flex items-center gap-3 w-full max-w-[300px] pt-1">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-[#333]">or drag a file</span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
+            </div>
+            <div className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200 dark:border-[#222] overflow-hidden">
+              <div className="flex items-center h-10">
+                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200 dark:border-[#222]">
+                  <Upload className="h-3 w-3 text-[#0bd2b5]" />
+                </div>
+                <div className="flex-1 overflow-hidden relative">
+                  <div className="flex animate-marquee">
+                    {[0, 1].map(i => (
+                      <span key={i} className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#444] px-3">
+                        PDF &nbsp;·&nbsp; DOCX &nbsp;·&nbsp; PPTX &nbsp;·&nbsp; TXT &nbsp;·&nbsp; Extracts flights &amp; hotels &nbsp;·&nbsp;&emsp;
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
         <div className="px-4 lg:px-8 pt-8 pb-16 space-y-8">
@@ -749,24 +816,28 @@ export function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Group + Dates */}
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
-                    <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
-                  </div>
-                  <div className="space-y-2">
+                {/* Group */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
+                  <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                </div>
+
+                {/* Travel Dates — inline to avoid Popover/Drawer z-index conflict */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>
-                    <Popover>
-                      <PopoverTrigger className={cn("w-full h-12 justify-start text-left font-semibold bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:bg-white dark:hover:bg-[#151515] transition-colors px-4 flex items-center gap-3 text-sm", !newTripData.dateRange && "text-slate-400 dark:text-[#555]")}>
-                        <LucideCalendar className="h-4 w-4 text-[#0bd2b5] shrink-0" />
-                        {newTripData.dateRange?.from ? (newTripData.dateRange.to ? <span className="text-slate-900 dark:text-white">{format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}</span> : <span className="text-slate-900 dark:text-white">{format(newTripData.dateRange.from, "MMM d, yyyy")}</span>) : <span>Select dates...</span>}
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-[1.5rem] bg-white dark:bg-[#1a1a1a]" align="start">
-                        <Calendar initialFocus mode="range" defaultMonth={newTripData.dateRange?.from} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={2} className="p-4" />
-                      </PopoverContent>
-                    </Popover>
+                    {newTripData.dateRange?.from && newTripData.dateRange?.to && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-[#0bd2b5]">
+                          {format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}
+                        </span>
+                        <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-red-400 transition-colors">Clear</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden flex justify-center">
+                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="p-3" />
                   </div>
                 </div>
 
@@ -779,10 +850,16 @@ export function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Currency</label>
-                    <select value={newTripData.currency} onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-12 w-full px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-bold text-slate-900 dark:text-white focus:outline-none text-sm appearance-none cursor-pointer">
-                      {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <Select value={newTripData.currency} onValueChange={(v) => setNewTripData({ ...newTripData, currency: v })}>
+                      <SelectTrigger className="h-12 w-full px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-bold text-slate-900 dark:text-white text-sm focus:border-[#0bd2b5]/50 dark:bg-input/0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -819,7 +896,11 @@ export function DashboardPage() {
         onConfirm={() => deletingTripId && handleDeleteTrip(deletingTripId)}
         destructive
       />
-      <ImportItineraryDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ImportItineraryDialog
+        open={importOpen}
+        onOpenChange={(v) => { setImportOpen(v); if (!v) setDroppedFile(null); }}
+        initialFile={droppedFile}
+      />
       <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
       <Lightbox
         open={lightboxOpen}
