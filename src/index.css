@@ -120,11 +120,11 @@
   100% { transform: scale(2); opacity: 0; }
 }
 
-/* SVG destination pin ring pulse */
-@keyframes dest-ring-pulse {
-  0%   { r: 10; opacity: 0.25; }
-  50%  { r: 17; opacity: 0.08; }
-  100% { r: 10; opacity: 0.25; }
+/* Destination pin ring pulse (div-based for Mapbox markers) */
+@keyframes dest-pin-pulse {
+  0%   { transform: scale(0.8); opacity: 0.3; }
+  50%  { transform: scale(1.6); opacity: 0.08; }
+  100% { transform: scale(0.8); opacity: 0.3; }
 }
 
 
@@ -190,13 +190,10 @@ button:focus-visible,
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* MapLibre attribution — muted to match app style */
+/* Hide Mapbox logo and attribution across all maps */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.maplibregl-ctrl-logo,
 .maplibregl-ctrl-attrib {
-  background: transparent !important;
-  font-size: 9px !important;
-  opacity: 0.35;
+  display: none !important;
 }
-.dark .maplibregl-ctrl-attrib {
-  color: #888;
-}
-.maplibregl-ctrl-attrib a { color: inherit; }

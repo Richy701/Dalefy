@@ -108,15 +108,11 @@ export function DestinationsPage() {
   const mousePos = useRef({ x: 0, y: 0 });
   const mapRef = useRef<MapRef>(null);
 
-  // On load: strip all text/symbol layers for a clean minimal look
+  // On load: fit full world in view regardless of container size
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
-    map.getStyle().layers.forEach(layer => {
-      if (layer.type === "symbol") {
-        map.setLayoutProperty(layer.id, "visibility", "none");
-      }
-    });
+    map.fitBounds([[-165, -55], [165, 72]], { padding: 10, animate: false });
   }, []);
 
   const connectionLines = useMemo(() => {
@@ -169,13 +165,13 @@ export function DestinationsPage() {
 
         {/* ── World Map ── */}
         <div
-          className="relative w-full overflow-hidden shrink-0 h-[440px]"
+          className="dest-world-map relative overflow-hidden shrink-0 h-[440px] mx-4 lg:mx-8 mt-4 rounded-2xl border border-slate-200/60 dark:border-white/[0.06]"
           onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
         >
           <MapboxMap
             ref={mapRef}
-            initialViewState={{ longitude: 10, latitude: 15, zoom: 0.35 }}
-            mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
+            initialViewState={{ longitude: 10, latitude: 10, zoom: 0 }}
+            mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
             mapboxAccessToken={MAPBOX_TOKEN}
             projection="mercator"
             attributionControl={false}
@@ -188,25 +184,13 @@ export function DestinationsPage() {
             renderWorldCopies={false}
             onLoad={onMapLoad}
           >
-            {/* Connection lines — outer glow + sharp core */}
+            {/* Connection lines */}
             <Source id="connections" type="geojson" data={connectionLines}>
-              <Layer
-                id="connections-glow"
-                type="line"
-                layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{ "line-color": "#0bd2b5", "line-width": 8, "line-opacity": 0.07 }}
-              />
-              <Layer
-                id="connections-mid"
-                type="line"
-                layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{ "line-color": "#0bd2b5", "line-width": 2, "line-opacity": 0.25 }}
-              />
               <Layer
                 id="connections-core"
                 type="line"
                 layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{ "line-color": "#0bd2b5", "line-width": 0.8, "line-opacity": 0.7 }}
+                paint={{ "line-color": "#0bd2b5", "line-width": 1, "line-opacity": 0.5 }}
               />
             </Source>
 
@@ -249,7 +233,6 @@ export function DestinationsPage() {
                     borderRadius: "50%",
                     background: "#0bd2b5",
                     border: `2px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)"}`,
-                    boxShadow: "0 0 12px rgba(11,210,181,1), 0 0 28px rgba(11,210,181,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     zIndex: 2,
                   }}>
@@ -264,24 +247,7 @@ export function DestinationsPage() {
             ))}
           </MapboxMap>
 
-          {/* Edge vignette */}
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{ boxShadow: `inset 0 0 100px 35px ${isDark ? "#050505" : "#f8fafc"}` }}
-          />
-          {/* Subtle teal radial glow */}
-          <div className="absolute inset-0 pointer-events-none z-10" style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(11,210,181,0.05) 0%, transparent 65%)" }} />
 
-          {/* Top-left label */}
-          <div className="absolute top-6 left-6 z-20 pointer-events-none flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] flex items-center justify-center shadow-lg shadow-[#0bd2b5]/30">
-              <Globe className="h-4 w-4 text-black" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-[#0bd2b5] leading-none mb-1">World Coverage</p>
-              <p className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white drop-shadow-lg leading-none">{destinations.length} Destinations</p>
-            </div>
-          </div>
         </div>
 
         {/* Tooltip — fixed to cursor */}
@@ -292,14 +258,14 @@ export function DestinationsPage() {
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl px-4 py-3 min-w-[160px]">
               <p className="text-xs font-black italic uppercase tracking-tight text-[#0bd2b5] leading-none mb-1">{hoveredPin.name}</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888] mb-2">{hoveredPin.region}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-2">{hoveredPin.region}</p>
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-[#1f1f1f]">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#666]">Trips</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Trips</p>
                   <p className="text-sm font-black italic text-slate-900 dark:text-white leading-none">{hoveredPin.tripCount}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#666]">Events</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Events</p>
                   <p className="text-sm font-black italic text-slate-900 dark:text-white leading-none">{hoveredPin.eventCount}</p>
                 </div>
               </div>
@@ -323,7 +289,7 @@ export function DestinationsPage() {
                 ].map((stat, i) => (
                   <div key={stat.label} className={`px-5 py-3 bg-white dark:bg-[#111111] flex flex-col items-center gap-0.5 ${i < 2 ? "border-r border-slate-200 dark:border-[#1f1f1f]" : ""}`}>
                     <span className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none">{stat.value}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">{stat.label}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{stat.label}</span>
                   </div>
                 ))}
               </div>
@@ -333,7 +299,7 @@ export function DestinationsPage() {
                 <button
                   key={r}
                   onClick={() => setFilter(r)}
-                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${filter === r ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/40"}`}
+                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${filter === r ? "bg-[#0bd2b5] text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/40"}`}
                 >
                   {r === "all" ? "All Regions" : r}
                 </button>

@@ -41,9 +41,9 @@ export function NotificationPanel() {
                   {!n.read && <div className="h-2 w-2 rounded-full bg-[#0bd2b5] mt-1.5 shrink-0" />}
                   <div className={`flex-1 min-w-0 ${n.read ? 'ml-5' : ''}`}>
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{n.message}</p>
-                    <p className="text-xs text-slate-400 dark:text-[#888] truncate mt-0.5">{n.detail}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888] truncate mt-0.5">{n.detail}</p>
                   </div>
-                  <span className="text-[11px] text-slate-300 dark:text-[#666] shrink-0 uppercase tracking-wider">{n.time}</span>
+                  <span className="text-[11px] text-slate-300 dark:text-[#888888] shrink-0 uppercase tracking-wider">{n.time}</span>
                 </div>
               </button>
             ))}

@@ -73,7 +73,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs">{u.initials}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
-                    <p className="text-xs text-slate-400 dark:text-[#888]">{u.role}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888]">{u.role}</p>
                   </div>
                   <div className={`h-2 w-2 rounded-full ${u.status === "Active" ? "bg-emerald-400" : u.status === "Away" ? "bg-amber-400" : "bg-slate-400"}`} />
                 </div>

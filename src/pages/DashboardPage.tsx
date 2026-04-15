@@ -213,7 +213,7 @@ export function DashboardPage() {
             <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
               {greeting}, {firstName} 👋
             </h1>
-            <p className="text-sm text-slate-400 dark:text-[#666] mt-2 font-medium">
+            <p className="text-sm text-slate-500 dark:text-[#888888] mt-2 font-medium">
               {upcomingCards[0]
                 ? `Next departure — ${upcomingCards[0].destination || upcomingCards[0].name} · ${daysUntil(upcomingCards[0].start) === 0 ? "Today" : `${daysUntil(upcomingCards[0].start)}d`}`
                 : "No upcoming departures"}
@@ -261,7 +261,7 @@ export function DashboardPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
-                    <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">Departing within 30 days</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Departing within 30 days</p>
                   </div>
                   <button
                     onClick={() => setIsNewTripOpen(true)}
@@ -289,8 +289,8 @@ export function DashboardPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{trip.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              <p className="text-[11px] text-slate-400 dark:text-[#666] truncate font-medium">{trip.destination || trip.attendees}</p>
+                              <MapPin className="h-3 w-3 text-slate-500 shrink-0" />
+                              <p className="text-[11px] text-slate-500 dark:text-[#888888] truncate font-medium">{trip.destination || trip.attendees}</p>
                             </div>
                           </div>
                           <span className="shrink-0 bg-[#0bd2b5] text-[#050505] text-[10px] font-bold px-2.5 py-1 rounded-full leading-none">
@@ -301,7 +301,7 @@ export function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#555]">
+                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#555]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => setIsNewTripOpen(true)} className="mt-3 text-[10px] font-bold text-[#0bd2b5] hover:underline">Create one →</button>
@@ -319,7 +319,7 @@ export function DashboardPage() {
                         <span className="text-[#0bd2b5] italic">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
                         {" "}Trip
                       </h2>
-                      <p className="text-xs text-slate-400 dark:text-[#666] mt-0.5">Key events on your itinerary</p>
+                      <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Key events on your itinerary</p>
                     </div>
                     <button
                       onClick={() => handleOpenTrip(spotlightTrip)}
@@ -359,13 +359,13 @@ export function DashboardPage() {
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1">{ev.title}</p>
-                                    <p className="text-xs text-slate-400 dark:text-[#666] mt-1 line-clamp-2 font-medium leading-relaxed">
+                                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 line-clamp-2 font-medium leading-relaxed">
                                       {ev.notes || ev.location}
                                     </p>
                                   </div>
                                   {/* Action buttons */}
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <button aria-label="Save" className="h-7 w-7 rounded-full border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 hover:text-red-400 hover:border-red-200 transition-colors">
+                                    <button aria-label="Save" className="h-7 w-7 rounded-full border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 hover:text-red-400 hover:border-red-200 transition-colors">
                                       <Heart className="h-3 w-3" aria-hidden="true" />
                                     </button>
                                     <button aria-label="Share" className="h-7 w-7 rounded-full bg-[#0bd2b5] flex items-center justify-center text-[#050505] hover:opacity-80 transition-opacity">
@@ -380,11 +380,11 @@ export function DashboardPage() {
                                 <div className="flex items-center gap-1">
                                   <Star className="h-3 w-3 text-amber-400 fill-amber-400" aria-hidden="true" />
                                   <span className="text-[11px] font-bold text-slate-700 dark:text-[#ccc]">{rating}</span>
-                                  <span className="text-[10px] text-slate-400 dark:text-[#666]">({reviews})</span>
+                                  <span className="text-[10px] text-slate-500 dark:text-[#888888]">({reviews})</span>
                                 </div>
                                 <div className="flex items-center justify-between flex-wrap gap-2">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-medium text-slate-400 dark:text-[#666]">Guide by</span>
+                                    <span className="text-[10px] font-medium text-slate-500 dark:text-[#888888]">Guide by</span>
                                     <span className="text-[10px] font-semibold text-slate-600 dark:text-[#aaa]">
                                       {spotlightTrip.attendees.split(",")[0]?.trim().split(" ")[0] || "Agent"}
                                     </span>
@@ -406,7 +406,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center py-10 text-slate-400 dark:text-[#555] cursor-pointer hover:border-[#0bd2b5]/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center py-10 text-slate-500 dark:text-[#555] cursor-pointer hover:border-[#0bd2b5]/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-[#0bd2b5] transition-colors" />
@@ -427,7 +427,7 @@ export function DashboardPage() {
                 <div className="flex items-start justify-between px-5 pt-5 pb-3">
                   <div>
                     <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Destinations</p>
-                    <p className="text-xs text-slate-400 dark:text-[#666] mt-1">Check your trip coverage</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Check your trip coverage</p>
                   </div>
                   <button
                     onClick={() => navigate("/destinations")}
@@ -436,10 +436,10 @@ export function DashboardPage() {
                     Expand
                   </button>
                 </div>
-                <div className="relative h-[220px]">
+                <div className="relative h-[220px] overflow-hidden rounded-b-3xl">
                   <MapboxMap
                     initialViewState={{ longitude: 15, latitude: 5, zoom: 0 }}
-                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
+                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
                     mapboxAccessToken={MAPBOX_TOKEN}
                     projection="mercator"
                     attributionControl={false}
@@ -464,7 +464,7 @@ export function DashboardPage() {
                       {tripDuration(spotlightTrip.start, spotlightTrip.end) <= 7 ? "One Week" : `${tripDuration(spotlightTrip.start, spotlightTrip.end)}-Day`} Itinerary — {spotlightTrip.destination || spotlightTrip.name}...
                     </h3>
                     <div className="flex items-center gap-1.5 mt-2">
-                      <span className="text-xs text-slate-400 dark:text-[#666] font-medium">Traveller:</span>
+                      <span className="text-xs text-slate-500 dark:text-[#888888] font-medium">Traveller:</span>
                       <span className="text-xs font-semibold text-slate-700 dark:text-[#ccc]">
                         {spotlightTrip.attendees.split(",")[0]?.trim() || "Agent"}
                       </span>
@@ -478,22 +478,22 @@ export function DashboardPage() {
 
                   {/* Details grid */}
                   <div className="px-5 pt-4 pb-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mb-3">Details:</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] mb-3">Details:</p>
                     <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-[#1a1a1a]">
                       <div className="pr-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#666]">Budget</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Budget</p>
                         <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {spotlightTrip.budget ? `$${spotlightTrip.budget}` : "—"}
                         </p>
                       </div>
                       <div className="px-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#666]">Person</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Person</p>
                         <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {spotlightTrip.paxCount || "—"}
                         </p>
                       </div>
                       <div className="pl-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#666]">Durations</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">Durations</p>
                         <p className="text-sm font-black italic tracking-tight text-slate-900 dark:text-white mt-1 leading-none">
                           {tripDuration(spotlightTrip.start, spotlightTrip.end)}d, {Math.max(1, tripDuration(spotlightTrip.start, spotlightTrip.end) - 1)}n
                         </p>
@@ -520,7 +520,7 @@ export function DashboardPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-[#ccc]">Import</p>
-                    <p className="text-[9px] font-bold text-slate-400 dark:text-[#666] mt-0.5">PDF · Doc</p>
+                    <p className="text-[9px] font-bold text-slate-500 dark:text-[#888888] mt-0.5">PDF · Doc</p>
                   </div>
                 </button>
                 <button onClick={() => setInviteOpen(true)} className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl px-4 py-4 flex flex-col items-center gap-2 hover:border-[#0bd2b5]/40 transition-colors cursor-pointer">
@@ -529,7 +529,7 @@ export function DashboardPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-[#ccc]">Invite</p>
-                    <p className="text-[9px] font-bold text-slate-400 dark:text-[#666] mt-0.5">Team</p>
+                    <p className="text-[9px] font-bold text-slate-500 dark:text-[#888888] mt-0.5">Team</p>
                   </div>
                 </button>
               </div>
@@ -546,12 +546,12 @@ export function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 text-slate-900 dark:text-white" />
                 </div>
                 <div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-sm">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-400 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-400 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>

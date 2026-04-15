@@ -9,7 +9,6 @@ import {
   type SortingState,
   flexRender,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { Drawer } from "vaul";
 import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: st
   Signed: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileCheck, bar: "bg-emerald-500" },
   Pending: { color: "text-amber-500", bg: "bg-amber-500/10", icon: FileClock, bar: "bg-amber-400" },
   Expired: { color: "text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },
-  "Not Required": { color: "text-slate-400 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileWarning, bar: "bg-slate-300 dark:bg-[#333]" },
+  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileWarning, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -170,20 +169,12 @@ export function TravelersPage() {
     },
   });
 
-  // Virtual scrolling for HR docs
-  const hrParentRef = useRef<HTMLDivElement>(null);
   const filteredAllDocs = useMemo(() => allDocs.filter(d => {
     if (!search) return true;
     const q = search.toLowerCase();
     return d.userName.toLowerCase().includes(q) || d.doc.name.toLowerCase().includes(q);
   }), [allDocs, search]);
 
-  const rowVirtualizer = useVirtualizer({
-    count: filteredAllDocs.length,
-    getScrollElement: () => hrParentRef.current,
-    estimateSize: () => 68,
-    overscan: 5,
-  });
 
   const handleAddTraveler = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -260,7 +251,7 @@ export function TravelersPage() {
               <div>
                 <h2 className="text-2xl lg:text-4xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
                 <div className="flex items-center gap-2.5 mt-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-[#666]">People & Documents</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
                   <span className="text-slate-200 dark:text-[#333]">·</span>
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" />
@@ -279,7 +270,7 @@ export function TravelersPage() {
                   className={`relative px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 focus-visible:ring-offset-2 ${
                     tab === t
                       ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40"
-                      : "text-slate-400 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"
+                      : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"
                   }`}
                 >
                   {t === "travelers" ? "Team Overview" : "Documents"}
@@ -305,7 +296,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
+                            className={`px-6 py-5 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -340,7 +331,7 @@ export function TravelersPage() {
                             <div className="h-10 w-10 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
                               <div className="text-sm font-black italic uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-[#0bd2b5] transition-colors">{user.name}</div>
-                              <div className="text-[11px] text-slate-400 dark:text-[#666] truncate mt-0.5">{user.email}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email}</div>
                             </div>
                           </div>
                         </td>
@@ -371,7 +362,7 @@ export function TravelersPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-black italic tracking-tighter text-slate-400 dark:text-[#666] tabular-nums">{signedCount}<span className="text-slate-300 dark:text-[#444]">/{docs.length}</span></span>
+                            <span className="text-xs font-black italic tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-300 dark:text-[#444]">/{docs.length}</span></span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -389,14 +380,14 @@ export function TravelersPage() {
               {/* Pagination — only shown when data > 10 */}
               {table.getPageCount() > 1 && (
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center justify-between bg-slate-50/30 dark:bg-[#0a0a0a]">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {filtered.length} members
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Previous page"
                     >
                       <PgLeft className="h-4 w-4" />
@@ -408,7 +399,7 @@ export function TravelersPage() {
                         className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
                           table.getState().pagination.pageIndex === i
                             ? "bg-[#0bd2b5] text-black shadow-sm"
-                            : "text-slate-400 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5"
+                            : "text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5"
                         }`}
                       >
                         {i + 1}
@@ -417,7 +408,7 @@ export function TravelersPage() {
                     <button
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Next page"
                     >
                       <PgRight className="h-4 w-4" />
@@ -442,13 +433,13 @@ export function TravelersPage() {
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
                     <div className="p-5 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-400 dark:text-[#888]">{card.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{card.label}</span>
                         <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${card.accent} flex items-center justify-center`}>
                           {card.icon}
                         </div>
                       </div>
                       <p className="text-4xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#888] mt-4">{card.sub}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-4">{card.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -457,22 +448,16 @@ export function TravelersPage() {
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
                 <div className="pl-8 pr-6 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center gap-4 lg:gap-6">
                   <div className="h-9 w-9 shrink-0" />
-                  <div className="min-w-[140px] text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Traveler</div>
-                  <div className="flex-1 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Document Type</div>
-                  <div className="w-24 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] text-center">Status</div>
-                  <div className="w-28 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] text-right hidden md:block">Date Signed</div>
-                  <div className="w-48 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] text-right">Actions</div>
+                  <div className="min-w-[140px] text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">Traveler</div>
+                  <div className="flex-1 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">Document Type</div>
+                  <div className="w-24 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-center">Status</div>
+                  <div className="w-28 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-right hidden md:block">Date Signed</div>
+                  <div className="w-48 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-right">Actions</div>
                 </div>
 
-                {/* Virtual scrolling list */}
-                <div
-                  ref={hrParentRef}
-                  className="overflow-y-auto"
-                  style={{ height: Math.min(filteredAllDocs.length * 68, 500) || 68 }}
-                >
-                  <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
-                    {rowVirtualizer.getVirtualItems().map(virtualRow => {
-                      const { userId, userName, initials, doc } = filteredAllDocs[virtualRow.index];
+                {/* Docs list */}
+                <div>
+                    {filteredAllDocs.map(({ userId, userName, initials, doc }) => {
                       const cfg = DOC_STATUS_CONFIG[doc.status];
                       const Icon = cfg.icon;
                       const reminderKey = `${userId}-${doc.name}`;
@@ -480,15 +465,7 @@ export function TravelersPage() {
                       return (
                         <div
                           key={`${userId}-${doc.name}`}
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: `${virtualRow.size}px`,
-                            transform: `translateY(${virtualRow.start}px)`,
-                          }}
-                          className="flex items-center px-6 gap-4 lg:gap-6 hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-all group border-b border-slate-100 dark:border-[#1a1a1a]"
+                          className="flex items-center px-6 h-[68px] gap-4 lg:gap-6 hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-all group border-b border-slate-100 dark:border-[#1a1a1a]"
                         >
                           <div className="h-9 w-9 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-xs shrink-0">{initials}</div>
                           <div className="min-w-[140px]">
@@ -527,7 +504,6 @@ export function TravelersPage() {
                         </div>
                       );
                     })}
-                  </div>
                 </div>
               </div>
             </div>

@@ -58,19 +58,19 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-500 mb-2">Live Hotel Search</p>
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex-[2] min-w-[140px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555] block mb-1">Location</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Location</label>
             <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Hotels in Dubai" className={inputCls} />
           </div>
           <div className="flex-1 min-w-[110px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555] block mb-1">Check-in</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Check-in</label>
             <input type="date" value={checkin} onChange={e => setCheckin(e.target.value)} className={inputCls} />
           </div>
           <div className="flex-1 min-w-[110px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555] block mb-1">Check-out</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Check-out</label>
             <input type="date" value={checkout} onChange={e => setCheckout(e.target.value)} className={inputCls} />
           </div>
           <div className="w-14">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#555] block mb-1">Pax</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Pax</label>
             <input type="number" value={adults} onChange={e => setAdults(Number(e.target.value))} min={1} max={99} className={inputCls} />
           </div>
           <button
@@ -115,15 +115,15 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                       <Star className="h-2.5 w-2.5 fill-amber-500" />{h.rating}
                     </span>
                   )}
-                  {h.reviews > 0 && <span className="text-[10px] text-slate-400">({h.reviews.toLocaleString()})</span>}
-                  {h.stars && <span className="text-[10px] text-slate-400 dark:text-[#555]">· {h.stars}</span>}
+                  {h.reviews > 0 && <span className="text-[10px] text-slate-500">({h.reviews.toLocaleString()})</span>}
+                  {h.stars && <span className="text-[10px] text-slate-500 dark:text-[#555]">· {h.stars}</span>}
                 </div>
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                 {h.pricePerNight && (
                   <>
                     <p className="text-sm font-black text-slate-900 dark:text-white">{h.pricePerNight}</p>
-                    <p className="text-[9px] text-slate-400">/night</p>
+                    <p className="text-[9px] text-slate-500">/night</p>
                   </>
                 )}
                 {selected === h.name && <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />}

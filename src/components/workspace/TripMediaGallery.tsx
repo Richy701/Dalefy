@@ -147,7 +147,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
               className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${
                 isDragging
                   ? "bg-[#0bd2b5] text-black scale-110"
-                  : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-400 dark:text-[#888888]"
+                  : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"
               }`}
             >
               <Upload className="h-7 w-7" />
@@ -156,7 +156,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
               <p className="font-black italic text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white">
                 {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
               </p>
-              <p className="text-xs text-slate-400 dark:text-[#888888] mt-1">
+              <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
                 or click to browse your device
               </p>
             </div>
@@ -173,7 +173,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] hover:text-[#0bd2b5] transition-colors flex items-center gap-1.5"
+              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-colors flex items-center gap-1.5"
             >
               <Upload className="h-3 w-3" /> ADD MORE
             </button>
@@ -253,10 +253,10 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
                       {item.name}
                     </p>
                     <div className="flex items-center justify-between mt-1">
-                      <p className="text-[10px] text-slate-400 dark:text-[#888888]">
+                      <p className="text-[10px] text-slate-500 dark:text-[#888888]">
                         {fmt(item.size)}
                       </p>
-                      <p className="text-[10px] text-slate-400 dark:text-[#888888]">
+                      <p className="text-[10px] text-slate-500 dark:text-[#888888]">
                         {new Date(item.uploadedAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -271,7 +271,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
         </>
       ) : (
         !uploading && (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-[#888888]">
+          <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-[#888888]">
             <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
             <p className="text-xs font-black italic uppercase tracking-[0.3em]">
               NO MEDIA YET

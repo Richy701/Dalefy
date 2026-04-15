@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
-import Map, { Marker, Source, Layer } from "react-map-gl/maplibre";
-import type { MapRef } from "react-map-gl/maplibre";
-import "maplibre-gl/dist/maplibre-gl.css";
+import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
+import type { MapRef } from "react-map-gl/mapbox";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Plane, Hotel, Compass, Utensils, MapPin } from "lucide-react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
@@ -47,26 +47,7 @@ function buildArc(from: [number, number], to: [number, number], segments = 50): 
   return points;
 }
 
-function buildMapStyle(isDark: boolean) {
-  const subdomains = ["a", "b", "c", "d"];
-  const tpl = isDark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png";
-  return {
-    version: 8 as const,
-    sources: {
-      "carto": {
-        type: "raster" as const,
-        tiles: subdomains.map(s => tpl.replace("{s}", s)),
-        tileSize: 256,
-        attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, © <a href='https://carto.com/attributions'>CARTO</a>",
-        maxzoom: 19,
-      },
-    },
-    layers: [{ id: "carto-tiles", type: "raster" as const, source: "carto" }],
-    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  };
-}
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 interface TripMapProps { theme: Theme; trip: Trip; }
 interface MapPoint {
@@ -89,7 +70,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const rafRef = useRef<number>(0);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const mapStyle = useMemo(() => buildMapStyle(isDark), [isDark]);
+  const mapStyle = isDark
+    ? "mapbox://styles/mapbox/dark-v11"
+    : "mapbox://styles/mapbox/light-v11";
 
   const points: MapPoint[] = useMemo(() => {
     const seen = new Set<string>();
@@ -195,9 +178,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
         <div className="text-center space-y-3">
           <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-[#111111] flex items-center justify-center mx-auto border border-slate-200 dark:border-[#1f1f1f]">
-            <MapPin className="h-6 w-6 text-slate-400 dark:text-[#888]" />
+            <MapPin className="h-6 w-6 text-slate-500 dark:text-[#888]" />
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#888]">No locations to display</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No locations to display</p>
         </div>
       </div>
     );
@@ -219,6 +202,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         ref={mapRef}
         initialViewState={{ longitude: 25, latitude: 30, zoom: 2 }}
         mapStyle={mapStyle}
+        mapboxAccessToken={MAPBOX_TOKEN}
         reuseMaps
         attributionControl={true}
         style={{ width: "100%", height: "100%" }}
@@ -352,7 +336,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 <div className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
                 <span className="text-[11px] font-extrabold uppercase tracking-tight text-[#0bd2b5]">Route</span>
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888]">{points.length} stops</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} stops</span>
             </div>
             <div className="flex items-center overflow-x-auto scrollbar-hide pb-0.5">
               {points.slice(0, 8).map((pt, i) => {
@@ -389,7 +373,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 );
               })}
               {points.length > 8 && (
-                <span className="text-xs font-black italic ml-2 shrink-0 text-slate-400 dark:text-[#888]">+{points.length - 8}</span>
+                <span className="text-xs font-black italic ml-2 shrink-0 text-slate-500 dark:text-[#888]">+{points.length - 8}</span>
               )}
             </div>
           </div>
@@ -407,7 +391,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           ] as const).map(({ type, label }) => (
             <div key={type} className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[type], boxShadow: `0 0 4px ${TYPE_COLORS[type]}44` }} />
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888]">{label}</span>
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{label}</span>
             </div>
           ))}
         </div>

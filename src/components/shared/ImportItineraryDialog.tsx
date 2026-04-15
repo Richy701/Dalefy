@@ -120,7 +120,7 @@ const EVENT_TYPE_ICONS: Record<EventType, typeof Plane> = {
 };
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
-  flight: "text-slate-400",
+  flight: "text-slate-500",
   hotel: "text-amber-400",
   activity: "text-[#0bd2b5]",
   dining: "text-pink-400",
@@ -319,7 +319,7 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
               </div>
               <div className="text-center">
                 <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Drop a file or click to browse</p>
-                <p className="text-xs text-slate-400 dark:text-[#666] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT</p>
+                <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT</p>
               </div>
               <input ref={fileInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
@@ -333,14 +333,14 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
 
             <div className="flex items-center gap-4">
               <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#888]">OR PASTE TEXT</span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">OR PASTE TEXT</span>
               <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
             </div>
 
             <div className="space-y-3">
               <textarea
                 placeholder="Paste itinerary text here — the parser will extract dates, flights, hotels, and activities automatically..."
-                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#444] focus:outline-none focus:border-[#0bd2b5] resize-none transition-colors"
+                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-[#0bd2b5] resize-none transition-colors"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}
               />
@@ -359,7 +359,7 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-10 w-10 text-[#0bd2b5] animate-spin" />
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-400 dark:text-[#888]">Extracting content...</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">Extracting content...</p>
           </div>
         )}
 
@@ -369,23 +369,23 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
             {/* Trip summary */}
             <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666]">Trip Name</p>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-[#0bd2b5] transition-colors">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Trip Name</p>
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#0bd2b5] transition-colors">
                   ← Back
                 </button>
               </div>
               <p className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{parsed.name}</p>
               <div className="flex items-center gap-6 pt-1">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666]">Start</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Start</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.start}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666]">End</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">End</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.end}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666]">Travelers</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Travelers</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[140px]">{parsed.attendees}</p>
                 </div>
               </div>
@@ -403,7 +403,7 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{ev.title}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-[#666] mt-0.5">{ev.date} · {ev.time}{ev.location ? ` · ${ev.location}` : ""}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-0.5">{ev.date} · {ev.time}{ev.location ? ` · ${ev.location}` : ""}</p>
                       </div>
                       <button onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)} className="text-slate-300 dark:text-[#444] hover:text-red-400 transition-colors shrink-0 mt-0.5">
                         <X className="h-3.5 w-3.5" />
@@ -415,8 +415,8 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
             ) : (
               <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
                 <AlertCircle className="h-5 w-5 text-amber-400" />
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#666]">No events detected</p>
-                <p className="text-[10px] text-slate-400 dark:text-[#555] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
+                <p className="text-[10px] text-slate-500 dark:text-[#555] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
               </div>
             )}
 

@@ -60,12 +60,12 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
             </div>
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white dark:bg-[#050505] border border-slate-200 dark:border-[#1a1a1a]">
               <div className="flex flex-col">
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-0.5">For</span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 mb-0.5">For</span>
                 <span className="text-xs font-black italic text-slate-900 dark:text-white uppercase tracking-tight">{travelerName}</span>
               </div>
               <div className="h-8 w-px bg-slate-100 dark:bg-[#1a1a1a]" />
               <div className="flex flex-col text-right">
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-0.5">Reference</span>
+                <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 mb-0.5">Reference</span>
                 <span className="text-xs font-mono font-bold text-slate-500 dark:text-[#888]">DF-{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
               </div>
             </div>
@@ -100,7 +100,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                     {content.sections.length > 4 && (
                       <div className="flex items-center gap-3 pl-8">
                         <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">
+                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest italic">
                           + {content.sections.length - 4} more sections
                         </span>
                         <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
@@ -111,7 +111,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Info className="h-10 w-10 text-slate-200 dark:text-[#1a1a1a] mb-4" />
-                  <p className="text-xs text-slate-400 dark:text-[#888] font-bold uppercase tracking-widest">No content available</p>
+                  <p className="text-xs text-slate-500 dark:text-[#888] font-bold uppercase tracking-widest">No content available</p>
                 </div>
               )}
 
@@ -122,7 +122,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-[#0bd2b5]">Signed & Verified</p>
-                    <p className="text-xs text-slate-500 dark:text-[#666] mt-1 font-bold uppercase tracking-tighter">
+                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 font-bold uppercase tracking-tighter">
                       Signed on {new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
                     </p>
                   </div>
@@ -138,7 +138,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 <div className="h-5 w-5 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                   <Info className="h-3 w-3 text-amber-500" />
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] leading-tight">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888] leading-tight">
                   By confirming, you agree you've read and accept all the terms above.
                 </p>
               </div>

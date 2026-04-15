@@ -53,7 +53,7 @@ export function MobileSidebar() {
                 <button
                   key={item.label}
                   onClick={() => handleNav(item.path)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all ${active ? 'bg-[#0bd2b5] text-black shadow-md' : 'text-slate-500 dark:text-[#888888] hover:bg-slate-50 dark:hover:bg-[#050505]'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all ${active ? 'bg-[#0bd2b5]/15 dark:bg-[#0bd2b5] text-slate-900 dark:text-black shadow-none dark:shadow-md' : 'text-slate-500 dark:text-[#888888] hover:bg-slate-50 dark:hover:bg-[#050505]'}`}
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="text-xs font-bold uppercase tracking-wider">{item.label}</span>

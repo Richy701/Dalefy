@@ -66,7 +66,7 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">{action.label}</p>
-                    <p className="text-xs text-slate-400 dark:text-[#888] mt-1">{action.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888] mt-1">{action.description}</p>
                     {result && (
                       <p className="text-xs text-[#0bd2b5] font-semibold mt-3 bg-[#0bd2b5]/5 px-3 py-2 rounded-lg border border-[#0bd2b5]/10">{result}</p>
                     )}

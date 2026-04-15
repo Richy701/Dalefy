@@ -5,7 +5,7 @@ import type { TravelEvent } from "@/types";
 function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick} aria-label={`Add ${label}`} className="group flex flex-col items-center justify-center h-10 px-4 rounded-xl hover:bg-[#0bd2b5]/10 transition-colors duration-200 relative shrink-0 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40">
-      <div className="text-slate-400 dark:text-[#666] group-hover:text-[#0bd2b5] transition-[transform,color] duration-150 group-hover:scale-110">{icon}</div>
+      <div className="text-slate-500 dark:text-[#888888] group-hover:text-[#0bd2b5] transition-[transform,color] duration-150 group-hover:scale-110">{icon}</div>
       <span className="absolute -top-10 bg-white dark:bg-[#111111] text-[#0bd2b5] border border-slate-200 dark:border-[#1f1f1f] text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-150 translate-y-2 group-hover:translate-y-0 whitespace-nowrap shadow-2xl">
         ADD {label}
       </span>

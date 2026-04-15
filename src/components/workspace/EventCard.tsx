@@ -10,7 +10,7 @@ function StatusChip({ status }: { status?: string }) {
       ? "bg-emerald-500/10 text-emerald-400"
       : status === "Proposed"
       ? "bg-amber-500/10 text-amber-500"
-      : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-400 dark:text-[#888]";
+      : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]";
   return (
     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${cls}`}>
       {status}
@@ -25,7 +25,7 @@ function MediaBadge({ media }: { media?: TravelEvent["media"] }) {
   return (
     <div className="flex items-center gap-1.5">
       {images > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#555] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
           <ImageIcon className="h-2.5 w-2.5" />{images}
         </span>
       )}
@@ -42,7 +42,7 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
   return (
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-400 dark:text-[#555] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
+        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#555] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
           <MoreVertical className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
@@ -79,11 +79,11 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
       <div className="px-6 py-5 flex items-center gap-6">
         {/* Departure time */}
         <div className="flex flex-col items-center shrink-0 w-14 text-center">
-          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-400 dark:text-[#666] flex items-center justify-center mb-2">
+          <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888888] flex items-center justify-center mb-2">
             <Plane className="h-3.5 w-3.5" />
           </div>
           <span className="text-xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.time.split(" ")[0]}</span>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
+          <span className="text-[10px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
         </div>
 
         {/* Route visualization */}
@@ -91,17 +91,17 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
           <div className="flex items-center gap-3 mb-3">
             <div className="text-center shrink-0">
               <p className="text-2xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#666] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
-              <Plane className="h-3 w-3 text-slate-400 dark:text-[#555] shrink-0" />
+              <Plane className="h-3 w-3 text-slate-500 dark:text-[#555] shrink-0" />
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
             </div>
             {to && (
               <div className="text-center shrink-0">
                 <p className="text-2xl font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#666] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
               </div>
             )}
           </div>
@@ -111,7 +111,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} />
           </div>
-          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#666]">
+          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888]">
             {event.airline && <span>{event.airline}{event.flightNum ? ` · ${event.flightNum}` : ""}</span>}
             {event.terminal && <span>Terminal {event.terminal.replace("T", "")}</span>}
             {event.duration && (
@@ -155,7 +155,7 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-500">Accommodation</span>
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate group-hover:text-amber-400 transition-colors">{event.title}</h4>
-              <p className="text-xs text-slate-400 dark:text-[#666] flex items-center gap-1.5 mt-1">
+              <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                 <MapPin className="h-3 w-3 shrink-0" />{event.location}
               </p>
             </div>
@@ -166,13 +166,13 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
             {event.checkin ? (
               <>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888] mb-0.5">Check In</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
                   <p className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkin}</p>
                 </div>
                 {event.checkout && <ArrowRight className="h-3.5 w-3.5 text-amber-400 shrink-0" />}
                 {event.checkout && (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888] mb-0.5">Check Out</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
                     <p className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white leading-none">{event.checkout}</p>
                   </div>
                 )}
@@ -225,11 +225,11 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
                 </span>
               </div>
               <h4 className={`text-base font-bold text-slate-900 dark:text-white leading-tight truncate transition-colors ${isDining ? "group-hover:text-pink-400" : "group-hover:text-[#0bd2b5]"}`}>{event.title}</h4>
-              <p className="text-xs text-slate-400 dark:text-[#666] flex items-center gap-1.5 mt-1">
+              <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                 <MapPin className="h-3 w-3 shrink-0" />{event.location}
               </p>
               {event.notes && (
-                <p className="text-xs text-slate-400 dark:text-[#888] mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
+                <p className="text-xs text-slate-500 dark:text-[#888] mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
               )}
             </div>
             <CardMenu onClick={onClick} onDelete={onDelete} />
@@ -238,7 +238,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
             <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
             {event.endTime && (
-              <span className="text-[11px] font-bold text-slate-400 dark:text-[#666]">→ {event.endTime}</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888]">→ {event.endTime}</span>
             )}
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} />

@@ -4,8 +4,6 @@ import {
   Trash2,
   ZoomIn,
   Play,
-  ImageIcon,
-  VideoIcon,
   Images,
   ChevronDown,
   X,
@@ -61,10 +59,6 @@ export function MediaPage() {
 
   const totalPhotos = allItems.filter((m) => m.type === "image").length;
   const totalVideos = allItems.filter((m) => m.type === "video").length;
-  const totalSize = allItems.reduce((s, m) => s + m.size, 0);
-
-  const fmtSize = (b: number) =>
-    b < 1_048_576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1_048_576).toFixed(1)} MB`;
 
   const selectedTrip = trips.find((t) => t.id === uploadTripId);
 
@@ -159,19 +153,62 @@ export function MediaPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        {/* Stats strip */}
-        <div className="px-6 lg:px-8 pt-5 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center gap-3">
-          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{totalPhotos}</span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Photos</span>
-          </div>
-          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{totalVideos}</span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Videos</span>
-          </div>
-          <div className="flex flex-col items-center bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-2.5">
-            <span className="text-xl font-black italic text-slate-900 dark:text-white leading-none">{fmtSize(totalSize)}</span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888888] mt-0.5">Storage</span>
+
+        {/* Hero Banner */}
+        <div className="px-6 lg:px-8 pt-6">
+          <div className="relative overflow-hidden rounded-[2rem] bg-[#0e0e0e]">
+            {/* Teal glow */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#0bd2b5]/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/2 w-56 h-40 bg-[#0bd2b5]/8 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Trip images — fanned stack, top-right */}
+            {trips.filter(t => t.image).length > 0 && (
+              <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none" style={{ width: "9rem", height: "8rem" }}>
+                {trips.slice(0, 3).map((t, i) => (
+                  <div
+                    key={t.id}
+                    className="absolute rounded-[1.1rem] overflow-hidden border-2 border-white/10 shadow-2xl"
+                    style={{
+                      width: "5.5rem",
+                      height: "7.5rem",
+                      right: `${i * 30}px`,
+                      top: 0,
+                      transform: `rotate(${(i - 1) * 8}deg)`,
+                      zIndex: 3 - i,
+                    }}
+                  >
+                    <img src={t.image} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/25" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="relative px-8 py-10 pr-52">
+              <p className="text-[9px] font-black italic uppercase tracking-[0.55em] text-[#0bd2b5] mb-3">
+                Visual Archive
+              </p>
+              <h2 className="text-[2.75rem] font-black italic uppercase leading-none tracking-tight text-white">
+                Captured<br />Moments
+              </h2>
+              <div className="flex items-center gap-6 mt-6">
+                <div>
+                  <p className="text-2xl font-black italic leading-none text-white">{totalPhotos}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Photos</p>
+                </div>
+                <div className="h-8 w-px bg-[#252525]" />
+                <div>
+                  <p className="text-2xl font-black italic leading-none text-white">{totalVideos}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Videos</p>
+                </div>
+                <div className="h-8 w-px bg-[#252525]" />
+                <div>
+                  <p className="text-2xl font-black italic leading-none text-white">{trips.length}</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Trips</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -196,9 +233,9 @@ export function MediaPage() {
                     <span className="truncate max-w-[160px]">{selectedTrip.name}</span>
                   </>
                 ) : (
-                  <span className="text-slate-400">Select a trip</span>
+                  <span className="text-slate-500">Select a trip</span>
                 )}
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400 ml-1 shrink-0" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 ml-1 shrink-0" />
               </button>
 
               {tripPickerOpen && (
@@ -214,7 +251,7 @@ export function MediaPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-[#666]">{t.media?.length ?? 0} files</p>
+                        <p className="text-[10px] text-slate-500 dark:text-[#888888]">{t.media?.length ?? 0} files</p>
                       </div>
                       {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5] shrink-0" />}
                     </button>
@@ -257,14 +294,14 @@ export function MediaPage() {
               </div>
             ) : (
               <>
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${isDragging ? "bg-[#0bd2b5] text-black scale-110" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-400 dark:text-[#888888]"}`}>
+                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${isDragging ? "bg-[#0bd2b5] text-black scale-110" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"}`}>
                   <Upload className="h-6 w-6" />
                 </div>
                 <div className="pointer-events-none">
                   <p className="font-black italic text-sm uppercase tracking-[0.15em] text-slate-900 dark:text-white">
                     {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
                   </p>
-                  <p className="text-xs text-slate-400 dark:text-[#888888] mt-1">
+                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
                     {selectedTrip ? `Will be added to "${selectedTrip.name}"` : "Select a trip above, then drop files"}
                   </p>
                 </div>
@@ -352,13 +389,6 @@ export function MediaPage() {
                       </button>
                     </div>
 
-                    {/* Type pill */}
-                    <div className="absolute top-2 left-2">
-                      <div className={`h-5 px-1.5 rounded-full flex items-center gap-1 text-[9px] font-bold uppercase backdrop-blur-sm ${item.type === "video" ? "bg-pink-500/80 text-white" : "bg-black/50 text-white/90"}`}>
-                        {item.type === "video" ? <VideoIcon className="h-2.5 w-2.5" /> : <ImageIcon className="h-2.5 w-2.5" />}
-                        {item.type}
-                      </div>
-                    </div>
                   </div>
 
                   {/* Footer */}
@@ -371,7 +401,7 @@ export function MediaPage() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 text-slate-400 dark:text-[#888888]">
+          <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-[#888888]">
             <Images className="h-16 w-16 mb-4 opacity-15" />
             <p className="text-xs font-black italic uppercase tracking-[0.3em]">No media yet</p>
             <p className="text-[11px] mt-1 opacity-70">

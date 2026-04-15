@@ -32,6 +32,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
     "mammoth": "^1.12.0",
+    "mapbox-gl": "^3.21.0",
     "maplibre-gl": "^5.23.0",
     "motion": "^12.38.0",
     "number-flow": "^0.6.0",

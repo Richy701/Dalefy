@@ -605,7 +605,7 @@ export function WorkspacePage() {
                     { id: "dining", label: "Dining", icon: Utensils, color: "text-pink-400" },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-[#0bd2b5] bg-[#0bd2b5]/5 ${cat.color}` : "border-transparent text-slate-400 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
+                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-[#0bd2b5] bg-[#0bd2b5]/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
                       <cat.icon className="h-5 w-5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
                     </button>
@@ -644,11 +644,11 @@ export function WorkspacePage() {
                   {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Date</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Date</label>
                       <Popover>
                         <PopoverTrigger className={cn(
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-[#0bd2b5]/50 transition-colors text-left",
-                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-[#555]"
+                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#555]"
                         )}>
                           <CalendarDays className="h-3.5 w-3.5 text-[#0bd2b5] shrink-0" />
                           <span className="text-sm">{editingEvent?.date ? format(parseISO(editingEvent.date), "MMM d, yyyy") : "Pick a date..."}</span>
@@ -660,7 +660,7 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Start Time</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Time</label>
                       <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} placeholder="10:30 AM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
@@ -669,11 +669,11 @@ export function WorkspacePage() {
                   {(editingEvent?.type === "activity" || editingEvent?.type === "dining") && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">End Time</label>
+                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Time</label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} placeholder="2:00 PM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Duration</label>
+                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</label>
                         <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
@@ -681,25 +681,25 @@ export function WorkspacePage() {
 
                   {/* Location */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Location / Address</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
                     <Input value={editingEvent?.location || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, location: e.target.value } : null)} placeholder="Airport code or Street Address" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                   </div>
 
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Supplier / Provider</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Supplier / Provider</label>
                       <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Confirmation #</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Confirmation #</label>
                       <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Price (Optional)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Price (Optional)</label>
                     <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
                   </div>
 
@@ -721,12 +721,12 @@ export function WorkspacePage() {
                               { key: "terminal", label: "Dep Terminal" }, { key: "arrTerminal", label: "Arr Terminal" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">{f.label}</label>
+                                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
                                 <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="col-span-2 space-y-1.5">
-                              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Seat / Ticket Details</label>
+                              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Seat / Ticket Details</label>
                               <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B — Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
                             </div>
                           </>
@@ -737,7 +737,7 @@ export function WorkspacePage() {
                               { key: "roomType", label: "Room Type" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">{f.label}</label>
+                                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
                                 <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
                               </div>
                             ))}
@@ -755,13 +755,13 @@ export function WorkspacePage() {
                 <div className="p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#555]" />
                       <input
                         value={imageSearch}
                         onChange={e => setImageSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runImageSearch(imageSearch); } }}
                         placeholder="Search images..."
-                        className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] transition-colors"
+                        className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] transition-colors"
                       />
                     </div>
                     <button type="button" onClick={() => runImageSearch(imageSearch)}
@@ -770,13 +770,13 @@ export function WorkspacePage() {
                     </button>
                     {imageSearch && (
                       <button type="button" onClick={() => { setImageSearch(""); setImageResults([]); setImageSearchSource(null); }}
-                        className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                        className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
                   {imageIsAuto && (
-                    <p className="text-[10px] text-slate-400 dark:text-[#555] mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-slate-500 dark:text-[#555] mt-2 flex items-center gap-1">
                       <Sparkles className="h-3 w-3 text-[#0bd2b5]" /> Auto-matching from title
                     </p>
                   )}
@@ -800,7 +800,7 @@ export function WorkspacePage() {
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
                       <Camera className="h-7 w-7 text-slate-300 dark:text-[#333]" />
-                      <p className="text-[10px] text-slate-400 dark:text-[#555] uppercase tracking-widest font-bold">No image selected</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#555] uppercase tracking-widest font-bold">No image selected</p>
                     </div>
                   )}
                 </div>
@@ -808,7 +808,7 @@ export function WorkspacePage() {
                 {/* Results grid */}
                 <div className="flex-1 overflow-y-auto p-3">
                   {isSearchingImages ? (
-                    <div className="flex items-center justify-center h-24 gap-2 text-slate-400 dark:text-[#555]">
+                    <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#555]">
                       <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
                     </div>
@@ -824,7 +824,7 @@ export function WorkspacePage() {
                         ))}
                       </div>
                       {imageSearchSource === "local" && (
-                        <p className="text-[9px] text-slate-400/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
                           Suggested images · APIs unavailable
                         </p>
                       )}
@@ -834,7 +834,7 @@ export function WorkspacePage() {
                         </p>
                       )}
                       {imageSearchSource === "unsplash" && (
-                        <p className="text-[9px] text-slate-400/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
                           Unsplash
                         </p>
                       )}
@@ -842,7 +842,7 @@ export function WorkspacePage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
                       <Search className="h-5 w-5 text-slate-300 dark:text-[#333]" />
-                      <p className="text-[10px] text-slate-400 dark:text-[#555] font-bold uppercase tracking-widest">Type to search images</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#555] font-bold uppercase tracking-widest">Type to search images</p>
                     </div>
                   )}
                 </div>
@@ -850,7 +850,7 @@ export function WorkspacePage() {
                 {/* Media Upload */}
                 <div className="p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5 shrink-0">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Photos & Videos</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
                       className="h-7 px-3 rounded-lg bg-[#0bd2b5]/10 border border-[#0bd2b5]/20 text-[#0bd2b5] text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-[#0bd2b5]/20 transition-colors flex items-center gap-1.5">
                       <Upload className="h-3 w-3" /> Upload
@@ -866,7 +866,7 @@ export function WorkspacePage() {
                           ) : (
                             <div className="h-14 w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-lg border border-slate-200 dark:border-[#252525] flex flex-col items-center justify-center gap-0.5 px-1">
                               <Video className="h-4 w-4 text-[#0bd2b5]" />
-                              <span className="text-[8px] text-slate-400 dark:text-[#555] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
+                              <span className="text-[8px] text-slate-500 dark:text-[#555] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
                             </div>
                           )}
                           <button type="button" onClick={() => handleRemoveMedia(i)}
@@ -878,7 +878,7 @@ export function WorkspacePage() {
                     </div>
                   ) : (
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="w-full h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-400 dark:text-[#555] hover:border-[#0bd2b5]/50 hover:text-[#0bd2b5] transition-colors group">
+                      className="w-full h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#555] hover:border-[#0bd2b5]/50 hover:text-[#0bd2b5] transition-colors group">
                       <ImageIcon2 className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Add photos or videos</span>
                     </button>
@@ -887,7 +887,7 @@ export function WorkspacePage() {
 
                 {/* Notes */}
                 <div className="p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">Agent Notes (Internal)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Agent Notes (Internal)</label>
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
                 </div>
               </div>

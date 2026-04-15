@@ -31,7 +31,7 @@ function BarTooltip({ active, payload, label }: { active?: boolean; payload?: { 
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:border-[#0bd2b5]/30 transition-[border-color,transform] group hover:-translate-y-0.5 duration-300">
+    <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
@@ -40,7 +40,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
           </div>
         </div>
         <p className="text-3xl lg:text-4xl font-black italic tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#888] mt-3">{sub}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-3">{sub}</p>
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ export function ReportsPage() {
         cta={
           <button
             onClick={handleExportCsv}
-            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-[#0bd2b5] hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-all shadow-sm shadow-[#0bd2b5]/20 shrink-0"
+            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-[#0bd2b5] hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0"
             aria-label="Export trips as CSV"
           >
             <Download className="h-3.5 w-3.5" />
@@ -160,7 +160,7 @@ export function ReportsPage() {
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
               {(["operations", "compliance"] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-400 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"}`}>
                   {t === "operations" ? "Overview" : "Documents"}
                   {tab === t && <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />}
                 </button>
@@ -180,7 +180,7 @@ export function ReportsPage() {
               </div>
 
               {/* Trip Pipeline — full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
@@ -219,15 +219,15 @@ export function ReportsPage() {
                             <div className="flex items-center gap-3">
                               <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
                               <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                              <span className="text-[11px] font-bold text-slate-400 dark:text-[#888] uppercase tracking-wider hidden sm:inline">{s.desc}</span>
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider hidden sm:inline">{s.desc}</span>
                             </div>
                             <div className="flex items-baseline gap-2">
                               <span className="text-lg font-black italic tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                              <span className="text-[11px] font-bold text-slate-400 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
                             </div>
                           </div>
                           <div className="h-3 bg-slate-100 dark:bg-[#0a0a0a] rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color, boxShadow: `0 0 8px ${s.color}40` }} />
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color,  }} />
                           </div>
                         </div>
                       );
@@ -237,7 +237,7 @@ export function ReportsPage() {
               </div>
 
               {/* Upcoming Departures */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Upcoming Departures</h3>
@@ -252,7 +252,7 @@ export function ReportsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white truncate">{t.name}</div>
-                        <div className="text-[11px] text-slate-400 dark:text-[#888] mt-0.5">
+                        <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">
                           {new Date(t.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} — {t.duration} days
                         </div>
                       </div>
@@ -260,7 +260,7 @@ export function ReportsPage() {
                         {t.daysUntil <= 0 ? (
                           <span className="text-xs font-bold text-[#0bd2b5] uppercase tracking-wider">Now</span>
                         ) : (
-                          <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-400 dark:text-[#888] ml-1 not-italic tracking-widest">DAYS</span></span>
+                          <span className="text-sm font-black italic tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 not-italic tracking-widest">DAYS</span></span>
                         )}
                       </div>
                       <Badge className={`text-xs font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider shrink-0`} style={{ background: `${STATUS_COLORS[t.status]}18`, color: STATUS_COLORS[t.status] }}>
@@ -272,7 +272,7 @@ export function ReportsPage() {
               </div>
 
               {/* Trips by Month — full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Departure schedule</p>
@@ -293,7 +293,7 @@ export function ReportsPage() {
               {/* Top Airlines & Hotels — side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Airlines */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-[#0bd2b5]/10 text-[#0bd2b5] flex items-center justify-center">
                       <Plane className="h-4 w-4" />
@@ -321,11 +321,11 @@ export function ReportsPage() {
                         </div>
                       );
                     })}
-                    {stats.topAirlines.length === 0 && <p className="text-xs text-slate-400 dark:text-[#888]">No airline data</p>}
+                    {stats.topAirlines.length === 0 && <p className="text-xs text-slate-500 dark:text-[#888]">No airline data</p>}
                   </div>
                 </div>
                 {/* Hotels */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b] flex items-center justify-center">
                       <Hotel className="h-4 w-4" />
@@ -353,7 +353,7 @@ export function ReportsPage() {
                         </div>
                       );
                     })}
-                    {stats.topHotels.length === 0 && <p className="text-xs text-slate-400 dark:text-[#888]">No hotel data</p>}
+                    {stats.topHotels.length === 0 && <p className="text-xs text-slate-500 dark:text-[#888]">No hotel data</p>}
                   </div>
                 </div>
               </div>
@@ -372,7 +372,7 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance — full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
@@ -423,16 +423,16 @@ export function ReportsPage() {
                               <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18`, color: s.color }}>{s.icon}</div>
                               <div>
                                 <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                                <p className="text-[11px] font-bold text-slate-400 dark:text-[#888] uppercase tracking-wider hidden sm:block">{s.desc}</p>
+                                <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider hidden sm:block">{s.desc}</p>
                               </div>
                             </div>
                             <div className="flex items-baseline gap-2">
                               <span className="text-lg font-black italic tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                              <span className="text-[11px] font-bold text-slate-400 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{pct}%</span>
                             </div>
                           </div>
                           <div className="h-3 bg-slate-100 dark:bg-[#0a0a0a] rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color, boxShadow: `0 0 8px ${s.color}40` }} />
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color,  }} />
                           </div>
                         </div>
                       );
@@ -442,7 +442,7 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type — full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
@@ -486,7 +486,7 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action — side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileCheck className="h-4 w-4" />
@@ -504,19 +504,19 @@ export function ReportsPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</div>
-                          <div className="text-[11px] text-slate-400 dark:text-[#888] mt-0.5">{a.doc}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">{a.doc}</div>
                         </div>
-                        <span className="text-xs font-bold text-slate-400 dark:text-[#888] uppercase tracking-wider shrink-0">
+                        <span className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider shrink-0">
                           {new Date(a.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                         </span>
                       </div>
                     ))}
-                    {complianceData.recentActivity.length === 0 && <p className="text-xs text-slate-400 dark:text-[#888] py-4 text-center">No signed documents yet</p>}
+                    {complianceData.recentActivity.length === 0 && <p className="text-xs text-slate-500 dark:text-[#888] py-4 text-center">No signed documents yet</p>}
                   </div>
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
                       <AlertTriangle className="h-4 w-4" />
@@ -541,7 +541,7 @@ export function ReportsPage() {
                           <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-[11px] shrink-0">{t.initials}</div>
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</div>
-                            <div className="text-[11px] text-slate-400 dark:text-[#888] mt-0.5">{t.role}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">{t.role}</div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {t.pend > 0 && (
@@ -558,14 +558,14 @@ export function ReportsPage() {
                         </div>
                       ))}
                     {complianceData.travelers.every(t => t.compliance.every(d => d.status !== "Pending" && d.status !== "Expired")) && (
-                      <p className="text-xs text-slate-400 dark:text-[#888] py-4 text-center">All members are fully compliant</p>
+                      <p className="text-xs text-slate-500 dark:text-[#888] py-4 text-center">All members are fully compliant</p>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8 shadow-2xl">
+              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
@@ -602,7 +602,7 @@ export function ReportsPage() {
                                 <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black italic text-[11px] shrink-0">{t.initials}</div>
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">{t.name}</span>
-                                  <span className="text-[11px] text-slate-400 dark:text-[#888]">{t.role}</span>
+                                  <span className="text-[11px] text-slate-500 dark:text-[#888]">{t.role}</span>
                                 </div>
                               </div>
                             </td>
@@ -637,7 +637,7 @@ export function ReportsPage() {
                   ].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       {i.icon}
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-[#888]">{i.l}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">{i.l}</span>
                     </div>
                   ))}
                 </div>
