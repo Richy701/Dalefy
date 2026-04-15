@@ -4,22 +4,23 @@ Internal travel planning and itinerary management platform for teams. Build, man
 
 ## Features
 
-- **Trip Dashboard** — Stats, quick actions, upcoming trip carousel, and live activity feed
+- **Trip Dashboard** — Stats, upcoming trip carousel, live activity feed, and quick actions
 - **Itinerary Builder** — Day-by-day event management with flights, hotels, activities, and dining
-- **Interactive Map** — Route visualisation powered by Leaflet with OpenStreetMap tiles
-- **World Destinations Map** — react-simple-maps globe with connection arcs and hover tooltips
-- **Team Directory** — Member table with sortable columns, compliance document tracking, and reminder sending
+- **Interactive Map** — Route visualisation powered by Mapbox GL with marching-ants arc animation
+- **World Destinations Map** — Mapbox globe with connection lines and pulsing destination markers
+- **Team Directory** — Member table with sortable columns, compliance tracking, and reminder sending
 - **Document Compliance** — Per-traveler doc status (Signed / Pending / Expired) with sign & remind actions
-- **HR Documents Tab** — Aggregated doc view with stats across all travelers
-- **Reports Page** — Trip analytics with charts powered by Recharts
-- **Media Library** — Dedicated `/media` page to upload, browse, and manage photos and videos across all trips; per-trip media tab also available in the workspace
+- **HR Documents Tab** — Aggregated compliance view with stats across all travelers
+- **Reports Page** — Trip analytics and charts powered by Recharts
+- **Media Library** — Upload, browse, and manage photos and videos across all trips with drag & drop; per-trip media tab also available in the workspace
 - **Import Itinerary** — Upload PDF, Word, PowerPoint, or plain text — auto-parsed into trip events
 - **AI Zap** — AI-assisted itinerary suggestions within the workspace
+- **Command Palette** — Global ⌘K search across trips, pages, and actions
 - **Grid & List Views** — Card grid and table layout for trip browsing
 - **Dark / Light Mode** — Instant theme switching
 - **Date Range Picker** — Calendar for selecting travel dates when creating trips
 - **Search & Filter** — Live search across trips, travelers, and destinations
-- **Local Persistence** — All data saved to localStorage (survives refreshes, no backend needed)
+- **Local Persistence** — All data saved to localStorage (no backend needed)
 - **Recent Trip Shortcut** — Sidebar quick-link to the last accessed trip workspace
 
 ## Demo Data
@@ -40,18 +41,22 @@ Comes preloaded with 8 fully detailed trips:
 - React 19 + TypeScript
 - Vite 8
 - Tailwind CSS 3
-- Base UI (`@base-ui/react`) — headless primitives
+- Shadcn-style components (Dialog, DropdownMenu, Popover, Calendar, Badge)
 - Lucide React icons
-- React Leaflet + Leaflet — workspace trip map
-- react-simple-maps — destinations world map
+- Mapbox GL JS via `react-map-gl/mapbox` — workspace trip map + destinations globe
 - Recharts — reports charts
 - Embla Carousel — upcoming trips carousel
 - TanStack Table — travelers table with sorting & pagination
-- date-fns + React Day Picker
+- TanStack Virtual — virtual scrolling for large lists
+- cmdk — command palette
+- vaul — bottom drawer (add traveler form)
+- motion — page transitions
+- @number-flow/react — animated stat counters
+- react-hotkeys-hook — keyboard shortcuts
+- yet-another-react-lightbox — trip image lightbox
+- date-fns + React Day Picker — date selection
 - html2canvas + jsPDF — PDF export
 - pdfjs-dist + mammoth + jszip — itinerary import parsing
-- NumberFlow — animated stat counters
-- yet-another-react-lightbox — trip image lightbox
 
 ## Getting Started
 
@@ -62,11 +67,15 @@ npm run dev
 
 Opens at [http://localhost:5173](http://localhost:5173).
 
-## Image Search (Optional)
+## Environment Variables
 
-Copy `.env.local.example` to `.env.local` and fill in your API keys for destination image search:
+Copy `.env.local.example` to `.env.local` and fill in your keys:
 
-- **Google Custom Search** — 100 free searches/day
-- **Unsplash** — fallback, 50 req/hr free
+| Variable | Required | Purpose |
+|---|---|---|
+| `VITE_MAPBOX_TOKEN` | Yes | Maps (workspace + destinations) |
+| `VITE_GOOGLE_API_KEY` | Optional | Destination image search |
+| `VITE_GOOGLE_CSE_ID` | Optional | Destination image search |
+| `VITE_UNSPLASH_ACCESS_KEY` | Optional | Fallback image search (50 req/hr free) |
 
-Without keys the app uses a built-in image bank.
+Without the image search keys the app uses a built-in image bank. Without the Mapbox token the maps will not render.

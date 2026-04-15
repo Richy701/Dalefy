@@ -233,7 +233,7 @@ export function TravelersPage() {
           <div className="max-w-md w-full relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
+            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
         }
         cta={
@@ -533,7 +533,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.35em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
                     <User className="h-3 w-3" /> Full Name
                   </label>
                   <input
@@ -541,13 +541,13 @@ export function TravelersPage() {
                     value={drawerForm.name}
                     onChange={e => setDrawerForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Alex Johnson"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#444] transition-all"
+                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
                   />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.35em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
                     <Mail className="h-3 w-3" /> Email Address
                   </label>
                   <input
@@ -556,13 +556,13 @@ export function TravelersPage() {
                     value={drawerForm.email}
                     onChange={e => setDrawerForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="name@dafadventures.com"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#444] transition-all"
+                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
                   />
                 </div>
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.35em] text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#666] flex items-center gap-2">
                     <Briefcase className="h-3 w-3" /> Role
                   </label>
                   <input
@@ -570,7 +570,7 @@ export function TravelersPage() {
                     onChange={e => setDrawerForm(f => ({ ...f, role: e.target.value }))}
                     placeholder="e.g. Travel Specialist"
                     list="role-suggestions"
-                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#444] transition-all"
+                    className="w-full h-12 px-4 bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl text-white text-sm font-bold focus:outline-none focus:border-[#0bd2b5]/50 focus:ring-1 focus:ring-[#0bd2b5]/20 placeholder:text-[#555] transition-all"
                   />
                   <datalist id="role-suggestions">
                     {["Lead Designer", "Senior Agent", "Travel Specialist", "Product Manager", "EU Sales Lead", "Content Creator", "Executive Advisor", "Operations Manager"].map(r => (
