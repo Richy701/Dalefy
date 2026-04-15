@@ -155,7 +155,7 @@ export function DestinationsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="SEARCH DESTINATIONS..."
-              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
         }
@@ -171,7 +171,7 @@ export function DestinationsPage() {
           <MapboxMap
             ref={mapRef}
             initialViewState={{ longitude: 10, latitude: 10, zoom: 0 }}
-            mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+            mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
             mapboxAccessToken={MAPBOX_TOKEN}
             projection="mercator"
             attributionControl={false}
@@ -319,47 +319,47 @@ export function DestinationsPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/5" />
                 </div>
                 <div className="relative z-10 flex items-start justify-between p-6">
-                  <span className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] bg-black/30 text-white/70 border border-white/10">{dest.region}</span>
-                  <span className="bg-black/30 text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-white/10">{dest.eventCount} Events</span>
+                  <span className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
+                  <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
                   <h3 className="text-3xl font-black italic uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
-                      <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2 py-0.5">
-                        <Plane className="h-2.5 w-2.5 text-white/70" />
-                        <span className="text-[9px] font-bold text-white/70">{dest.types.flights}</span>
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
+                        <Plane className="h-2.5 w-2.5 text-white/90" />
+                        <span className="text-[10px] font-bold text-white/90">{dest.types.flights}</span>
                       </div>
                     )}
                     {dest.types.hotels > 0 && (
-                      <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
                         <Hotel className="h-2.5 w-2.5 text-amber-300" />
-                        <span className="text-[9px] font-bold text-white/70">{dest.types.hotels}</span>
+                        <span className="text-[10px] font-bold text-white/90">{dest.types.hotels}</span>
                       </div>
                     )}
                     {dest.types.activities > 0 && (
-                      <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
                         <Compass className="h-2.5 w-2.5 text-[#0bd2b5]" />
-                        <span className="text-[9px] font-bold text-white/70">{dest.types.activities}</span>
+                        <span className="text-[10px] font-bold text-white/90">{dest.types.activities}</span>
                       </div>
                     )}
                     {dest.types.dining > 0 && (
-                      <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
                         <Utensils className="h-2.5 w-2.5 text-pink-300" />
-                        <span className="text-[9px] font-bold text-white/70">{dest.types.dining}</span>
+                        <span className="text-[10px] font-bold text-white/90">{dest.types.dining}</span>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pt-4 border-t border-white/15">
                     <div className="flex items-center gap-1.5">
                       <LucideCalendar className="h-3 w-3 text-[#0bd2b5]" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-white/60">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
                         {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-white/40" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-white/60">
+                      <MapPin className="h-3 w-3 text-white/70" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
                         {dest.tripCount} {dest.tripCount === 1 ? "Trip" : "Trips"}
                       </span>
                     </div>

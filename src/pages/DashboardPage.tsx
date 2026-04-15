@@ -194,7 +194,7 @@ export function DashboardPage() {
           <div className="max-w-xs w-full relative group hidden md:flex items-center">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trips..." className="pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-500/40 dark:placeholder:text-[#888888]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trips..." className="pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
@@ -439,7 +439,7 @@ export function DashboardPage() {
                 <div className="relative h-[220px] overflow-hidden rounded-b-3xl">
                   <MapboxMap
                     initialViewState={{ longitude: 15, latitude: 5, zoom: 0 }}
-                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
                     mapboxAccessToken={MAPBOX_TOKEN}
                     projection="mercator"
                     attributionControl={false}
@@ -661,7 +661,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
               <div className="space-y-3">
                 <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Itinerary Title</Label>
-                <Input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip" className="h-14 text-xl font-extrabold uppercase tracking-tight bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] rounded-none focus-visible:border-[#0bd2b5] px-1 transition-[border-color] placeholder:text-slate-500 dark:text-slate-400/20 dark:placeholder:text-[#888]/20" />
+                <Input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip" className="h-14 text-xl font-extrabold uppercase tracking-tight bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] rounded-none focus-visible:border-[#0bd2b5] px-1 transition-[border-color] placeholder:text-slate-400 dark:text-white dark:placeholder:text-[#555]" />
               </div>
               <div className="space-y-3">
                 <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Trip Type</Label>
