@@ -289,7 +289,7 @@ export function DashboardPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{trip.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <MapPin className="h-3 w-3 text-slate-500 shrink-0" />
+                              <MapPin className="h-3 w-3 text-slate-500 dark:text-slate-400 shrink-0" />
                               <p className="text-[11px] text-slate-500 dark:text-[#888888] truncate font-medium">{trip.destination || trip.attendees}</p>
                             </div>
                           </div>
@@ -301,7 +301,7 @@ export function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#555]">
+                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => setIsNewTripOpen(true)} className="mt-3 text-[10px] font-bold text-[#0bd2b5] hover:underline">Create one →</button>
@@ -365,7 +365,7 @@ export function DashboardPage() {
                                   </div>
                                   {/* Action buttons */}
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <button aria-label="Save" className="h-7 w-7 rounded-full border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 hover:text-red-400 hover:border-red-200 transition-colors">
+                                    <button aria-label="Save" className="h-7 w-7 rounded-full border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-red-400 hover:border-red-200 transition-colors">
                                       <Heart className="h-3 w-3" aria-hidden="true" />
                                     </button>
                                     <button aria-label="Share" className="h-7 w-7 rounded-full bg-[#0bd2b5] flex items-center justify-center text-[#050505] hover:opacity-80 transition-opacity">
@@ -406,7 +406,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center py-10 text-slate-500 dark:text-[#555] cursor-pointer hover:border-[#0bd2b5]/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-[#0bd2b5]/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-[#0bd2b5] transition-colors" />
@@ -546,12 +546,12 @@ export function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-400" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 text-slate-900 dark:text-white" />
                 </div>
                 <div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-sm">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -661,7 +661,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
               <div className="space-y-3">
                 <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Itinerary Title</Label>
-                <Input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip" className="h-14 text-xl font-extrabold uppercase tracking-tight bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] rounded-none focus-visible:border-[#0bd2b5] px-1 transition-[border-color] placeholder:text-slate-500/20 dark:placeholder:text-[#888]/20" />
+                <Input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip" className="h-14 text-xl font-extrabold uppercase tracking-tight bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] rounded-none focus-visible:border-[#0bd2b5] px-1 transition-[border-color] placeholder:text-slate-500 dark:text-slate-400/20 dark:placeholder:text-[#888]/20" />
               </div>
               <div className="space-y-3">
                 <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] ml-1">Trip Type</Label>

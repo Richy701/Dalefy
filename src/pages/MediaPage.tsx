@@ -233,9 +233,9 @@ export function MediaPage() {
                     <span className="truncate max-w-[160px]">{selectedTrip.name}</span>
                   </>
                 ) : (
-                  <span className="text-slate-500">Select a trip</span>
+                  <span className="text-slate-500 dark:text-slate-400">Select a trip</span>
                 )}
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500 ml-1 shrink-0" />
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400 ml-1 shrink-0" />
               </button>
 
               {tripPickerOpen && (

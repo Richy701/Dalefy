@@ -120,7 +120,7 @@ const EVENT_TYPE_ICONS: Record<EventType, typeof Plane> = {
 };
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
-  flight: "text-slate-500",
+  flight: "text-slate-500 dark:text-slate-400",
   hotel: "text-amber-400",
   activity: "text-[#0bd2b5]",
   dining: "text-pink-400",
@@ -370,7 +370,7 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
             <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Trip Name</p>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-[#0bd2b5] transition-colors">
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-[#0bd2b5] transition-colors">
                   ← Back
                 </button>
               </div>
@@ -416,7 +416,7 @@ export function ImportItineraryDialog({ open, onOpenChange }: ImportItineraryDia
               <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
                 <AlertCircle className="h-5 w-5 text-amber-400" />
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
-                <p className="text-[10px] text-slate-500 dark:text-[#555] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
+                <p className="text-[10px] text-slate-500 dark:text-[#888888] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
               </div>
             )}
 

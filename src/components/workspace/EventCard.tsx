@@ -25,7 +25,7 @@ function MediaBadge({ media }: { media?: TravelEvent["media"] }) {
   return (
     <div className="flex items-center gap-1.5">
       {images > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#555] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
           <ImageIcon className="h-2.5 w-2.5" />{images}
         </span>
       )}
@@ -42,7 +42,7 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
   return (
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#555] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
+        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#888888] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
           <MoreVertical className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
@@ -95,7 +95,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
-              <Plane className="h-3 w-3 text-slate-500 dark:text-[#555] shrink-0" />
+              <Plane className="h-3 w-3 text-slate-500 dark:text-[#888888] shrink-0" />
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
             </div>
             {to && (

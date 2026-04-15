@@ -605,7 +605,7 @@ export function WorkspacePage() {
                     { id: "dining", label: "Dining", icon: Utensils, color: "text-pink-400" },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-[#0bd2b5] bg-[#0bd2b5]/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
+                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-[#0bd2b5] bg-[#0bd2b5]/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
                       <cat.icon className="h-5 w-5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
                     </button>
@@ -648,7 +648,7 @@ export function WorkspacePage() {
                       <Popover>
                         <PopoverTrigger className={cn(
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-[#0bd2b5]/50 transition-colors text-left",
-                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#555]"
+                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#888888]"
                         )}>
                           <CalendarDays className="h-3.5 w-3.5 text-[#0bd2b5] shrink-0" />
                           <span className="text-sm">{editingEvent?.date ? format(parseISO(editingEvent.date), "MMM d, yyyy") : "Pick a date..."}</span>
@@ -755,7 +755,7 @@ export function WorkspacePage() {
                 <div className="p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#555]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
                       <input
                         value={imageSearch}
                         onChange={e => setImageSearch(e.target.value)}
@@ -776,7 +776,7 @@ export function WorkspacePage() {
                     )}
                   </div>
                   {imageIsAuto && (
-                    <p className="text-[10px] text-slate-500 dark:text-[#555] mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
                       <Sparkles className="h-3 w-3 text-[#0bd2b5]" /> Auto-matching from title
                     </p>
                   )}
@@ -800,7 +800,7 @@ export function WorkspacePage() {
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
                       <Camera className="h-7 w-7 text-slate-300 dark:text-[#333]" />
-                      <p className="text-[10px] text-slate-500 dark:text-[#555] uppercase tracking-widest font-bold">No image selected</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#888888] uppercase tracking-widest font-bold">No image selected</p>
                     </div>
                   )}
                 </div>
@@ -808,7 +808,7 @@ export function WorkspacePage() {
                 {/* Results grid */}
                 <div className="flex-1 overflow-y-auto p-3">
                   {isSearchingImages ? (
-                    <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#555]">
+                    <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#888888]">
                       <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
                     </div>
@@ -842,7 +842,7 @@ export function WorkspacePage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
                       <Search className="h-5 w-5 text-slate-300 dark:text-[#333]" />
-                      <p className="text-[10px] text-slate-500 dark:text-[#555] font-bold uppercase tracking-widest">Type to search images</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#888888] font-bold uppercase tracking-widest">Type to search images</p>
                     </div>
                   )}
                 </div>
@@ -866,7 +866,7 @@ export function WorkspacePage() {
                           ) : (
                             <div className="h-14 w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-lg border border-slate-200 dark:border-[#252525] flex flex-col items-center justify-center gap-0.5 px-1">
                               <Video className="h-4 w-4 text-[#0bd2b5]" />
-                              <span className="text-[8px] text-slate-500 dark:text-[#555] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
+                              <span className="text-[8px] text-slate-500 dark:text-[#888888] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
                             </div>
                           )}
                           <button type="button" onClick={() => handleRemoveMedia(i)}
@@ -878,7 +878,7 @@ export function WorkspacePage() {
                     </div>
                   ) : (
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="w-full h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#555] hover:border-[#0bd2b5]/50 hover:text-[#0bd2b5] transition-colors group">
+                      className="w-full h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/50 hover:text-[#0bd2b5] transition-colors group">
                       <ImageIcon2 className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Add photos or videos</span>
                     </button>

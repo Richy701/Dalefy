@@ -66,7 +66,7 @@ export function Sidebar() {
         </nav>
         {recentTrip && (
           <div className="px-4 pb-4">
-            <p className="px-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555] mb-2">Recent</p>
+            <p className="px-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mb-2">Recent</p>
             <button
               onClick={() => navigate(`/trip/${recentTrip.id}`)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-[background-color] group text-left"
@@ -76,7 +76,7 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-slate-700 dark:text-[#aaa] truncate leading-none group-hover:text-[#0bd2b5] transition-colors">{recentTrip.name}</p>
-                <p className="text-[10px] font-medium text-slate-500 dark:text-[#555] mt-0.5 truncate">{recentTrip.destination || recentTrip.status}</p>
+                <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] mt-0.5 truncate">{recentTrip.destination || recentTrip.status}</p>
               </div>
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 dark:text-[#444] group-hover:text-[#0bd2b5] transition-colors shrink-0" />
             </button>
@@ -87,7 +87,7 @@ export function Sidebar() {
             <p className="text-xs font-bold text-slate-900 dark:text-white truncate leading-none">{user?.name || "Ash Murray"}</p>
             <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] leading-none mt-0.5 truncate">{user?.role || "Lead Designer"}</p>
           </div>
-          <button aria-label="Sign out" onClick={() => setSignOutOpen(true)} className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 transition-[background-color,color] shrink-0">
+          <button aria-label="Sign out" onClick={() => setSignOutOpen(true)} className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-red-500 hover:bg-red-500/10 transition-[background-color,color] shrink-0">
             <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>

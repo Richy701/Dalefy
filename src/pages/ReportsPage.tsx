@@ -160,7 +160,7 @@ export function ReportsPage() {
             </div>
             <div className="flex gap-1 bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] shrink-0">
               {(["operations", "compliance"] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"}`}>
+                <button key={t} onClick={() => setTab(t)} className={`relative px-7 py-3 rounded-xl text-[11px] font-black italic uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${tab === t ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"}`}>
                   {t === "operations" ? "Overview" : "Documents"}
                   {tab === t && <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-[#0bd2b5]" />}
                 </button>

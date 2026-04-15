@@ -64,19 +64,19 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">Live Flight Search</p>
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex-1 min-w-[70px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">From</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">From</label>
             <input value={from} onChange={e => setFrom(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="LHR" maxLength={4} className={inputCls} />
           </div>
           <div className="flex-1 min-w-[70px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">To</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">To</label>
             <input value={to} onChange={e => setTo(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="DXB" maxLength={4} className={inputCls} />
           </div>
           <div className="flex-1 min-w-[110px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Date</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Date</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
           </div>
           <div className="w-14">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#555] block mb-1">Pax</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Pax</label>
             <input type="number" value={adults} onChange={e => setAdults(Number(e.target.value))} min={1} max={99} className={inputCls} />
           </div>
           <button
@@ -114,15 +114,15 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
                   <span>{f.fromCode}</span>
-                  <ArrowRight className="h-2.5 w-2.5 text-slate-500 shrink-0" />
+                  <ArrowRight className="h-2.5 w-2.5 text-slate-500 dark:text-slate-400 shrink-0" />
                   <span>{f.toCode}</span>
                   <span className="text-slate-300 dark:text-[#444]">·</span>
                   <span className="font-medium text-slate-500 dark:text-[#888] text-[10px]">{f.flightNum}</span>
                   {f.stops > 0 && (
-                    <span className="text-[10px] font-medium text-slate-500">{f.stops} stop{f.stops > 1 ? "s" : ""}</span>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{f.stops} stop{f.stops > 1 ? "s" : ""}</span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-[#555] mt-0.5">
+                <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-0.5">
                   {f.departTime} → {f.arriveTime} · {fmtDuration(f.durationMins)}
                 </p>
               </div>

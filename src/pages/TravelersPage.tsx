@@ -270,7 +270,7 @@ export function TravelersPage() {
                   className={`relative px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 focus-visible:ring-offset-2 ${
                     tab === t
                       ? "bg-white dark:bg-[#1a1a1a] text-[#0bd2b5] shadow-md shadow-black/10 dark:shadow-black/40"
-                      : "text-slate-500 dark:text-[#555] hover:text-slate-700 dark:hover:text-slate-200"
+                      : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
                   }`}
                 >
                   {t === "travelers" ? "Team Overview" : "Documents"}
@@ -296,7 +296,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
+                            className={`px-6 py-5 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-[#0bd2b5] transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -380,14 +380,14 @@ export function TravelersPage() {
               {/* Pagination — only shown when data > 10 */}
               {table.getPageCount() > 1 && (
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center justify-between bg-slate-50/30 dark:bg-[#0a0a0a]">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {filtered.length} members
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Previous page"
                     >
                       <PgLeft className="h-4 w-4" />
@@ -399,7 +399,7 @@ export function TravelersPage() {
                         className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
                           table.getState().pagination.pageIndex === i
                             ? "bg-[#0bd2b5] text-black shadow-sm"
-                            : "text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5"
+                            : "text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5"
                         }`}
                       >
                         {i + 1}
@@ -408,7 +408,7 @@ export function TravelersPage() {
                     <button
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#555] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] hover:bg-[#0bd2b5]/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Next page"
                     >
                       <PgRight className="h-4 w-4" />
@@ -448,11 +448,11 @@ export function TravelersPage() {
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
                 <div className="pl-8 pr-6 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center gap-4 lg:gap-6">
                   <div className="h-9 w-9 shrink-0" />
-                  <div className="min-w-[140px] text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">Traveler</div>
-                  <div className="flex-1 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555]">Document Type</div>
-                  <div className="w-24 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-center">Status</div>
-                  <div className="w-28 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-right hidden md:block">Date Signed</div>
-                  <div className="w-48 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#555] text-right">Actions</div>
+                  <div className="min-w-[140px] text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Traveler</div>
+                  <div className="flex-1 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Document Type</div>
+                  <div className="w-24 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-center">Status</div>
+                  <div className="w-28 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right hidden md:block">Date Signed</div>
+                  <div className="w-48 text-[10px] font-black italic uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Actions</div>
                 </div>
 
                 {/* Docs list */}
@@ -481,13 +481,13 @@ export function TravelersPage() {
                             <Badge className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
                           </div>
                           <div className="w-28 text-right hidden md:block">
-                            <span className={`text-xs font-bold uppercase tracking-wider ${doc.date ? "text-slate-500" : "text-slate-300 italic"}`}>
+                            <span className={`text-xs font-bold uppercase tracking-wider ${doc.date ? "text-slate-500 dark:text-slate-400" : "text-slate-300 italic"}`}>
                               {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Pending"}
                             </span>
                           </div>
                           <div className="w-48 flex justify-end shrink-0">
                             {doc.status === "Signed" ? (
-                              <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-all">
+                              <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-all">
                                 <Eye className="h-3 w-3" /> REVIEW
                               </button>
                             ) : (
@@ -495,7 +495,7 @@ export function TravelersPage() {
                                 <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#0bd2b5] text-xs font-black uppercase tracking-widest text-black hover:opacity-90">
                                   <FileCheck className="h-3 w-3" /> SIGN
                                 </button>
-                                <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 hover:text-amber-500 hover:border-amber-500/40 transition-all disabled:opacity-50">
+                                <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:border-amber-500/40 transition-all disabled:opacity-50">
                                   <Send className="h-3 w-3" /> {isSending ? "..." : "REMIND"}
                                 </button>
                               </div>
