@@ -26,8 +26,12 @@ export function NavUser() {
   const { isMobile } = useSidebar();
   const [signOutOpen, setSignOutOpen] = useState(false);
 
-  const initials = (user?.name ?? "Ash Murray")
-    .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
+  const displayName = user?.name ?? "";
+  const displayRole = user?.role ?? "";
+  const displayEmail = user?.email ?? "";
+  const initials = user?.initials ?? (
+    displayName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?"
+  );
 
   const handleSignOut = () => { logout(); navigate("/login"); };
   const isDark = theme === "dark";
@@ -44,8 +48,8 @@ export function NavUser() {
                 {initials}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
-                <span className="truncate text-[11px] font-bold text-sidebar-foreground">{user?.name ?? "Ash Murray"}</span>
-                <span className="truncate text-[9px] text-sidebar-foreground/40 uppercase tracking-wider">{user?.role ?? "Lead Designer"}</span>
+                <span className="truncate text-[11px] font-bold text-sidebar-foreground">{displayName}</span>
+                <span className="truncate text-[9px] text-sidebar-foreground/40 uppercase tracking-wider">{displayRole}</span>
               </div>
               <ChevronsUpDown className="ml-auto h-4 w-4 text-sidebar-foreground/40 shrink-0" />
             </DropdownMenuTrigger>
@@ -61,8 +65,8 @@ export function NavUser() {
                     {initials}
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
-                    <span className="truncate text-[11px] font-bold text-white">{user?.name ?? "Ash Murray"}</span>
-                    <span className="truncate text-[9px] text-[#555] uppercase tracking-wider">{user?.email ?? user?.role ?? "Lead Designer"}</span>
+                    <span className="truncate text-[11px] font-bold text-white">{displayName}</span>
+                    <span className="truncate text-[9px] text-[#555] uppercase tracking-wider">{displayEmail || displayRole}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>

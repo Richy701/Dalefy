@@ -70,11 +70,21 @@ async function extractText(file: File): Promise<string> {
 
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const DATE_PATTERNS = [
-  new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{4}))?`, "gi"),
-  new RegExp(`${MONTH}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, "gi"),
+  // "4th Nov" or "4 th Nov" (PDF extraction often inserts whitespace before the ordinal suffix)
+  new RegExp(`(\\d{1,2})\\s*(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{4}))?`, "gi"),
+  new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, "gi"),
   /(\d{4})-(\d{2})-(\d{2})/g,
   /(\d{2})\/(\d{2})\/(\d{4})/g,
 ];
+
+const MONTH_CODE: Record<string, string> = {
+  JAN: "01", FEB: "02", MAR: "03", APR: "04", MAY: "05", JUN: "06",
+  JUL: "07", AUG: "08", SEP: "09", OCT: "10", NOV: "11", DEC: "12",
+};
+
+// GDS / airline flight-string: "QF 002J 02NOV LHRSYD 2010 0635+2", "EK 16 20NOV LGWDXB 1335 0040",
+// "LH903 24NOV LHR-FRA 09:30 -12:05", "QF 922 Y 06NOV 4 SYDCNS 0945 1150"
+const GDS_FLIGHT_RE = /\b([A-Z]{2})\s*(\d{2,4})\s*([A-Z])?\s+(\d{1,2})([A-Z]{3})(?:\s+\d)?\s+([A-Z]{3})[\s-]*([A-Z]{3})\s+(\d{4}|\d{1,2}[.:]\d{2})\s*[-–—]?\s*(\d{4}|\d{1,2}[.:]\d{2})/g;
 
 function parseDate(str: string, fallbackYear?: number): string | null {
   const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -85,13 +95,13 @@ function parseDate(str: string, fallbackYear?: number): string | null {
     jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
     jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
   };
-  const m1 = str.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(\w{3})\w*(?:\s+(\d{4}))?/i);
+  const m1 = str.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s+(\w{3})\w*(?:\s+(\d{4}))?/i);
   if (m1) {
     const mon = months[m1[2].toLowerCase().slice(0, 3)];
     const year = m1[3] ?? fallbackYear?.toString();
     if (mon && year) return `${year}-${mon}-${m1[1].padStart(2, "0")}`;
   }
-  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?/i);
+  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})\s*(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?/i);
   if (m2) {
     const mon = months[m2[1].toLowerCase().slice(0, 3)];
     const year = m2[3] ?? fallbackYear?.toString();
@@ -100,9 +110,17 @@ function parseDate(str: string, fallbackYear?: number): string | null {
   return null;
 }
 
-// Supports: "9:50am", "9.50am", "17:30", "10.00:", "1pm", "2am"
+// Supports: "9:50am", "9.50am", "17:30", "10.00:", "1pm", "2am",
+// plus 4-digit military like "0930", "1015hrs", "1545pm", "ETD 1045hrs",
+// plus Spanish "md" (noon-ish, used as an AM/PM-style suffix in LATAM itineraries).
 function parseTime(str: string): string {
-  const simple = str.trim().match(/^(\d{1,2})\s*(am|pm)$/i);
+  const s = str.trim();
+
+  // Bare Spanish "md" token
+  if (/^md$/i.test(s)) return "12:00 PM";
+
+  // "1pm", "9am"
+  const simple = s.match(/^(\d{1,2})\s*(am|pm)$/i);
   if (simple) {
     let h = parseInt(simple[1]);
     const ampm = simple[2].toLowerCase();
@@ -110,13 +128,35 @@ function parseTime(str: string): string {
     if (ampm === "am" && h === 12) h = 0;
     return `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
   }
-  const t = str.match(/(\d{1,2})[.:](\d{2})\s*(am|pm)?/i);
+
+  // 4-digit military time — "0930", "1015hrs", "1545pm", "ETD 1045hrs", "0930 departure"
+  // Use (?!\d) instead of \b so "1015hrs" (digit→letter has no word boundary) still matches.
+  if (!s.includes(":") && !s.includes(".")) {
+    const mil = s.match(/(?<![A-Za-z0-9])(\d{4})(?!\d)/);
+    if (mil) {
+      const raw = mil[1];
+      const h = parseInt(raw.slice(0, 2));
+      const m = raw.slice(2);
+      // Suffix can be attached ("1545PM") or separated ("1045 pm") — look anywhere in string.
+      const suf = s.match(/(am|pm)\b/i)?.[1]?.toLowerCase();
+      let hh = h;
+      if (suf === "pm" && hh < 12) hh += 12;
+      if (suf === "am" && hh === 12) hh = 0;
+      if (hh >= 0 && hh < 24 && /^\d{2}$/.test(m) && parseInt(m) < 60) {
+        return `${hh % 12 || 12}:${m} ${hh < 12 ? "AM" : "PM"}`;
+      }
+    }
+  }
+
+  // "9:50am", "9.50am", "17:30", "11:30 md"
+  const t = s.match(/(\d{1,2})[.:](\d{2})\s*(am|pm|md)?/i);
   if (!t) return "12:00 PM";
   let h = parseInt(t[1]);
   const m = t[2];
-  const ampm = t[3]?.toLowerCase();
-  if (ampm === "pm" && h < 12) h += 12;
-  if (ampm === "am" && h === 12) h = 0;
+  const suf = t[3]?.toLowerCase();
+  if (suf === "pm" && h < 12) h += 12;
+  if (suf === "am" && h === 12) h = 0;
+  // "md" just marks the line as around noon — no hour shift.
   return `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
 }
 
@@ -204,6 +244,29 @@ function parseItinerary(text: string): ParsedTrip {
   const yearMatch = text.match(/\b(20\d{2})\b/);
   const fallbackYear = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
+  // GDS flight strings (e.g. "QF 002J 02NOV LHRSYD 2010 0635+2") — extract structured
+  // flights up-front so they aren't mis-parsed as generic lines.
+  const gdsEvents: ParsedEvent[] = [];
+  GDS_FLIGHT_RE.lastIndex = 0;
+  {
+    let m: RegExpExecArray | null;
+    while ((m = GDS_FLIGHT_RE.exec(text)) !== null) {
+      const [, carrier, num, , day, monCode, orig, dest, depRaw] = m;
+      const mon = MONTH_CODE[monCode.toUpperCase()];
+      if (!mon) continue;
+      const date = `${fallbackYear}-${mon}-${day.padStart(2, "0")}`;
+      const time = parseTime(depRaw);
+      gdsEvents.push({
+        id: `imp-gds-${Date.now()}-${gdsEvents.length}`,
+        type: "flight",
+        date,
+        time,
+        title: `${carrier}${num} — ${orig} to ${dest}`,
+        location: `${orig} → ${dest}`,
+      });
+    }
+  }
+
   // Collect all dates (with fallback year for year-less matches)
   const allDates: string[] = [];
   for (const line of lines) {
@@ -216,6 +279,7 @@ function parseItinerary(text: string): ParsedTrip {
       }
     }
   }
+  for (const ev of gdsEvents) allDates.push(ev.date);
   const uniqueDates = [...new Set(allDates)].sort();
   const start = uniqueDates[0] ?? new Date().toISOString().split("T")[0];
   const end = uniqueDates[uniqueDates.length - 1] ?? start;
@@ -247,8 +311,15 @@ function parseItinerary(text: string): ParsedTrip {
 
     if (DAY_SECTION.test(line) || SKIP_SECTION.test(line)) continue;
 
-    // Detect time: colon or dot notation, with optional am/pm; or bare "1pm"/"9am"
-    const TIME_RE = /\b(\d{1,2})[.:](\d{2})\s*(?:am|pm)?|\b(\d{1,2})\s*(am|pm)\b/i;
+    // Skip lines already captured as GDS flight strings.
+    GDS_FLIGHT_RE.lastIndex = 0;
+    if (GDS_FLIGHT_RE.test(line)) continue;
+
+    // Detect time: HH:MM / HH.MM (optional am/pm/md), bare "1pm"/"9am",
+    // 4-digit military ("0930", "1015hrs", "1545pm"),
+    // context-prefixed 4-digit ("ETD 1045", "at 0930"),
+    // or 4-digit followed by flight context ("0930 departure", "1045 flight").
+    const TIME_RE = /\b\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?\b|\b\d{1,2}\s*(?:am|pm)\b|\b\d{4}\s*(?:hrs?|am|pm)\b|\b(?:etd|eta|at|pickup|depart(?:ing|ure|s)?|arriv(?:ing|al|e)?)\s+\d{4}\b|\b\d{4}\s+(?:depart(?:ing|ure|s)?|arriv(?:ing|al|e)?|flight)\b/i;
     const hasTime = TIME_RE.test(line);
 
     const hasEventKeyword = /\b(flight|fly|depart|arrive|airport|hotel|resort|check.?in|check.?out|dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|tour|visit|transfer|excursion|safari|cruise|museum|drive|hike|boat|spa|golf|meeting|welcome|drinks|cocktail|experience|beach club|aquapark)\b/i.test(line);
@@ -272,16 +343,19 @@ function parseItinerary(text: string): ParsedTrip {
     if ((hasTime || hasEventKeyword) && line.length > 4 && line.length < 250) {
       const type = guessEventType(line);
 
-      // Extract time — support "9.50am", "17:30", "10.00:", "1pm"
-      const timeMatch = line.match(/\b(\d{1,2})[.:](\d{2})\s*(?:am|pm)?|\b(\d{1,2})\s*(am|pm)\b/i);
+      // Extract time — same alternation as detection so we grab whichever form appeared.
+      const timeMatch = line.match(TIME_RE);
       let time = "12:00 PM";
       if (timeMatch) time = parseTime(timeMatch[0]);
 
-      // Strip leading "17:30 –" or "10.00:" prefix then clean up
+      // Strip leading "17:30 –" / "10.00:" / "0930 -" / "ETD 1045hrs –" prefixes,
+      // then remove any remaining time mentions from the body.
       const title = line
-        .replace(/^\d{1,2}[.:]\d{2}\s*(?:am|pm)?\s*[-–—:]\s*/i, "")
-        .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm)?\b/gi, "")
+        .replace(/^(?:\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?|\d{4}\s*(?:hrs?|am|pm)?|(?:etd|eta)\s+\d{4}(?:\s*hrs?)?)\s*[-–—:]\s*/i, "")
+        .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?\b/gi, "")
         .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, "")
+        .replace(/\b\d{4}\s*(?:hrs?|am|pm)\b/gi, "")
+        .replace(/\b(?:etd|eta|pickup)\s+\d{4}\b/gi, "")
         .replace(/^[\s\-–—:·,]+/, "")
         .replace(/[\s\-–—:]+$/, "")
         .replace(/\s+/g, " ")
@@ -300,7 +374,11 @@ function parseItinerary(text: string): ParsedTrip {
     }
   }
 
-  return { name: nameLine.slice(0, 80), attendees, paxCount, start, end, destination, events };
+  const allEvents = [...gdsEvents, ...events].sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.time.localeCompare(b.time);
+  });
+  return { name: nameLine.slice(0, 80), attendees, paxCount, start, end, destination, events: allEvents };
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Compass, Globe, CalendarDays, Images, User } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,7 +24,8 @@ const TABS = [
 // Each icon button slot width + gap between items
 const ITEM_W  = 62; // 58px slot + 4px gap
 const BTN_W   = 58; // pressable width (wider to fit label)
-const BLOB_SZ = 44; // icon-area circle (centered at top of btn)
+const BLOB_W  = 52; // pill indicator width (Material 3 style)
+const BLOB_H  = 32; // pill indicator height
 const ROW_PAD = 8;
 
 function FloatingTabBar({ state, navigation }: any) {
@@ -114,6 +116,7 @@ function FloatingTabBar({ state, navigation }: any) {
                     canPreventDefault: true,
                   });
                   if (!focused && !event.defaultPrevented) {
+                    Haptics.selectionAsync();
                     navigation.navigate(route.name);
                   }
                 };
@@ -135,9 +138,16 @@ function FloatingTabBar({ state, navigation }: any) {
                     <Icon
                       size={20}
                       color={iconColor}
-                      strokeWidth={focused ? 2.2 : 1.6}
+                      fill={focused ? `${C.teal}30` : "transparent"}
+                      strokeWidth={focused ? 2.2 : 1.8}
                     />
-                    <Text style={[styles.label, { color: iconColor }]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.label,
+                        { color: iconColor, fontWeight: focused ? "700" : "500" },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {TABS[index].label}
                     </Text>
                   </Pressable>
@@ -201,14 +211,14 @@ const styles = StyleSheet.create({
     paddingVertical: ROW_PAD,
   },
 
-  // Animated blob — absolutely positioned, slides behind icons (icon area only)
+  // Animated pill indicator — slides behind icons (Material 3 style)
   blob: {
     position: "absolute",
     top: ROW_PAD,
-    left: ROW_PAD + (BTN_W - BLOB_SZ) / 2, // center within the btn slot
-    width: BLOB_SZ,
-    height: BLOB_SZ,
-    borderRadius: BLOB_SZ / 2,
+    left: ROW_PAD + (BTN_W - BLOB_W) / 2,
+    width: BLOB_W,
+    height: BLOB_H,
+    borderRadius: BLOB_H / 2,
     borderWidth: StyleSheet.hairlineWidth,
   },
 
@@ -220,17 +230,15 @@ const styles = StyleSheet.create({
 
   iconBtn: {
     width: BTN_W,
-    paddingTop: (BLOB_SZ - 20) / 2, // vertical-center icon in blob
+    paddingTop: (BLOB_H - 20) / 2, // center icon within pill height
     paddingBottom: 6,
     alignItems: "center",
     justifyContent: "flex-start",
-    gap: 3,
+    gap: 4,
   },
 
   label: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
+    fontSize: 11,
+    letterSpacing: 0,
   },
 });

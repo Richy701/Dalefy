@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash2, Check,
+  Sun, Moon, Download, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -108,8 +108,9 @@ export function SettingsPage() {
   const activeAccent = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
   const [resetOpen, setResetOpen] = useState(false);
 
-  const initials = (user?.name ?? "AM")
-    .split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  const initials = user?.initials ?? (
+    (user?.name ?? "").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "?"
+  );
 
   const exportTrips = () => {
     const data = JSON.stringify(trips, null, 2);
@@ -178,13 +179,13 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
-                  {user?.name ?? "Ash Murray"}
+                  {user?.name ?? ""}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-[#888888] truncate">
-                  {user?.email ?? "ash.murray@dafadventures.com"}
+                  {user?.email || "No email"}
                 </p>
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-brand mt-1">
-                  {user?.role ?? "Trip Manager"}
+                  {user?.role ?? ""}
                 </p>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
@@ -232,16 +233,14 @@ export function SettingsPage() {
                         aria-label={p.label}
                         aria-pressed={selected}
                         title={p.label}
-                        className="h-7 w-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                        className="h-7 w-7 rounded-full transition-transform hover:scale-110"
                         style={{
                           background: p.hex,
                           boxShadow: selected
                             ? `0 0 0 2px rgb(${p.rgb} / 0.35), 0 0 0 4px hsl(var(--card))`
                             : "none",
                         }}
-                      >
-                        {selected && <Check className="h-3.5 w-3.5 text-black" strokeWidth={3} />}
-                      </button>
+                      />
                     );
                   })}
                 </div>

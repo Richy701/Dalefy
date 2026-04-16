@@ -4,13 +4,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Search, MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
-  Bell, Sun, Moon, KeyRound, X as XIcon, Globe,
+  Bell, Sun, Moon, Plus, X as XIcon,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
@@ -42,47 +43,89 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 }) {
   const { C, isDark, toggle } = useTheme();
   const { unreadCount } = useNotifications();
+  const { prefs } = usePreferences();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [notifOpen, setNotifOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
+  const [linkValue, setLinkValue] = useState("");
+  const [linkMode, setLinkMode] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const pinRefs = useRef<Array<TextInput | null>>([]);
   const styles = useMemo(() => makeGreetingStyles(C), [C]);
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
+  const timeOfDay = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
+  const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
+  const greeting = firstName ? `${timeOfDay}, ${firstName}` : timeOfDay;
+  const greetingFontSize = greeting.length > 22 ? 18 : greeting.length > 18 ? 20 : T["3xl"] - 2;
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
 
-  const submitCode = async () => {
-    const raw = code.trim();
-    if (!raw || resolving) return;
+  const closeSheet = () => {
+    setCodeOpen(false);
+    setDigits(["", "", "", ""]);
+    setLinkValue("");
+    setLinkMode(false);
     setCodeError(null);
+  };
 
-    if (/^\d{4}$/.test(raw)) {
-      setResolving(true);
-      try {
-        const trip = await fetchTripByShortCode(raw);
-        if (!trip) {
-          setCodeError("No trip found for that PIN");
-          return;
-        }
-        setCodeOpen(false);
-        setCode("");
-        router.push(`/shared/${trip.id}`);
-      } catch {
-        setCodeError("Couldn't look up PIN. Try again.");
-      } finally {
-        setResolving(false);
+  const submitPin = async (pin: string) => {
+    if (resolving) return;
+    setResolving(true);
+    setCodeError(null);
+    try {
+      const trip = await fetchTripByShortCode(pin);
+      if (!trip) {
+        setCodeError("No trip found for that PIN");
+        setDigits(["", "", "", ""]);
+        pinRefs.current[0]?.focus();
+        return;
       }
-      return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setCodeOpen(false);
+      setDigits(["", "", "", ""]);
+      router.push(`/shared/${trip.id}`);
+    } catch {
+      setCodeError("Couldn't look up PIN. Try again.");
+    } finally {
+      setResolving(false);
     }
+  };
 
+  const submitLink = () => {
+    const raw = linkValue.trim();
+    if (!raw || resolving) return;
     const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
     const id = match ? match[1] : raw;
     setCodeOpen(false);
-    setCode("");
+    setLinkValue("");
+    setLinkMode(false);
     router.push(`/shared/${id}`);
+  };
+
+  const handleDigitChange = (idx: number, val: string) => {
+    const clean = val.replace(/\D/g, "").slice(0, 1);
+    const next = [...digits];
+    next[idx] = clean;
+    setDigits(next);
+    if (codeError) setCodeError(null);
+
+    if (clean && idx < 3) {
+      pinRefs.current[idx + 1]?.focus();
+    }
+    if (next.every((d) => d.length === 1)) {
+      submitPin(next.join(""));
+    }
+  };
+
+  const handleDigitKeyPress = (idx: number, key: string) => {
+    if (key === "Backspace" && !digits[idx] && idx > 0) {
+      pinRefs.current[idx - 1]?.focus();
+      const next = [...digits];
+      next[idx - 1] = "";
+      setDigits(next);
+    }
   };
 
   return (
@@ -96,7 +139,13 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         <Illustration name="together" width={170} height={140} />
       </View>
       <View style={styles.greetingRow}>
-        <Text style={styles.greeting}>{greeting} 👋</Text>
+        <Text
+          style={[styles.greeting, { fontSize: greetingFontSize }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {greeting} 👋
+        </Text>
         <View style={styles.headerActions}>
           <Pressable
             onPress={toggle}
@@ -111,7 +160,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
               accessibilityLabel="Enter trip code"
             >
-              <KeyRound size={16} color={C.textSecondary} strokeWidth={2} />
+              <Plus size={16} color={C.textSecondary} strokeWidth={2} />
             </Pressable>
           )}
           <Pressable
@@ -126,78 +175,117 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       </View>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
-      <Modal visible={codeOpen} transparent animationType="fade" onRequestClose={() => setCodeOpen(false)}>
-        <Pressable style={styles.codeBackdrop} onPress={() => setCodeOpen(false)}>
+      <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={closeSheet}>
+        <View style={{ flex: 1 }}>
+          <BlurView
+            intensity={Platform.OS === "ios" ? 18 : 30}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, styles.codeBackdrop]}
+            onPress={closeSheet}
+          />
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             style={styles.codeCenter}
+            pointerEvents="box-none"
           >
             <Pressable style={styles.codeSheet} onPress={() => {}}>
-              {/* Passport cover strip */}
-              <View style={styles.passportStrip}>
-                <View style={styles.passportCrest}>
-                  <Globe size={12} color="#000" strokeWidth={2.5} />
-                </View>
-                <Text style={styles.passportBrand}>DAF Adventures · Passport</Text>
-                <Pressable onPress={() => setCodeOpen(false)} style={styles.codeClose}>
-                  <XIcon size={14} color={C.textSecondary} strokeWidth={2} />
+              <View style={styles.sheetGrabber} />
+
+              <View style={styles.sheetCloseRow}>
+                <Pressable onPress={closeSheet} style={styles.codeClose}>
+                  <XIcon size={16} color={C.textSecondary} strokeWidth={2} />
                 </Pressable>
               </View>
 
-              {/* Passport inner page */}
-              <View style={styles.passportPage}>
-                <Text style={styles.codeEyebrow}>Bearer Entry</Text>
-                <Text style={styles.codeTitle}>Grant Entry</Text>
-                <Text style={styles.passportHint}>
-                  Type the 4-digit PIN from your agent — or paste a share link.
+              <Text style={styles.codeTitle}>Join a trip</Text>
+              <Text style={styles.sheetSub}>
+                {linkMode
+                  ? "Paste the share link your organiser sent you."
+                  : "Enter the 4-digit code your organiser shared."}
+              </Text>
+
+              {linkMode ? (
+                <>
+                  <TextInput
+                    value={linkValue}
+                    onChangeText={(t) => { setLinkValue(t); if (codeError) setCodeError(null); }}
+                    autoFocus
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder="https://…/shared/…"
+                    placeholderTextColor={C.textTertiary}
+                    style={styles.codeInput}
+                    onSubmitEditing={submitLink}
+                    returnKeyType="go"
+                  />
+                  {codeError ? <Text style={styles.codeErrorText}>{codeError}</Text> : null}
+                  <Pressable
+                    onPress={submitLink}
+                    disabled={!linkValue.trim() || resolving}
+                    style={({ pressed }) => [
+                      styles.codeSubmit,
+                      {
+                        backgroundColor: linkValue.trim() && !resolving ? C.teal : C.elevated,
+                        opacity: pressed && linkValue.trim() && !resolving ? 0.85 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.codeSubmitText, { color: linkValue.trim() && !resolving ? "#000" : C.textTertiary }]}>
+                      {resolving ? "Checking…" : "Open Trip"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <View style={styles.pinRow}>
+                    {digits.map((d, i) => (
+                      <TextInput
+                        key={i}
+                        ref={(r) => { pinRefs.current[i] = r; }}
+                        value={d}
+                        onChangeText={(v) => handleDigitChange(i, v)}
+                        onKeyPress={(e) => handleDigitKeyPress(i, e.nativeEvent.key)}
+                        keyboardType="number-pad"
+                        maxLength={1}
+                        autoFocus={i === 0}
+                        selectTextOnFocus
+                        editable={!resolving}
+                        style={[
+                          styles.pinCell,
+                          d ? styles.pinCellFilled : null,
+                          codeError ? styles.pinCellError : null,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  {codeError ? (
+                    <Text style={[styles.codeErrorText, { textAlign: "center" }]}>{codeError}</Text>
+                  ) : resolving ? (
+                    <Text style={styles.checkingText}>Checking…</Text>
+                  ) : null}
+                </>
+              )}
+
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setCodeError(null);
+                  setDigits(["", "", "", ""]);
+                  setLinkValue("");
+                  setLinkMode(!linkMode);
+                }}
+                style={styles.modeToggle}
+              >
+                <Text style={styles.modeToggleText}>
+                  {linkMode ? "Have a code instead?" : "Or paste a share link"}
                 </Text>
-
-                <View style={styles.passportDivider} />
-
-                <Text style={styles.passportFieldLabel}>Trip PIN · Link</Text>
-                <TextInput
-                  value={code}
-                  onChangeText={(t) => { setCode(t); setCodeError(null); }}
-                  autoFocus
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  keyboardType={/^\d*$/.test(code) ? "number-pad" : "default"}
-                  placeholder="0000"
-                  placeholderTextColor={C.textTertiary}
-                  style={styles.codeInput}
-                  onSubmitEditing={submitCode}
-                  returnKeyType="go"
-                  maxLength={code.includes("/") ? 200 : 48}
-                />
-
-                {codeError ? (
-                  <Text style={styles.codeErrorText}>{codeError}</Text>
-                ) : null}
-
-                <Pressable
-                  onPress={submitCode}
-                  disabled={!code.trim() || resolving}
-                  style={({ pressed }) => [
-                    styles.codeSubmit,
-                    {
-                      backgroundColor: code.trim() && !resolving ? C.teal : C.elevated,
-                      opacity: pressed && code.trim() && !resolving ? 0.85 : 1,
-                    },
-                  ]}
-                >
-                  <Plane size={13} color={code.trim() && !resolving ? "#000" : C.textTertiary} strokeWidth={2.5} />
-                  <Text style={[styles.codeSubmitText, { color: code.trim() && !resolving ? "#000" : C.textTertiary }]}>
-                    {resolving ? "Checking…" : "Stamp Passport"}
-                  </Text>
-                </Pressable>
-
-                <Text style={styles.passportMrz} numberOfLines={1}>
-                  P&lt;DAF&lt;&lt;ADVENTURES&lt;&lt;TRIP&lt;&lt;PASSPORT&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
-                </Text>
-              </View>
+              </Pressable>
             </Pressable>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
       {nextTrip ? (
@@ -229,7 +317,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           <Text style={styles.countdownEyebrow}>Awaiting Boarding</Text>
           <Text style={styles.countdownNumber}>0</Text>
           <View style={styles.countdownMeta}>
-            <KeyRound size={11} color={C.teal} strokeWidth={2} />
+            <Plus size={11} color={C.teal} strokeWidth={2} />
             <Text style={styles.countdownDest} numberOfLines={1}>
               Tap to paste a trip code
             </Text>
@@ -260,7 +348,7 @@ function makeGreetingStyles(C: ThemeColors) {
       marginBottom: S.md, zIndex: 2,
     },
     greeting: {
-      fontSize: T["3xl"] - 2, fontFamily: F.black, fontWeight: T.black,
+      fontFamily: F.black, fontWeight: T.black,
       color: C.textPrimary, letterSpacing: -0.5, flex: 1,
     },
     headerActions: {
@@ -278,76 +366,77 @@ function makeGreetingStyles(C: ThemeColors) {
       borderWidth: 1.5, borderColor: C.card,
     },
     codeBackdrop: {
-      flex: 1, backgroundColor: "rgba(0,0,0,0.65)",
+      backgroundColor: "rgba(0,0,0,0.12)",
     },
     codeCenter: {
-      flex: 1, justifyContent: "center", paddingHorizontal: S.md,
+      flex: 1, justifyContent: "flex-end",
     },
     codeSheet: {
-      backgroundColor: C.card, borderRadius: R["2xl"],
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      overflow: "hidden",
+      backgroundColor: C.card,
+      borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
+      borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.xl,
+      gap: S.xs,
     },
-    passportStrip: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      paddingHorizontal: S.md, paddingVertical: 10,
-      backgroundColor: `${C.teal}18`,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: `${C.teal}40`,
+    sheetGrabber: {
+      alignSelf: "center",
+      width: 40, height: 4, borderRadius: 2,
+      backgroundColor: C.border,
+      marginBottom: S.sm,
     },
-    passportCrest: {
-      width: 20, height: 20, borderRadius: 10,
-      backgroundColor: C.teal, alignItems: "center", justifyContent: "center",
+    sheetCloseRow: {
+      flexDirection: "row", justifyContent: "flex-end",
+      marginBottom: S.xs,
     },
-    passportBrand: {
-      flex: 1,
-      fontSize: 10, fontWeight: T.black, color: C.teal,
-      letterSpacing: 1.8, textTransform: "uppercase",
-    },
-    passportPage: {
-      padding: S.md, gap: S.xs,
-    },
-    passportHint: {
-      fontSize: T.sm, color: C.textTertiary, lineHeight: 18,
-      marginTop: 4,
-    },
-    passportDivider: {
-      borderTopWidth: 1, borderTopColor: C.border, borderStyle: "dashed",
-      marginVertical: S.sm,
-    },
-    passportFieldLabel: {
-      fontSize: 9, fontWeight: T.black, color: C.textTertiary,
-      letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
-    },
-    passportMrz: {
-      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-      fontSize: 10, color: C.textTertiary,
-      letterSpacing: 0.5, marginTop: S.sm,
-    },
-    codeEyebrow: {
-      fontSize: 10, fontWeight: T.black, color: C.textTertiary,
-      letterSpacing: 2, textTransform: "uppercase", marginBottom: 2,
+    sheetSub: {
+      fontSize: T.sm, color: C.textSecondary, lineHeight: 20,
+      marginTop: 4, marginBottom: S.md,
     },
     codeTitle: {
-      fontSize: T.xl, fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.3,
+      fontSize: T["2xl"], fontFamily: F.black, fontWeight: T.black,
+      color: C.textPrimary, letterSpacing: -0.5,
     },
     codeClose: {
-      width: 28, height: 28, borderRadius: 14,
+      width: 30, height: 30, borderRadius: 15,
       alignItems: "center", justifyContent: "center",
-      backgroundColor: C.card,
+      backgroundColor: C.elevated,
+    },
+    pinRow: {
+      flexDirection: "row", justifyContent: "center",
+      gap: 10, marginVertical: S.xs,
+    },
+    pinCell: {
+      width: 60, height: 68, borderRadius: 14,
+      borderWidth: 1.5, borderColor: C.border,
+      backgroundColor: C.elevated,
+      textAlign: "center",
+      fontSize: 28, fontFamily: F.black, fontWeight: T.black,
+      color: C.textPrimary, letterSpacing: -0.5,
+    },
+    pinCellFilled: { borderColor: C.teal, backgroundColor: C.tealDim },
+    pinCellError: { borderColor: "#ff6b6b" },
+    checkingText: {
+      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
+      letterSpacing: 1.5, textTransform: "uppercase",
+      textAlign: "center", marginTop: S.sm,
+    },
+    modeToggle: {
+      alignItems: "center", paddingVertical: S.sm, marginTop: S.xs,
+    },
+    modeToggleText: {
+      fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary,
     },
     codeInput: {
-      height: 50, borderRadius: R.md,
+      height: 54, borderRadius: R.md,
       backgroundColor: C.elevated,
       paddingHorizontal: S.sm,
-      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-      fontSize: T.base, color: C.textPrimary, letterSpacing: 1.2,
+      fontSize: T.base, color: C.textPrimary,
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       marginBottom: S.sm,
     },
     codeErrorText: {
       fontSize: T.xs, fontWeight: T.bold, color: "#ff6b6b",
-      letterSpacing: 0.5, marginBottom: S.xs, marginTop: -2,
+      letterSpacing: 0.5, marginTop: S.xs, marginBottom: S.xs,
     },
     codeSubmit: {
       height: 48, borderRadius: R.md,

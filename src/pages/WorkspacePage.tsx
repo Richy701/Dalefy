@@ -305,17 +305,32 @@ export function WorkspacePage() {
   const handleSaveEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvent) return;
+    const existing = trip.events.find(ev => ev.id === editingEvent.id);
+    const action = existing ? "updated" : "added";
     updateEvent(trip.id, editingEvent);
     setIsEditPanelOpen(false);
     setEditingEvent(null);
     showToast("Event saved");
     toast.success("Event saved");
+    addNotification({
+      message: `Event ${action}`,
+      detail: `${editingEvent.title || "Untitled"} · ${trip.name}`,
+      time: "Just now",
+      type: "success",
+    });
   };
 
   const handleDeleteEvent = (eventId: string) => {
+    const removed = trip.events.find(ev => ev.id === eventId);
     deleteEvent(trip.id, eventId);
     showToast("Event deleted");
     toast.success("Event deleted");
+    addNotification({
+      message: "Event deleted",
+      detail: `${removed?.title ?? "Event"} · ${trip.name}`,
+      time: "Just now",
+      type: "success",
+    });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -502,6 +517,12 @@ export function WorkspacePage() {
     updateTrip(trip.id, editingTrip);
     setEditTripOpen(false);
     toast.success("Trip updated");
+    addNotification({
+      message: "Trip updated",
+      detail: editingTrip.name ?? trip.name,
+      time: "Just now",
+      type: "success",
+    });
   };
 
   const handleDeleteTrip = () => {

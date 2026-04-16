@@ -3,12 +3,12 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { playChime } from "@/lib/sound";
 
 export const ACCENT_PALETTE = [
-  { id: "teal",    label: "Cyber Teal",      rgb: "11 210 181",  hex: "#0bd2b5" },
-  { id: "violet",  label: "Electric Violet", rgb: "139 92 246",  hex: "#8b5cf6" },
-  { id: "amber",   label: "Solar Amber",     rgb: "245 158 11",  hex: "#f59e0b" },
-  { id: "crimson", label: "Crimson",         rgb: "239 68 68",   hex: "#ef4444" },
-  { id: "cobalt",  label: "Cobalt",          rgb: "59 130 246",  hex: "#3b82f6" },
-  { id: "lime",    label: "Lime",            rgb: "132 204 22",  hex: "#84cc16" },
+  { id: "teal",    label: "Cyber Teal",      rgb: "11 210 181",  hex: "#0bd2b5", hsl: "171 85% 43%" },
+  { id: "violet",  label: "Electric Violet", rgb: "139 92 246",  hex: "#8b5cf6", hsl: "258 90% 66%" },
+  { id: "amber",   label: "Solar Amber",     rgb: "245 158 11",  hex: "#f59e0b", hsl: "38 92% 50%" },
+  { id: "crimson", label: "Crimson",         rgb: "239 68 68",   hex: "#ef4444", hsl: "0 84% 60%" },
+  { id: "cobalt",  label: "Cobalt",          rgb: "59 130 246",  hex: "#3b82f6", hsl: "217 91% 60%" },
+  { id: "lime",    label: "Lime",            rgb: "132 204 22",  hex: "#84cc16", hsl: "82 78% 45%" },
 ] as const;
 
 export type AccentId = typeof ACCENT_PALETTE[number]["id"];
@@ -38,7 +38,11 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const preset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
-    document.documentElement.style.setProperty("--brand-rgb", preset.rgb);
+    const root = document.documentElement;
+    root.style.setProperty("--brand-rgb", preset.rgb);
+    root.style.setProperty("--primary", preset.hsl);
+    root.style.setProperty("--ring", preset.hsl);
+    root.style.setProperty("--sidebar-ring", preset.hsl);
   }, [accent]);
 
   const soundEnabledRef = useRef(soundEnabled);

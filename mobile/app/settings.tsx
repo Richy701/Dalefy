@@ -1,6 +1,6 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Switch } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Switch, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Moon, Sun, Bell, Shield, Info, ChevronRight, Palette } from "lucide-react-native";
+import { ArrowLeft, Moon, Sun, Bell, BellRing, Shield, Info, ChevronRight, Palette } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
@@ -68,6 +68,31 @@ function makeStyles(C: ThemeColors) {
       gap: 6, marginTop: S.xl,
     },
   });
+}
+
+async function fireTestNotification() {
+  try {
+    const Notifications = await import("expo-notifications");
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      const req = await Notifications.requestPermissionsAsync();
+      if (req.status !== "granted") {
+        Alert.alert("Notifications disabled", "Allow notifications in system settings to receive alerts.");
+        return;
+      }
+    }
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Trip updated",
+        body: "Sample notification — looks like this when an itinerary changes.",
+        data: { category: "update" },
+        sound: "default",
+      },
+      trigger: null,
+    });
+  } catch (e) {
+    Alert.alert("Couldn't send", (e as Error).message);
+  }
 }
 
 export default function SettingsScreen() {
@@ -145,6 +170,17 @@ export default function SettingsScreen() {
               thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
             />
           </View>
+          <View style={styles.rowDivider} />
+          <Pressable
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={fireTestNotification}
+          >
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <BellRing size={17} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Send test notification</Text>
+            <ChevronRight size={15} color={C.textTertiary} strokeWidth={1.5} />
+          </Pressable>
         </View>
 
         {/* About */}

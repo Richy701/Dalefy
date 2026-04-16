@@ -37,8 +37,10 @@ function UserFooter({ onSignOut }: { onSignOut: () => void }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
-  const initials = (user?.name ?? "Ash Murray")
-    .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
+  const displayName = user?.name ?? "";
+  const initials = user?.initials ?? (
+    displayName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "?"
+  );
 
   return (
     <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "justify-center" : ""}`}>
@@ -49,8 +51,8 @@ function UserFooter({ onSignOut }: { onSignOut: () => void }) {
       </Avatar>
       {!collapsed && (
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-white truncate leading-none">{user?.name ?? "Ash Murray"}</p>
-          <p className="text-[9px] text-[#555] leading-none mt-0.5 truncate">{user?.role ?? "Lead Designer"}</p>
+          <p className="text-[11px] font-bold text-white truncate leading-none">{displayName}</p>
+          <p className="text-[9px] text-[#555] leading-none mt-0.5 truncate">{user?.role ?? ""}</p>
         </div>
       )}
       {!collapsed && (

@@ -1,9 +1,10 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import {
-  User, Moon, Sun, Palette, Bell, Shield, Info, ChevronRight,
-  Globe, HelpCircle, Droplet, Rows3, Trash2,
+  User, Moon, Sun, Palette, Bell, BellRing, Shield, Info, ChevronRight,
+  Globe, HelpCircle, Droplet, Rows3, Trash2, Pencil,
 } from "lucide-react-native";
 import { Alert } from "react-native";
 import { T, R, S, F, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
@@ -12,12 +13,50 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
 import { useMemo } from "react";
+import { buildNotifCopy, type NotifEvent } from "@/services/notificationCopy";
 
 export default function ProfileScreen() {
   const { C, isDark, toggle } = useTheme();
   const { prefs, setPref } = usePreferences();
   const { trips, clearTrips } = useTrips();
+  const router = useRouter();
   const styles = useMemo(() => makeStyles(C), [C]);
+
+  const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
+  const initials = firstName ? firstName[0].toUpperCase() : "";
+
+  const firstTripName = trips[0]?.name;
+  const firstEventTitle = trips[0]?.events?.[0]?.title;
+
+  const handlePreviewNotification = async (event: NotifEvent) => {
+    Haptics.selectionAsync();
+    try {
+      const Notifications = await import("expo-notifications");
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") {
+        const req = await Notifications.requestPermissionsAsync();
+        if (req.status !== "granted") {
+          Alert.alert("Notifications disabled", "Allow notifications in system settings to see alerts.");
+          return;
+        }
+      }
+      const copy = buildNotifCopy(event, {
+        tripName: firstTripName ?? "Kenya & Tanzania",
+        eventTitle: firstEventTitle ?? "Governors Camp check-in",
+      });
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: copy.title,
+          body: copy.body,
+          data: { category: copy.category, event },
+          sound: "default",
+        },
+        trigger: null,
+      });
+    } catch (e) {
+      Alert.alert("Couldn't send", (e as Error).message);
+    }
+  };
 
   const handleClearTrips = () => {
     if (trips.length === 0) return;
@@ -52,15 +91,25 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Identity strip (inline, no hero) ── */}
-        <View style={styles.identityRow}>
+        <Pressable
+          style={({ pressed }) => [styles.identityRow, pressed && { opacity: 0.7 }]}
+          onPress={() => { Haptics.selectionAsync(); router.push("/welcome"); }}
+          accessibilityLabel="Edit your name"
+        >
           <View style={styles.avatar}>
-            <User size={22} color={C.teal} strokeWidth={1.6} />
+            {initials ? (
+              <Text style={styles.avatarText}>{initials}</Text>
+            ) : (
+              <User size={22} color={C.teal} strokeWidth={1.6} />
+            )}
           </View>
           <View style={styles.identityText}>
-            <Text style={styles.identityName}>Traveller</Text>
-            <Text style={styles.identitySub}>DAF Adventures Member</Text>
+            <Text style={styles.identityName}>{firstName || "Traveller"}</Text>
           </View>
-        </View>
+          <View style={styles.identityEdit}>
+            <Pencil size={13} color={C.textTertiary} strokeWidth={1.8} />
+          </View>
+        </Pressable>
 
         {/* ── Appearance ── */}
         <Text style={styles.sectionLabel}>Appearance</Text>
@@ -156,6 +205,29 @@ export default function ProfileScreen() {
               thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
             />
           </View>
+        </View>
+
+        {/* ── Preview notifications (fires a local notification on this device) ── */}
+        <Text style={styles.sectionLabel}>Preview notifications</Text>
+        <View style={styles.previewGrid}>
+          {([
+            ["trip_published", "Trip published"],
+            ["trip_updated", "Trip details updated"],
+            ["event_added", "Event added"],
+            ["event_updated", "Event updated"],
+            ["event_deleted", "Event deleted"],
+            ["itinerary_imported", "Itinerary imported"],
+            ["reminder_tomorrow", "Reminder · tomorrow"],
+          ] as [NotifEvent, string][]).map(([key, label]) => (
+            <Pressable
+              key={key}
+              style={({ pressed }) => [styles.previewChip, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => handlePreviewNotification(key)}
+            >
+              <BellRing size={13} color={C.teal} strokeWidth={2} />
+              <Text style={styles.previewChipText}>{label}</Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* ── Support ── */}
@@ -264,6 +336,15 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center",
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
     },
+    avatarText: {
+      fontSize: T.lg, fontFamily: F.black, fontWeight: T.black,
+      color: C.teal, letterSpacing: -0.3,
+    },
+    identityEdit: {
+      width: 30, height: 30, borderRadius: R.full,
+      backgroundColor: C.elevated, alignItems: "center", justifyContent: "center",
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+    },
     identityText: { flex: 1 },
     identityName: {
       fontSize: T.lg, fontFamily: F.black, fontWeight: T.black,
@@ -298,6 +379,20 @@ function makeStyles(C: ThemeColors) {
     },
     rowLabel: { flex: 1, fontSize: T.base, fontWeight: T.medium, color: C.textPrimary },
     rowValue: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium },
+
+    previewGrid: {
+      flexDirection: "row", flexWrap: "wrap", gap: S.xs,
+      marginHorizontal: S.md, marginBottom: S.xs,
+    },
+    previewChip: {
+      flexDirection: "row", alignItems: "center", gap: 6,
+      paddingHorizontal: 12, paddingVertical: 9, borderRadius: R.full,
+      backgroundColor: C.card,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+    },
+    previewChipText: {
+      fontSize: T.sm, fontWeight: T.medium, color: C.textPrimary,
+    },
 
     themeToggle: {
       flexDirection: "row", alignItems: "center",

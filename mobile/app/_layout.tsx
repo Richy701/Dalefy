@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
@@ -27,7 +27,9 @@ try {
 function AppStack() {
   const { isDark, C } = useTheme();
   const { ready: tripsReady } = useTrips();
+  const { ready: prefsReady } = usePreferences();
   const router = useRouter();
+  const pathname = usePathname();
   const [fontsLoaded, fontError] = useFonts({
     BarlowCondensed_700Bold: require("@expo-google-fonts/barlow-condensed/700Bold/BarlowCondensed_700Bold.ttf"),
     BarlowCondensed_800ExtraBold: require("@expo-google-fonts/barlow-condensed/800ExtraBold/BarlowCondensed_800ExtraBold.ttf"),
@@ -66,7 +68,14 @@ function AppStack() {
     return () => { recvSub.remove(); tapSub.remove(); };
   }, [router, addNotification, prefs.tripReminders, prefs.itineraryUpdates]);
 
-  const ready = (fontsLoaded || fontError) && tripsReady;
+  const ready = (fontsLoaded || fontError) && tripsReady && prefsReady;
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!prefs.name && pathname !== "/welcome") {
+      router.replace("/welcome");
+    }
+  }, [ready, prefs.name, pathname, router]);
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {

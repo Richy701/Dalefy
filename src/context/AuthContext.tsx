@@ -11,19 +11,34 @@ const DEMO_USER: User = {
   status: "Active",
 };
 
+function initialsFrom(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export interface OnboardingData {
+  name: string;
+  email?: string;
+  role?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  completeOnboarding: (data: OnboardingData) => Promise<void>;
   demoLogin: () => Promise<void>;
+  updateProfile: (patch: Partial<User>) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
-  login: async () => {},
+  completeOnboarding: async () => {},
   demoLogin: async () => {},
+  updateProfile: () => {},
   logout: () => {},
 });
 
@@ -34,16 +49,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { return JSON.parse(saved); } catch { return null; }
   });
 
-  const login = async (_email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 1000));
+  const completeOnboarding = async (data: OnboardingData) => {
+    const name = data.name.trim();
+    const next: User = {
+      id: `user-${Date.now()}`,
+      name,
+      email: (data.email ?? "").trim(),
+      role: (data.role ?? "Trip Manager").trim(),
+      avatar: "",
+      initials: initialsFrom(name),
+      status: "Active",
+    };
+    setUser(next);
+    localStorage.setItem("daf-auth", JSON.stringify(next));
+  };
+
+  const demoLogin = async () => {
+    await new Promise(r => setTimeout(r, 600));
     setUser(DEMO_USER);
     localStorage.setItem("daf-auth", JSON.stringify(DEMO_USER));
   };
 
-  const demoLogin = async () => {
-    await new Promise(r => setTimeout(r, 1000));
-    setUser(DEMO_USER);
-    localStorage.setItem("daf-auth", JSON.stringify(DEMO_USER));
+  const updateProfile = (patch: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      if (patch.name) next.initials = initialsFrom(patch.name);
+      localStorage.setItem("daf-auth", JSON.stringify(next));
+      return next;
+    });
   };
 
   const logout = () => {
@@ -52,7 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, demoLogin, logout }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, completeOnboarding, demoLogin, updateProfile, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -294,7 +294,7 @@ export function DashboardPage() {
         <div data-compact-section className="px-4 lg:px-8 pt-8 pb-16 space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand/10 via-slate-50 to-slate-50 dark:from-brand/10 dark:via-[#0a0a0a] dark:to-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] px-6 py-12 lg:px-8 lg:py-16">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand/25 via-brand/[0.04] to-slate-50 dark:from-brand/25 dark:via-brand/[0.04] dark:to-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] px-6 py-12 lg:px-8 lg:py-16">
             <div className="relative z-10 max-w-[55%]">
               <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
                 {greeting}, {firstName} 👋

@@ -5,6 +5,7 @@ import type { AccentId } from "@/constants/theme";
 const STORAGE_KEY = "daf-prefs";
 
 export interface Preferences {
+  name: string;
   tripReminders: boolean;
   itineraryUpdates: boolean;
   accent: AccentId;
@@ -12,6 +13,7 @@ export interface Preferences {
 }
 
 const DEFAULT_PREFS: Preferences = {
+  name: "",
   tripReminders: true,
   itineraryUpdates: true,
   accent: "teal",
