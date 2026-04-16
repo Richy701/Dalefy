@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapPin, Search, Plane, Hotel, Compass, Utensils, CalendarDays } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 
@@ -54,6 +54,8 @@ export default function DestinationsScreen() {
   const { trips } = useTrips();
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
+  const [mapReady, setMapReady] = useState(false);
+  const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
   const destinations = useMemo(() => {
     const map = new Map<string, {
@@ -181,50 +183,55 @@ export default function DestinationsScreen() {
                 attributionEnabled={false}
                 compassEnabled={false}
                 scaleBarEnabled={false}
+                onDidFinishLoadingStyle={handleMapLoaded}
               >
                 <MapboxGL.Camera
                   zoomLevel={0.5}
                   centerCoordinate={[10, 15]}
                   animationDuration={0}
                 />
-                {/* Connection lines */}
-                <MapboxGL.ShapeSource id="dest-connections" shape={connectionLines}>
-                  <MapboxGL.LineLayer
-                    id="connection-lines"
-                    style={{
-                      lineColor: C.teal,
-                      lineWidth: 1,
-                      lineOpacity: 0.35,
-                      lineCap: "round",
-                      lineJoin: "round",
-                    }}
-                  />
-                </MapboxGL.ShapeSource>
-                {/* Outer rings */}
-                <MapboxGL.ShapeSource id="dest-rings" shape={geojson}>
-                  <MapboxGL.CircleLayer
-                    id="rings"
-                    style={{
-                      circleRadius: 14,
-                      circleColor: "transparent",
-                      circleStrokeWidth: 1.2,
-                      circleStrokeColor: C.teal,
-                      circleStrokeOpacity: 0.3,
-                    }}
-                  />
-                </MapboxGL.ShapeSource>
-                {/* Core dots */}
-                <MapboxGL.ShapeSource id="dest-dots" shape={geojson}>
-                  <MapboxGL.CircleLayer
-                    id="dots"
-                    style={{
-                      circleRadius: 5,
-                      circleColor: C.teal,
-                      circleStrokeWidth: 2,
-                      circleStrokeColor: isDark ? "#111111" : "#ffffff",
-                    }}
-                  />
-                </MapboxGL.ShapeSource>
+                {mapReady && (
+                  <>
+                    {/* Connection lines */}
+                    <MapboxGL.ShapeSource id="dest-connections" shape={connectionLines}>
+                      <MapboxGL.LineLayer
+                        id="connection-lines"
+                        style={{
+                          lineColor: C.teal,
+                          lineWidth: 1,
+                          lineOpacity: 0.35,
+                          lineCap: "round",
+                          lineJoin: "round",
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                    {/* Outer rings */}
+                    <MapboxGL.ShapeSource id="dest-rings" shape={geojson}>
+                      <MapboxGL.CircleLayer
+                        id="rings"
+                        style={{
+                          circleRadius: 14,
+                          circleColor: "transparent",
+                          circleStrokeWidth: 1.2,
+                          circleStrokeColor: C.teal,
+                          circleStrokeOpacity: 0.3,
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                    {/* Core dots */}
+                    <MapboxGL.ShapeSource id="dest-dots" shape={geojson}>
+                      <MapboxGL.CircleLayer
+                        id="dots"
+                        style={{
+                          circleRadius: 5,
+                          circleColor: C.teal,
+                          circleStrokeWidth: 2,
+                          circleStrokeColor: isDark ? "#111111" : "#ffffff",
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                  </>
+                )}
               </MapboxGL.MapView>
             ) : (
               <View style={[StyleSheet.absoluteFillObject, styles.mapFallback]} />

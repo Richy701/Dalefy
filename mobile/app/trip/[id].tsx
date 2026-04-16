@@ -14,7 +14,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
 import { EventCard, ConfRow } from "@/components/EventCard";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 // Safe conditional import — @rnmapbox/maps throws at eval time when native module
 // is not linked (Expo Go). Guard so the screen renders without crashing.
@@ -36,6 +36,8 @@ export default function TripScreen() {
   const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
   const trip = trips.find(t => t.id === id);
+  const [mapReady, setMapReady] = useState(false);
+  const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
   // Resolve event locations to map coordinates
   const eventCoords = useMemo(() => {
@@ -207,35 +209,40 @@ export default function TripScreen() {
                 logoEnabled={false}
                 attributionEnabled={false}
                 compassEnabled={false}
+                onDidFinishLoadingStyle={handleMapLoaded}
               >
                 <MapboxGL.Camera
                   zoomLevel={mapZoom}
                   centerCoordinate={mapCenter}
                   animationDuration={0}
                 />
-                <MapboxGL.ShapeSource id="trip-rings" shape={geojson}>
-                  <MapboxGL.CircleLayer
-                    id="trip-ring-layer"
-                    style={{
-                      circleRadius: 13,
-                      circleColor: "transparent",
-                      circleStrokeWidth: 1.5,
-                      circleStrokeColor: C.teal,
-                      circleStrokeOpacity: 0.45,
-                    }}
-                  />
-                </MapboxGL.ShapeSource>
-                <MapboxGL.ShapeSource id="trip-dots" shape={geojson}>
-                  <MapboxGL.CircleLayer
-                    id="trip-dot-layer"
-                    style={{
-                      circleRadius: 5,
-                      circleColor: C.teal,
-                      circleStrokeWidth: 2,
-                      circleStrokeColor: isDark ? "#060608" : "#ffffff",
-                    }}
-                  />
-                </MapboxGL.ShapeSource>
+                {mapReady && (
+                  <>
+                    <MapboxGL.ShapeSource id="trip-rings" shape={geojson}>
+                      <MapboxGL.CircleLayer
+                        id="trip-ring-layer"
+                        style={{
+                          circleRadius: 13,
+                          circleColor: "transparent",
+                          circleStrokeWidth: 1.5,
+                          circleStrokeColor: C.teal,
+                          circleStrokeOpacity: 0.45,
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                    <MapboxGL.ShapeSource id="trip-dots" shape={geojson}>
+                      <MapboxGL.CircleLayer
+                        id="trip-dot-layer"
+                        style={{
+                          circleRadius: 5,
+                          circleColor: C.teal,
+                          circleStrokeWidth: 2,
+                          circleStrokeColor: isDark ? "#060608" : "#ffffff",
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                  </>
+                )}
               </MapboxGL.MapView>
               <LinearGradient
                 colors={["transparent", C.bg]}
