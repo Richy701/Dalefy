@@ -113,8 +113,8 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
         onClick={() => !uploading && fileInputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-[2rem] transition-all cursor-pointer flex flex-col items-center justify-center gap-4 py-14 mb-8 select-none ${
           isDragging
-            ? "border-[#0bd2b5] bg-[#0bd2b5]/5"
-            : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-[#0bd2b5]/50"
+            ? "border-brand bg-brand/5"
+            : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-brand/50"
         }`}
       >
         <input
@@ -128,16 +128,16 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
 
         {uploading ? (
           <>
-            <div className="h-14 w-14 rounded-full border-2 border-[#0bd2b5]/20 flex items-center justify-center">
-              <div className="h-9 w-9 rounded-full border-2 border-[#0bd2b5] border-t-transparent animate-spin" />
+            <div className="h-14 w-14 rounded-full border-2 border-brand/20 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />
             </div>
             <div className="w-52 h-1.5 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#0bd2b5] rounded-full transition-all duration-200"
+                className="h-full bg-brand rounded-full transition-all duration-200"
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[#0bd2b5]">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-brand">
               UPLOADING...
             </p>
           </>
@@ -146,7 +146,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
             <div
               className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${
                 isDragging
-                  ? "bg-[#0bd2b5] text-black scale-110"
+                  ? "bg-brand text-black scale-110"
                   : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"
               }`}
             >
@@ -168,12 +168,12 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
       {media.length > 0 ? (
         <>
           <div className="flex items-center justify-between mb-5">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#0bd2b5]">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-brand">
               {media.length} FILE{media.length !== 1 ? "S" : ""}
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-colors flex items-center gap-1.5"
+              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] hover:text-brand transition-colors flex items-center gap-1.5"
             >
               <Upload className="h-3 w-3" /> ADD MORE
             </button>
@@ -185,7 +185,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
               return (
                 <div
                   key={item.id}
-                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-[#0bd2b5]/30 transition-all duration-300"
+                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
                 >
                   {/* Thumbnail */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">

@@ -9,10 +9,10 @@ export function NotificationPanel() {
 
   return (
     <Popover>
-      <PopoverTrigger className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] relative border border-slate-200 dark:border-[#1f1f1f] shadow-sm flex items-center justify-center">
+      <PopoverTrigger className="h-11 w-11 rounded-full bg-white dark:bg-[#111111] hover:bg-slate-100 dark:hover:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand relative border border-slate-200 dark:border-[#1f1f1f] shadow-sm flex items-center justify-center">
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <div className="absolute top-3 right-3 h-1.5 w-1.5 bg-[#0bd2b5] rounded-full ring-2 ring-white dark:ring-[#050505]" />
+          <div className="absolute top-3 right-3 h-1.5 w-1.5 bg-brand rounded-full ring-2 ring-white dark:ring-[#050505]" />
         )}
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl" align="end">
@@ -20,11 +20,11 @@ export function NotificationPanel() {
           <div className="flex items-center gap-2">
             <span className="text-sm font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Notifications</span>
             {unreadCount > 0 && (
-              <span className="bg-[#0bd2b5] text-black text-[11px] font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
+              <span className="bg-brand text-black text-[11px] font-bold px-2 py-0.5 rounded-full">{unreadCount}</span>
             )}
           </div>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={markAllRead} className="text-[11px] font-bold uppercase tracking-wider text-[#0bd2b5] hover:bg-[#0bd2b5]/10 h-7 px-2 rounded-lg">
+            <Button variant="ghost" size="sm" onClick={markAllRead} className="text-[11px] font-bold uppercase tracking-wider text-brand hover:bg-brand/10 h-7 px-2 rounded-lg">
               <Check className="h-3 w-3 mr-1" /> Mark all read
             </Button>
           )}
@@ -35,10 +35,10 @@ export function NotificationPanel() {
               <button
                 key={n.id}
                 onClick={() => markRead(n.id)}
-                className={`w-full text-left p-3 rounded-xl transition-colors ${n.read ? 'hover:bg-slate-50 dark:hover:bg-[#050505]' : 'bg-[#0bd2b5]/5 hover:bg-[#0bd2b5]/10'}`}
+                className={`w-full text-left p-3 rounded-xl transition-colors ${n.read ? 'hover:bg-slate-50 dark:hover:bg-[#050505]' : 'bg-brand/5 hover:bg-brand/10'}`}
               >
                 <div className="flex items-start gap-3">
-                  {!n.read && <div className="h-2 w-2 rounded-full bg-[#0bd2b5] mt-1.5 shrink-0" />}
+                  {!n.read && <div className="h-2 w-2 rounded-full bg-brand mt-1.5 shrink-0" />}
                   <div className={`flex-1 min-w-0 ${n.read ? 'ml-5' : ''}`}>
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{n.message}</p>
                     <p className="text-xs text-slate-500 dark:text-[#888] truncate mt-0.5">{n.detail}</p>

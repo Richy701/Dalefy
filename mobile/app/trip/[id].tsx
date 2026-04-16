@@ -13,8 +13,9 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
-import { EventCard, ConfRow } from "@/components/EventCard";
-import { useMemo, useState, useCallback } from "react";
+import { EventCard, ConfRow, DocsRow } from "@/components/EventCard";
+import { Logo } from "@/components/Logo";
+import { useMemo, useState, useCallback, useEffect } from "react";
 
 // Safe conditional import — @rnmapbox/maps throws at eval time when native module
 // is not linked (Expo Go). Guard so the screen renders without crashing.
@@ -38,6 +39,9 @@ export default function TripScreen() {
   const trip = trips.find(t => t.id === id);
   const [mapReady, setMapReady] = useState(false);
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
+
+  // Reset layers when theme swaps styleURL — new style has no layers yet.
+  useEffect(() => { setMapReady(false); }, [isDark]);
 
   // Resolve event locations to map coordinates
   const eventCoords = useMemo(() => {
@@ -161,17 +165,32 @@ export default function TripScreen() {
 
           {/* Bottom: eyebrow + title + frosted glass chips */}
           <View style={styles.heroContent}>
-            <Text style={styles.heroEyebrow}>DAF Adventures · Itinerary</Text>
+            <View style={styles.heroEyebrowRow}>
+              <Logo size={10} color={C.teal} />
+              <Text style={[styles.heroEyebrow, { marginBottom: 0 }]}>DAF Adventures · Itinerary</Text>
+            </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
 
             {/* Frosted glass stat chips */}
             <View style={styles.chipsRow}>
-              {trip.attendees ? (
-                <View style={styles.chip}>
-                  <Users size={10} color={C.teal} strokeWidth={2} />
-                  <Text style={styles.chipText}>{trip.attendees}</Text>
-                </View>
-              ) : null}
+              {(() => {
+                const parsedPax = parseInt(trip.paxCount || "", 10);
+                let label: string | null = null;
+                if (!isNaN(parsedPax) && parsedPax > 0) {
+                  label = `${parsedPax} ATTENDEES`;
+                } else if (trip.attendees) {
+                  const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
+                  const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
+                  const total = listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
+                  label = total > 0 ? `${total} ATTENDEES` : trip.attendees;
+                }
+                return label ? (
+                  <View style={styles.chip}>
+                    <Users size={10} color={C.teal} strokeWidth={2} />
+                    <Text style={styles.chipText}>{label}</Text>
+                  </View>
+                ) : null;
+              })()}
               <View style={styles.chip}>
                 <Moon size={10} color={C.teal} strokeWidth={2} />
                 <Text style={styles.chipText}>
@@ -284,6 +303,9 @@ export default function TripScreen() {
                     <View key={ev.id} style={styles.eventWrap}>
                       <EventCard ev={ev} C={C} />
                       {ev.confNumber && <ConfRow confNumber={ev.confNumber} C={C} />}
+                      {ev.documents && ev.documents.length > 0 && (
+                        <DocsRow documents={ev.documents} C={C} />
+                      )}
                     </View>
                   ))}
                 </View>
@@ -340,6 +362,9 @@ function makeStyles(C: ThemeColors) {
     heroEyebrow: {
       fontSize: 9, fontWeight: T.bold, color: C.teal,
       letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
+    },
+    heroEyebrowRow: {
+      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6,
     },
     heroTitle: {
       fontSize: T["3xl"] + 4, fontFamily: F.black, fontWeight: T.black,

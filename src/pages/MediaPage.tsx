@@ -62,6 +62,13 @@ export function MediaPage() {
   const totalPhotos = allItems.filter((m) => m.type === "image").length;
   const totalVideos = allItems.filter((m) => m.type === "video").length;
 
+  const heroTrip = useMemo(() => {
+    const upcoming = [...trips]
+      .filter((t) => !!t.image && new Date(t.end) >= new Date())
+      .sort((a, b) => a.start.localeCompare(b.start))[0];
+    return upcoming ?? trips.find((t) => !!t.image) ?? null;
+  }, [trips]);
+
   const selectedTrip = trips.find((t) => t.id === uploadTripId);
 
   const processFiles = useCallback(
@@ -165,7 +172,7 @@ export function MediaPage() {
             </div>
             <button
               onClick={() => navigate("/")}
-              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -174,57 +181,56 @@ export function MediaPage() {
 
         {/* Hero Banner */}
         <div className="px-6 lg:px-8 pt-6">
-          <div className="relative overflow-hidden rounded-[2rem] bg-[#0e0e0e]">
-            {/* Teal glow */}
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#0bd2b5]/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/2 w-56 h-40 bg-[#0bd2b5]/8 rounded-full blur-2xl pointer-events-none" />
-
-            {/* Trip images — fanned stack, top-right */}
-            {trips.filter(t => t.image).length > 0 && (
-              <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none" style={{ width: "9rem", height: "8rem" }}>
-                {trips.slice(0, 3).map((t, i) => (
-                  <div
-                    key={t.id}
-                    className="absolute rounded-[1.1rem] overflow-hidden border-2 border-white/10 shadow-2xl"
-                    style={{
-                      width: "5.5rem",
-                      height: "7.5rem",
-                      right: `${i * 30}px`,
-                      top: 0,
-                      transform: `rotate(${(i - 1) * 8}deg)`,
-                      zIndex: 3 - i,
-                    }}
-                  >
-                    <img src={t.image} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/25" />
-                  </div>
-                ))}
-              </div>
+          <div className="relative overflow-hidden rounded-[2rem] min-h-[280px] bg-[#0e0e0e]">
+            {/* Hero background image — latest trip with an image */}
+            {heroTrip?.image && (
+              <img
+                src={heroTrip.image}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
             )}
 
+            {/* Dark gradient for legibility */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
             {/* Content */}
-            <div className="relative px-8 py-10 pr-52">
-              <p className="text-[9px] font-black uppercase tracking-[0.55em] text-[#0bd2b5] mb-3">
-                Visual Archive
-              </p>
-              <h2 className="text-[2.75rem] font-black uppercase leading-none tracking-tight text-white">
-                Captured<br />Moments
-              </h2>
-              <div className="flex items-center gap-6 mt-6">
-                <div>
-                  <p className="text-2xl font-black leading-none text-white">{totalPhotos}</p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Photos</p>
+            <div className="relative px-8 py-10 flex flex-col justify-between min-h-[280px]">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.55em] text-brand mb-3">
+                  Your Gallery
+                </p>
+                <h2 className="text-[2.75rem] font-black uppercase leading-none tracking-tight text-white">
+                  Photos &amp;<br />Videos
+                </h2>
+              </div>
+
+              <div className="flex items-end justify-between gap-6 mt-8">
+                <div className="flex items-center gap-6">
+                  <div>
+                    <p className="text-3xl font-black leading-none text-white">{totalPhotos}</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Photos</p>
+                  </div>
+                  <div className="h-10 w-px bg-white/15" />
+                  <div>
+                    <p className="text-3xl font-black leading-none text-white">{totalVideos}</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Videos</p>
+                  </div>
+                  <div className="h-10 w-px bg-white/15" />
+                  <div>
+                    <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Trips</p>
+                  </div>
                 </div>
-                <div className="h-8 w-px bg-[#252525]" />
-                <div>
-                  <p className="text-2xl font-black leading-none text-white">{totalVideos}</p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Videos</p>
-                </div>
-                <div className="h-8 w-px bg-[#252525]" />
-                <div>
-                  <p className="text-2xl font-black leading-none text-white">{trips.length}</p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.35em] text-[#888888] mt-1">Trips</p>
-                </div>
+
+                {heroTrip && (
+                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                    From {heroTrip.name}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -241,7 +247,7 @@ export function MediaPage() {
             <div className="relative" ref={pickerRef}>
               <button
                 onClick={() => setTripPickerOpen((o) => !o)}
-                className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/50 transition-colors text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-white shadow-sm"
+                className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/50 transition-colors text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-white shadow-sm"
               >
                 {selectedTrip ? (
                   <>
@@ -262,7 +268,7 @@ export function MediaPage() {
                     <button
                       key={t.id}
                       onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-[#0bd2b5]" : "text-slate-700 dark:text-[#ccc]"}`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
                     >
                       <div className="h-6 w-8 rounded overflow-hidden shrink-0">
                         <img src={t.image} alt="" className="h-full w-full object-cover" />
@@ -271,7 +277,7 @@ export function MediaPage() {
                         <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
                         <p className="text-[10px] text-slate-500 dark:text-[#888888]">{t.media?.length ?? 0} files</p>
                       </div>
-                      {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5] shrink-0" />}
+                      {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                     </button>
                   ))}
                 </div>
@@ -287,8 +293,8 @@ export function MediaPage() {
             onClick={() => !uploading && fileInputRef.current?.click()}
             className={`relative border-2 border-dashed rounded-[2rem] transition-all cursor-pointer flex items-center justify-center gap-6 py-10 ${
               isDragging
-                ? "border-[#0bd2b5] bg-[#0bd2b5]/5"
-                : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-[#0bd2b5]/50"
+                ? "border-brand bg-brand/5"
+                : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-brand/50"
             }`}
           >
             <input
@@ -302,17 +308,17 @@ export function MediaPage() {
 
             {uploading ? (
               <div className="flex flex-col items-center gap-3">
-                <div className="h-10 w-10 rounded-full border-2 border-[#0bd2b5]/20 flex items-center justify-center">
-                  <div className="h-6 w-6 rounded-full border-2 border-[#0bd2b5] border-t-transparent animate-spin" />
+                <div className="h-10 w-10 rounded-full border-2 border-brand/20 flex items-center justify-center">
+                  <div className="h-6 w-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
                 </div>
                 <div className="w-40 h-1 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#0bd2b5] rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                  <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#0bd2b5]">UPLOADING…</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand">UPLOADING…</p>
               </div>
             ) : (
               <>
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${isDragging ? "bg-[#0bd2b5] text-black scale-110" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"}`}>
+                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${isDragging ? "bg-brand text-black scale-110" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"}`}>
                   <Upload className="h-6 w-6" />
                 </div>
                 <div className="pointer-events-none">
@@ -335,8 +341,8 @@ export function MediaPage() {
               onClick={() => setActiveTripFilter("all")}
               className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                 activeTripFilter === "all"
-                  ? "bg-[#0bd2b5] text-black border-transparent shadow-md shadow-[#0bd2b5]/20"
-                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/40"
+                  ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
+                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
               }`}
             >
               All Trips · {allItems.length}
@@ -347,8 +353,8 @@ export function MediaPage() {
                 onClick={() => setActiveTripFilter(t.id)}
                 className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 ${
                   activeTripFilter === t.id
-                    ? "bg-[#0bd2b5] text-black border-transparent shadow-md shadow-[#0bd2b5]/20"
-                    : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/40"
+                    ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
+                    : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
                 }`}
               >
                 {t.name} · {t.media!.length}
@@ -368,7 +374,7 @@ export function MediaPage() {
               return (
                 <div
                   key={`${item.tripId}-${item.id}`}
-                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-[#0bd2b5]/30 transition-all duration-300"
+                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
                     {item.type === "image" ? (
@@ -412,7 +418,7 @@ export function MediaPage() {
                   {/* Footer */}
                   <div className="px-2.5 py-2">
                     <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate leading-tight">{item.name}</p>
-                    <p className="text-[9px] font-bold text-[#0bd2b5] truncate mt-0.5 uppercase tracking-tight">{item.tripName}</p>
+                    <p className="text-[9px] font-bold text-brand truncate mt-0.5 uppercase tracking-tight">{item.tripName}</p>
                   </div>
                 </div>
               );

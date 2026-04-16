@@ -2,10 +2,12 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom";
-import { Globe, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Sun, Moon } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
+import { useTheme } from "@/context/ThemeContext";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +23,27 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar"
+
+function ThemeToggleButton() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={toggleTheme}
+          tooltip={isDark ? "Light mode" : "Dark mode"}
+          className="relative rounded-xl h-10 gap-3 !text-sidebar-foreground/55 hover:!text-sidebar-foreground hover:!bg-black/5 dark:hover:!bg-white/5"
+        >
+          {isDark ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+          <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">
+            {isDark ? "Light Mode" : "Dark Mode"}
+          </span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
 
 function RecentTrip() {
   const { trips } = useTrips();
@@ -73,11 +96,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           className={`flex items-center w-full h-16 overflow-hidden ${collapsed ? "justify-center px-0" : "gap-3 px-4"}`}
         >
           {collapsed ? (
-            <Globe className="h-4 w-4 text-sidebar-foreground shrink-0" />
+            <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
           ) : (
             <>
-              <div className="h-8 w-8 bg-[#0bd2b5] rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
-                <Globe className="text-black h-4 w-4" />
+              <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                <Logo className="text-black h-[18px] w-[18px]" />
               </div>
               <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap">
                 DAF Adventures
@@ -95,7 +118,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       {/* ── User footer ── */}
-      <SidebarFooter className="border-t border-sidebar-border pb-3">
+      <SidebarFooter className="border-t border-sidebar-border pb-3 gap-1">
+        <ThemeToggleButton />
         <NavUser />
       </SidebarFooter>
 

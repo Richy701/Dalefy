@@ -301,7 +301,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                   minWidth: 16, height: 16, borderRadius: 8,
                   background: isFirst ? ACCENT : (isDark ? "#2a2a2a" : "#e2e8f0"),
                   color: isFirst ? "#000" : (isDark ? "#ccc" : "#555"),
-                  fontSize: 10, fontWeight: 900, fontStyle: "italic",
+                  fontSize: 10, fontWeight: 900,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   zIndex: 3, padding: "0 4px",
                   border: `1.5px solid ${bg}`,
@@ -323,7 +323,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                   }}>
                     <div style={{
                       fontFamily: "'Barlow Condensed', system-ui, sans-serif",
-                      fontWeight: 900, fontSize: 12, fontStyle: "italic",
+                      fontWeight: 900, fontSize: 12,
                       textTransform: "uppercase", letterSpacing: "-0.02em",
                       color: isDark ? "#fff" : "#111", lineHeight: 1.2,
                     }}>{pt.label}</div>
@@ -345,8 +345,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#0bd2b5]" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
-                <span className="text-[11px] font-extrabold uppercase tracking-tight text-[#0bd2b5]">Route</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
+                <span className="text-[11px] font-extrabold uppercase tracking-tight text-brand">Route</span>
               </div>
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} stops</span>
             </div>
@@ -364,7 +364,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                         border: `1.5px solid ${isFirst ? ACCENT : color}`,
                         boxShadow: isFirst ? `0 0 10px ${ACCENT}33` : "none",
                       }}>
-                        <span style={{ fontSize: 10, fontWeight: 900, fontStyle: "italic", color: isFirst ? "#000" : color, letterSpacing: "-0.02em" }}>
+                        <span style={{ fontSize: 10, fontWeight: 900, color: isFirst ? "#000" : color, letterSpacing: "-0.02em" }}>
                           {pt.order + 1}
                         </span>
                       </div>

@@ -59,12 +59,12 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] dark:focus:border-[#0bd2b5] transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f1f1f] bg-[#0bd2b5]/5 dark:bg-[#0bd2b5]/[0.04]">
+    <div className="border-b border-slate-200 dark:border-[#1f1f1f] bg-brand/5 dark:bg-brand/[0.04]">
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#0bd2b5] mb-2">Live Flight Search</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Live Flight Search</p>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           <div className="sm:flex-1 sm:min-w-[70px]">
             <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">From</label>
@@ -100,7 +100,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
             type="button"
             onClick={search}
             disabled={loading || !from || !to || !date}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-[#0bd2b5] hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Plane className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search
@@ -119,14 +119,14 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               onClick={() => pick(f)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all ${
                 selected === f.flightNum
-                  ? "border-[#0bd2b5] bg-[#0bd2b5]/10 dark:bg-[#0bd2b5]/10"
-                  : "border-slate-200 dark:border-[#252525] hover:border-[#0bd2b5]/50 bg-white dark:bg-[#0d0d0d]"
+                  ? "border-brand bg-brand/10 dark:bg-brand/10"
+                  : "border-slate-200 dark:border-[#252525] hover:border-brand/50 bg-white dark:bg-[#0d0d0d]"
               }`}
             >
               {f.logo ? (
                 <img src={f.logo} alt={f.airline} className="h-5 w-5 object-contain shrink-0" />
               ) : (
-                <Plane className="h-4 w-4 text-[#0bd2b5] shrink-0" />
+                <Plane className="h-4 w-4 text-brand shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
@@ -145,7 +145,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                 {f.price > 0 && <p className="text-sm font-black text-slate-900 dark:text-white">${f.price}</p>}
-                {selected === f.flightNum && <CheckCircle2 className="h-3.5 w-3.5 text-[#0bd2b5]" />}
+                {selected === f.flightNum && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

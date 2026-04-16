@@ -34,7 +34,7 @@ export function SortableEventCard({ event, onClick, onDelete }: SortableEventCar
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-8 z-10 h-8 w-6 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sortable:opacity-100 hover:text-[#0bd2b5] dark:hover:text-[#0bd2b5] transition-opacity cursor-grab active:cursor-grabbing"
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-8 z-10 h-8 w-6 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sortable:opacity-100 hover:text-brand dark:hover:text-brand transition-opacity cursor-grab active:cursor-grabbing"
         title="Drag to reorder"
         aria-label="Drag handle"
       >

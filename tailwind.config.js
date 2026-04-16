@@ -11,6 +11,7 @@ export default {
         condensed: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
       },
       colors: {
+        brand: "rgb(var(--brand-rgb) / <alpha-value>)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

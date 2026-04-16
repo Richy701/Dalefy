@@ -8,8 +8,8 @@ export const darkColors = {
   borderLight: "rgba(255,255,255,0.06)",
 
   textPrimary: "#EDEDEF",
-  textSecondary: "#888888",
-  textTertiary: "#555555",
+  textSecondary: "#9a9a9a",
+  textTertiary: "#7a7a7a",
   textDim: "#333333",
 
   teal: "#0bd2b5",
@@ -42,7 +42,7 @@ export const lightColors = {
 
   textPrimary: "#0d0f14",
   textSecondary: "#4b5263",
-  textTertiary: "#8c93a3",
+  textTertiary: "#606878",
   textDim: "#c5cad6",
 
   teal: "#0099a8",
@@ -76,7 +76,7 @@ export const F = {
 } as const;
 
 export const T = {
-  xs: 11,
+  xs: 12,
   sm: 13,
   base: 16,
   md: 17,
@@ -127,4 +127,38 @@ export function statusBg(status: string, C: ThemeColors = darkColors) {
 
 export function eventColor(type: string, C: ThemeColors = darkColors): string {
   return (C as any)[type] ?? C.teal;
+}
+
+export const ACCENT_PALETTE = [
+  { id: "teal",    label: "Cyber Teal",      dark: "#0bd2b5", light: "#0099a8" },
+  { id: "violet",  label: "Electric Violet", dark: "#8b5cf6", light: "#7c3aed" },
+  { id: "amber",   label: "Solar Amber",     dark: "#f59e0b", light: "#b45309" },
+  { id: "crimson", label: "Crimson",         dark: "#ef4444", light: "#c0392b" },
+  { id: "cobalt",  label: "Cobalt",          dark: "#3b82f6", light: "#1d6ee6" },
+  { id: "lime",    label: "Lime",            dark: "#84cc16", light: "#5c8a10" },
+] as const;
+
+export type AccentId = typeof ACCENT_PALETTE[number]["id"];
+
+function hexToRgbTuple(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean): ThemeColors {
+  const preset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
+  const hex = isDark ? preset.dark : preset.light;
+  const [r, g, b] = hexToRgbTuple(hex);
+  return {
+    ...base,
+    teal: hex,
+    tealDim: `rgba(${r},${g},${b},0.1)`,
+    tealMid: `rgba(${r},${g},${b},0.25)`,
+    tealGlow: `rgba(${r},${g},${b},0.15)`,
+    activity: hex,
+  };
 }

@@ -145,7 +145,7 @@ const EVENT_TYPE_ICONS: Record<EventType, typeof Plane> = {
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
   flight: "text-slate-500 dark:text-slate-400",
   hotel: "text-amber-400",
-  activity: "text-[#0bd2b5]",
+  activity: "text-brand",
   dining: "text-pink-400",
 };
 
@@ -441,15 +441,15 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
             <div
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              className="flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-[#0bd2b5]/60 transition-colors group"
+              className="flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-brand/60 transition-colors group"
             >
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center cursor-pointer hover:bg-[#0bd2b5]/25 hover:scale-105 transition-all shadow-sm"
+                className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center cursor-pointer hover:bg-brand/25 hover:scale-105 transition-all shadow-sm"
                 aria-label="Choose a file to upload"
               >
-                <Upload className="h-6 w-6 text-[#0bd2b5]" />
+                <Upload className="h-6 w-6 text-brand" />
               </button>
               <div className="text-center">
                 <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Click the icon or drop a file</p>
@@ -483,14 +483,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
             <div className="space-y-3">
               <textarea
                 placeholder="Paste itinerary text here — the parser will extract dates, flights, hotels, and activities automatically..."
-                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-[#0bd2b5] resize-none transition-colors"
+                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-brand resize-none transition-colors"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}
               />
               <Button
                 onClick={() => { if (rawText.trim()) processText(rawText); }}
                 disabled={!rawText.trim()}
-                className="w-full h-12 rounded-2xl font-bold bg-[#0bd2b5] hover:opacity-90 text-black shadow-lg shadow-[#0bd2b5]/20 uppercase tracking-wider"
+                className="w-full h-12 rounded-2xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
               >
                 Parse Text <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -501,19 +501,19 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
         {/* ── STEP 2: EXTRACTING ── */}
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="h-10 w-10 text-[#0bd2b5] animate-spin" />
+            <Loader2 className="h-10 w-10 text-brand animate-spin" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">Extracting content...</p>
           </div>
         )}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="h-10 w-10 text-[#0bd2b5] animate-spin" />
+            <Loader2 className="h-10 w-10 text-brand animate-spin" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">
               Matching images {importProgress.done}/{importProgress.total}
             </p>
             <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
-              <div className="h-full bg-[#0bd2b5] transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
+              <div className="h-full bg-brand transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
             </div>
           </div>
         )}
@@ -525,7 +525,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
             <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Trip Name</p>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-[#0bd2b5] transition-colors">
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
                   ← Back
                 </button>
               </div>
@@ -595,7 +595,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
               <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
               <Button
                 onClick={handleImport}
-                className="flex-1 rounded-2xl h-12 font-bold bg-[#0bd2b5] hover:opacity-90 text-black shadow-lg shadow-[#0bd2b5]/20 uppercase tracking-wider gap-2"
+                className="flex-1 rounded-2xl h-12 font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" /> Import {parsed.events.length} Events
               </Button>

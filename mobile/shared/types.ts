@@ -2,6 +2,15 @@ export type View = "dashboard" | "workspace";
 export type DisplayMode = "grid" | "list";
 export type Theme = "light" | "dark";
 
+export interface EventDocument {
+  id: string;
+  name: string;
+  mimeType: string;
+  url: string;    // data URL for v1 — migrate to Supabase Storage later
+  size: number;
+  uploadedAt: string;
+}
+
 export interface TravelEvent {
   id: string;
   type: "flight" | "hotel" | "activity" | "dining";
@@ -26,6 +35,7 @@ export interface TravelEvent {
   checkout?: string;
   notes?: string;
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;
+  documents?: EventDocument[];
 }
 
 export interface TripMedia {

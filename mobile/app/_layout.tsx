@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
+import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
 
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -37,11 +38,19 @@ function AppStack() {
   }, []);
 
   const { addNotification } = useNotifications();
+  const { prefs } = usePreferences();
 
   useEffect(() => {
     if (!Notifications) return;
     const recvSub = Notifications.addNotificationReceivedListener((notification) => {
-      const { title, body } = notification.request.content;
+      const { title, body, data } = notification.request.content;
+      const category = (data?.category as string | undefined) ?? "update";
+      const allowed =
+        category === "reminder" ? prefs.tripReminders :
+        category === "update"   ? prefs.itineraryUpdates :
+        (prefs.tripReminders || prefs.itineraryUpdates);
+      if (!allowed) return;
+
       addNotification({
         message: title ?? "Trip Update",
         detail: body ?? "",
@@ -54,7 +63,7 @@ function AppStack() {
       if (tripId) router.push(`/trip/${tripId}`);
     });
     return () => { recvSub.remove(); tapSub.remove(); };
-  }, [router, addNotification]);
+  }, [router, addNotification, prefs.tripReminders, prefs.itineraryUpdates]);
 
   const ready = (fontsLoaded || fontError) && tripsReady;
 
@@ -69,21 +78,29 @@ function AppStack() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_right",
+          contentStyle: { backgroundColor: C.bg },
+        }}
+      />
     </View>
   );
 }
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <NotificationProvider>
-        <TripsProvider>
-          <AppStack />
-        </TripsProvider>
-      </NotificationProvider>
-    </ThemeProvider>
+    <PreferencesProvider>
+      <ThemeProvider>
+        <NotificationProvider>
+          <TripsProvider>
+            <AppStack />
+          </TripsProvider>
+        </NotificationProvider>
+      </ThemeProvider>
+    </PreferencesProvider>
   );
 }

@@ -12,7 +12,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ import { TripMap } from "@/components/workspace/TripMap";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
@@ -246,7 +247,7 @@ export function WorkspacePage() {
       <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
         <div className="text-center space-y-4">
           <p className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Trip not found</p>
-          <Button onClick={() => navigate("/")} className="bg-[#0bd2b5] text-black font-bold rounded-xl">Back to Dashboard</Button>
+          <Button onClick={() => navigate("/")} className="bg-brand text-black font-bold rounded-xl">Back to Dashboard</Button>
         </div>
       </div>
     );
@@ -339,6 +340,49 @@ export function WorkspacePage() {
 
   const handleRemoveMedia = (index: number) => {
     setEditingEvent(prev => prev ? { ...prev, media: (prev.media || []).filter((_, i) => i !== index) } : null);
+  };
+
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const MAX_DOC_BYTES = 8 * 1024 * 1024; // 8MB per doc — keeps localStorage viable
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !editingEvent) return;
+    const oversized = files.filter(f => f.size > MAX_DOC_BYTES);
+    if (oversized.length) {
+      toast.error(`${oversized.length} file(s) over 8MB were skipped`);
+    }
+    const accepted = files.filter(f => f.size <= MAX_DOC_BYTES);
+    const readers = accepted.map(file => new Promise<{ id: string; name: string; mimeType: string; url: string; size: number; uploadedAt: string }>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve({
+        id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        url: ev.target?.result as string,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      });
+      reader.readAsDataURL(file);
+    }));
+    Promise.all(readers).then(newDocs => {
+      setEditingEvent(prev => prev ? { ...prev, documents: [...(prev.documents || []), ...newDocs] } : null);
+    });
+    e.target.value = "";
+  };
+
+  const handleRemoveDocument = (index: number) => {
+    setEditingEvent(prev => prev ? { ...prev, documents: (prev.documents || []).filter((_, i) => i !== index) } : null);
+  };
+
+  const handleOpenDocument = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleExportPdf = async () => {
@@ -458,15 +502,8 @@ export function WorkspacePage() {
     toast.success("Trip deleted");
   };
 
-  const [copied, setCopied] = useState(false);
-  const handleShareTrip = () => {
-    const url = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      toast.success("Share link copied to clipboard");
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  const [shareOpen, setShareOpen] = useState(false);
+  const handleShareTrip = () => setShareOpen(true);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
@@ -478,36 +515,45 @@ export function WorkspacePage() {
           <div className="flex flex-col min-w-0">
             <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate">{trip.name}</h2>
             <div className="flex items-center gap-2 mt-1 leading-none">
-              <Badge className="bg-[#0bd2b5]/10 text-[#0bd2b5] border border-[#0bd2b5]/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline truncate">ATTENDEES: {trip.attendees}</span>
+              <Badge className="bg-brand/10 text-brand border border-brand/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline truncate">
+                {(() => {
+                  const parsedPax = parseInt(trip.paxCount || "", 10);
+                  if (!isNaN(parsedPax) && parsedPax > 0) return `${parsedPax} ATTENDEES`;
+                  const moreMatch = trip.attendees?.match(/\+(\d+)\s+more/i);
+                  const listed = (trip.attendees || "").replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
+                  const total = listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
+                  return total > 0 ? `${total} ATTENDEES` : trip.attendees;
+                })()}
+              </span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 shrink-0">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
+          <button aria-label="Toggle theme" onClick={toggleTheme} className="flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <NotificationPanel />
-          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
             <Pencil className="h-4 w-4" />
           </button>
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash2 className="h-4 w-4" />
           </button>
-          <Button variant="ghost" onClick={() => setShowMap(!showMap)} className={`font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 gap-2 border transition-all hidden lg:flex ${showMap ? "bg-[#0bd2b5] text-slate-900 dark:text-black border-transparent shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+          <Button variant="ghost" onClick={() => setShowMap(!showMap)} className={`font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 gap-2 border transition-all hidden lg:flex ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <MapIcon className="h-4 w-4" /> {showMap ? "HIDE MAP" : "SHOW MAP"}
           </Button>
           <button
             aria-label="Share trip link"
             onClick={handleShareTrip}
-            className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm"
+            className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm"
           >
-            {copied ? <Check className="h-4 w-4 text-[#0bd2b5]" /> : <Share2 className="h-4 w-4" />}
+            <Share2 className="h-4 w-4" />
           </button>
-          <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] hidden sm:flex">
+          <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
           </Button>
-          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-[#0bd2b5]/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
+          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
           </Button>
         </div>
@@ -518,7 +564,7 @@ export function WorkspacePage() {
         {/* Day sidebar */}
         <aside className="w-64 border-r border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] flex flex-col hidden lg:flex shadow-sm relative z-30">
           <div className="p-5 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between bg-slate-50/30 dark:bg-[#050505]/30">
-            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0bd2b5]">ITINERARY</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">ITINERARY</span>
             <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
@@ -527,18 +573,18 @@ export function WorkspacePage() {
                 title={rematching.active ? `Matching ${rematching.done}/${rematching.total}` : "Re-match event images"}
                 onClick={handleRematchImages}
                 disabled={rematching.active}
-                className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-[#0bd2b5] hover:text-slate-900 dark:hover:text-black text-[#0bd2b5] transition-colors shadow-sm disabled:opacity-60"
+                className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm disabled:opacity-60"
               >
                 {rematching.active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
               </Button>
-              <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-[#0bd2b5] hover:text-slate-900 dark:hover:text-black text-[#0bd2b5] transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
+              <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
             </div>
           </div>
           {rematching.active && (
-            <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1f1f1f] bg-[#0bd2b5]/5">
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0bd2b5] mb-1.5">Matching {rematching.done}/{rematching.total}</p>
+            <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1f1f1f] bg-brand/5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand mb-1.5">Matching {rematching.done}/{rematching.total}</p>
               <div className="h-1 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
-                <div className="h-full bg-[#0bd2b5] transition-all duration-300" style={{ width: `${rematching.total ? (rematching.done / rematching.total) * 100 : 0}%` }} />
+                <div className="h-full bg-brand transition-all duration-300" style={{ width: `${rematching.total ? (rematching.done / rematching.total) * 100 : 0}%` }} />
               </div>
             </div>
           )}
@@ -551,10 +597,10 @@ export function WorkspacePage() {
                     setActiveDayIdx(i);
                     document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-[#0bd2b5]/10 text-[#0bd2b5]" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
+                  className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-brand/10 text-brand" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
                 >
                   <div className="flex items-center gap-3 relative z-10 leading-none">
-                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === activeDayIdx ? "bg-[#0bd2b5] text-slate-900 dark:text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === activeDayIdx ? "bg-brand text-slate-900 dark:text-black shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
                       <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
                       <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
                     </div>
@@ -580,7 +626,7 @@ export function WorkspacePage() {
 
               {/* Top row: status + event count pill */}
               <div className="absolute top-6 left-6 lg:left-8 right-6 lg:right-8 z-20 flex items-center justify-between">
-                <Badge className={`rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] border-none shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-emerald-500 text-white" : trip.status === "In Progress" ? "bg-[#0bd2b5] text-black" : "bg-white/20 text-white"}`}>
+                <Badge className={`rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-brand text-black border-none" : trip.status === "In Progress" ? "bg-brand/15 text-brand border border-brand/40" : "bg-white/20 text-white border-none"}`}>
                   {trip.status === "In Progress" ? "● ACTIVE" : trip.status === "Published" ? "✓ PUBLISHED" : "DRAFT"}
                 </Badge>
                 <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
@@ -592,24 +638,24 @@ export function WorkspacePage() {
 
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8 z-20">
-                <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#0bd2b5] mb-2">DAF Adventures · Itinerary</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">DAF Adventures · Itinerary</p>
                 <h3 className="text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-5">{trip.name}</h3>
 
                 {/* Stat chips */}
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                    <Users className="h-3 w-3 text-[#0bd2b5]" />
+                    <Users className="h-3 w-3 text-brand" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                    <CalendarDays className="h-3 w-3 text-[#0bd2b5]" />
+                    <CalendarDays className="h-3 w-3 text-brand" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
                       {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                   </div>
                   {trip.destination && (
                     <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                      <MapPin className="h-3 w-3 text-[#0bd2b5]" />
+                      <MapPin className="h-3 w-3 text-brand" />
                       <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
                     </div>
                   )}
@@ -623,17 +669,17 @@ export function WorkspacePage() {
                 <TabsList className="bg-transparent h-auto p-0 gap-1">
                   <TabsTrigger
                     value="itinerary"
-                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all data-active:bg-[#0bd2b5] dark:data-active:bg-[#0bd2b5] data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-[#0bd2b5]/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
                   >
                     ITINERARY
                   </TabsTrigger>
                   <TabsTrigger
                     value="media"
-                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-[#0bd2b5] dark:data-active:bg-[#0bd2b5] data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-[#0bd2b5]/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
                   >
                     MEDIA
                     {(trip.media?.length ?? 0) > 0 && (
-                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-[#0bd2b5]/15 text-[#0bd2b5]"}`}>
+                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-brand/15 text-brand"}`}>
                         {trip.media!.length}
                       </span>
                     )}
@@ -649,9 +695,9 @@ export function WorkspacePage() {
                   <div className="space-y-10 sm:space-y-16">
                     {groupedEvents.length > 0 ? (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                      {groupedEvents.map(([date, events]) => (
+                      {groupedEvents.map(([date, events], dayIdx) => (
                         <div key={date} id={`day-${date}`} className="scroll-mt-6">
-                          <DaySection date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} eventCount={events.length} onAddEvent={() => handleAddEvent()}>
+                          <DaySection dayNumber={dayIdx + 1} date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
                               <div className="grid grid-cols-1 gap-4 sm:gap-6 pl-0 sm:pl-8">
                                 {events.map(event => (
@@ -664,8 +710,8 @@ export function WorkspacePage() {
                       ))}
                     </DndContext>
                   ) : (
-                      <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5] transition-colors cursor-pointer group" onClick={() => handleAddEvent()}>
-                        <Plus className="h-12 w-12 mb-4 opacity-20 group-hover:scale-110 group-hover:text-[#0bd2b5] transition-all" />
+                      <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] hover:border-brand transition-colors cursor-pointer group" onClick={() => handleAddEvent()}>
+                        <Plus className="h-12 w-12 mb-4 opacity-20 group-hover:scale-110 group-hover:text-brand transition-all" />
                         <p className="font-bold text-xs uppercase tracking-[0.3em]">ADD YOUR FIRST EVENT</p>
                       </div>
                     )}
@@ -694,17 +740,17 @@ export function WorkspacePage() {
 
       {/* Event Edit Dialog — full screen */}
       <Dialog open={isEditPanelOpen} onOpenChange={setIsEditPanelOpen}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-[2rem] overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-2xl sm:rounded-[2rem] overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
-            <div className="px-8 py-6 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-[#1f1f1f] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
               <div>
-                <h2 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
+                <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
                   {editingEvent?.title ? "Edit Travel Event" : "Add Event to Itinerary"}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Fill in the travel details for this event.</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                 {(["Proposed", "Confirmed", "Cancelled"] as const).map(s => (
                   <button key={s} type="button"
                     onClick={() => setEditingEvent(prev => prev ? { ...prev, status: s } : null)}
@@ -712,7 +758,7 @@ export function WorkspacePage() {
                       editingEvent?.status === s
                         ? s === "Confirmed" ? "bg-emerald-400 text-black shadow-lg shadow-emerald-400/20"
                           : s === "Cancelled" ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
-                          : "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
+                          : "bg-brand text-black shadow-lg shadow-brand/20"
                         : "bg-slate-100 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888] hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
                     }`}
                   >
@@ -722,20 +768,20 @@ export function WorkspacePage() {
               </div>
             </div>
 
-            {/* Body — two columns */}
-            <div className="flex-1 grid grid-cols-5 min-h-0 overflow-hidden">
+            {/* Body — two columns on desktop, stacked on mobile */}
+            <div className="flex-1 flex flex-col md:grid md:grid-cols-5 min-h-0 overflow-y-auto md:overflow-hidden">
               {/* Left: core event fields */}
-              <div className="col-span-3 overflow-y-auto border-r border-slate-200 dark:border-[#1f1f1f]">
+              <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1f1f1f]">
                 {/* Category tabs */}
                 <div className="grid grid-cols-4 border-b border-slate-200 dark:border-[#1f1f1f]">
                   {([
                     { id: "flight", label: "Flight", icon: Plane, color: "text-blue-400" },
                     { id: "hotel", label: "Hotel", icon: Hotel, color: "text-amber-400" },
-                    { id: "activity", label: "Activity", icon: Compass, color: "text-[#0bd2b5]" },
+                    { id: "activity", label: "Activity", icon: Compass, color: "text-brand" },
                     { id: "dining", label: "Dining", icon: Utensils, color: "text-pink-400" },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-[#0bd2b5] bg-[#0bd2b5]/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
+                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-brand bg-brand/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
                       <cat.icon className="h-5 w-5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
                     </button>
@@ -759,15 +805,15 @@ export function WorkspacePage() {
                   />
                 )}
 
-                <div className="p-7 space-y-5">
+                <div className="p-4 sm:p-7 space-y-5">
                   {/* Title — large underline style */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">Event Title</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Event Title</label>
                     <input
                       value={editingEvent?.title || ""}
                       onChange={e => setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null)}
                       placeholder="e.g., Private Maasai Mara Flight"
-                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-[#0bd2b5] focus:outline-none text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
+                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-brand focus:outline-none text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
                     />
                   </div>
 
@@ -777,10 +823,10 @@ export function WorkspacePage() {
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Date</label>
                       <Popover>
                         <PopoverTrigger className={cn(
-                          "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-[#0bd2b5]/50 transition-colors text-left",
+                          "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/50 transition-colors text-left",
                           editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#888888]"
                         )}>
-                          <CalendarDays className="h-3.5 w-3.5 text-[#0bd2b5] shrink-0" />
+                          <CalendarDays className="h-3.5 w-3.5 text-brand shrink-0" />
                           <span className="text-sm">{editingEvent?.date ? format(parseISO(editingEvent.date), "MMM d, yyyy") : "Pick a date..."}</span>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
@@ -791,7 +837,7 @@ export function WorkspacePage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Time</label>
-                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} placeholder="10:30 AM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} placeholder="10:30 AM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
@@ -800,11 +846,11 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Time</label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} placeholder="2:00 PM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} placeholder="2:00 PM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</label>
-                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
                   )}
@@ -812,25 +858,25 @@ export function WorkspacePage() {
                   {/* Location */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
-                    <Input value={editingEvent?.location || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, location: e.target.value } : null)} placeholder="Airport code or Street Address" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                    <Input value={editingEvent?.location || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, location: e.target.value } : null)} placeholder="Airport code or Street Address" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Supplier / Provider</label>
-                      <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Confirmation #</label>
-                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Price (Optional)</label>
-                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-[#0bd2b5]/50 focus-visible:border-[#0bd2b5] focus-visible:ring-0 transition-colors" />
+                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
                   {/* Type-specific fields */}
@@ -838,7 +884,7 @@ export function WorkspacePage() {
                     <div className="space-y-4 pt-1">
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-slate-200 dark:bg-[#252525]" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
                           {editingEvent.type === "flight" ? "Flight Details" : "Hotel Details"}
                         </span>
                         <div className="h-px flex-1 bg-slate-200 dark:bg-[#252525]" />
@@ -852,12 +898,12 @@ export function WorkspacePage() {
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="col-span-2 space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Seat / Ticket Details</label>
-                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B — Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B — Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         ) : (
@@ -868,7 +914,7 @@ export function WorkspacePage() {
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                           </>
@@ -880,9 +926,9 @@ export function WorkspacePage() {
               </div>
 
               {/* Right: image search panel */}
-              <div className="col-span-2 flex flex-col min-h-0 overflow-hidden border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
+              <div className="md:col-span-2 flex flex-col min-h-0 md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
                 {/* Search bar */}
-                <div className="p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
+                <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
@@ -891,11 +937,11 @@ export function WorkspacePage() {
                         onChange={e => setImageSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runImageSearch(imageSearch); } }}
                         placeholder="Search images..."
-                        className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] transition-colors"
+                        className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
                       />
                     </div>
                     <button type="button" onClick={() => runImageSearch(imageSearch)}
-                      className="h-9 px-3 rounded-lg bg-[#0bd2b5] text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
+                      className="h-9 px-3 rounded-lg bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
                       {isSearchingImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                     </button>
                     {imageSearch && (
@@ -907,22 +953,22 @@ export function WorkspacePage() {
                   </div>
                   {imageIsAuto && (
                     <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
-                      <Wand2 className="h-3 w-3 text-[#0bd2b5]" /> Auto-matching from title
+                      <Wand2 className="h-3 w-3 text-brand" /> Auto-matching from title
                     </p>
                   )}
                 </div>
 
                 {/* Selected image preview */}
-                <div className="relative h-44 shrink-0 bg-slate-200 dark:bg-[#111] overflow-hidden">
+                <div className="relative h-28 sm:h-44 shrink-0 bg-slate-200 dark:bg-[#111] overflow-hidden">
                   {editingEvent?.image ? (
                     <>
                       <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                      <div className="absolute bottom-3 left-3 right-3">
-                        {editingEvent.title && <p className="text-white font-extrabold uppercase text-base leading-tight drop-shadow-lg line-clamp-2">{editingEvent.title}</p>}
+                      <div className="absolute bottom-2 sm:bottom-3 left-3 right-3">
+                        {editingEvent.title && <p className="text-white font-extrabold uppercase text-xs sm:text-base leading-tight drop-shadow-lg line-clamp-1 sm:line-clamp-2">{editingEvent.title}</p>}
                       </div>
                       {imageIsAuto && (
-                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#0bd2b5] text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
+                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-brand text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
                           <Wand2 className="h-2.5 w-2.5" /> Auto
                         </div>
                       )}
@@ -936,10 +982,10 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Results grid */}
-                <div className="flex-1 overflow-y-auto p-3">
+                <div className="md:flex-1 md:overflow-y-auto p-3">
                   {isSearchingImages ? (
                     <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#888888]">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
+                      <Loader2 className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
                     </div>
                   ) : imageResults.length > 0 ? (
@@ -948,7 +994,7 @@ export function WorkspacePage() {
                         {imageResults.map((url, i) => (
                           <button key={i} type="button"
                             onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: url } : null); setImageIsAuto(false); }}
-                            className={`relative h-[72px] rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.02]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                            className={`relative h-[72px] rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-transparent hover:border-brand/50"}`}>
                             <img src={url} alt={`Image option ${i + 1}${imageSearch ? ` for ${imageSearch}` : ""}`} className="w-full h-full object-cover" loading="lazy" />
                           </button>
                         ))}
@@ -956,11 +1002,11 @@ export function WorkspacePage() {
                       {(imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
                         <div className="flex items-center gap-1.5 pt-1">
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
-                            className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#aaa] hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-colors flex items-center justify-center gap-1">
+                            className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#aaa] hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
                             <RefreshCcw className="h-3 w-3" /> Refresh
                           </button>
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
-                            className="flex-1 h-7 rounded-lg bg-[#0bd2b5]/10 border border-[#0bd2b5]/40 text-[10px] font-bold uppercase tracking-wider text-[#0bd2b5] hover:bg-[#0bd2b5]/20 transition-colors flex items-center justify-center gap-1">
+                            className="flex-1 h-7 rounded-lg bg-brand/10 border border-brand/40 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-brand/20 transition-colors flex items-center justify-center gap-1">
                             Next <ChevronRight className="h-3 w-3" />
                           </button>
                         </div>
@@ -971,7 +1017,7 @@ export function WorkspacePage() {
                         </p>
                       )}
                       {imageSearchSource === "google" && (
-                        <p className="text-[9px] text-[#0bd2b5]/60 font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-brand/60 font-bold uppercase tracking-widest text-center pt-1">
                           Google Image Search
                         </p>
                       )}
@@ -995,11 +1041,11 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Media Upload */}
-                <div className="p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5 shrink-0">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="h-7 px-3 rounded-lg bg-[#0bd2b5]/10 border border-[#0bd2b5]/20 text-[#0bd2b5] text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-[#0bd2b5]/20 transition-colors flex items-center gap-1.5">
+                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Upload className="h-3 w-3" /> Upload
                     </button>
                     <input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaUpload} />
@@ -1012,7 +1058,7 @@ export function WorkspacePage() {
                             <img src={m.url} alt={m.name} className="h-14 w-full object-cover rounded-lg border border-slate-200 dark:border-[#252525]" />
                           ) : (
                             <div className="h-14 w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-lg border border-slate-200 dark:border-[#252525] flex flex-col items-center justify-center gap-0.5 px-1">
-                              <Video className="h-4 w-4 text-[#0bd2b5]" />
+                              <Video className="h-4 w-4 text-brand" />
                               <span className="text-[8px] text-slate-500 dark:text-[#888888] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
                             </div>
                           )}
@@ -1025,25 +1071,62 @@ export function WorkspacePage() {
                     </div>
                   ) : (
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="w-full h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-[#0bd2b5]/50 hover:text-[#0bd2b5] transition-colors group">
+                      className="w-full h-10 sm:h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-brand/50 hover:text-brand transition-colors group">
                       <ImageIcon2 className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Add photos or videos</span>
                     </button>
                   )}
                 </div>
 
+                {/* Documents / Vouchers */}
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Documents / Vouchers</label>
+                    <button type="button" onClick={() => documentInputRef.current?.click()}
+                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
+                      <Paperclip className="h-3 w-3" /> Attach
+                    </button>
+                    <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,image/*" multiple className="hidden" onChange={handleDocumentUpload} />
+                  </div>
+                  {(editingEvent?.documents?.length ?? 0) > 0 ? (
+                    <div className="space-y-1.5">
+                      {editingEvent!.documents!.map((doc, i) => (
+                        <div key={doc.id} className="group flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/40 transition-colors">
+                          <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5 text-brand" />
+                          </div>
+                          <button type="button" onClick={() => handleOpenDocument(doc.url)} className="flex-1 min-w-0 text-left">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                            <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] uppercase tracking-wider">{formatFileSize(doc.size)}</p>
+                          </button>
+                          <button type="button" onClick={() => handleRemoveDocument(i)}
+                            className="h-6 w-6 rounded-md text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => documentInputRef.current?.click()}
+                      className="w-full h-10 sm:h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-brand/50 hover:text-brand transition-colors">
+                      <Paperclip className="h-4 w-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Attach PDF, voucher, or booking confirmation</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* Notes */}
-                <div className="p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Agent Notes (Internal)</label>
-                  <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                  <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-5 bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
+            <div className="px-4 sm:px-8 py-4 sm:py-5 bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between gap-3 shrink-0">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setIsEditPanelOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-11 px-10 rounded-xl bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-[#0bd2b5]/20">
+              <Button type="submit" className="h-10 sm:h-11 px-6 sm:px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">
                 Save Event
               </Button>
             </div>
@@ -1052,6 +1135,13 @@ export function WorkspacePage() {
       </Dialog>
 
       <AiZapDialog open={aiZapOpen} onOpenChange={setAiZapOpen} />
+
+      <ShareTripDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        tripId={trip.id}
+        tripName={trip.name}
+      />
 
       {/* Edit Trip Dialog */}
       <Dialog open={editTripOpen} onOpenChange={setEditTripOpen}>
@@ -1063,7 +1153,7 @@ export function WorkspacePage() {
             <div className="p-8 space-y-5 max-h-[60vh] overflow-y-auto">
               {/* Cover image */}
               <div className="space-y-2.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#0bd2b5]">Cover Image</label>
+                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Cover Image</label>
                 {/* Preview */}
                 {editingTrip.image && (
                   <div className="h-32 rounded-2xl overflow-hidden relative">
@@ -1080,21 +1170,21 @@ export function WorkspacePage() {
                       onChange={e => setTripImageSearch(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runTripImageSearch(tripImageSearch); } }}
                       placeholder="Search destinations…"
-                      className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-[#0bd2b5] transition-colors"
+                      className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
                     />
                   </div>
                   <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
-                    className="h-9 px-3 rounded-xl bg-[#0bd2b5] text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
+                    className="h-9 px-3 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
                     {isTripImageSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                   </button>
                   {tripImageResults.length > 0 && (
                     <>
                       <button type="button" aria-label="Refresh" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                         <RefreshCcw className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
                       </button>
                       <button type="button" aria-label="Next page" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage + 1)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                         <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                       <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); setTripImagePage(1); setTripImageLastQuery(""); }}
@@ -1108,20 +1198,20 @@ export function WorkspacePage() {
                 <div className="grid grid-cols-4 gap-1.5">
                   {isTripImageSearching ? (
                     <div className="col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0bd2b5]" />
+                      <Loader2 className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                     </div>
                   ) : tripImageResults.length > 0 ? (
                     tripImageResults.map((url, i) => (
                       <button key={i} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
-                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                         <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       </button>
                     ))
                   ) : (
                     COVER_IMAGES.map(({ url, label }) => (
                       <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
-                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-[#0bd2b5] shadow-lg shadow-[#0bd2b5]/30 scale-[1.03]" : "border-transparent hover:border-[#0bd2b5]/50"}`}>
+                        className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                         <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
                         <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
@@ -1132,23 +1222,23 @@ export function WorkspacePage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</label>
-                <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Destination</label>
-                  <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                  <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Attendees</label>
-                  <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                  <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
                   <Popover>
-                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors flex items-center justify-between gap-2 text-left">
+                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                       <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
                         {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
                       </span>
@@ -1162,7 +1252,7 @@ export function WorkspacePage() {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
                   <Popover>
-                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors flex items-center justify-between gap-2 text-left">
+                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                       <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
                         {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
                       </span>
@@ -1179,7 +1269,7 @@ export function WorkspacePage() {
                 <select
                   value={editingTrip.currency ?? "USD"}
                   onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
-                  className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors appearance-none cursor-pointer"
+                  className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
                 >
                   {[
                     ["USD", "USD — US Dollar"],
@@ -1211,7 +1301,7 @@ export function WorkspacePage() {
                       className={`flex-1 h-10 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
                         editingTrip.status === s
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                            : s === "In Progress" ? "bg-[#0bd2b5] text-black shadow-lg shadow-[#0bd2b5]/20"
+                            : s === "In Progress" ? "bg-brand text-black shadow-lg shadow-brand/20"
                             : "bg-slate-800 dark:bg-white text-white dark:text-black shadow-lg"
                           : "bg-slate-100 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
                       }`}>
@@ -1223,7 +1313,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-11 px-10 rounded-xl bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-[#0bd2b5]/20">Save Changes</Button>
+              <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>
           </form>
         </DialogContent>

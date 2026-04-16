@@ -39,7 +39,7 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
       <SheetContent className="w-[400px] sm:w-[480px] p-0 border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-2xl">
         <SheetHeader className="p-6 border-b border-slate-200 dark:border-[#1f1f1f] text-left">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#0bd2b5] flex items-center justify-center shadow-lg shadow-[#0bd2b5]/20">
+            <div className="h-10 w-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
               <Zap className="h-5 w-5 text-black" />
             </div>
             <div>
@@ -58,17 +58,17 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
                 key={action.id}
                 onClick={() => handleAction(action.id)}
                 disabled={!!loading}
-                className="w-full text-left p-5 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#050505] hover:border-[#0bd2b5]/40 transition-[border-color,opacity] duration-150 group disabled:opacity-50 active:scale-[0.99]"
+                className="w-full text-left p-5 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#050505] hover:border-brand/40 transition-[border-color,opacity] duration-150 group disabled:opacity-50 active:scale-[0.99]"
               >
                 <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-[#0bd2b5]/10 text-[#0bd2b5] flex items-center justify-center shrink-0 group-hover:bg-[#0bd2b5] group-hover:text-black transition-colors">
+                  <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0 group-hover:bg-brand group-hover:text-black transition-colors">
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">{action.label}</p>
                     <p className="text-xs text-slate-500 dark:text-[#888] mt-1">{action.description}</p>
                     {result && (
-                      <p className="text-xs text-[#0bd2b5] font-semibold mt-3 bg-[#0bd2b5]/5 px-3 py-2 rounded-lg border border-[#0bd2b5]/10">{result}</p>
+                      <p className="text-xs text-brand font-semibold mt-3 bg-brand/5 px-3 py-2 rounded-lg border border-brand/10">{result}</p>
                     )}
                   </div>
                 </div>

@@ -28,3 +28,13 @@ dist-ssr
 .env
 .env.local
 mobile/.env
+
+# Local editor/agent tooling
+.agents/
+.claude/
+.windsurf/
+
+# Local caches and ephemeral files
+supabase/.temp/
+firebase-debug.log
+screenshot*.png

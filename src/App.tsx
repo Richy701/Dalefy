@@ -4,6 +4,7 @@ import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TripsProvider } from "@/context/TripsContext";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -12,6 +13,7 @@ import { TravelersPage } from "@/pages/TravelersPage";
 import { DestinationsPage } from "@/pages/DestinationsPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { MediaPage } from "@/pages/MediaPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { SharedTripPage } from "@/pages/SharedTripPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -39,6 +41,7 @@ function AppRoutes() {
         <Route path="/destinations" element={<DestinationsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/media" element={<MediaPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route
         path="/trip/:tripId"
@@ -56,6 +59,8 @@ function AppRoutes() {
 
 function AppToaster() {
   const { theme } = useTheme();
+  const { toastsEnabled } = usePreferences();
+  if (!toastsEnabled) return null;
   return (
     <Toaster
       position="bottom-right"
@@ -83,8 +88,10 @@ export default function App() {
         <AuthProvider>
           <NotificationProvider>
             <TripsProvider>
-              <AppRoutes />
-              <AppToaster />
+              <PreferencesProvider>
+                <AppRoutes />
+                <AppToaster />
+              </PreferencesProvider>
             </TripsProvider>
           </NotificationProvider>
         </AuthProvider>

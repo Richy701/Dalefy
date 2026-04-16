@@ -8,25 +8,39 @@ import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, Share2,
+  ArrowLeft, Compass, MapPin, Users, Moon, Share2, Plus, Check,
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useTrips } from "@/context/TripsContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { EventCard, ConfRow } from "@/components/EventCard";
 import { fetchTripById } from "@/services/supabaseTrips";
 import type { Trip } from "@/shared/types";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 
 export default function SharedTripScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
   const { C } = useTheme();
+  const { trips, addTrip } = useTrips();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  const alreadyInMyTrips = useMemo(
+    () => (tripId ? trips.some((t) => t.id === tripId) : false),
+    [tripId, trips]
+  );
+
+  const handleAddToMyTrips = () => {
+    if (!trip || alreadyInMyTrips) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addTrip(trip);
+  };
 
   useEffect(() => {
     if (!tripId) return;
@@ -183,6 +197,28 @@ export default function SharedTripScreen() {
               );
             })}
         </View>
+
+        <Pressable
+          onPress={handleAddToMyTrips}
+          disabled={alreadyInMyTrips}
+          style={({ pressed }) => [
+            styles.addCta,
+            {
+              backgroundColor: alreadyInMyTrips ? C.elevated : C.teal,
+              opacity: pressed && !alreadyInMyTrips ? 0.85 : 1,
+            },
+          ]}
+        >
+          {alreadyInMyTrips
+            ? <Check size={16} color={C.textSecondary} strokeWidth={2.5} />
+            : <Plus size={16} color="#000" strokeWidth={2.5} />}
+          <Text style={[
+            styles.addCtaText,
+            { color: alreadyInMyTrips ? C.textSecondary : "#000" },
+          ]}>
+            {alreadyInMyTrips ? "Saved to my trips" : "Add to my trips"}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -196,6 +232,16 @@ function makeStyles(C: ThemeColors) {
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md, textAlign: "center", paddingHorizontal: S.xl },
     actionBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
     actionBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
+
+    addCta: {
+      marginHorizontal: S.md, marginTop: S.sm,
+      height: 52, borderRadius: R.xl,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    },
+    addCtaText: {
+      fontSize: T.sm, fontWeight: T.black, letterSpacing: 1.2,
+      textTransform: "uppercase",
+    },
 
     hero: { height: 340, position: "relative" },
     backCircle: {

@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Globe, PieChart, Images } from "lucide-react";
+import { LayoutDashboard, Users, Globe, PieChart, Images, Settings } from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { icon: Globe,           label: "Destinations", path: "/destinations" },
   { icon: Images,          label: "Media",        path: "/media" },
   { icon: PieChart,        label: "Reports",      path: "/reports" },
+  { icon: Settings,        label: "Settings",     path: "/settings" },
 ];
 
 export function NavMain() {

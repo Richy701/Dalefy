@@ -2,7 +2,9 @@ import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Switch } f
 import { useRouter } from "expo-router";
 import { ArrowLeft, Moon, Sun, Bell, Shield, Info, ChevronRight, Palette } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { Logo } from "@/components/Logo";
 import { useMemo } from "react";
 
 function makeStyles(C: ThemeColors) {
@@ -59,7 +61,11 @@ function makeStyles(C: ThemeColors) {
 
     versionText: {
       fontSize: T.sm, color: C.textTertiary, textAlign: "center",
-      marginTop: S.xl, fontWeight: T.medium,
+      fontWeight: T.medium,
+    },
+    versionRow: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 6, marginTop: S.xl,
     },
   });
 }
@@ -67,6 +73,7 @@ function makeStyles(C: ThemeColors) {
 export default function SettingsScreen() {
   const router = useRouter();
   const { isDark, toggle, C } = useTheme();
+  const { prefs, setPref } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   return (
@@ -119,10 +126,10 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.rowLabel}>Trip reminders</Text>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={prefs.tripReminders}
+              onValueChange={(v) => setPref("tripReminders", v)}
               trackColor={{ false: C.elevated, true: C.tealMid }}
-              thumbColor={C.teal}
+              thumbColor={prefs.tripReminders ? C.teal : C.textTertiary}
             />
           </View>
           <View style={styles.rowDivider} />
@@ -132,10 +139,10 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.rowLabel}>Itinerary updates</Text>
             <Switch
-              value={true}
-              onValueChange={() => {}}
+              value={prefs.itineraryUpdates}
+              onValueChange={(v) => setPref("itineraryUpdates", v)}
               trackColor={{ false: C.elevated, true: C.tealMid }}
-              thumbColor={C.teal}
+              thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
             />
           </View>
         </View>
@@ -160,7 +167,10 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <Text style={styles.versionText}>DAF Adventures · Traveller App</Text>
+        <View style={styles.versionRow}>
+          <Logo size={10} color={C.textTertiary} />
+          <Text style={styles.versionText}>DAF Adventures · Traveller App</Text>
+        </View>
 
       </ScrollView>
     </SafeAreaView>

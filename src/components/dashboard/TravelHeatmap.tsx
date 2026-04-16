@@ -68,9 +68,9 @@ export function TravelHeatmap({ trips, onSelectTrip }: { trips: Trip[]; onSelect
 
   const intensity = (n: number) => {
     if (n === 0) return "bg-slate-100 dark:bg-[#1a1a1a]";
-    if (n === 1) return "bg-[#0bd2b5]/30";
-    if (n === 2) return "bg-[#0bd2b5]/60";
-    return "bg-[#0bd2b5]";
+    if (n === 1) return "bg-brand/30";
+    if (n === 2) return "bg-brand/60";
+    return "bg-brand";
   };
 
   return (
@@ -85,9 +85,9 @@ export function TravelHeatmap({ trips, onSelectTrip }: { trips: Trip[]; onSelect
         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
           <span>Less</span>
           <span className="h-2.5 w-2.5 rounded-[3px] bg-slate-100 dark:bg-[#1a1a1a]" />
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-[#0bd2b5]/30" />
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-[#0bd2b5]/60" />
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-[#0bd2b5]" />
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-brand/30" />
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-brand/60" />
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-brand" />
           <span>More</span>
         </div>
       </div>
@@ -134,7 +134,7 @@ export function TravelHeatmap({ trips, onSelectTrip }: { trips: Trip[]; onSelect
                             if (trip) onSelectTrip(trip);
                           }
                         }}
-                        className={`h-3 w-3 rounded-[3px] ${intensity(cell.count)} ${cell.count ? "hover:ring-1 hover:ring-[#0bd2b5] cursor-pointer" : "cursor-default"} transition-[box-shadow]`}
+                        className={`h-3 w-3 rounded-[3px] ${intensity(cell.count)} ${cell.count ? "hover:ring-1 hover:ring-brand cursor-pointer" : "cursor-default"} transition-[box-shadow]`}
                       />
                     );
                   })}
@@ -154,7 +154,7 @@ export function TravelHeatmap({ trips, onSelectTrip }: { trips: Trip[]; onSelect
           {hover.tripIds.map(id => {
             const t = tripById.get(id);
             if (!t) return null;
-            return <p key={id} className="text-[#0bd2b5] font-semibold">{t.name}</p>;
+            return <p key={id} className="text-brand font-semibold">{t.name}</p>;
           })}
         </div>
       )}

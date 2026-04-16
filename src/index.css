@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Brand accent (runtime-swappable via Settings → Appearance) */
+  :root {
+    --brand-rgb: 11 210 181; /* Cyber Teal — default */
+  }
+
   /* LIGHT MODE COLORS (Default Shadcn-like) */
   :root {
     --background: 0 0% 100%;
@@ -82,6 +87,12 @@
     transition-duration: 0s !important;
   }
 }
+
+/* ── Compact mode ── tightens large vertical rhythms on dashboard/lists */
+html[data-compact="true"] [data-compact-section] { padding-top: 1rem; padding-bottom: 2rem; }
+html[data-compact="true"] [data-compact-section] > * + * { margin-top: 1rem !important; }
+html[data-compact="true"] [data-compact-card] { padding: 0.75rem !important; }
+html[data-compact="true"] [data-compact-row] { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
 
 /* ── Entrance animations ── */
 @keyframes fade-up {
@@ -205,7 +216,7 @@
 /* Global focus-visible ring for custom interactive elements */
 button:focus-visible,
 [role="button"]:focus-visible {
-  outline: 2px solid hsl(171 85% 43%);
+  outline: 2px solid rgb(var(--brand-rgb));
   outline-offset: 2px;
 }
 

@@ -5,9 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MapPin, Search, Plane, Hotel, Compass, Utensils, CalendarDays } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { Logo } from "@/components/Logo";
 
 let MapboxGL: any = null;
 try {
@@ -56,6 +57,10 @@ export default function DestinationsScreen() {
   const [regionFilter, setRegionFilter] = useState("all");
   const [mapReady, setMapReady] = useState(false);
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
+
+  // Reset map layers when style URL swaps (theme toggle) — new style
+  // doesn't have the old layers registered, so we wait for re-load.
+  useEffect(() => { setMapReady(false); }, [isDark]);
 
   const destinations = useMemo(() => {
     const map = new Map<string, {
@@ -240,7 +245,10 @@ export default function DestinationsScreen() {
 
         {/* ── Title + Stats ── */}
         <View style={styles.titleSection}>
-          <Text style={styles.brandName}>DAF Adventures</Text>
+          <View style={styles.brandRow}>
+            <Logo size={11} color={C.teal} />
+            <Text style={[styles.brandName, { marginBottom: 0 }]}>DAF Adventures</Text>
+          </View>
           <View style={styles.titleRow}>
             <Text style={styles.pageTitle}>Destinations</Text>
             <View style={styles.statsRow}>
@@ -364,6 +372,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     brandName: {
       fontSize: 10, fontWeight: "900" as const, color: C.teal,
       letterSpacing: 3, textTransform: "uppercase", marginBottom: 4,
+    },
+    brandRow: {
+      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4,
     },
     titleRow: {
       flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between",

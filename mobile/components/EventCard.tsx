@@ -1,10 +1,30 @@
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, Pressable, Alert } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import {
   Plane, Hotel, Compass, Utensils,
-  MapPin, Clock, ArrowRight, Hash, Tag,
+  MapPin, Clock, ArrowRight, Hash, Tag, Paperclip, FileText,
 } from "lucide-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
-import type { TravelEvent } from "@/shared/types";
+import type { TravelEvent, EventDocument } from "@/shared/types";
+
+// ── Documents badge — tiny counter chip ───────────────────────────────────────
+function DocsBadge({ count, color }: { count: number; color: string }) {
+  if (!count) return null;
+  return (
+    <View style={[docsBadge.wrap, { backgroundColor: `${color}18`, borderColor: `${color}30` }]}>
+      <Paperclip size={9} color={color} strokeWidth={2} />
+      <Text style={[docsBadge.text, { color }]}>{count}</Text>
+    </View>
+  );
+}
+const docsBadge = StyleSheet.create({
+  wrap: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: R.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  text: { fontSize: T.xs, fontWeight: "800", letterSpacing: 0.5 },
+});
 
 // ── Status chip ───────────────────────────────────────────────────────────────
 function StatusChip({ status, color }: { status: string; color: string }) {
@@ -19,11 +39,90 @@ const chip = StyleSheet.create({
   text: { fontSize: T.xs, fontWeight: "800", letterSpacing: 0.8 },
 });
 
+// ── Compact Card — used when event data is sparse ─────────────────────────────
+function CompactCard({
+  ev, C, color, Icon, label, originCode,
+}: {
+  ev: TravelEvent; C: ThemeColors; color: string;
+  Icon: React.ComponentType<any>;
+  label: string;
+  originCode?: string;
+}) {
+  const s = makeCompactStyles(C, color);
+  return (
+    <View style={s.card}>
+      {ev.image ? (
+        <Image source={{ uri: ev.image }} style={s.thumb} />
+      ) : (
+        <View style={s.iconBox}>
+          <Icon size={15} color={color} strokeWidth={1.8} />
+        </View>
+      )}
+
+      {ev.time ? (
+        <View style={s.timeCol}>
+          <Text style={s.timeVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {ev.time.split(" ")[0]}
+          </Text>
+          {ev.time.split(" ")[1] ? (
+            <Text style={s.timeAmPm} numberOfLines={1}>{ev.time.split(" ")[1]}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={s.content}>
+        <View style={s.labelRow}>
+          <Text style={[s.label, { color }]}>{label}</Text>
+          {originCode ? <Text style={s.origin}>· {originCode}</Text> : null}
+        </View>
+        <Text style={s.title} numberOfLines={1}>{ev.title}</Text>
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <DocsBadge count={ev.documents?.length ?? 0} color={color} />
+        {ev.status ? <StatusChip status={ev.status} color={color} /> : null}
+      </View>
+    </View>
+  );
+}
+
+function makeCompactStyles(C: ThemeColors, color: string) {
+  return StyleSheet.create({
+    card: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      backgroundColor: C.card, borderRadius: R.xl,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      paddingVertical: S.sm, paddingHorizontal: S.sm,
+    },
+    thumb: { width: 44, height: 44, borderRadius: R.md },
+    iconBox: {
+      width: 44, height: 44, borderRadius: R.md,
+      backgroundColor: `${color}15`,
+      alignItems: "center", justifyContent: "center",
+    },
+    timeCol: { alignItems: "center", width: 58 },
+    timeVal: { fontSize: T.md, fontWeight: T.black, color: C.textPrimary, letterSpacing: -0.3, lineHeight: 18 },
+    timeAmPm: { fontSize: 9, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 1 },
+    content: { flex: 1, minWidth: 0 },
+    labelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
+    label: { fontSize: T.xs, fontWeight: T.black, letterSpacing: 1.2, textTransform: "uppercase" },
+    origin: { fontSize: T.xs, fontWeight: T.black, color: C.textTertiary, letterSpacing: 0.5 },
+    title: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary },
+  });
+}
+
 // ── Flight Card ───────────────────────────────────────────────────────────────
 function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
   const parts = ev.location?.match(/^(.+?)\s+to\s+(.+)$/i);
   const from      = parts?.[1]?.trim() ?? ev.location ?? "";
   const to        = parts?.[2]?.trim() ?? "";
+
+  // Sparse: no destination → route viz breaks, use compact row.
+  if (!to) {
+    const originCode = from ? (from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase()) : undefined;
+    return <CompactCard ev={ev} C={C} color={C.flight} Icon={Plane} label="FLIGHT" originCode={originCode} />;
+  }
+
   const fromCode  = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
   const toCode    = to.length <= 4   ? to.toUpperCase()   : to.slice(0, 3).toUpperCase();
   const fromLabel = from.length > 4  ? from.slice(0, 14)  : "Departure";
@@ -39,9 +138,11 @@ function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
         </View>
         {ev.time ? (
           <>
-            <Text style={s.timeVal}>{ev.time.split(" ")[0]}</Text>
+            <Text style={s.timeVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {ev.time.split(" ")[0]}
+            </Text>
             {ev.time.split(" ")[1] && (
-              <Text style={s.timeAmPm}>{ev.time.split(" ")[1]}</Text>
+              <Text style={s.timeAmPm} numberOfLines={1}>{ev.time.split(" ")[1]}</Text>
             )}
           </>
         ) : null}
@@ -84,10 +185,11 @@ function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
         </View>
       </View>
 
-      {/* Right: status */}
-      {ev.status ? (
+      {/* Right: status + docs */}
+      {(ev.status || (ev.documents?.length ?? 0) > 0) ? (
         <View style={s.statusWrap}>
-          <StatusChip status={ev.status} color={C.flight} />
+          {ev.status ? <StatusChip status={ev.status} color={C.flight} /> : null}
+          <DocsBadge count={ev.documents?.length ?? 0} color={C.flight} />
         </View>
       ) : null}
     </View>
@@ -102,8 +204,8 @@ function makeFlightStyles(C: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       paddingVertical: S.sm, paddingHorizontal: S.md, gap: S.sm,
     },
-    // Wide enough for "10:00 AM" without wrapping
-    timeCol: { alignItems: "center", width: 58 },
+    // Wide enough for "12:00 AM" without wrapping, plus auto-shrink as fallback
+    timeCol: { alignItems: "center", width: 64 },
     iconBox: {
       width: 32, height: 32, borderRadius: R.sm,
       backgroundColor: `${C.flight}18`,
@@ -125,12 +227,17 @@ function makeFlightStyles(C: ThemeColors) {
     metaRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
     metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
     meta: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 },
-    statusWrap: { alignSelf: "flex-start" },
+    statusWrap: { alignSelf: "flex-start", flexDirection: "column", alignItems: "flex-end", gap: 4 },
   });
 }
 
 // ── Hotel Card ────────────────────────────────────────────────────────────────
 function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
+  // Sparse: no checkin/out, no roomType, no location → compact row.
+  const isSparse = !ev.checkin && !ev.checkout && !ev.roomType && !ev.location;
+  if (isSparse) {
+    return <CompactCard ev={ev} C={C} color={C.hotel} Icon={Hotel} label="ACCOMMODATION" />;
+  }
   const s = makeHotelStyles(C);
   return (
     <View style={s.card}>
@@ -181,7 +288,7 @@ function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
         ) : null}
 
         {/* Badges row — separate line so they never overlap checkin times */}
-        {(ev.roomType || ev.status) ? (
+        {(ev.roomType || ev.status || (ev.documents?.length ?? 0) > 0) ? (
           <View style={s.badgesRow}>
             {ev.roomType ? (
               <View style={s.roomBadge}>
@@ -189,6 +296,7 @@ function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
               </View>
             ) : null}
             {ev.status ? <StatusChip status={ev.status} color={C.hotel} /> : null}
+            <DocsBadge count={ev.documents?.length ?? 0} color={C.hotel} />
           </View>
         ) : null}
       </View>
@@ -238,6 +346,12 @@ function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
   const Icon     = isDining ? Utensils : Compass;
   const label    = isDining ? "DINING" : "ACTIVITY";
 
+  // Sparse: no notes, no endTime, no location → compact row (image becomes thumbnail).
+  const isSparse = !ev.notes && !ev.endTime && !ev.location;
+  if (isSparse) {
+    return <CompactCard ev={ev} C={C} color={color} Icon={Icon} label={label} />;
+  }
+
   const s = makeActivityStyles(C, color);
   return (
     <View style={s.card}>
@@ -279,6 +393,7 @@ function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
               <Text style={[s.priceText, { color }]}>{ev.price}</Text>
             </View>
           ) : null}
+          <DocsBadge count={ev.documents?.length ?? 0} color={color} />
         </View>
       </View>
     </View>
@@ -337,6 +452,69 @@ export function ConfRow({ confNumber, C }: { confNumber: string; C: ThemeColors 
       <Hash size={10} color={C.teal} strokeWidth={2} />
       <Text style={s.label}>CONF</Text>
       <Text style={s.value}>{confNumber}</Text>
+    </View>
+  );
+}
+
+// ── Docs row — tappable attachment list ──────────────────────────────────────
+export function DocsRow({ documents, C }: { documents: EventDocument[]; C: ThemeColors }) {
+  if (!documents.length) return null;
+
+  const handlePress = async (doc: EventDocument) => {
+    // Data URLs can't be opened directly on iOS without writing to disk.
+    // For v1, copy the URL to clipboard so the user can paste/open in a browser,
+    // and show an Alert with file metadata.
+    try {
+      await Clipboard.setStringAsync(doc.url);
+    } catch { /* ignore */ }
+    const sizeKb = Math.max(1, Math.round(doc.size / 1024));
+    const sizeText = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+    Alert.alert(
+      doc.name,
+      `${doc.mimeType || "file"} · ${sizeText}\n\nLink copied to clipboard.`,
+      [{ text: "OK" }],
+    );
+  };
+
+  const s = StyleSheet.create({
+    wrap: { marginTop: 6, gap: 4 },
+    row: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      paddingHorizontal: S.sm, paddingVertical: 7,
+      backgroundColor: `${C.teal}0c`,
+      borderRadius: R.md,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: `${C.teal}22`,
+    },
+    iconBox: {
+      width: 22, height: 22, borderRadius: R.sm,
+      backgroundColor: `${C.teal}20`,
+      alignItems: "center", justifyContent: "center",
+    },
+    name: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary, flex: 1 },
+    size: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, letterSpacing: 0.3 },
+  });
+
+  return (
+    <View style={s.wrap}>
+      {documents.map(doc => {
+        const sizeKb = Math.max(1, Math.round(doc.size / 1024));
+        const sizeText = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+        return (
+          <Pressable
+            key={doc.id}
+            onPress={() => handlePress(doc)}
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${doc.name}`}
+          >
+            <View style={s.iconBox}>
+              <FileText size={12} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={s.name} numberOfLines={1}>{doc.name}</Text>
+            <Text style={s.size}>{sizeText}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

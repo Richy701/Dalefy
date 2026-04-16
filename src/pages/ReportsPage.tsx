@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
@@ -16,15 +17,13 @@ import type { ComplianceDoc } from "@/types";
 
 type Tab = "operations" | "compliance";
 
-const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: "#0bd2b5", "In Progress": "#f59e0b" };
-
-function BarTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+function BarTooltip({ active, payload, label, color = "#0bd2b5" }: { active?: boolean; payload?: { value: number }[]; label?: string; color?: string }) {
   if (!active || !payload?.length) return null;
   const count = payload[0].value;
   return (
     <div style={{ background: "var(--tooltip-bg, #111)", border: "1px solid var(--tooltip-border, #2a2a2a)", borderRadius: 12, padding: "10px 14px", minWidth: 130 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 20, fontWeight: 900, fontStyle: "italic", color: "#0bd2b5", fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
+      <p style={{ fontSize: 20, fontWeight: 900, color, fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
         {count} <span style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.1em" }}>{count === 1 ? "TRIP" : "TRIPS"}</span>
       </p>
     </div>
@@ -37,7 +36,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
-          <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-[#0bd2b5]"} flex items-center justify-center`}>
+          <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
@@ -50,6 +49,9 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 
 export function ReportsPage() {
   const { trips } = useTrips();
+  const { accent } = usePreferences();
+  const brandHex = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
+  const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: brandHex, "In Progress": "#f59e0b" };
   const { theme } = useTheme();
   const navigate = useNavigate();
   const stats = useTripStats(trips);
@@ -134,7 +136,7 @@ export function ReportsPage() {
   // Pipeline chart data
   const pipelineData = [
     { name: "Draft", value: stats.pipeline.draft, color: "#64748b" },
-    { name: "Published", value: stats.pipeline.published, color: "#0bd2b5" },
+    { name: "Published", value: stats.pipeline.published, color: brandHex },
     { name: "In Progress", value: stats.pipeline.inProgress, color: "#f59e0b" },
   ].filter(d => d.value > 0);
 
@@ -144,7 +146,7 @@ export function ReportsPage() {
         cta={
           <button
             onClick={handleExportCsv}
-            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-[#0bd2b5] hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0"
+            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0"
             aria-label="Export trips as CSV"
           >
             <Download className="h-3.5 w-3.5" />
@@ -158,7 +160,7 @@ export function ReportsPage() {
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">DAF Adventures</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
             <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="shrink-0">
@@ -167,7 +169,7 @@ export function ReportsPage() {
                   <TabsTrigger
                     key={t}
                     value={t}
-                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-[#0bd2b5] dark:data-active:text-[#0bd2b5] data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
+                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-brand dark:data-active:text-brand data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
                   >
                     {t === "operations" ? "Overview" : "Documents"}
                   </TabsTrigger>
@@ -186,7 +188,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/")}
-                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Create a Trip
               </button>
@@ -209,8 +211,8 @@ export function ReportsPage() {
                 </div>
                 {pipelineData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                    <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
-                      <Plane className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                    <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                      <Plane className="h-5 w-5 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips in pipeline</p>
                     <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
@@ -226,7 +228,7 @@ export function ReportsPage() {
                           <Label
                             content={() => (
                               <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
-                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, fontStyle: "italic", letterSpacing: "-0.05em" }}>{stats.pipeline.total}</tspan>
+                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.05em" }}>{stats.pipeline.total}</tspan>
                                 <tspan x="50%" dy="20" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>TRIPS</tspan>
                               </text>
                             )}
@@ -240,7 +242,7 @@ export function ReportsPage() {
                   <div className="flex-1 w-full space-y-5">
                     {[
                       { name: "Draft", value: stats.pipeline.draft, color: "#64748b", desc: "Not yet published" },
-                      { name: "Published", value: stats.pipeline.published, color: "#0bd2b5", desc: "Ready to go" },
+                      { name: "Published", value: stats.pipeline.published, color: brandHex, desc: "Ready to go" },
                       { name: "In Progress", value: stats.pipeline.inProgress, color: "#f59e0b", desc: "Currently active" },
                     ].map(s => {
                       const pct = stats.pipeline.total > 0 ? Math.round((s.value / stats.pipeline.total) * 100) : 0;
@@ -279,8 +281,8 @@ export function ReportsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {stats.tripTimeline.length === 0 && (
                     <div className="col-span-2 flex flex-col items-center justify-center py-14 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                      <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
-                        <LucideCalendar className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                        <LucideCalendar className="h-5 w-5 text-brand opacity-60" />
                       </div>
                       <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No departures scheduled</p>
                       <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create a trip from the dashboard</p>
@@ -299,9 +301,9 @@ export function ReportsPage() {
                       </div>
                       <div className="text-right shrink-0">
                         {t.daysUntil <= 0 ? (
-                          <span className="text-xs font-bold text-[#0bd2b5] uppercase tracking-wider">Now</span>
+                          <span className="text-xs font-bold text-brand uppercase tracking-wider">Now</span>
                         ) : (
-                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 not-italic tracking-widest">DAYS</span></span>
+                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 tracking-widest">DAYS</span></span>
                         )}
                       </div>
                       <Badge className={`text-xs font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider shrink-0`} style={{ background: `${STATUS_COLORS[t.status]}18`, color: STATUS_COLORS[t.status] }}>
@@ -320,8 +322,8 @@ export function ReportsPage() {
                 </div>
                 {stats.tripsByMonth.length === 0 ? (
                   <div className="h-64 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                    <div className="h-12 w-12 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center mb-3">
-                      <BarChart3 className="h-5 w-5 text-[#0bd2b5] opacity-60" />
+                    <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                      <BarChart3 className="h-5 w-5 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
                     <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
@@ -333,8 +335,8 @@ export function ReportsPage() {
                         <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
                         <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                        <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip />} />
-                        <Bar dataKey="count" fill="#0bd2b5" radius={[6, 6, 0, 0]} background={{ fill: 'transparent' }} />
+                        <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip color={brandHex} />} />
+                        <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} background={{ fill: 'transparent' }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -346,7 +348,7 @@ export function ReportsPage() {
                 {/* Airlines */}
                 <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
-                    <div className="h-8 w-8 rounded-lg bg-[#0bd2b5]/10 text-[#0bd2b5] flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center">
                       <Plane className="h-4 w-4" />
                     </div>
                     <div>
@@ -363,10 +365,10 @@ export function ReportsPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</span>
-                              <span className="text-xs font-black tracking-tighter text-[#0bd2b5] shrink-0 ml-2">{a.count}</span>
+                              <span className="text-xs font-black tracking-tighter text-brand shrink-0 ml-2">{a.count}</span>
                             </div>
                             <div className="h-1.5 bg-slate-100 dark:bg-[#050505] rounded-full overflow-hidden">
-                              <div className="h-full bg-[#0bd2b5] rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
+                              <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
                             </div>
                           </div>
                         </div>
@@ -421,7 +423,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/travelers")}
-                className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Add Travelers
               </button>
@@ -463,7 +465,7 @@ export function ReportsPage() {
                           <Label
                             content={() => (
                               <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
-                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, fontStyle: "italic", letterSpacing: "-0.05em" }}>{complianceData.rate}%</tspan>
+                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.05em" }}>{complianceData.rate}%</tspan>
                                 <tspan x="50%" dy="20" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>UP TO DATE</tspan>
                               </text>
                             )}
@@ -603,7 +605,7 @@ export function ReportsPage() {
                       .slice(0, 6)
                       .map(t => (
                         <div key={t.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
-                          <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
+                          <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</div>
                             <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">{t.role}</div>
@@ -664,7 +666,7 @@ export function ReportsPage() {
                           <tr key={t.id} className="border-t border-slate-200/50 dark:border-[#1f1f1f]/50 hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-[#0bd2b5] text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
+                                <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">{t.name}</span>
                                   <span className="text-[11px] text-slate-500 dark:text-[#888]">{t.role}</span>

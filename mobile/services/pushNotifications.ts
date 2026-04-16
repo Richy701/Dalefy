@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { supabase } from "./supabase";
+import { readPreferencesFromStorage } from "@/context/PreferencesContext";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 let Device: typeof import("expo-device") | null = null;
@@ -8,11 +9,20 @@ try {
   Notifications = require("expo-notifications");
   Device = require("expo-device");
   Notifications!.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
+    handleNotification: async (notification) => {
+      const category = (notification.request.content.data?.category as string | undefined) ?? "update";
+      const prefs = await readPreferencesFromStorage();
+      const allowed =
+        category === "reminder" ? prefs.tripReminders :
+        category === "update"   ? prefs.itineraryUpdates :
+        (prefs.tripReminders || prefs.itineraryUpdates);
+
+      return {
+        shouldShowAlert: allowed,
+        shouldPlaySound: allowed,
+        shouldSetBadge: allowed,
+      };
+    },
   });
 } catch {
   /* native module not available in Expo Go */

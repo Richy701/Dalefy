@@ -144,14 +144,15 @@ export default function ItineraryScreen() {
 
         {/* ── Day-by-day itinerary ── */}
         <View style={styles.body}>
-          {Object.entries(grouped)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, events], dayIdx) => {
+          {(() => {
+            const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+            return entries.map(([date, events], dayIdx) => {
               const d     = new Date(date + "T12:00:00");
               const today = isToday(date);
+              const isLast = dayIdx === entries.length - 1;
 
               return (
-                <View key={date} style={styles.dayGroup}>
+                <View key={date} style={[styles.dayGroup, isLast && { marginBottom: 0 }]}>
                   {/* Day header */}
                   <View style={[styles.dayHeader, today && styles.dayHeaderToday]}>
                     <View style={[styles.dayNumBox, today && styles.dayNumBoxToday]}>
@@ -188,7 +189,8 @@ export default function ItineraryScreen() {
                   ))}
                 </View>
               );
-            })}
+            });
+          })()}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -198,7 +200,7 @@ export default function ItineraryScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: { paddingBottom: 72 },
 
     // Hero
     hero: { height: 280, position: "relative" },

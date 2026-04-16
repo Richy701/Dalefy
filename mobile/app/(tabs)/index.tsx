@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, Image, Pressable,
-  StyleSheet, TextInput, RefreshControl,
+  StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,13 +10,14 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Search, MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
-  Bell, Sun, Moon,
+  Bell, Sun, Moon, KeyRound, X as XIcon,
 } from "lucide-react-native";
 import { Illustration } from "@/components/Illustration";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 
@@ -39,11 +40,24 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 }) {
   const { C, isDark, toggle } = useTheme();
   const { unreadCount } = useNotifications();
+  const router = useRouter();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState("");
   const styles = useMemo(() => makeGreetingStyles(C), [C]);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
+
+  const submitCode = () => {
+    const raw = code.trim();
+    if (!raw) return;
+    const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
+    const id = match ? match[1] : raw;
+    setCodeOpen(false);
+    setCode("");
+    router.push(`/shared/${id}`);
+  };
 
   return (
     <View style={styles.outer}>
@@ -66,6 +80,13 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             {isDark ? <Sun size={16} color={C.textSecondary} strokeWidth={2} /> : <Moon size={16} color={C.textSecondary} strokeWidth={2} />}
           </Pressable>
           <Pressable
+            onPress={() => setCodeOpen(true)}
+            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
+            accessibilityLabel="Enter trip code"
+          >
+            <KeyRound size={16} color={C.textSecondary} strokeWidth={2} />
+          </Pressable>
+          <Pressable
             onPress={() => setNotifOpen(true)}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
             accessibilityLabel="Notifications"
@@ -76,6 +97,54 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         </View>
       </View>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
+
+      <Modal visible={codeOpen} transparent animationType="fade" onRequestClose={() => setCodeOpen(false)}>
+        <Pressable style={styles.codeBackdrop} onPress={() => setCodeOpen(false)}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.codeCenter}
+          >
+            <Pressable style={styles.codeSheet} onPress={() => {}}>
+              <View style={styles.codeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.codeEyebrow}>Open Shared Trip</Text>
+                  <Text style={styles.codeTitle}>Enter trip code</Text>
+                </View>
+                <Pressable onPress={() => setCodeOpen(false)} style={styles.codeClose}>
+                  <XIcon size={16} color={C.textSecondary} strokeWidth={2} />
+                </Pressable>
+              </View>
+              <TextInput
+                value={code}
+                onChangeText={setCode}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="paste code or link"
+                placeholderTextColor={C.textTertiary}
+                style={styles.codeInput}
+                onSubmitEditing={submitCode}
+                returnKeyType="go"
+              />
+              <Pressable
+                onPress={submitCode}
+                disabled={!code.trim()}
+                style={({ pressed }) => [
+                  styles.codeSubmit,
+                  {
+                    backgroundColor: code.trim() ? C.teal : C.elevated,
+                    opacity: pressed && code.trim() ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.codeSubmitText, { color: code.trim() ? "#000" : C.textTertiary }]}>
+                  Open Itinerary
+                </Text>
+              </Pressable>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
 
       {nextTrip ? (
         <Pressable
@@ -136,6 +205,48 @@ function makeGreetingStyles(C: ThemeColors) {
       width: 7, height: 7, borderRadius: 4,
       backgroundColor: C.teal,
       borderWidth: 1.5, borderColor: C.card,
+    },
+    codeBackdrop: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    codeCenter: {
+      flex: 1, justifyContent: "center", paddingHorizontal: S.md,
+    },
+    codeSheet: {
+      backgroundColor: C.card, borderRadius: R["2xl"],
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      padding: S.md, gap: S.sm,
+    },
+    codeHeader: {
+      flexDirection: "row", alignItems: "flex-start", gap: S.xs,
+    },
+    codeEyebrow: {
+      fontSize: 10, fontWeight: T.black, color: C.textTertiary,
+      letterSpacing: 2, textTransform: "uppercase", marginBottom: 4,
+    },
+    codeTitle: {
+      fontSize: T.lg, fontFamily: F.black, fontWeight: T.black,
+      color: C.textPrimary, letterSpacing: -0.3,
+    },
+    codeClose: {
+      width: 32, height: 32, borderRadius: 16,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: C.elevated,
+    },
+    codeInput: {
+      height: 48, borderRadius: R.md,
+      backgroundColor: C.elevated,
+      paddingHorizontal: S.sm,
+      fontSize: T.base, color: C.textPrimary,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+    },
+    codeSubmit: {
+      height: 48, borderRadius: R.md,
+      alignItems: "center", justifyContent: "center",
+    },
+    codeSubmitText: {
+      fontSize: T.sm, fontWeight: T.black,
+      letterSpacing: 1.2, textTransform: "uppercase",
     },
     countdownWrap: { alignSelf: "flex-start" },
     countdownEyebrow: {
@@ -258,14 +369,7 @@ function SpotlightEventCard({ ev }: { ev: TravelEvent }) {
               <Text style={styles.sub} numberOfLines={2}>{ev.notes || ev.location}</Text>
             ) : null}
           </View>
-          <View style={styles.actions}>
-            <View style={styles.heartBtn}>
-              <Heart size={12} color={C.textSecondary} strokeWidth={1.5} />
-            </View>
-            <View style={[styles.shareBtn, { backgroundColor: C.teal }]}>
-              <Share2 size={12} color="#050505" strokeWidth={1.5} />
-            </View>
-          </View>
+          <View style={styles.actions} />
         </View>
 
         {tags.length > 0 && (
@@ -379,7 +483,9 @@ function TripRow({ trip, onPress }: { trip: Trip; onPress: () => void }) {
 // ── Home Screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const { C } = useTheme();
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const { prefs } = usePreferences();
+  const compact = prefs.compactMode;
+  const styles = useMemo(() => makeStyles(C, compact), [C, compact]);
   const { trips } = useTrips();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -550,14 +656,14 @@ export default function HomeScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, compact: boolean = false) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: { paddingBottom: compact ? 72 : 100 },
 
-    section: { marginTop: S.md },
+    section: { marginTop: compact ? S.xs : S.md },
 
-    sectionHeader: { paddingHorizontal: S.md, marginBottom: S.sm },
+    sectionHeader: { paddingHorizontal: S.md, marginBottom: compact ? S["2xs"] : S.sm },
     sectionTitle: {
       fontSize: T.xl, fontFamily: F.black, fontWeight: T.black,
       color: C.textPrimary, letterSpacing: -0.3,

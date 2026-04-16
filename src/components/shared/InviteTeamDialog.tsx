@@ -46,7 +46,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white"
                 />
               </div>
-              <Button onClick={handleInvite} className="h-12 px-6 rounded-2xl bg-[#0bd2b5] hover:opacity-90 text-black font-bold uppercase tracking-wider shadow-lg shadow-[#0bd2b5]/20">
+              <Button onClick={handleInvite} className="h-12 px-6 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider shadow-lg shadow-brand/20">
                 <UserPlus className="h-4 w-4" />
               </Button>
             </div>
@@ -54,12 +54,12 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
 
           {invited.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0bd2b5]">Invited</Label>
+              <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">Invited</Label>
               {invited.map((e, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-[#0bd2b5]/5 rounded-xl border border-[#0bd2b5]/10">
-                  <div className="h-8 w-8 rounded-lg bg-[#0bd2b5]/10 text-[#0bd2b5] flex items-center justify-center"><Mail className="h-3.5 w-3.5" /></div>
+                <div key={i} className="flex items-center gap-3 p-3 bg-brand/5 rounded-xl border border-brand/10">
+                  <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center"><Mail className="h-3.5 w-3.5" /></div>
                   <span className="text-xs font-bold text-slate-900 dark:text-white">{e}</span>
-                  <span className="text-[11px] font-bold text-[#0bd2b5] uppercase tracking-wider ml-auto">Pending</span>
+                  <span className="text-[11px] font-bold text-brand uppercase tracking-wider ml-auto">Pending</span>
                 </div>
               ))}
             </div>
@@ -70,7 +70,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <div className="space-y-1">
               {MOCK_USERS.map(u => (
                 <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
-                  <div className="h-9 w-9 rounded-xl bg-[#0bd2b5] text-black flex items-center justify-center font-black text-xs">{u.initials}</div>
+                  <div className="h-9 w-9 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs">{u.initials}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{u.name}</p>
                     <p className="text-xs text-slate-500 dark:text-[#888]">{u.role}</p>

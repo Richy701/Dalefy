@@ -103,7 +103,7 @@ export function SharedTripPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-[#0bd2b5] animate-spin" />
+        <Loader2 className="h-8 w-8 text-brand animate-spin" />
       </div>
     );
   }
@@ -126,7 +126,7 @@ export function SharedTripPage() {
         <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[#0bd2b5] mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">
             DAF Adventures · Itinerary
           </p>
           <h1 className="text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-none mb-4">
@@ -134,7 +134,7 @@ export function SharedTripPage() {
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-              <CalendarDays className="h-3 w-3 text-[#0bd2b5]" />
+              <CalendarDays className="h-3 w-3 text-brand" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
                 {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 {" — "}
@@ -144,13 +144,13 @@ export function SharedTripPage() {
             </div>
             {trip.destination && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <MapPin className="h-3 w-3 text-[#0bd2b5]" />
+                <MapPin className="h-3 w-3 text-brand" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
               </div>
             )}
             {trip.attendees && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <Users className="h-3 w-3 text-[#0bd2b5]" />
+                <Users className="h-3 w-3 text-brand" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
               </div>
             )}
@@ -161,7 +161,7 @@ export function SharedTripPage() {
       {/* Itinerary */}
       <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
         <div className="flex items-center gap-2 mb-6">
-          <Compass className="h-4 w-4 text-[#0bd2b5]" />
+          <Compass className="h-4 w-4 text-brand" />
           <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
             {trip.events.length} events · {grouped.length} days
           </span>
@@ -173,11 +173,11 @@ export function SharedTripPage() {
             return (
               <div key={date}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-[#0bd2b5]/10 border border-[#0bd2b5]/20 flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-black text-[#0bd2b5] leading-none">
+                  <div className="h-10 w-10 rounded-lg bg-brand/10 border border-brand/20 flex flex-col items-center justify-center">
+                    <span className="text-[10px] font-black text-brand leading-none">
                       {d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}
                     </span>
-                    <span className="text-xs font-black text-[#0bd2b5] leading-none mt-0.5">{d.getDate()}</span>
+                    <span className="text-xs font-black text-brand leading-none mt-0.5">{d.getDate()}</span>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">

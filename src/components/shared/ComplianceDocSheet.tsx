@@ -77,7 +77,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               {content ? (
                 <div className="space-y-10">
                   <div className="relative">
-                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-[#0bd2b5]/20 rounded-full" />
+                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-brand/20 rounded-full" />
                     <p className="text-sm text-slate-500 dark:text-[#888] leading-relaxed font-medium pl-2">
                       {content.preamble}
                     </p>
@@ -86,7 +86,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   <div className="space-y-8">
                     {content.sections.slice(0, 4).map((section, i) => (
                       <div key={i} className="relative pl-8 group">
-                        <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-xs font-black text-[#0bd2b5] group-hover:bg-[#0bd2b5] group-hover:text-black transition-[background-color,color] duration-150">
+                        <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-xs font-black text-brand group-hover:bg-brand group-hover:text-black transition-[background-color,color] duration-150">
                           {i + 1}
                         </div>
                         <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-2 pt-1">
@@ -116,12 +116,12 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               )}
 
               {isSigned && doc.date && (
-                <div className="bg-[#0bd2b5]/5 border border-[#0bd2b5]/20 rounded-2xl p-6 flex items-center gap-5">
-                  <div className="h-12 w-12 rounded-xl bg-[#0bd2b5]/10 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="h-6 w-6 text-[#0bd2b5]" />
+                <div className="bg-brand/5 border border-brand/20 rounded-2xl p-6 flex items-center gap-5">
+                  <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="h-6 w-6 text-brand" />
                   </div>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-widest text-[#0bd2b5]">Signed & Verified</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-brand">Signed & Verified</p>
                     <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 font-bold uppercase tracking-tighter">
                       Signed on {new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
                     </p>
@@ -145,7 +145,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               <Button
                 onClick={handleSign}
                 disabled={signing}
-                className="w-full h-16 rounded-2xl bg-[#0bd2b5] hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-[0_15px_40px_rgba(11,210,181,0.25)] disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
+                className="w-full h-16 rounded-2xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-[0_15px_40px_rgba(11,210,181,0.25)] disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
               >
                 {signing ? (
                   <><Loader2 className="h-5 w-5 animate-spin mr-3" /> Signing...</>

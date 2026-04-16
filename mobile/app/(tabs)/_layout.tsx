@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
-import { useEffect } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Pressable, AccessibilityInfo } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,13 +21,21 @@ const TABS = [
 ] as const;
 
 // Each icon button slot width + gap between items
-const ITEM_W  = 54; // 50px icon + 4px gap
-const BLOB_SZ = 50; // blob width & height
-const ROW_PAD = 8;  // paddingHorizontal of the tab row
+const ITEM_W  = 62; // 58px slot + 4px gap
+const BTN_W   = 58; // pressable width (wider to fit label)
+const BLOB_SZ = 44; // icon-area circle (centered at top of btn)
+const ROW_PAD = 8;
 
 function FloatingTabBar({ state, navigation }: any) {
   const { C, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => sub.remove();
+  }, []);
 
   // Shared values — animate the blob position & horizontal stretch
   const blobX      = useSharedValue(state.index * ITEM_W);
@@ -36,6 +44,13 @@ function FloatingTabBar({ state, navigation }: any) {
 
   useEffect(() => {
     const toX = state.index * ITEM_W;
+
+    if (reduceMotion) {
+      blobX.value = toX;
+      blobScaleX.value = 1;
+      blobScaleY.value = 1;
+      return;
+    }
 
     // Slide blob with a bouncy spring
     blobX.value = withSpring(toX, {
@@ -55,7 +70,7 @@ function FloatingTabBar({ state, navigation }: any) {
       withTiming(0.82, { duration: 90 }),
       withSpring(1, { damping: 12, stiffness: 240, mass: 0.5 }),
     );
-  }, [state.index]);
+  }, [state.index, reduceMotion]);
 
   const blobAnimStyle = useAnimatedStyle(() => ({
     transform: [
@@ -103,6 +118,11 @@ function FloatingTabBar({ state, navigation }: any) {
                   }
                 };
 
+                const inactiveColor = isDark
+                  ? "rgba(170,170,180,0.55)"
+                  : "rgba(80,80,90,0.55)";
+                const iconColor = focused ? C.teal : inactiveColor;
+
                 return (
                   <Pressable
                     key={route.key}
@@ -110,18 +130,16 @@ function FloatingTabBar({ state, navigation }: any) {
                     style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
                     accessibilityRole="button"
                     accessibilityLabel={TABS[index].label}
+                    accessibilityState={{ selected: focused }}
                   >
                     <Icon
                       size={20}
-                      color={
-                        focused
-                          ? C.teal
-                          : isDark
-                          ? "rgba(170,170,180,0.45)"
-                          : "rgba(80,80,90,0.40)"
-                      }
+                      color={iconColor}
                       strokeWidth={focused ? 2.2 : 1.6}
                     />
+                    <Text style={[styles.label, { color: iconColor }]} numberOfLines={1}>
+                      {TABS[index].label}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -135,11 +153,13 @@ function FloatingTabBar({ state, navigation }: any) {
 }
 
 export default function TabLayout() {
+  const { C } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        sceneStyle: { backgroundColor: C.bg },
       }}
       tabBar={(props) => <FloatingTabBar {...props} />}
     >
@@ -181,11 +201,11 @@ const styles = StyleSheet.create({
     paddingVertical: ROW_PAD,
   },
 
-  // Animated blob — absolutely positioned, slides behind icons
+  // Animated blob — absolutely positioned, slides behind icons (icon area only)
   blob: {
     position: "absolute",
     top: ROW_PAD,
-    left: ROW_PAD,
+    left: ROW_PAD + (BTN_W - BLOB_SZ) / 2, // center within the btn slot
     width: BLOB_SZ,
     height: BLOB_SZ,
     borderRadius: BLOB_SZ / 2,
@@ -195,13 +215,22 @@ const styles = StyleSheet.create({
   // Icon row — same padding as tabRowOuter so icons align over blob
   tabRow: {
     flexDirection: "row",
-    gap: ITEM_W - BLOB_SZ, // = 4px gap between items
+    gap: ITEM_W - BTN_W, // gap between items
   },
 
   iconBtn: {
-    width: BLOB_SZ,
-    height: BLOB_SZ,
+    width: BTN_W,
+    paddingTop: (BLOB_SZ - 20) / 2, // vertical-center icon in blob
+    paddingBottom: 6,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    gap: 3,
+  },
+
+  label: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 });

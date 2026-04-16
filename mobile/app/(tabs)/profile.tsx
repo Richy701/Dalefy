@@ -1,35 +1,20 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
-  Settings, MapPin, CalendarDays, Compass, Globe, User,
-  ChevronRight, Moon, Sun,
+  User, Moon, Sun, Palette, Bell, Shield, Info, ChevronRight,
+  Globe, HelpCircle, Droplet, Rows3,
 } from "lucide-react-native";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
-import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
+import { Logo } from "@/components/Logo";
 import { useMemo } from "react";
 
-function daysUntil(dateStr: string) {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
-}
-
 export default function ProfileScreen() {
-  const router = useRouter();
   const { C, isDark, toggle } = useTheme();
-  const { trips } = useTrips();
+  const { prefs, setPref } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);
-
-  const stats = useMemo(() => {
-    const destinations = new Set(trips.map(t => t.destination ?? t.name)).size;
-    const upcoming = trips.filter(t => daysUntil(t.start) > 0).length;
-    const totalDays = trips.reduce((s, t) => {
-      const d = Math.ceil((new Date(t.end).getTime() - new Date(t.start).getTime()) / 86400000);
-      return s + Math.max(1, d);
-    }, 0);
-    return { destinations, upcoming, totalDays };
-  }, [trips]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -37,77 +22,165 @@ export default function ProfileScreen() {
 
         {/* ── Header ── */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brandName}>DAF Adventures</Text>
-            <Text style={styles.pageTitle}>My Profile</Text>
+          <View style={styles.brandRow}>
+            <Logo size={11} color={C.teal} />
+            <Text style={[styles.brandName, { marginBottom: 0 }]}>DAF Adventures</Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { Haptics.selectionAsync(); router.push("/settings"); }}
-          >
-            <Settings size={16} color={C.textSecondary} strokeWidth={1.8} />
-          </Pressable>
+          <Text style={styles.pageTitle}>Account</Text>
         </View>
 
-        {/* ── Avatar card ── */}
-        <View style={styles.avatarCard}>
-          <View style={styles.avatarCircle}>
-            <User size={32} color={C.teal} strokeWidth={1.5} />
+        {/* ── Identity strip (inline, no hero) ── */}
+        <View style={styles.identityRow}>
+          <View style={styles.avatar}>
+            <User size={22} color={C.teal} strokeWidth={1.6} />
           </View>
-          <Text style={styles.avatarName}>Traveller</Text>
-          <Text style={styles.avatarSub}>DAF Adventures Member</Text>
+          <View style={styles.identityText}>
+            <Text style={styles.identityName}>Traveller</Text>
+            <Text style={styles.identitySub}>DAF Adventures Member</Text>
+          </View>
         </View>
 
-        {/* ── Stats grid ── */}
-        <View style={styles.statsGrid}>
-          {[
-            { value: trips.length, label: "TRIPS", Icon: Compass },
-            { value: stats.destinations, label: "DESTINATIONS", Icon: Globe },
-            { value: stats.totalDays, label: "TRAVEL DAYS", Icon: CalendarDays },
-            { value: stats.upcoming, label: "UPCOMING", Icon: MapPin },
-          ].map(item => (
-            <View key={item.label} style={styles.statCard}>
-              <View style={styles.statIconWrap}>
-                <item.Icon size={15} color={C.teal} strokeWidth={1.8} />
-              </View>
-              <Text style={styles.statValue}>{item.value}</Text>
-              <Text style={styles.statLabel}>{item.label}</Text>
+        {/* ── Appearance ── */}
+        <Text style={styles.sectionLabel}>Appearance</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <Palette size={16} color={C.teal} strokeWidth={1.8} />
             </View>
-          ))}
+            <Text style={styles.rowLabel}>Theme</Text>
+            <View style={styles.themeToggle}>
+              <Pressable
+                style={[styles.themeBtn, !isDark && styles.themeBtnActive]}
+                onPress={() => { if (isDark) { Haptics.selectionAsync(); toggle(); } }}
+              >
+                <Sun size={12} color={!isDark ? C.amber : C.textTertiary} strokeWidth={2} />
+                <Text style={[styles.themeBtnText, { color: !isDark ? C.textPrimary : C.textTertiary }]}>Light</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.themeBtn, isDark && styles.themeBtnActive]}
+                onPress={() => { if (!isDark) { Haptics.selectionAsync(); toggle(); } }}
+              >
+                <Moon size={12} color={isDark ? C.teal : C.textTertiary} strokeWidth={2} />
+                <Text style={[styles.themeBtnText, { color: isDark ? C.textPrimary : C.textTertiary }]}>Dark</Text>
+              </Pressable>
+            </View>
+          </View>
+          <View style={styles.rowDivider} />
+          <View style={styles.accentRow}>
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <Droplet size={16} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Accent</Text>
+          </View>
+          <View style={styles.swatches}>
+            {ACCENT_PALETTE.map((p) => {
+              const selected = prefs.accent === p.id;
+              const hex = isDark ? p.dark : p.light;
+              return (
+                <Pressable
+                  key={p.id}
+                  accessibilityLabel={p.label}
+                  onPress={() => { Haptics.selectionAsync(); setPref("accent", p.id); }}
+                  style={[
+                    styles.swatchWrap,
+                    selected && { borderColor: `${hex}66` },
+                  ]}
+                >
+                  <View style={[styles.swatchInner, { backgroundColor: hex }]} />
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.rowDivider} />
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <Rows3 size={16} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Compact mode</Text>
+            <Switch
+              value={prefs.compactMode}
+              onValueChange={(v) => { Haptics.selectionAsync(); setPref("compactMode", v); }}
+              trackColor={{ false: C.elevated, true: C.tealMid }}
+              thumbColor={prefs.compactMode ? C.teal : C.textTertiary}
+            />
+          </View>
         </View>
 
-        {/* ── Quick settings ── */}
-        <Text style={styles.sectionLabel}>Preferences</Text>
-        <View style={styles.menuCard}>
-          <Pressable
-            style={({ pressed }) => [styles.menuRow, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { Haptics.selectionAsync(); toggle(); }}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: C.tealDim }]}>
-              {isDark
-                ? <Moon size={15} color={C.teal} strokeWidth={1.8} />
-                : <Sun size={15} color={C.teal} strokeWidth={1.8} />}
+        {/* ── Notifications ── */}
+        <Text style={styles.sectionLabel}>Notifications</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: C.amberDim }]}>
+              <Bell size={16} color={C.amber} strokeWidth={1.8} />
             </View>
-            <Text style={styles.menuLabel}>Appearance</Text>
-            <Text style={styles.menuValue}>{isDark ? "Dark" : "Light"}</Text>
+            <Text style={styles.rowLabel}>Trip reminders</Text>
+            <Switch
+              value={prefs.tripReminders}
+              onValueChange={(v) => { Haptics.selectionAsync(); setPref("tripReminders", v); }}
+              trackColor={{ false: C.elevated, true: C.tealMid }}
+              thumbColor={prefs.tripReminders ? C.teal : C.textTertiary}
+            />
+          </View>
+          <View style={styles.rowDivider} />
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <Bell size={16} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Itinerary updates</Text>
+            <Switch
+              value={prefs.itineraryUpdates}
+              onValueChange={(v) => { Haptics.selectionAsync(); setPref("itineraryUpdates", v); }}
+              trackColor={{ false: C.elevated, true: C.tealMid }}
+              thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
+            />
+          </View>
+        </View>
+
+        {/* ── Support ── */}
+        <Text style={styles.sectionLabel}>Support</Text>
+        <View style={styles.card}>
+          <Pressable style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]} onPress={() => Haptics.selectionAsync()}>
+            <View style={[styles.iconBox, { backgroundColor: C.elevated }]}>
+              <HelpCircle size={16} color={C.textSecondary} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Help & support</Text>
             <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
           </Pressable>
-
-          <View style={styles.menuDivider} />
-
-          <Pressable
-            style={({ pressed }) => [styles.menuRow, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { Haptics.selectionAsync(); router.push("/settings"); }}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: C.elevated }]}>
-              <Settings size={15} color={C.textSecondary} strokeWidth={1.8} />
+          <View style={styles.rowDivider} />
+          <Pressable style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]} onPress={() => Haptics.selectionAsync()}>
+            <View style={[styles.iconBox, { backgroundColor: C.elevated }]}>
+              <Globe size={16} color={C.textSecondary} strokeWidth={1.8} />
             </View>
-            <Text style={styles.menuLabel}>Settings</Text>
+            <Text style={styles.rowLabel}>Language & region</Text>
+            <Text style={styles.rowValue}>English</Text>
             <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
           </Pressable>
         </View>
 
-        <Text style={styles.version}>DAF Adventures · v1.0.0</Text>
+        {/* ── About ── */}
+        <Text style={styles.sectionLabel}>About</Text>
+        <View style={styles.card}>
+          <Pressable style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]} onPress={() => Haptics.selectionAsync()}>
+            <View style={[styles.iconBox, { backgroundColor: C.tealDim }]}>
+              <Shield size={16} color={C.teal} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>Privacy policy</Text>
+            <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
+          </Pressable>
+          <View style={styles.rowDivider} />
+          <View style={styles.row}>
+            <View style={[styles.iconBox, { backgroundColor: C.elevated }]}>
+              <Info size={16} color={C.textSecondary} strokeWidth={1.8} />
+            </View>
+            <Text style={styles.rowLabel}>App version</Text>
+            <Text style={styles.rowValue}>1.0.0</Text>
+          </View>
+        </View>
+
+        <View style={styles.versionRow}>
+          <Logo size={10} color={C.textTertiary} />
+          <Text style={styles.versionText}>DAF Adventures · Traveller App</Text>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -116,11 +189,10 @@ export default function ProfileScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    safe:   { flex: 1, backgroundColor: C.bg },
+    safe: { flex: 1, backgroundColor: C.bg },
     scroll: { paddingBottom: 100 },
 
     header: {
-      flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
       paddingHorizontal: S.md,
       paddingTop: Platform.OS === "android" ? S.md : S.xs,
       paddingBottom: S.sm,
@@ -129,91 +201,95 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 2, textTransform: "uppercase", marginBottom: 2,
     },
+    brandRow: {
+      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2,
+    },
+    versionRow: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 6, marginTop: S.xl,
+    },
     pageTitle: {
       fontSize: T["3xl"] + 2, fontFamily: F.black, fontWeight: T.black,
       color: C.textPrimary, letterSpacing: -0.5,
     },
-    settingsBtn: {
-      width: 38, height: 38, borderRadius: R.full,
-      backgroundColor: C.card, alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, marginTop: 4,
-    },
 
-    avatarCard: {
-      alignItems: "center", marginHorizontal: S.md, marginTop: S.sm,
-      backgroundColor: C.card, borderRadius: R["2xl"],
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      paddingVertical: S.xl, paddingHorizontal: S.md,
+    identityRow: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.sm,
     },
-    avatarCircle: {
-      width: 72, height: 72, borderRadius: R.full,
-      backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center",
-      borderWidth: 2, borderColor: C.tealMid, marginBottom: S.sm,
-    },
-    avatarName: {
-      fontSize: T.xl, fontFamily: F.black, fontWeight: T.black, color: C.textPrimary,
-      letterSpacing: -0.3, marginBottom: 4,
-    },
-    avatarSub: {
-      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
-    },
-
-    statsGrid: {
-      flexDirection: "row", flexWrap: "wrap", gap: S.sm,
-      paddingHorizontal: S.md, marginTop: S.md,
-    },
-    statCard: {
-      width: "47%", backgroundColor: C.card, borderRadius: R.xl,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      padding: S.md, alignItems: "flex-start", flexGrow: 1,
-    },
-    statIconWrap: {
-      width: 32, height: 32, borderRadius: R.md,
+    avatar: {
+      width: 48, height: 48, borderRadius: R.full,
       backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center",
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
-      marginBottom: S.xs,
     },
-    statValue: {
-      fontSize: T["2xl"] + 2, fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.5, marginBottom: 2,
+    identityText: { flex: 1 },
+    identityName: {
+      fontSize: T.lg, fontFamily: F.black, fontWeight: T.black,
+      color: C.textPrimary, letterSpacing: -0.2, marginBottom: 2,
     },
-    statLabel: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 1, textTransform: "uppercase",
-    },
+    identitySub: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium },
 
     sectionLabel: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 1, textTransform: "uppercase",
-      paddingHorizontal: S.md, marginTop: S.lg, marginBottom: S.xs,
+      fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary,
+      letterSpacing: 0.8, textTransform: "uppercase",
+      marginBottom: S.xs, marginTop: S.md,
+      paddingHorizontal: S.md + S["2xs"],
     },
-    menuCard: {
-      marginHorizontal: S.md, backgroundColor: C.card, borderRadius: R.xl,
+    card: {
+      marginHorizontal: S.md,
+      backgroundColor: C.card, borderRadius: R.xl,
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       overflow: "hidden",
     },
-    menuRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      paddingHorizontal: S.sm, paddingVertical: 14,
+
+    row: {
+      flexDirection: "row", alignItems: "center",
+      paddingHorizontal: S.sm, paddingVertical: 14, gap: S.sm,
     },
-    menuDivider: {
+    rowDivider: {
       height: StyleSheet.hairlineWidth, backgroundColor: C.border,
       marginLeft: S.sm + 34 + S.sm,
     },
-    menuIcon: {
+    iconBox: {
       width: 34, height: 34, borderRadius: R.md,
       alignItems: "center", justifyContent: "center",
     },
-    menuLabel: {
-      flex: 1, fontSize: T.base, fontWeight: T.medium, color: C.textPrimary,
+    rowLabel: { flex: 1, fontSize: T.base, fontWeight: T.medium, color: C.textPrimary },
+    rowValue: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium },
+
+    themeToggle: {
+      flexDirection: "row", alignItems: "center",
+      backgroundColor: C.elevated, borderRadius: R.full,
+      padding: 3, gap: 2,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
-    menuValue: {
-      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
+    themeBtn: {
+      flexDirection: "row", alignItems: "center", gap: 5,
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.full,
+    },
+    themeBtnActive: { backgroundColor: C.card },
+    themeBtnText: { fontSize: T.xs, fontWeight: T.semibold },
+
+    accentRow: {
+      flexDirection: "row", alignItems: "center",
+      paddingHorizontal: S.sm, paddingTop: 14, paddingBottom: 6, gap: S.sm,
+    },
+    swatches: {
+      flexDirection: "row", alignItems: "center", flexWrap: "wrap",
+      gap: 10, paddingHorizontal: S.sm + 34 + S.sm, paddingBottom: 14,
+    },
+    swatchWrap: {
+      width: 36, height: 36, borderRadius: 18,
+      alignItems: "center", justifyContent: "center",
+      borderWidth: 2, borderColor: "transparent",
+    },
+    swatchInner: {
+      width: 26, height: 26, borderRadius: 13,
     },
 
-    version: {
+    versionText: {
       fontSize: T.sm, color: C.textTertiary, textAlign: "center",
-      marginTop: S.xl, fontWeight: T.medium,
+      fontWeight: T.medium,
     },
   });
 }

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Plane, Hotel, Compass, Utensils, MapPin, Clock, MoreVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video } from "lucide-react";
+import { Plane, Hotel, Compass, Utensils, MapPin, Clock, MoreVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -18,10 +18,11 @@ function StatusChip({ status }: { status?: string }) {
   );
 }
 
-function MediaBadge({ media }: { media?: TravelEvent["media"] }) {
-  if (!media?.length) return null;
-  const images = media.filter(m => m.type === "image").length;
-  const videos = media.filter(m => m.type === "video").length;
+function MediaBadge({ media, documents }: { media?: TravelEvent["media"]; documents?: TravelEvent["documents"] }) {
+  const images = media?.filter(m => m.type === "image").length ?? 0;
+  const videos = media?.filter(m => m.type === "video").length ?? 0;
+  const docs   = documents?.length ?? 0;
+  if (!images && !videos && !docs) return null;
   return (
     <div className="flex items-center gap-1.5">
       {images > 0 && (
@@ -30,8 +31,13 @@ function MediaBadge({ media }: { media?: TravelEvent["media"] }) {
         </span>
       )}
       {videos > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#0bd2b5] bg-[#0bd2b5]/10 px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-brand bg-brand/10 px-2 py-0.5 rounded-full">
           <Video className="h-2.5 w-2.5" />{videos}
+        </span>
+      )}
+      {docs > 0 && (
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+          <Paperclip className="h-2.5 w-2.5" />{docs}
         </span>
       )}
     </div>
@@ -47,7 +53,7 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
           <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
-            <Settings className="h-3.5 w-3.5 text-[#0bd2b5]" /> Edit Event
+            <Settings className="h-3.5 w-3.5 text-brand" /> Edit Event
           </DropdownMenuItem>
           <div className="my-1 h-px bg-slate-100 dark:bg-[#1f1f1f]" />
           <DropdownMenuItem onClick={onDelete} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-red-500 hover:bg-red-500/5">
@@ -59,11 +65,74 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
   );
 }
 
+// ─── Compact Row — used when event data is sparse ─────────────────────────────
+function CompactCard({
+  event, onClick, onDelete, Icon, label, hoverBorder, iconBg, iconColor, originCode,
+}: {
+  event: TravelEvent;
+  onClick: () => void;
+  onDelete: () => void;
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  hoverBorder: string;
+  iconBg: string;
+  iconColor: string;
+  originCode?: string;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={`group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] ${hoverBorder} rounded-2xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden`}
+    >
+      {event.image ? (
+        <img src={event.image} alt="" className="h-11 w-11 rounded-lg object-cover shrink-0" />
+      ) : (
+        <div className={`h-11 w-11 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </div>
+      )}
+      {event.time && (
+        <div className="shrink-0 flex flex-col leading-none">
+          <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white tabular-nums">{event.time.split(" ")[0]}</span>
+          {event.time.split(" ")[1] && <span className="text-[9px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className={`text-[10px] font-bold uppercase tracking-[0.25em] ${iconColor}`}>{label}</span>
+          {originCode && (
+            <span className="text-[10px] font-black tabular-nums text-slate-400 dark:text-[#555]">· {originCode}</span>
+          )}
+        </div>
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">{event.title}</h4>
+      </div>
+      <StatusChip status={event.status} />
+      <MediaBadge media={event.media} documents={event.documents} />
+      <CardMenu onClick={onClick} onDelete={onDelete} />
+    </div>
+  );
+}
+
 // ─── Flight Card ──────────────────────────────────────────────────────────────
 function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
-  const parts = event.location.match(/^(.+?)\s+to\s+(.+)$/i);
-  const from = parts?.[1]?.trim() ?? event.location;
+  const parts = event.location?.match(/^(.+?)\s+to\s+(.+)$/i);
+  const from = parts?.[1]?.trim() ?? event.location ?? "";
   const to = parts?.[2]?.trim() ?? "";
+
+  // Sparse: no destination means the route viz looks broken — collapse to compact row.
+  if (!to) {
+    const fromCode = from.length > 0 && from.length <= 4 ? from.toUpperCase() : from ? from.slice(0, 3).toUpperCase() : undefined;
+    return (
+      <CompactCard
+        event={event} onClick={onClick} onDelete={onDelete}
+        Icon={Plane} label="Flight"
+        hoverBorder="hover:border-slate-300 dark:hover:border-[#2a2a2a]"
+        iconBg="bg-slate-100 dark:bg-[#1a1a1a]"
+        iconColor="text-slate-500 dark:text-[#888]"
+        originCode={fromCode}
+      />
+    );
+  }
 
   const fromCode = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
   const toCode = to.length <= 4 ? to.toUpperCase() : to.slice(0, 3).toUpperCase();
@@ -109,7 +178,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{event.title}</p>
             <StatusChip status={event.status} />
-            <MediaBadge media={event.media} />
+            <MediaBadge media={event.media} documents={event.documents} />
           </div>
           <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888]">
             {event.airline && <span>{event.airline}{event.flightNum ? ` · ${event.flightNum}` : ""}</span>}
@@ -130,6 +199,19 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
 
 // ─── Hotel Card ───────────────────────────────────────────────────────────────
 function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
+  // Sparse: no checkin/out, no roomType, no location → collapse to compact row (image becomes a thumbnail).
+  const isSparse = !event.checkin && !event.checkout && !event.roomType && !event.location;
+  if (isSparse) {
+    return (
+      <CompactCard
+        event={event} onClick={onClick} onDelete={onDelete}
+        Icon={Hotel} label="Accommodation"
+        hoverBorder="hover:border-amber-400/30"
+        iconBg="bg-amber-500/10"
+        iconColor="text-amber-500"
+      />
+    );
+  }
   return (
     <div
       onClick={onClick}
@@ -155,9 +237,11 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-500">Accommodation</span>
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-amber-400 transition-colors">{event.title}</h4>
-              <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
-                <MapPin className="h-3 w-3 shrink-0" />{event.location}
-              </p>
+              {event.location && (
+                <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
+                  <MapPin className="h-3 w-3 shrink-0" />{event.location}
+                </p>
+              )}
             </div>
             <CardMenu onClick={onClick} onDelete={onDelete} />
           </div>
@@ -186,7 +270,7 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
             {event.roomType && (
               <span className="ml-auto text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full shrink-0">{event.roomType}</span>
             )}
-            <MediaBadge media={event.media} />
+            <MediaBadge media={event.media} documents={event.documents} />
           </div>
         </div>
       </div>
@@ -199,10 +283,24 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
   const isDining = event.type === "dining";
   const Icon = isDining ? Utensils : Compass;
 
+  // Sparse: no notes, no endTime, no location → collapse to compact row (image becomes a thumbnail).
+  const isSparse = !event.notes && !event.endTime && !event.location;
+  if (isSparse) {
+    return (
+      <CompactCard
+        event={event} onClick={onClick} onDelete={onDelete}
+        Icon={Icon} label={isDining ? "Dining" : "Activity"}
+        hoverBorder={isDining ? "hover:border-pink-400/30" : "hover:border-brand/30"}
+        iconBg={isDining ? "bg-pink-500/10" : "bg-brand/10"}
+        iconColor={isDining ? "text-pink-500" : "text-brand"}
+      />
+    );
+  }
+
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg ${isDining ? "hover:border-pink-400/30" : "hover:border-[#0bd2b5]/30"}`}
+      className={`group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg ${isDining ? "hover:border-pink-400/30" : "hover:border-brand/30"}`}
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
@@ -210,8 +308,8 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
             <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           </div>
         ) : (
-          <div className={`w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch ${isDining ? "bg-pink-500/5" : "bg-[#0bd2b5]/5"}`}>
-            <Icon className={`h-7 w-7 opacity-20 ${isDining ? "text-pink-400" : "text-[#0bd2b5]"}`} />
+          <div className={`w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch ${isDining ? "bg-pink-500/5" : "bg-brand/5"}`}>
+            <Icon className={`h-7 w-7 opacity-20 ${isDining ? "text-pink-400" : "text-brand"}`} />
           </div>
         )}
 
@@ -219,15 +317,17 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <Icon className={`h-3 w-3 shrink-0 ${isDining ? "text-pink-400" : "text-[#0bd2b5]"}`} />
-                <span className={`text-[10px] font-bold uppercase tracking-[0.25em] ${isDining ? "text-pink-500" : "text-[#0bd2b5]"}`}>
+                <Icon className={`h-3 w-3 shrink-0 ${isDining ? "text-pink-400" : "text-brand"}`} />
+                <span className={`text-[10px] font-bold uppercase tracking-[0.25em] ${isDining ? "text-pink-500" : "text-brand"}`}>
                   {isDining ? "Dining" : "Activity"}
                 </span>
               </div>
-              <h4 className={`text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors ${isDining ? "group-hover:text-pink-400" : "group-hover:text-[#0bd2b5]"}`}>{event.title}</h4>
-              <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
-                <MapPin className="h-3 w-3 shrink-0" />{event.location}
-              </p>
+              <h4 className={`text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors ${isDining ? "group-hover:text-pink-400" : "group-hover:text-brand"}`}>{event.title}</h4>
+              {event.location && (
+                <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
+                  <MapPin className="h-3 w-3 shrink-0" />{event.location}
+                </p>
+              )}
               {event.notes && (
                 <p className="text-xs text-slate-500 dark:text-[#888] mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
               )}
@@ -241,7 +341,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888]">→ {event.endTime}</span>
             )}
             <StatusChip status={event.status} />
-            <MediaBadge media={event.media} />
+            <MediaBadge media={event.media} documents={event.documents} />
           </div>
         </div>
       </div>

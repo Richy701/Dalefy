@@ -150,14 +150,14 @@ export function DestinationsPage() {
       <PageHeader
         left={destinations.length > 0 ? (
           <div className="max-w-md w-full relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-[#0bd2b5] transition-colors pointer-events-none" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input
               id="search-destinations"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="SEARCH DESTINATIONS..."
-              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
         ) : undefined}
@@ -169,12 +169,12 @@ export function DestinationsPage() {
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
             <img src="/illustrations/illus-movement.svg" alt="" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
-              <p className="text-base font-black italic uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
+              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
             </div>
             <button
               onClick={() => navigate("/")}
-              className="h-10 px-6 rounded-full bg-[#0bd2b5] text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -256,7 +256,7 @@ export function DestinationsPage() {
                   }}>
                     <span style={{
                       fontFamily: "'Barlow Condensed', system-ui, sans-serif",
-                      fontSize: 9, fontWeight: 900, fontStyle: "italic",
+                      fontSize: 9, fontWeight: 900,
                       color: "#050505", lineHeight: 1,
                     }}>{pin.tripCount}</span>
                   </div>
@@ -275,7 +275,7 @@ export function DestinationsPage() {
             style={{ left: mousePos.current.x + 14, top: mousePos.current.y - 10 }}
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl px-4 py-3 min-w-[160px]">
-              <p className="text-xs font-black uppercase tracking-tight text-[#0bd2b5] leading-none mb-1">{hoveredPin.name}</p>
+              <p className="text-xs font-black uppercase tracking-tight text-brand leading-none mb-1">{hoveredPin.name}</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-2">{hoveredPin.region}</p>
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-[#1f1f1f]">
                 <div>
@@ -296,7 +296,7 @@ export function DestinationsPage() {
           <div className="space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0bd2b5] mb-2">DAF Adventures</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">DAF Adventures</p>
                 <h2 className="text-2xl lg:text-4xl font-extrabold uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Destinations</h2>
               </div>
               <div className="flex items-center gap-px rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shrink-0">
@@ -317,7 +317,7 @@ export function DestinationsPage() {
                 <button
                   key={r}
                   onClick={() => setFilter(r)}
-                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/40 ${filter === r ? "bg-[#0bd2b5] text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-[#0bd2b5]/40"}`}
+                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40"}`}
                 >
                   {r === "all" ? "All Regions" : r}
                 </button>
@@ -357,7 +357,7 @@ export function DestinationsPage() {
                     )}
                     {dest.types.activities > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Compass className="h-2.5 w-2.5 text-[#0bd2b5]" />
+                        <Compass className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.activities}</span>
                       </div>
                     )}
@@ -370,7 +370,7 @@ export function DestinationsPage() {
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-white/15">
                     <div className="flex items-center gap-1.5">
-                      <LucideCalendar className="h-3 w-3 text-[#0bd2b5]" />
+                      <LucideCalendar className="h-3 w-3 text-brand" />
                       <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
                         {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                       </span>

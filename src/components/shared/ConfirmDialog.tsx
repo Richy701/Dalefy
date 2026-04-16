@@ -25,7 +25,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
           </Button>
           <Button
             onClick={() => { onConfirm(); onOpenChange(false); }}
-            className={`rounded-2xl h-12 px-8 font-bold uppercase tracking-wider shadow-xl ${destructive ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-[#0bd2b5] hover:opacity-90 text-black shadow-[#0bd2b5]/20'}`}
+            className={`rounded-2xl h-12 px-8 font-bold uppercase tracking-wider shadow-xl ${destructive ? 'bg-destructive hover:bg-destructive/90 text-white' : 'bg-brand hover:opacity-90 text-black shadow-brand/20'}`}
           >
             {confirmLabel}
           </Button>

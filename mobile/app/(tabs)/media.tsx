@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { Logo } from "@/components/Logo";
 import * as ImagePicker from "expo-image-picker";
 import type { TripMedia } from "@/shared/types";
 
@@ -86,7 +87,10 @@ export default function MediaScreen() {
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.brandName}>DAF Adventures</Text>
+            <View style={styles.brandRow}>
+              <Logo size={11} color={C.teal} />
+              <Text style={[styles.brandName, { marginBottom: 0 }]}>DAF Adventures</Text>
+            </View>
             <Text style={styles.pageTitle}>Gallery</Text>
             {totalItems > 0 && (
               <Text style={styles.pageSub}>
@@ -215,6 +219,9 @@ function makeStyles(C: ThemeColors) {
     brandName: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 2, textTransform: "uppercase", marginBottom: 2,
+    },
+    brandRow: {
+      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2,
     },
     pageTitle: {
       fontSize: T["3xl"] + 2, fontFamily: F.black, fontWeight: T.black,

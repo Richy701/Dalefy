@@ -1,12 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Command } from "cmdk";
 import { useNavigate } from "react-router-dom";
 import { useHotkeys } from "react-hotkeys-hook";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import {
   LayoutDashboard, Users, Globe, BarChart2, Sun, Moon,
-  Plane, MapPin, Search, ArrowRight, Command as CmdIcon,
+  Plane, MapPin, Search, ArrowRight, Command as CmdIcon, Settings,
 } from "lucide-react";
 
 interface CommandPaletteProps {
@@ -27,6 +28,12 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
     },
     { enableOnFormTags: true, enableOnContentEditable: true }
   );
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, handler);
+    return () => window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, handler);
+  }, []);
 
   const run = useCallback((action: () => void) => {
     action();
@@ -78,6 +85,7 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
               { label: "Travelers", icon: Users, path: "/travelers" },
               { label: "Destinations", icon: Globe, path: "/destinations" },
               { label: "Reports", icon: BarChart2, path: "/reports" },
+              { label: "Settings", icon: Settings, path: "/settings" },
             ].map(({ label, icon: Icon, path }) => (
               <Command.Item
                 key={path}
@@ -85,7 +93,7 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
                 onSelect={() => run(() => navigate(path))}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
               >
-                <div className="h-8 w-8 rounded-lg bg-[#0bd2b5]/10 text-[#0bd2b5] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 {label}
@@ -105,7 +113,7 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
                 onSelect={() => run(() => { navigate("/"); onNewTrip(); })}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
               >
-                <div className="h-8 w-8 rounded-lg bg-[#0bd2b5]/20 text-[#0bd2b5] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">
                   <Plane className="h-3.5 w-3.5" />
                 </div>
                 New Trip

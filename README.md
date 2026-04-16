@@ -9,6 +9,7 @@ Internal travel planning and itinerary management platform for teams. Build, man
 ### Dashboard
 - Animated stat counters (trips, travelers, destinations, revenue)
 - Upcoming trips carousel with spotlight view
+- "For your X Trip" event cards with a dedicated right-side time block (weekday / big time / AM·PM / date)
 - Live activity feed and quick-action buttons
 - Drag-and-drop file import — drop a PDF, Word doc, PPTX, or TXT directly onto the page to parse it into a trip
 - Grid and list view toggle with live search
@@ -47,8 +48,11 @@ Internal travel planning and itinerary management platform for teams. Build, man
 
 ### Global
 - Command palette (Cmd+K) — search trips, navigate pages, trigger actions
-- Dark / light mode with instant switching
-- Sidebar with collapsible icon mode, recent trip shortcut, user footer
+- Dark / light mode with instant switching (also toggleable from the sidebar)
+- Accent color picker — 6 swatches (Cyber Teal, Electric Violet, Solar Amber, Crimson, Cobalt, Lime) that swap the brand color everywhere, including Recharts data viz, via a runtime CSS custom property
+- Compact mode, toast notifications toggle, and success-sound chime — all persisted in Settings → Appearance / Notifications
+- Brand logo mark rendered in the sidebar header and across mobile screens
+- Sidebar with collapsible icon mode, recent trip shortcut, theme toggle, user footer
 - Notification panel — bell popover with unread count and mark-all-read
 - Mobile-responsive with sheet-based sidebar on small screens
 - Smooth page transitions via Motion
@@ -67,6 +71,8 @@ Companion Expo React Native app in the `mobile/` directory.
 
 - 5-tab layout: Trips, World, Plan, Gallery, Me
 - Trip detail screen with hero banner, route map, and day-by-day itinerary
+- Brand logo mark inline with "DAF Adventures" across every header and footer
+- iOS overscroll bounce matches the app background (no white flash on pull-down)
 - Real-time sync with web app via Supabase Realtime
 - Offline-first — AsyncStorage cache with cloud sync
 - Push notifications when trips are published/updated
