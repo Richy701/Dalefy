@@ -220,13 +220,13 @@ export function DashboardPage() {
     >
       {/* ── Drag-to-import overlay ── */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#050505]/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-[2rem] border-2 border-dashed border-brand bg-brand/[0.04]">
             <div className="h-16 w-16 rounded-2xl bg-brand/15 flex items-center justify-center">
               <Upload className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-xl font-black uppercase tracking-[0.15em] text-white">Drop to Import</p>
+              <p className="text-xl font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">Drop to Import</p>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
             </div>
           </div>

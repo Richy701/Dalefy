@@ -7,6 +7,7 @@ import { subscribeToTrips, upsertTrip, removeTrip } from "@/services/supabaseTri
 
 interface TripsContextType {
   trips: Trip[];
+  ready: boolean;
   setTrips: React.Dispatch<React.SetStateAction<Trip[]>>;
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
@@ -18,6 +19,7 @@ interface TripsContextType {
 
 const TripsContext = createContext<TripsContextType>({
   trips: [],
+  ready: false,
   setTrips: () => {},
   addTrip: () => {},
   deleteTrip: () => {},
@@ -79,6 +81,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const cloud = useSupabaseTrips();
 
   const { trips, setTrips } = useCloud ? cloud : local;
+  const ready = useCloud ? cloud.ready : local.ready;
 
   // Seed Supabase from localStorage on first use
   const seeded = useRef(false);
@@ -128,8 +131,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [setTrips]);
 
   const value = useMemo(
-    () => ({ trips, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent }),
-    [trips, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent]
+    () => ({ trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent }),
+    [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent]
   );
 
   return (

@@ -23,6 +23,7 @@ Internal travel planning and itinerary management platform for teams. Build, man
 - PDF export via html2canvas + jsPDF
 - One-click publish with push notifications to mobile devices
 - Shareable trip links (public, no auth required)
+- **Trip PIN** — every published trip gets a 4-digit PIN auto-allocated in Supabase, shown as the hero on the share-pass stub so travelers can type it directly on mobile (no pasting required)
 
 ### Destinations
 - Mapbox world map with pulsing destination markers
@@ -78,6 +79,7 @@ Companion Expo React Native app in the `mobile/` directory.
 - Push notifications when trips are published/updated
 - Deep linking (`dafadventures://shared/:tripId`)
 - Shared trip screen for public trip links
+- **Trip PIN entry** — passport modal detects a 4-digit PIN and resolves it via Supabase to the matching trip (falls back to link paste)
 - Dark/light theme with system detection
 - Notification center with persistent history
 
@@ -92,6 +94,7 @@ The web and mobile apps sync through Supabase:
 3. **Offline support** — mobile caches trips in AsyncStorage, syncs when connected
 4. **Push notifications** — web sends via Expo Push API to all registered devices
 5. **Shareable links** — public route (`/shared/:tripId`) fetches directly from Supabase
+6. **4-digit Trip PIN** — on share, web allocates a unique `short_code` per trip; mobile accepts the PIN and resolves to the UUID for navigation
 
 Without Supabase configured, both apps fall back to local storage (no sync).
 
@@ -216,6 +219,15 @@ Run in the Supabase SQL Editor to create the required tables:
 ```sql
 -- See supabase-setup.sql for full DDL
 ```
+
+Additional migrations live in `supabase/migrations/` and can be applied with the Supabase CLI:
+
+```bash
+supabase db push --linked
+```
+
+Current migrations:
+- `20260416_add_short_code.sql` — adds the 4-digit `short_code` column + partial unique index for Trip PIN lookups
 
 ---
 

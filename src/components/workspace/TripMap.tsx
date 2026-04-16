@@ -7,15 +7,7 @@ import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
 import { geocode } from "@/services/geocode";
-
-const ACCENT = "#0bd2b5";
-
-const TYPE_COLORS: Record<string, string> = {
-  flight:   "#0bd2b5",
-  hotel:    "#f59e0b",
-  activity: "#0bd2b5",
-  dining:   "#f472b6",
-};
+import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 
 const TYPE_ICONS = {
   flight:   Plane,
@@ -57,6 +49,7 @@ interface MapPoint {
   type: TravelEvent["type"];
   order: number;
   title: string;
+  day: number;
 }
 
 // Marching-ants dash sequences (MapLibre animate technique)
@@ -71,6 +64,15 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const rafRef = useRef<number>(0);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
+  const { accent } = usePreferences();
+  const ACCENT = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
+  const TYPE_COLORS: Record<string, string> = {
+    flight:   ACCENT,
+    hotel:    "#f59e0b",
+    activity: ACCENT,
+    dining:   "#f472b6",
+  };
+
   const mapStyle = isDark
     ? "mapbox://styles/mapbox/dark-v11"
     : "mapbox://styles/mapbox/light-v11";
@@ -83,20 +85,30 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       const seen = new Set<string>();
       const result: MapPoint[] = [];
       let order = 0;
-      const sortedEvents = [...trip.events].sort((a, b) =>
-        a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
-      );
+      const sortedEvents = [...trip.events]
+        .filter((e) => e.type === "flight")
+        .sort((a, b) =>
+          a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
+        );
       const resolve = async (loc: string): Promise<[number, number] | null> =>
         resolveCoords(loc) ?? (await geocode(loc));
 
+      const tripStartMs = new Date(trip.start + "T00:00:00").getTime();
+      const dayOf = (date: string) => {
+        const ms = new Date(date + "T00:00:00").getTime();
+        const n = Math.floor((ms - tripStartMs) / 86400000) + 1;
+        return n > 0 ? n : 1;
+      };
+
       for (const event of sortedEvents) {
+        const day = dayOf(event.date);
         const codeMatch = event.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/);
         if (codeMatch) {
           for (const code of [codeMatch[1], codeMatch[2]]) {
             const c = await resolve(code);
             if (c) {
               const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: code, type: event.type, order: order++, title: event.title }); }
+              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: code, type: event.type, order: order++, title: event.title, day }); }
             }
           }
           continue;
@@ -107,7 +119,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
             const c = await resolve(loc.trim());
             if (c) {
               const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: loc.trim(), type: event.type, order: order++, title: event.title }); }
+              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: loc.trim(), type: event.type, order: order++, title: event.title, day }); }
             }
           }
           continue;
@@ -117,9 +129,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         const key = `${coords[0].toFixed(2)},${coords[1].toFixed(2)}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const parts = event.location.split(",");
-        const label = parts[0].trim().length > 22 ? parts[0].trim().slice(0, 20) + "…" : parts[0].trim();
-        result.push({ coords, label, type: event.type, order: order++, title: event.title });
+        const label = event.location.split(",")[0].trim();
+        result.push({ coords, label, type: event.type, order: order++, title: event.title, day });
       }
       if (!cancelled) setPoints(result);
     })();
@@ -167,9 +178,32 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     );
   }, [allCoords]);
 
-  // Marching-ants arc animation
+  // Marching-ants arc animation + strip Mapbox built-in POI/transit/place icons
   const startArcAnimation = useCallback(() => {
-    const step = { current: 0 };
+    const hideClutter = () => {
+      const map = mapRef.current?.getMap();
+      if (!map?.getStyle) return;
+      try {
+        const style = map.getStyle();
+        for (const layer of style.layers ?? []) {
+          const id = String(layer.id).toLowerCase();
+          const src = String((layer as { "source-layer"?: string })["source-layer"] ?? "").toLowerCase();
+          const isSymbol = layer.type === "symbol";
+          const isClutter =
+            /poi/.test(id) || /poi/.test(src) ||
+            /transit/.test(id) ||
+            (isSymbol && (/hotel|lodging|restaurant|shop|food|amenity/.test(id) || /hotel|lodging/.test(src)));
+          if (isClutter) {
+            map.setLayoutProperty(layer.id, "visibility", "none");
+          }
+        }
+      } catch { /* ignore */ }
+    };
+
+    const map = mapRef.current?.getMap();
+    hideClutter();
+    map?.on("styledata", hideClutter);
+
     function animate(ts: number) {
       const idx = Math.floor(ts / 50) % DASH_SEQ.length;
       const m = mapRef.current?.getMap();
@@ -348,66 +382,72 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
                 <span className="text-[11px] font-extrabold uppercase tracking-tight text-brand">Route</span>
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} stops</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} {points.length === 1 ? "airport" : "airports"}</span>
             </div>
-            <div className="flex items-center overflow-x-auto scrollbar-hide pb-0.5">
-              {points.slice(0, 8).map((pt, i) => {
-                const color = TYPE_COLORS[pt.type];
-                const isLast = i === Math.min(points.length - 1, 7);
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
+              {points.map((pt, i) => {
+                const color = TYPE_COLORS[pt.type] || ACCENT;
+                const isLast = i === points.length - 1;
                 const isFirst = i === 0;
+                const Icon = TYPE_ICONS[pt.type] || MapPin;
                 return (
                   <div key={pt.order} className="flex items-center shrink-0">
-                    <div className="flex flex-col items-center" style={{ minWidth: 44 }}>
-                      <div className="rounded-full flex items-center justify-center" style={{
-                        width: isFirst ? 24 : 20, height: isFirst ? 24 : 20,
-                        background: isFirst ? ACCENT : `${color}15`,
-                        border: `1.5px solid ${isFirst ? ACCENT : color}`,
-                        boxShadow: isFirst ? `0 0 10px ${ACCENT}33` : "none",
-                      }}>
-                        <span style={{ fontSize: 10, fontWeight: 900, color: isFirst ? "#000" : color, letterSpacing: "-0.02em" }}>
-                          {pt.order + 1}
+                    <div
+                      className="flex items-center gap-2 shrink-0 rounded-full border pl-1 pr-3 py-1"
+                      style={{
+                        background: isFirst
+                          ? `${ACCENT}14`
+                          : (isDark ? "#181818" : "#f8fafc"),
+                        borderColor: isFirst
+                          ? `${ACCENT}55`
+                          : (isDark ? "#1f1f1f" : "#e2e8f0"),
+                        boxShadow: isFirst ? `0 0 14px ${ACCENT}22` : "none",
+                      }}
+                    >
+                      <div
+                        className="rounded-full flex items-center justify-center shrink-0"
+                        style={{
+                          width: 22, height: 22,
+                          background: isFirst ? ACCENT : `${color}1f`,
+                          border: `1.5px solid ${isFirst ? ACCENT : color}`,
+                        }}
+                      >
+                        <Icon size={11} color={isFirst ? "#000" : color} strokeWidth={2.5} />
+                      </div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span
+                          className="text-[10px] font-black leading-none tabular-nums uppercase tracking-[0.08em]"
+                          style={{ color: isFirst ? ACCENT : (isDark ? "#666" : "#94a3b8") }}
+                        >
+                          DAY {pt.day}
+                        </span>
+                        <span
+                          className="text-[11px] font-extrabold uppercase tracking-tight whitespace-nowrap leading-none"
+                          style={{ color: isDark ? "#e5e5e5" : "#1e293b" }}
+                        >
+                          {pt.label}
                         </span>
                       </div>
-                      <span className="text-xs font-extrabold uppercase tracking-tight mt-1 text-center leading-tight text-slate-500 dark:text-[#888]" style={{ maxWidth: 52 }}>
-                        {pt.label.length > 8 ? pt.label.slice(0, 7) + "…" : pt.label}
-                      </span>
                     </div>
                     {!isLast && (
-                      <div className="flex items-center mx-0.5" style={{ marginTop: -10 }}>
-                        <div style={{ width: 12, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
-                        {pt.type === "flight" && (
-                          <Plane size={8} color={ACCENT} opacity={0.4} style={{ margin: "0 -1px" }} />
+                      <div className="flex items-center shrink-0 px-1">
+                        <div style={{ width: 6, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
+                        {pt.type === "flight" ? (
+                          <Plane size={10} color={TYPE_COLORS.flight} style={{ opacity: 0.7, margin: "0 1px" }} />
+                        ) : (
+                          <div style={{ width: 3, height: 3, borderRadius: "50%", background: isDark ? "#2a2a2a" : "#cbd5e1", margin: "0 2px" }} />
                         )}
-                        <div style={{ width: 12, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
+                        <div style={{ width: 6, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
                       </div>
                     )}
                   </div>
                 );
               })}
-              {points.length > 8 && (
-                <span className="text-xs font-black ml-2 shrink-0 text-slate-500 dark:text-[#888]">+{points.length - 8}</span>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute top-3 right-3 z-[1000] bg-white/90 dark:bg-[#111111]/90 backdrop-blur-xl border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-3 py-2.5 shadow-lg">
-        <div className="flex flex-col gap-2">
-          {([
-            { type: "flight",   label: "Flights" },
-            { type: "hotel",    label: "Hotels" },
-            { type: "activity", label: "Activities" },
-            { type: "dining",   label: "Dining" },
-          ] as const).map(({ type, label }) => (
-            <div key={type} className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[type], boxShadow: `0 0 4px ${TYPE_COLORS[type]}44` }} />
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 });

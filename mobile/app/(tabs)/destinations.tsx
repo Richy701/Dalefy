@@ -156,8 +156,8 @@ export default function DestinationsScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.empty}>
           <Illustration name="movement" width={260} height={160} />
-          <Text style={styles.emptyTitle}>No destinations yet</Text>
-          <Text style={styles.emptyText}>Create trips to see your world map</Text>
+          <Text style={styles.emptyTitle}>Your map awaits</Text>
+          <Text style={styles.emptyText}>Add a trip to start dropping pins — each destination you unlock shows up here.</Text>
         </View>
       </SafeAreaView>
     );
@@ -171,7 +171,14 @@ export default function DestinationsScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        scrollIndicatorInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
+      >
 
         {/* ── World Map — full bleed behind status bar ── */}
         <View style={styles.mapWrap}>

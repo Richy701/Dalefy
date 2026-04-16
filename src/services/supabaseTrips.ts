@@ -39,6 +39,36 @@ export async function removeTrip(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
+  const normalized = code.trim();
+  if (!/^\d{4}$/.test(normalized)) return null;
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq("short_code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToTrip(data);
+}
+
+function randomCode(): string {
+  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+}
+
+export async function generateUniqueShortCode(): Promise<string> {
+  for (let i = 0; i < 20; i++) {
+    const candidate = randomCode();
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select("id")
+      .eq("short_code", candidate)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return candidate;
+  }
+  throw new Error("Could not allocate unique trip code");
+}
+
 function tripToRow(trip: Trip) {
   return {
     id: trip.id,
@@ -55,6 +85,7 @@ function tripToRow(trip: Trip) {
     image: trip.image,
     events: trip.events,
     media: trip.media ?? null,
+    short_code: trip.shortCode ?? null,
   };
 }
 
@@ -74,5 +105,6 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     image: row.image as string,
     events: (row.events as Trip["events"]) ?? [],
     media: (row.media as Trip["media"]) ?? undefined,
+    shortCode: (row.short_code as string) ?? undefined,
   };
 }

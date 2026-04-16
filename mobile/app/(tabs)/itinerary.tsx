@@ -35,11 +35,8 @@ function NoTrip() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.emptyState}>
         <Illustration name="sitting" width={260} height={160} />
-        <Text style={styles.emptyTitle}>No trips scheduled</Text>
-        <Text style={styles.emptyText}>Your itinerary will appear here once a trip is confirmed.</Text>
-        <Pressable style={styles.emptyBtn}>
-          <Text style={styles.emptyBtnText}>Contact Your Agent</Text>
-        </Pressable>
+        <Text style={styles.emptyTitle}>No itinerary yet</Text>
+        <Text style={styles.emptyText}>Add a trip from the home screen with a code or QR, and your day-by-day plan shows up here.</Text>
       </View>
     </SafeAreaView>
   );

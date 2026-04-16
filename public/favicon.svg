@@ -1,11 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
-  <!-- Background rounded square -->
-  <rect width="48" height="48" rx="12" fill="#0bd2b5"/>
-  <!-- Globe outline -->
-  <circle cx="24" cy="24" r="13" fill="none" stroke="#050505" stroke-width="2.2"/>
-  <!-- Equator -->
-  <ellipse cx="24" cy="24" rx="7" ry="13" fill="none" stroke="#050505" stroke-width="2.2"/>
-  <!-- Horizontal latitude lines -->
-  <line x1="11" y1="19" x2="37" y2="19" stroke="#050505" stroke-width="2" stroke-linecap="round"/>
-  <line x1="11" y1="29" x2="37" y2="29" stroke="#050505" stroke-width="2" stroke-linecap="round"/>
+  <rect width="48" height="48" rx="12" fill="#050505"/>
+  <g transform="translate(8 8)">
+    <path fill="#0bd2b5" fill-rule="evenodd" clip-rule="evenodd"
+      d="M5 4.5C5 3.67 5.67 3 6.5 3H15.5C22.4 3 28 8.82 28 16C28 23.18 22.4 29 15.5 29H6.5C5.67 29 5 28.33 5 27.5V4.5ZM11 9.5L22.5 16L11 22.5L13.5 16L11 9.5Z"/>
+  </g>
 </svg>

@@ -114,7 +114,7 @@ function generateEventImage(title: string, type: string, seed: number): string {
 export function WorkspacePage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
-  const { trips, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
+  const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
 
@@ -145,6 +145,9 @@ export function WorkspacePage() {
   const [isTripImageSearching, setIsTripImageSearching] = useState(false);
   const [tripImagePage, setTripImagePage] = useState(1);
   const [tripImageLastQuery, setTripImageLastQuery] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -243,6 +246,13 @@ export function WorkspacePage() {
   }, [editingEvent?.title, editingEvent?.type, editingEvent?.location, imageSeed, imageIsAuto, isEditPanelOpen]);
 
   if (!trip) {
+    if (!ready) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
+          <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-[#1f1f1f] border-t-brand animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
         <div className="text-center space-y-4">
@@ -262,6 +272,7 @@ export function WorkspacePage() {
     toast.success("Trip published successfully");
     addNotification({ message: "Trip published", detail: trip.name, time: "Just now", type: "success" });
     notifyTripUpdate(trip.id, trip.name, "published");
+    setShareOpen(true);
   };
 
   const handleAddEvent = (type: TravelEvent["type"] = "activity") => {
@@ -317,8 +328,6 @@ export function WorkspacePage() {
     reader.readAsDataURL(file);
   };
 
-  const mediaInputRef = useRef<HTMLInputElement>(null);
-
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !editingEvent) return;
@@ -342,7 +351,6 @@ export function WorkspacePage() {
     setEditingEvent(prev => prev ? { ...prev, media: (prev.media || []).filter((_, i) => i !== index) } : null);
   };
 
-  const documentInputRef = useRef<HTMLInputElement>(null);
   const MAX_DOC_BYTES = 8 * 1024 * 1024; // 8MB per doc — keeps localStorage viable
 
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -502,7 +510,6 @@ export function WorkspacePage() {
     toast.success("Trip deleted");
   };
 
-  const [shareOpen, setShareOpen] = useState(false);
   const handleShareTrip = () => setShareOpen(true);
 
   return (
@@ -553,7 +560,7 @@ export function WorkspacePage() {
           <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
           </Button>
-          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
+          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
           </Button>
         </div>

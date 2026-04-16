@@ -6,6 +6,7 @@ import type { MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
@@ -47,6 +48,10 @@ const DEST_COORDS: Record<string, [number, number]> = {
 export function DestinationsPage() {
   const { trips } = useTrips();
   const { theme } = useTheme();
+  const { accent } = usePreferences();
+  const accentPreset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
+  const ACCENT = accentPreset.hex;
+  const ACCENT_RGB = accentPreset.rgb.replace(/\s+/g, ", ");
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
@@ -208,7 +213,7 @@ export function DestinationsPage() {
                 id="connections-core"
                 type="line"
                 layout={{ "line-cap": "round", "line-join": "round" }}
-                paint={{ "line-color": "#0bd2b5", "line-width": 1, "line-opacity": 0.5 }}
+                paint={{ "line-color": ACCENT, "line-width": 1, "line-opacity": 0.5 }}
               />
             </Source>
 
@@ -230,8 +235,8 @@ export function DestinationsPage() {
                     position: "absolute", top: "50%", left: "50%",
                     width: 48, height: 48, marginLeft: -24, marginTop: -24,
                     borderRadius: "50%",
-                    border: "1px solid rgba(11,210,181,0.2)",
-                    background: "rgba(11,210,181,0.06)",
+                    border: `1px solid rgba(${ACCENT_RGB},0.2)`,
+                    background: `rgba(${ACCENT_RGB},0.06)`,
                     animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35}s infinite`,
                     pointerEvents: "none",
                   }} />
@@ -240,7 +245,7 @@ export function DestinationsPage() {
                     position: "absolute", top: "50%", left: "50%",
                     width: 28, height: 28, marginLeft: -14, marginTop: -14,
                     borderRadius: "50%",
-                    background: "rgba(11,210,181,0.18)",
+                    background: `rgba(${ACCENT_RGB},0.18)`,
                     animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35 + 0.4}s infinite`,
                     pointerEvents: "none",
                   }} />
@@ -249,7 +254,7 @@ export function DestinationsPage() {
                     position: "absolute", top: "50%", left: "50%",
                     width: 18, height: 18, marginLeft: -9, marginTop: -9,
                     borderRadius: "50%",
-                    background: "#0bd2b5",
+                    background: ACCENT,
                     border: `2px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     zIndex: 2,

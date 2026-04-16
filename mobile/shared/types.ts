@@ -63,6 +63,7 @@ export interface Trip {
   image: string;
   events: TravelEvent[];
   media?: TripMedia[];
+  shortCode?: string;
 }
 
 export interface ComplianceDoc {

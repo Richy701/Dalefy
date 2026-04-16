@@ -3,18 +3,40 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import {
   User, Moon, Sun, Palette, Bell, Shield, Info, ChevronRight,
-  Globe, HelpCircle, Droplet, Rows3,
+  Globe, HelpCircle, Droplet, Rows3, Trash2,
 } from "lucide-react-native";
+import { Alert } from "react-native";
 import { T, R, S, F, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
 import { useMemo } from "react";
 
 export default function ProfileScreen() {
   const { C, isDark, toggle } = useTheme();
   const { prefs, setPref } = usePreferences();
+  const { trips, clearTrips } = useTrips();
   const styles = useMemo(() => makeStyles(C), [C]);
+
+  const handleClearTrips = () => {
+    if (trips.length === 0) return;
+    Alert.alert(
+      "Clear all trips?",
+      `This will remove ${trips.length} trip${trips.length === 1 ? "" : "s"} from this device. You can re-add them via a shared link.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            clearTrips();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -154,6 +176,26 @@ export default function ProfileScreen() {
             <Text style={styles.rowLabel}>Language & region</Text>
             <Text style={styles.rowValue}>English</Text>
             <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
+          </Pressable>
+        </View>
+
+        {/* ── Data ── */}
+        <Text style={styles.sectionLabel}>Data</Text>
+        <View style={styles.card}>
+          <Pressable
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={handleClearTrips}
+            disabled={trips.length === 0}
+          >
+            <View style={[styles.iconBox, { backgroundColor: C.elevated }]}>
+              <Trash2 size={16} color={trips.length === 0 ? C.textTertiary : "#ef4444"} strokeWidth={1.8} />
+            </View>
+            <Text style={[styles.rowLabel, { color: trips.length === 0 ? C.textTertiary : C.textPrimary }]}>
+              Clear all trips
+            </Text>
+            <Text style={styles.rowValue}>
+              {trips.length} saved
+            </Text>
           </Pressable>
         </View>
 

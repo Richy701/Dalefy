@@ -135,9 +135,9 @@ export default function MediaScreen() {
           /* ── Empty state ── */
           <View style={styles.emptyWrap}>
             <Illustration name="together" width={260} height={160} />
-            <Text style={styles.emptyTitle}>No memories yet</Text>
+            <Text style={styles.emptyTitle}>Your memories begin here</Text>
             <Text style={styles.emptyText}>
-              Upload photos and videos from your trips to build your travel gallery.
+              Capture photos and videos from every trip — they'll land here, organised by where you've been.
             </Text>
             <Pressable
               style={({ pressed }) => [styles.emptyUploadBtn, { opacity: pressed ? 0.8 : 1 }]}

@@ -49,6 +49,18 @@ export async function fetchTripById(id: string): Promise<Trip | null> {
   return rowToTrip(data);
 }
 
+export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
+  const normalized = code.trim();
+  if (!/^\d{4}$/.test(normalized)) return null;
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq("short_code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return rowToTrip(data);
+}
+
 function tripToRow(trip: Trip) {
   return {
     id: trip.id,
@@ -65,6 +77,7 @@ function tripToRow(trip: Trip) {
     image: trip.image,
     events: trip.events,
     media: trip.media ?? null,
+    short_code: trip.shortCode ?? null,
   };
 }
 
@@ -84,5 +97,6 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     image: row.image as string,
     events: (row.events as Trip["events"]) ?? [],
     media: (row.media as Trip["media"]) ?? undefined,
+    shortCode: (row.short_code as string) ?? undefined,
   };
 }

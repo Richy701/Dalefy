@@ -68,9 +68,9 @@ export function NotificationSheet({ visible, onClose }: Props) {
           {notifications.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Bell size={40} color={C.border} strokeWidth={1.2} />
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
+              <Text style={styles.emptyTitle}>All quiet for now</Text>
               <Text style={styles.emptyDesc}>
-                You'll see trip updates and alerts here
+                Trip updates, itinerary changes, and alerts will land here.
               </Text>
             </View>
           ) : (

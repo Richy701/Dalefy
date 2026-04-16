@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { useRouter } from "expo-router";
@@ -93,14 +94,16 @@ function AppStack() {
 
 export default function RootLayout() {
   return (
-    <PreferencesProvider>
-      <ThemeProvider>
-        <NotificationProvider>
-          <TripsProvider>
-            <AppStack />
-          </TripsProvider>
-        </NotificationProvider>
-      </ThemeProvider>
-    </PreferencesProvider>
+    <SafeAreaProvider>
+      <PreferencesProvider>
+        <ThemeProvider>
+          <NotificationProvider>
+            <TripsProvider>
+              <AppStack />
+            </TripsProvider>
+          </NotificationProvider>
+        </ThemeProvider>
+      </PreferencesProvider>
+    </SafeAreaProvider>
   );
 }

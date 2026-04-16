@@ -10,8 +10,9 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Search, MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
-  Bell, Sun, Moon, KeyRound, X as XIcon,
+  Bell, Sun, Moon, KeyRound, X as XIcon, Globe,
 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
@@ -20,6 +21,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
+import { fetchTripByShortCode } from "@/services/supabaseTrips";
 
 function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
@@ -41,17 +43,41 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const { C, isDark, toggle } = useTheme();
   const { unreadCount } = useNotifications();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [notifOpen, setNotifOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const styles = useMemo(() => makeGreetingStyles(C), [C]);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
 
-  const submitCode = () => {
+  const submitCode = async () => {
     const raw = code.trim();
-    if (!raw) return;
+    if (!raw || resolving) return;
+    setCodeError(null);
+
+    if (/^\d{4}$/.test(raw)) {
+      setResolving(true);
+      try {
+        const trip = await fetchTripByShortCode(raw);
+        if (!trip) {
+          setCodeError("No trip found for that PIN");
+          return;
+        }
+        setCodeOpen(false);
+        setCode("");
+        router.push(`/shared/${trip.id}`);
+      } catch {
+        setCodeError("Couldn't look up PIN. Try again.");
+      } finally {
+        setResolving(false);
+      }
+      return;
+    }
+
     const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
     const id = match ? match[1] : raw;
     setCodeOpen(false);
@@ -60,14 +86,14 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   return (
-    <View style={styles.outer}>
+    <View style={[styles.outer, { paddingTop: insets.top + S.md }]}>
       <LinearGradient
         colors={[`${C.teal}18`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={styles.illustrationWrap}>
-        <Illustration name="together" width={220} height={180} />
+      <View style={styles.illustrationWrap} pointerEvents="none">
+        <Illustration name="together" width={170} height={140} />
       </View>
       <View style={styles.greetingRow}>
         <Text style={styles.greeting}>{greeting} 👋</Text>
@@ -79,13 +105,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           >
             {isDark ? <Sun size={16} color={C.textSecondary} strokeWidth={2} /> : <Moon size={16} color={C.textSecondary} strokeWidth={2} />}
           </Pressable>
-          <Pressable
-            onPress={() => setCodeOpen(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
-            accessibilityLabel="Enter trip code"
-          >
-            <KeyRound size={16} color={C.textSecondary} strokeWidth={2} />
-          </Pressable>
+          {nextTrip && (
+            <Pressable
+              onPress={() => setCodeOpen(true)}
+              style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
+              accessibilityLabel="Enter trip code"
+            >
+              <KeyRound size={16} color={C.textSecondary} strokeWidth={2} />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => setNotifOpen(true)}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
@@ -105,42 +133,68 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             style={styles.codeCenter}
           >
             <Pressable style={styles.codeSheet} onPress={() => {}}>
-              <View style={styles.codeHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.codeEyebrow}>Open Shared Trip</Text>
-                  <Text style={styles.codeTitle}>Enter trip code</Text>
+              {/* Passport cover strip */}
+              <View style={styles.passportStrip}>
+                <View style={styles.passportCrest}>
+                  <Globe size={12} color="#000" strokeWidth={2.5} />
                 </View>
+                <Text style={styles.passportBrand}>DAF Adventures · Passport</Text>
                 <Pressable onPress={() => setCodeOpen(false)} style={styles.codeClose}>
-                  <XIcon size={16} color={C.textSecondary} strokeWidth={2} />
+                  <XIcon size={14} color={C.textSecondary} strokeWidth={2} />
                 </Pressable>
               </View>
-              <TextInput
-                value={code}
-                onChangeText={setCode}
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="paste code or link"
-                placeholderTextColor={C.textTertiary}
-                style={styles.codeInput}
-                onSubmitEditing={submitCode}
-                returnKeyType="go"
-              />
-              <Pressable
-                onPress={submitCode}
-                disabled={!code.trim()}
-                style={({ pressed }) => [
-                  styles.codeSubmit,
-                  {
-                    backgroundColor: code.trim() ? C.teal : C.elevated,
-                    opacity: pressed && code.trim() ? 0.85 : 1,
-                  },
-                ]}
-              >
-                <Text style={[styles.codeSubmitText, { color: code.trim() ? "#000" : C.textTertiary }]}>
-                  Open Itinerary
+
+              {/* Passport inner page */}
+              <View style={styles.passportPage}>
+                <Text style={styles.codeEyebrow}>Bearer Entry</Text>
+                <Text style={styles.codeTitle}>Grant Entry</Text>
+                <Text style={styles.passportHint}>
+                  Type the 4-digit PIN from your agent — or paste a share link.
                 </Text>
-              </Pressable>
+
+                <View style={styles.passportDivider} />
+
+                <Text style={styles.passportFieldLabel}>Trip PIN · Link</Text>
+                <TextInput
+                  value={code}
+                  onChangeText={(t) => { setCode(t); setCodeError(null); }}
+                  autoFocus
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  keyboardType={/^\d*$/.test(code) ? "number-pad" : "default"}
+                  placeholder="0000"
+                  placeholderTextColor={C.textTertiary}
+                  style={styles.codeInput}
+                  onSubmitEditing={submitCode}
+                  returnKeyType="go"
+                  maxLength={code.includes("/") ? 200 : 48}
+                />
+
+                {codeError ? (
+                  <Text style={styles.codeErrorText}>{codeError}</Text>
+                ) : null}
+
+                <Pressable
+                  onPress={submitCode}
+                  disabled={!code.trim() || resolving}
+                  style={({ pressed }) => [
+                    styles.codeSubmit,
+                    {
+                      backgroundColor: code.trim() && !resolving ? C.teal : C.elevated,
+                      opacity: pressed && code.trim() && !resolving ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Plane size={13} color={code.trim() && !resolving ? "#000" : C.textTertiary} strokeWidth={2.5} />
+                  <Text style={[styles.codeSubmitText, { color: code.trim() && !resolving ? "#000" : C.textTertiary }]}>
+                    {resolving ? "Checking…" : "Stamp Passport"}
+                  </Text>
+                </Pressable>
+
+                <Text style={styles.passportMrz} numberOfLines={1}>
+                  P&lt;DAF&lt;&lt;ADVENTURES&lt;&lt;TRIP&lt;&lt;PASSPORT&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+                </Text>
+              </View>
             </Pressable>
           </KeyboardAvoidingView>
         </Pressable>
@@ -167,7 +221,22 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             <ArrowUpRight size={11} color={C.textSecondary} strokeWidth={2} />
           </View>
         </Pressable>
-      ) : null}
+      ) : (
+        <Pressable
+          style={({ pressed }) => [styles.countdownWrap, { opacity: pressed ? 0.85 : 1 }]}
+          onPress={() => { Haptics.selectionAsync(); setCodeOpen(true); }}
+        >
+          <Text style={styles.countdownEyebrow}>Awaiting Boarding</Text>
+          <Text style={styles.countdownNumber}>0</Text>
+          <View style={styles.countdownMeta}>
+            <KeyRound size={11} color={C.teal} strokeWidth={2} />
+            <Text style={styles.countdownDest} numberOfLines={1}>
+              Tap to paste a trip code
+            </Text>
+            <ArrowUpRight size={11} color={C.textSecondary} strokeWidth={2} />
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -175,14 +244,16 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 function makeGreetingStyles(C: ThemeColors) {
   return StyleSheet.create({
     outer: {
-      marginHorizontal: S.md, marginTop: S.xs, marginBottom: S.md,
-      backgroundColor: C.card, borderRadius: R["2xl"],
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      overflow: "hidden", paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.lg,
+      marginBottom: S.md,
+      backgroundColor: C.card,
+      borderBottomLeftRadius: R["2xl"], borderBottomRightRadius: R["2xl"],
+      borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      overflow: "hidden",
+      paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.lg,
     },
     illustrationWrap: {
-      position: "absolute", right: -20, bottom: -10,
-      opacity: 0.85,
+      position: "absolute", right: -10, bottom: -6,
+      opacity: 0.55,
     },
     greetingRow: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -207,7 +278,7 @@ function makeGreetingStyles(C: ThemeColors) {
       borderWidth: 1.5, borderColor: C.card,
     },
     codeBackdrop: {
-      flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
+      flex: 1, backgroundColor: "rgba(0,0,0,0.65)",
     },
     codeCenter: {
       flex: 1, justifyContent: "center", paddingHorizontal: S.md,
@@ -215,38 +286,76 @@ function makeGreetingStyles(C: ThemeColors) {
     codeSheet: {
       backgroundColor: C.card, borderRadius: R["2xl"],
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      padding: S.md, gap: S.sm,
+      overflow: "hidden",
     },
-    codeHeader: {
-      flexDirection: "row", alignItems: "flex-start", gap: S.xs,
+    passportStrip: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      paddingHorizontal: S.md, paddingVertical: 10,
+      backgroundColor: `${C.teal}18`,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: `${C.teal}40`,
+    },
+    passportCrest: {
+      width: 20, height: 20, borderRadius: 10,
+      backgroundColor: C.teal, alignItems: "center", justifyContent: "center",
+    },
+    passportBrand: {
+      flex: 1,
+      fontSize: 10, fontWeight: T.black, color: C.teal,
+      letterSpacing: 1.8, textTransform: "uppercase",
+    },
+    passportPage: {
+      padding: S.md, gap: S.xs,
+    },
+    passportHint: {
+      fontSize: T.sm, color: C.textTertiary, lineHeight: 18,
+      marginTop: 4,
+    },
+    passportDivider: {
+      borderTopWidth: 1, borderTopColor: C.border, borderStyle: "dashed",
+      marginVertical: S.sm,
+    },
+    passportFieldLabel: {
+      fontSize: 9, fontWeight: T.black, color: C.textTertiary,
+      letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
+    },
+    passportMrz: {
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 10, color: C.textTertiary,
+      letterSpacing: 0.5, marginTop: S.sm,
     },
     codeEyebrow: {
       fontSize: 10, fontWeight: T.black, color: C.textTertiary,
-      letterSpacing: 2, textTransform: "uppercase", marginBottom: 4,
+      letterSpacing: 2, textTransform: "uppercase", marginBottom: 2,
     },
     codeTitle: {
-      fontSize: T.lg, fontFamily: F.black, fontWeight: T.black,
+      fontSize: T.xl, fontFamily: F.black, fontWeight: T.black,
       color: C.textPrimary, letterSpacing: -0.3,
     },
     codeClose: {
-      width: 32, height: 32, borderRadius: 16,
+      width: 28, height: 28, borderRadius: 14,
       alignItems: "center", justifyContent: "center",
-      backgroundColor: C.elevated,
+      backgroundColor: C.card,
     },
     codeInput: {
-      height: 48, borderRadius: R.md,
+      height: 50, borderRadius: R.md,
       backgroundColor: C.elevated,
       paddingHorizontal: S.sm,
-      fontSize: T.base, color: C.textPrimary,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: T.base, color: C.textPrimary, letterSpacing: 1.2,
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
+      marginBottom: S.sm,
+    },
+    codeErrorText: {
+      fontSize: T.xs, fontWeight: T.bold, color: "#ff6b6b",
+      letterSpacing: 0.5, marginBottom: S.xs, marginTop: -2,
     },
     codeSubmit: {
       height: 48, borderRadius: R.md,
-      alignItems: "center", justifyContent: "center",
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     },
     codeSubmitText: {
       fontSize: T.sm, fontWeight: T.black,
-      letterSpacing: 1.2, textTransform: "uppercase",
+      letterSpacing: 1.5, textTransform: "uppercase",
     },
     countdownWrap: { alignSelf: "flex-start" },
     countdownEyebrow: {
@@ -261,6 +370,12 @@ function makeGreetingStyles(C: ThemeColors) {
     countdownDest: {
       fontSize: T.xs, fontWeight: T.black, color: C.textSecondary,
       letterSpacing: 1.5, maxWidth: 220,
+    },
+    emptyWrap: { alignSelf: "flex-start" },
+    emptyTitle: {
+      fontSize: T["3xl"], fontFamily: F.black, fontWeight: T.black,
+      color: C.textPrimary, letterSpacing: -1, lineHeight: T["3xl"] + 4,
+      maxWidth: 220,
     },
   });
 }
@@ -485,6 +600,7 @@ export default function HomeScreen() {
   const { C } = useTheme();
   const { prefs } = usePreferences();
   const compact = prefs.compactMode;
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C, compact), [C, compact]);
   const { trips } = useTrips();
   const router = useRouter();
@@ -541,15 +657,19 @@ export default function HomeScreen() {
     [sorted, upcomingIds, search]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        scrollIndicatorInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
-        {/* ── Greeting Hero ── */}
+        {/* ── Greeting Hero — wraps around Dynamic Island ── */}
         <GreetingHero
           nextTrip={nextUpcoming}
           isActive={isNextActive}
@@ -644,9 +764,9 @@ export default function HomeScreen() {
         {trips.length === 0 && (
           <View style={styles.emptyState}>
             <Illustration name="riding" width={260} height={160} />
-            <Text style={styles.emptyTitle}>No trips yet</Text>
+            <Text style={styles.emptyTitle}>Ready for takeoff</Text>
             <Text style={styles.emptyText}>
-              Your trips will appear here once they're added by your agent.
+              Paste the trip code or scan the QR your agent shared to unlock your itinerary.
             </Text>
           </View>
         )}
