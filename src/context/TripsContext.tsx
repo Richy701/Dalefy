@@ -1,7 +1,9 @@
-import { createContext, useContext, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useMemo, useEffect, useState, useRef, type ReactNode } from "react";
 import type { Trip, TravelEvent } from "@/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
+import { isSupabaseConfigured } from "@/services/supabase";
+import { subscribeToTrips, upsertTrip, removeTrip } from "@/services/supabaseTrips";
 
 interface TripsContextType {
   trips: Trip[];
@@ -25,8 +27,72 @@ const TripsContext = createContext<TripsContextType>({
   deleteEvent: () => {},
 });
 
-export function TripsProvider({ children }: { children: ReactNode }) {
+function useSupabaseTrips() {
+  const [trips, setTripsState] = useState<Trip[]>([]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeToTrips((incoming) => {
+      setTripsState(incoming);
+      setReady(true);
+    });
+    return unsub;
+  }, []);
+
+  const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
+    setTripsState((prev) => {
+      const next = typeof action === "function" ? action(prev) : action;
+      syncToSupabase(prev, next);
+      return next;
+    });
+  }, []);
+
+  return { trips, setTrips, ready };
+}
+
+function syncToSupabase(prev: Trip[], next: Trip[]) {
+  const prevIds = new Set(prev.map((t) => t.id));
+  const nextIds = new Set(next.map((t) => t.id));
+
+  for (const trip of next) {
+    const old = prev.find((t) => t.id === trip.id);
+    if (!old || old !== trip) {
+      upsertTrip(trip);
+    }
+  }
+
+  for (const id of prevIds) {
+    if (!nextIds.has(id)) {
+      removeTrip(id);
+    }
+  }
+}
+
+function useLocalTrips() {
   const [trips, setTrips] = useLocalStorage<Trip[]>("daf-adventures-v4", INITIAL_TRIPS);
+  return { trips, setTrips, ready: true };
+}
+
+export function TripsProvider({ children }: { children: ReactNode }) {
+  const useCloud = isSupabaseConfigured();
+  const local = useLocalTrips();
+  const cloud = useSupabaseTrips();
+
+  const { trips, setTrips } = useCloud ? cloud : local;
+
+  // Seed Supabase from localStorage on first use
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!useCloud || !cloud.ready || seeded.current) return;
+    if (cloud.trips.length === 0 && local.trips.length > 0) {
+      seeded.current = true;
+      Promise.all(local.trips.map(upsertTrip)).then(() => {
+        subscribeToTrips((incoming) => {
+          if (incoming.length > 0) cloud.setTrips(incoming);
+        });
+      });
+    }
+  }, [useCloud, cloud.ready, cloud.trips.length, local.trips]);
 
   const addTrip = useCallback((trip: Trip) => setTrips(prev => [trip, ...prev]), [setTrips]);
 

@@ -179,7 +179,7 @@ export function ReportsPage() {
           {/* ───────── TRIP OPERATIONS ───────── */}
           {tab === "operations" && (trips.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <img src="/illus-sitting.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <img src="/illustrations/illus-sitting.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to see your analytics</p>
@@ -414,7 +414,7 @@ export function ReportsPage() {
           {/* ───────── TEAM & COMPLIANCE ───────── */}
           {tab === "compliance" && (complianceData.travelers.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <img src="/illus-together.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <img src="/illustrations/illus-together.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add travelers to track compliance</p>

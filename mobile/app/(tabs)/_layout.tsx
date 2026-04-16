@@ -1,90 +1,155 @@
 import { Tabs } from "expo-router";
-import { View, StyleSheet, Platform } from "react-native"; // StyleSheet used for absoluteFill
+import { useEffect } from "react";
+import { View, StyleSheet, Pressable } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { Compass, Globe, CalendarDays, Images, User } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-function TabBarBg() {
+const TABS = [
+  { name: "index",        Icon: Compass,      label: "Trips"   },
+  { name: "destinations", Icon: Globe,        label: "World"   },
+  { name: "itinerary",    Icon: CalendarDays, label: "Plan"    },
+  { name: "media",        Icon: Images,       label: "Gallery" },
+  { name: "profile",      Icon: User,         label: "Me"      },
+] as const;
+
+// Each icon button slot width + gap between items
+const ITEM_W  = 54; // 50px icon + 4px gap
+const BLOB_SZ = 50; // blob width & height
+const ROW_PAD = 8;  // paddingHorizontal of the tab row
+
+function FloatingTabBar({ state, navigation }: any) {
   const { C, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Shared values — animate the blob position & horizontal stretch
+  const blobX      = useSharedValue(state.index * ITEM_W);
+  const blobScaleX = useSharedValue(1);
+  const blobScaleY = useSharedValue(1);
+
+  useEffect(() => {
+    const toX = state.index * ITEM_W;
+
+    // Slide blob with a bouncy spring
+    blobX.value = withSpring(toX, {
+      damping: 16,
+      stiffness: 180,
+      mass: 0.6,
+    });
+
+    // Liquid squish: briefly stretch wide then snap back
+    blobScaleX.value = withSequence(
+      withTiming(1.5, { duration: 90 }),
+      withSpring(1, { damping: 12, stiffness: 240, mass: 0.5 }),
+    );
+
+    // Slight vertical squeeze at the same time (liquid incompressibility)
+    blobScaleY.value = withSequence(
+      withTiming(0.82, { duration: 90 }),
+      withSpring(1, { damping: 12, stiffness: 240, mass: 0.5 }),
+    );
+  }, [state.index]);
+
+  const blobAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: blobX.value },
+      { scaleX: blobScaleX.value },
+      { scaleY: blobScaleY.value },
+    ],
+  }));
+
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />
-      {/* Border only in light mode — dark mode shares same bg, no separator needed */}
-      {!isDark && (
-        <View style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          height: StyleSheet.hairlineWidth,
-          backgroundColor: C.border,
-        }} />
-      )}
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.outerWrap,
+        { paddingBottom: insets.bottom > 0 ? insets.bottom - 6 : 16 },
+      ]}
+    >
+      <View style={[styles.pillWrap, {
+        backgroundColor: isDark ? "rgba(14,14,18,0.88)" : "rgba(255,255,255,0.92)",
+        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+      }]}>
+
+          <View style={styles.tabRowOuter}>
+
+            {/* Liquid blob — slides & squishes behind icons */}
+            <Animated.View style={[styles.blob, blobAnimStyle, {
+              backgroundColor: isDark ? `${C.teal}18` : `${C.teal}12`,
+              borderColor: isDark ? `${C.teal}30` : `${C.teal}20`,
+            }]} />
+
+            {/* Pressable icons (rendered on top of blob) */}
+            <View style={styles.tabRow}>
+              {state.routes.map((route: any, index: number) => {
+                const focused = state.index === index;
+                const { Icon } = TABS[index];
+
+                const onPress = () => {
+                  const event = navigation.emit({
+                    type: "tabPress",
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
+                  if (!focused && !event.defaultPrevented) {
+                    navigation.navigate(route.name);
+                  }
+                };
+
+                return (
+                  <Pressable
+                    key={route.key}
+                    onPress={onPress}
+                    style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={TABS[index].label}
+                  >
+                    <Icon
+                      size={20}
+                      color={
+                        focused
+                          ? C.teal
+                          : isDark
+                          ? "rgba(170,170,180,0.45)"
+                          : "rgba(80,80,90,0.40)"
+                      }
+                      strokeWidth={focused ? 2.2 : 1.6}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+          </View>
+
+      </View>
     </View>
   );
 }
 
-const TABS = [
-  { name: "index",        Icon: Compass,      label: "Home",  hint: "Explore your trips"        },
-  { name: "destinations", Icon: Globe,        label: "World", hint: "Browse destinations"        },
-  { name: "itinerary",    Icon: CalendarDays, label: "Plan",  hint: "View your itinerary"        },
-  { name: "media",        Icon: Images,       label: "Media", hint: "Browse photos and videos"   },
-  { name: "profile",      Icon: User,         label: "Me",    hint: "Your profile and settings"  },
-] as const;
-
 export default function TabLayout() {
-  const { C } = useTheme();
-
-  // Inactive uses textSecondary (not textTertiary) to meet 3:1 contrast on dark bg
-  const inactive = C.textSecondary;
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: C.teal,
-        tabBarInactiveTintColor: inactive,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          letterSpacing: 0.1,
-          marginTop: -3,
-        },
-        tabBarStyle: {
-          backgroundColor: "transparent",
-          borderTopWidth: 0,
-          height: Platform.OS === "ios" ? 82 : 62,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        tabBarBackground: () => <TabBarBg />,
         tabBarHideOnKeyboard: true,
       }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
     >
-      {TABS.map(({ name, Icon, label, hint }) => (
+      {TABS.map(({ name, label }) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
             tabBarLabel: label,
             tabBarAccessibilityLabel: label,
-            tabBarIcon: ({ focused, color }) => (
-              <View
-                style={styles.iconWrap}
-                accessible={false}
-              >
-                {/* Stable pill — always present, transparent when inactive → no layout shift */}
-                <View
-                  style={[
-                    styles.pill,
-                    { backgroundColor: focused ? C.tealDim : "transparent" },
-                  ]}
-                >
-                  <Icon
-                    size={21}
-                    color={color}
-                    strokeWidth={focused ? 2 : 1.5}
-                  />
-                </View>
-              </View>
-            ),
           }}
         />
       ))}
@@ -92,17 +157,50 @@ export default function TabLayout() {
   );
 }
 
+const PILL_R = 34;
+
 const styles = StyleSheet.create({
-  iconWrap: {
-    width: 44,
-    height: 44,   // meets Apple HIG 44×44pt touch target minimum
+  outerWrap: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: "center",
-    justifyContent: "center",
+    pointerEvents: "box-none",
   },
-  pill: {
-    width: 40,
-    height: 26,
-    borderRadius: 10,
+
+  pillWrap: {
+    borderRadius: PILL_R,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+
+  // Container for blob + icons — sets the coordinate system
+  tabRowOuter: {
+    paddingHorizontal: ROW_PAD,
+    paddingVertical: ROW_PAD,
+  },
+
+  // Animated blob — absolutely positioned, slides behind icons
+  blob: {
+    position: "absolute",
+    top: ROW_PAD,
+    left: ROW_PAD,
+    width: BLOB_SZ,
+    height: BLOB_SZ,
+    borderRadius: BLOB_SZ / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+
+  // Icon row — same padding as tabRowOuter so icons align over blob
+  tabRow: {
+    flexDirection: "row",
+    gap: ITEM_W - BLOB_SZ, // = 4px gap between items
+  },
+
+  iconBtn: {
+    width: BLOB_SZ,
+    height: BLOB_SZ,
     alignItems: "center",
     justifyContent: "center",
   },

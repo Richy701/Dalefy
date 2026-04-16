@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
+import { useState, useMemo, useCallback, useRef, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
   MoreVertical, LayoutGrid, List, ExternalLink, Users,
-  MapPin, DollarSign, Briefcase, Expand, Hotel, Utensils, Compass, Globe,
-  Heart, Share2, Star, X, Upload, Loader2
+  MapPin, DollarSign, Briefcase, Hotel, Utensils, Compass, Globe,
+  Heart, Share2, X, Upload, Loader2, RefreshCw, ChevronRight
 } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { searchImages } from "@/services/imageSearch";
 import MapboxMap from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import Lightbox from "yet-another-react-lightbox";
-import "yet-another-react-lightbox/styles.css";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -72,12 +71,6 @@ function daysUntil(dateStr: string) {
 function tripDuration(start: string, end: string) {
   return Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000));
 }
-function fakeRating(seed: number) {
-  return (4.2 + (seed % 8) * 0.1).toFixed(1);
-}
-function fakeReviews(seed: number) {
-  return 28 + (seed % 7) * 13;
-}
 
 
 export function DashboardPage() {
@@ -93,8 +86,6 @@ export function DashboardPage() {
   const [isNewTripOpen, setIsNewTripOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
@@ -128,6 +119,8 @@ export function DashboardPage() {
   const [coverSearch, setCoverSearch] = useState("");
   const [coverResults, setCoverResults] = useState<string[]>([]);
   const [isCoverSearching, setIsCoverSearching] = useState(false);
+  const [coverPage, setCoverPage] = useState(1);
+  const [coverLastQuery, setCoverLastQuery] = useState("");
 
   const isDark = theme === "dark";
   const hour = new Date().getHours();
@@ -139,16 +132,6 @@ export function DashboardPage() {
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.attendees.toLowerCase().includes(searchQuery.toLowerCase())
     ), [trips, searchQuery]);
-
-  const lightboxSlides = useMemo(() =>
-    filteredTrips.map(t => ({ src: t.image, title: t.name, description: t.destination })),
-    [filteredTrips]);
-
-  const openLightbox = useCallback((index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLightboxIndex(index);
-    setLightboxOpen(true);
-  }, []);
 
   // Next 2 upcoming trips for cards
   const upcomingCards = useMemo(() =>
@@ -171,22 +154,20 @@ export function DashboardPage() {
     if (!spotlightTrip) return [];
     return spotlightTrip.events
       .filter(e => e.type === "activity" || e.type === "hotel" || e.type === "dining")
-      .slice(0, 4);
+      .slice(0, 3);
   }, [spotlightTrip]);
 
 
-  const runCoverSearch = async (query: string) => {
+  const runCoverSearch = async (query: string, page = 1) => {
     if (!query.trim()) { setCoverResults([]); return; }
     setIsCoverSearching(true);
+    setCoverLastQuery(query);
+    setCoverPage(page);
     try {
-      const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
-      if (unsplashKey) {
-        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
-        if (res.ok) { const data = await res.json(); if (data.results?.length) { setCoverResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
-      }
-      setCoverResults(COVER_IMGS.map(i => i.url));
-    } catch {
-      setCoverResults(COVER_IMGS.map(i => i.url));
+      const { urls } = await searchImages(query, page, 12);
+      if (urls.length) { setCoverResults(urls); return; }
+      const shuffled = [...COVER_IMGS].sort(() => Math.random() - 0.5);
+      setCoverResults(shuffled.map(i => i.url));
     } finally {
       setIsCoverSearching(false);
     }
@@ -212,9 +193,8 @@ export function DashboardPage() {
       status: "Draft",
       image: (() => {
         const raw = newTripData.image.trim();
-        if (!raw) return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop";
         if (raw.startsWith("http")) return raw;
-        return `https://source.unsplash.com/1600x900/?${encodeURIComponent(raw)},travel`;
+        return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop";
       })(),
       events: [],
     };
@@ -235,20 +215,6 @@ export function DashboardPage() {
   };
 
   const handleOpenTrip = (trip: Trip) => navigate(`/trip/${trip.id}`);
-
-  // Prevent horizontal scroll container from swallowing vertical wheel events
-  const stripRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = stripRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return; // vertical — let page handle
-      e.preventDefault();
-      el.scrollLeft += e.deltaX;
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
 
   return (
     <div
@@ -292,7 +258,7 @@ export function DashboardPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
         {trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
-            <img src="/illus-riding.svg" alt="" className="w-72 h-72 object-contain dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <img src="/illustrations/illus-riding.svg" alt="" className="w-72 h-72 object-contain dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No trips yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create your first trip to get started</p>
@@ -309,9 +275,13 @@ export function DashboardPage() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-[#333]">or drag a file</span>
               <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
             </div>
-            <div className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200 dark:border-[#222] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200 dark:border-[#222] overflow-hidden hover:border-[#0bd2b5]/60 transition-colors group cursor-pointer"
+            >
               <div className="flex items-center h-10">
-                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200 dark:border-[#222]">
+                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200 dark:border-[#222] group-hover:border-[#0bd2b5]/40 transition-colors">
                   <Upload className="h-3 w-3 text-[#0bd2b5]" />
                 </div>
                 <div className="flex-1 overflow-hidden relative">
@@ -324,79 +294,63 @@ export function DashboardPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         ) : (
         <div className="px-4 lg:px-8 pt-8 pb-16 space-y-8">
 
-          {/* ── Greeting ── */}
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-              {greeting}, {firstName} 👋
-            </h1>
-            {upcomingCards[0] ? (
-              <div className="flex items-center gap-2.5 mt-2.5">
-                <span className="text-sm font-bold text-slate-900 dark:text-white truncate leading-none">
-                  {upcomingCards[0].destination || upcomingCards[0].name}
-                </span>
-                <span className="shrink-0 text-[10px] font-black bg-[#0bd2b5] text-black px-2.5 py-1 rounded-full leading-none tracking-wide">
-                  {daysUntil(upcomingCards[0].start) === 0 ? "Today" : `${daysUntil(upcomingCards[0].start)}d`}
-                </span>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">No upcoming departures</p>
-            )}
-          </div>
-
-          {/* ── Story Strip ── */}
-          <div
-            ref={stripRef}
-            className="flex gap-3 -mx-4 lg:-mx-8 px-4 lg:px-8 py-1 overflow-x-auto"
-            style={{ scrollbarWidth: "none", overflowY: "visible" }}
-          >
-            {trips.map((trip) => {
-              const isPast = new Date(trip.end) < new Date();
-              return (
+          {/* ── Greeting Hero ── */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0bd2b5]/10 via-slate-50 to-slate-50 dark:from-[#0bd2b5]/10 dark:via-[#0a0a0a] dark:to-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] px-6 py-12 lg:px-8 lg:py-16">
+            <div className="relative z-10 max-w-[55%]">
+              <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                {greeting}, {firstName} 👋
+              </h1>
+              {upcomingCards[0] ? (
                 <button
-                  key={trip.id}
-                  onClick={() => handleOpenTrip(trip)}
-                  aria-label={trip.name}
-                  className="shrink-0 group cursor-pointer"
+                  onClick={() => handleOpenTrip(upcomingCards[0])}
+                  className="group mt-5 block text-left"
                 >
-                  <div className="relative w-[112px] h-[72px] rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-[#2a2a2a] group-hover:ring-2 group-hover:ring-[#0bd2b5] transition-[box-shadow]">
-                    <img src={trip.image} alt={trip.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                    {isPast && <div className="absolute inset-0 bg-black/20" />}
-                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">
+                    {daysUntil(upcomingCards[0].start) === 1 ? "Day to Departure" : "Days to Departure"}
+                  </p>
+                  <span className="block text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                    <NumberFlow value={daysUntil(upcomingCards[0].start)} />
+                  </span>
+                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-[#0bd2b5] transition-colors">
+                    <MapPin className="h-3 w-3 text-[#0bd2b5]" />
+                    {upcomingCards[0].destination || upcomingCards[0].name}
+                    <ArrowUpRight className="h-3 w-3" />
+                  </p>
                 </button>
-              );
-            })}
-            <button onClick={() => setIsNewTripOpen(true)} aria-label="Add new trip" className="shrink-0 group cursor-pointer">
-              <div className="w-[112px] h-[72px] rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#2a2a2a] group-hover:border-[#0bd2b5] flex items-center justify-center transition-colors">
-                <Plus className="h-5 w-5 text-slate-300 dark:text-[#444] group-hover:text-[#0bd2b5] transition-colors" />
-              </div>
-            </button>
+              ) : (
+                <button
+                  onClick={() => setIsNewTripOpen(true)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#0bd2b5] text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Plan a Trip
+                </button>
+              )}
+            </div>
+            <img
+              src="/illustrations/illus-together.svg"
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              className="hidden sm:block absolute -right-4 -bottom-4 h-48 lg:h-56 w-auto object-contain pointer-events-none select-none opacity-90 dark:drop-shadow-[0_0_40px_rgba(11,210,181,0.15)]"
+            />
           </div>
 
           {/* ── Two-column layout ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-stretch">
 
             {/* ══ LEFT COLUMN ══ */}
-            <div className="space-y-8 min-w-0">
+            <div className="flex flex-col gap-8 min-w-0">
 
               {/* ── Upcoming Trip ── */}
               <section>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
-                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Departing within 30 days</p>
-                  </div>
-                  <button
-                    onClick={() => setIsNewTripOpen(true)}
-                    className="text-[11px] font-bold text-[#0bd2b5] hover:text-[#0bd2b5]/80 transition-colors shrink-0 mt-1"
-                  >
-                    Details
-                  </button>
+                <div className="mb-4">
+                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
+                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Departing within 30 days</p>
                 </div>
 
                 {upcomingCards.length > 0 ? (
@@ -407,23 +361,29 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl px-4 py-3 flex items-center gap-4 text-left hover:border-[#0bd2b5]/40 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl p-3 flex items-center gap-3 text-left hover:border-[#0bd2b5]/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
-                          {/* Thumbnail */}
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0">
-                            <img src={trip.image} alt={trip.name} loading="lazy" className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                          </div>
-                          {/* Name + location */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{trip.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <MapPin className="h-3 w-3 text-slate-500 dark:text-slate-400 shrink-0" />
-                              <p className="text-[11px] text-slate-500 dark:text-[#888888] truncate font-medium">{trip.destination || trip.attendees}</p>
+                          <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
+                              {trip.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                              <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{trip.destination || "—"}</span>
+                              <span className="text-slate-300 dark:text-[#333]">·</span>
+                              <span className="flex items-center gap-1"><LucideCalendar className="h-2.5 w-2.5" />{format(new Date(trip.start), "MMM d")}</span>
+                              {trip.paxCount && (
+                                <>
+                                  <span className="text-slate-300 dark:text-[#333]">·</span>
+                                  <span className="flex items-center gap-1"><Users className="h-2.5 w-2.5" />{trip.paxCount}</span>
+                                </>
+                              )}
                             </div>
                           </div>
-                          <span className="shrink-0 bg-[#0bd2b5] text-[#050505] text-[10px] font-bold px-2.5 py-1 rounded-full leading-none">
+                          <span className="shrink-0 text-[10px] font-black bg-[#0bd2b5] text-black px-2.5 py-1 rounded-full leading-none tracking-wide">
                             {d === 0 ? "Today" : `${d}d`}
                           </span>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-[#0bd2b5] transition-colors shrink-0" />
                         </button>
                       );
                     })}
@@ -439,36 +399,26 @@ export function DashboardPage() {
 
               {/* ── For your X Trip — Place Cards ── */}
               {spotlightTrip && (
-                <section>
-                  <div className="flex items-start justify-between mb-1">
-                    <div>
-                      <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-                        For your{" "}
-                        <span className="text-[#0bd2b5] italic">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
-                        {" "}Trip
-                      </h2>
-                      <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Key events on your itinerary</p>
-                    </div>
-                    <button
-                      onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="text-[11px] font-bold text-[#0bd2b5] hover:text-[#0bd2b5]/80 transition-colors shrink-0 mt-1"
-                    >
-                      Details
-                    </button>
+                <section className="flex-1 flex flex-col min-h-0">
+                  <div className="mb-1">
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                      For your{" "}
+                      <span className="text-[#0bd2b5] italic">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
+                      {" "}Trip
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Key events on your itinerary</p>
                   </div>
 
                   {spotlightPlaces.length > 0 ? (
-                    <div className="space-y-3 mt-4">
-                      {spotlightPlaces.map((ev, i) => {
+                    <div className="mt-4 flex-1 flex flex-col gap-3">
+                      {spotlightPlaces.map((ev) => {
                         const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
                         const tags = EVENT_TAGS[ev.type] || [];
-                        const rating = fakeRating(i + ev.title.length);
-                        const reviews = fakeReviews(i + ev.title.length);
                         const hasImg = !!ev.image;
                         return (
                           <div
                             key={ev.id}
-                            className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden flex hover:border-[#0bd2b5]/30 hover:shadow-md transition-[border-color,box-shadow] duration-200 group"
+                            className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden flex flex-1 hover:border-[#0bd2b5]/30 hover:shadow-md transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Left image */}
                             <div className="w-[120px] shrink-0 relative overflow-hidden">
@@ -503,29 +453,16 @@ export function DashboardPage() {
                                 </div>
                               </div>
 
-                              {/* Bottom row: rating + guide + tags */}
-                              <div className="mt-3 space-y-2">
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-3 w-3 text-amber-400 fill-amber-400" aria-hidden="true" />
-                                  <span className="text-[11px] font-bold text-slate-700 dark:text-[#ccc]">{rating}</span>
-                                  <span className="text-[10px] text-slate-500 dark:text-[#888888]">({reviews})</span>
-                                </div>
-                                <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-medium text-slate-500 dark:text-[#888888]">Guide by</span>
-                                    <span className="text-[10px] font-semibold text-slate-600 dark:text-[#aaa]">
-                                      {spotlightTrip.attendees.split(",")[0]?.trim().split(" ")[0] || "Agent"}
+                              {/* Bottom row: tags */}
+                              {tags.length > 0 && (
+                                <div className="mt-3 flex items-center gap-1 flex-wrap">
+                                  {tags.slice(0, 3).map(tag => (
+                                    <span key={tag} className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]">
+                                      {tag}
                                     </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    {tags.slice(0, 3).map(tag => (
-                                      <span key={tag} className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  ))}
                                 </div>
-                              </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -640,28 +577,6 @@ export function DashboardPage() {
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setImportOpen(true)} className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl px-4 py-4 flex flex-col items-center gap-2 hover:border-[#0bd2b5]/40 transition-colors cursor-pointer">
-                  <div className="h-9 w-9 rounded-xl bg-[#0bd2b5]/10 flex items-center justify-center group-hover:bg-[#0bd2b5]/20 transition-colors">
-                    <ExternalLink className="h-4 w-4 text-[#0bd2b5]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-[#ccc]">Import</p>
-                    <p className="text-[9px] font-bold text-slate-500 dark:text-[#888888] mt-0.5">PDF · Doc</p>
-                  </div>
-                </button>
-                <button onClick={() => setInviteOpen(true)} className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl px-4 py-4 flex flex-col items-center gap-2 hover:border-[#0bd2b5]/40 transition-colors cursor-pointer">
-                  <div className="h-9 w-9 rounded-xl bg-[#0bd2b5]/10 flex items-center justify-center group-hover:bg-[#0bd2b5]/20 transition-colors">
-                    <Users className="h-4 w-4 text-[#0bd2b5]" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-[#ccc]">Invite</p>
-                    <p className="text-[9px] font-bold text-slate-500 dark:text-[#888888] mt-0.5">Team</p>
-                  </div>
-                </button>
-              </div>
-
             </div>{/* end right col */}
           </div>{/* end 2-col grid */}
 
@@ -677,7 +592,7 @@ export function DashboardPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-400" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0bd2b5]/20 text-slate-900 dark:text-white" />
                 </div>
-                <div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-sm">
+<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-sm">
                   <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
                   <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-[#0bd2b5] text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
@@ -686,40 +601,60 @@ export function DashboardPage() {
 
             {displayMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredTrips.map((trip, tripIndex) => {
+                {filteredTrips.map((trip) => {
                   const startDate = new Date(trip.start);
                   const endDate = new Date(trip.end);
                   const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                  const daysLeft = daysUntil(trip.start);
+                  const isActive = trip.status === "In Progress";
+                  const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} className="group relative rounded-[2rem] overflow-hidden flex flex-col min-h-[300px] cursor-pointer" onClick={() => handleOpenTrip(trip)}>
-                      <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                    <div key={trip.id} className="group relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-[#0bd2b5]/40 hover:shadow-xl hover:shadow-black/20 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" onClick={() => handleOpenTrip(trip)}>
+                      <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
+
+                      {/* Top row: status + delete */}
                       <div className="relative z-10 flex items-center justify-between p-4">
-                        <span className="text-[11px] font-medium text-white/70">{trip.status === "In Progress" ? "Active" : trip.status}</span>
-                        <button onClick={(e) => openLightbox(tripIndex, e)} aria-label="View full image" className="h-7 w-7 rounded-full bg-black/40 text-white/60 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <Expand className="h-3 w-3" />
-                        </button>
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-full backdrop-blur-md ${isActive ? "bg-[#0bd2b5]/90 text-black" : "bg-white/15 text-white"}`}>
+                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />}
+                          {isActive ? "Active" : trip.status}
+                        </span>
+                        {isUpcoming && (
+                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-full">
+                            {daysLeft === 0 ? "Today" : `${daysLeft}d away`}
+                          </span>
+                        )}
                       </div>
-                      <div className="relative z-10 mt-auto p-4">
-                        <h3 className="text-base font-bold leading-tight text-white mb-1.5 line-clamp-2">{trip.name}</h3>
-                        <div className="flex items-center gap-2 text-white/60">
-                          <span className="text-[11px] font-medium truncate max-w-[80px]">{trip.attendees.split(",")[0]?.trim()}</span>
-                          <span className="text-white/30">·</span>
-                          <div className="flex items-center gap-1">
-                            <LucideCalendar className="h-2.5 w-2.5 text-[#0bd2b5] shrink-0" />
-                            <span className="text-[11px] font-medium">{dateStr}</span>
+
+                      {/* Bottom content */}
+                      <div className="relative z-10 mt-auto p-5">
+                        {trip.destination && (
+                          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#0bd2b5] mb-2 flex items-center gap-1.5">
+                            <MapPin className="h-2.5 w-2.5" /> {trip.destination}
+                          </p>
+                        )}
+                        <h3 className="text-2xl font-black leading-[1.05] text-white mb-3 line-clamp-2 tracking-tight">{trip.name}</h3>
+                        <div className="flex items-center gap-3 text-white/70 pt-3 border-t border-white/15">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <LucideCalendar className="h-3 w-3 text-[#0bd2b5] shrink-0" />
+                            <span className="text-[11px] font-bold tracking-wide truncate">{dateStr}</span>
+                          </div>
+                          <span className="text-white/20">·</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <Users className="h-3 w-3 text-[#0bd2b5] shrink-0" />
+                            <span className="text-[11px] font-bold tracking-wide truncate">{trip.paxCount || trip.attendees.split(",").length}</span>
                           </div>
                         </div>
-                        <button aria-label="Delete trip" onClick={(e) => { e.stopPropagation(); setDeletingTripId(trip.id); }} className="absolute bottom-4 right-4 h-7 w-7 rounded-lg bg-black/50 text-white/40 hover:bg-red-500/30 hover:text-red-400 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3 w-3" aria-hidden="true" />
+                        <button aria-label="Delete trip" onClick={(e) => { e.stopPropagation(); setDeletingTripId(trip.id); }} className="absolute -top-14 right-4 h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/60 hover:bg-red-500/40 hover:text-red-300 transition-[background-color,color] flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={() => setIsNewTripOpen(true)} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-[#0bd2b5] hover:text-[#0bd2b5] transition-[border-color,color] cursor-pointer min-h-[300px]">
-                  <div className="h-12 w-12 rounded-full bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
-                  <p className="font-medium text-xs">New trip</p>
+                <button onClick={() => setIsNewTripOpen(true)} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-[#0bd2b5] hover:text-[#0bd2b5] transition-[border-color,color] cursor-pointer min-h-[340px]">
+                  <div className="h-14 w-14 rounded-full bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
                 </button>
               </div>
             ) : (
@@ -812,7 +747,7 @@ export function DashboardPage() {
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[90vh] focus:outline-none">
             <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
-              <div className="pt-6 pb-8 flex items-start justify-between">
+              <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
                   <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1">Build your next adventure</p>
@@ -821,6 +756,22 @@ export function DashboardPage() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
+
+              {/* Import-from-file shortcut */}
+              <button
+                type="button"
+                onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] hover:border-[#0bd2b5]/60 hover:bg-[#0bd2b5]/5 transition-colors group text-left"
+              >
+                <div className="h-9 w-9 rounded-xl bg-[#0bd2b5]/10 flex items-center justify-center group-hover:bg-[#0bd2b5]/20 transition-colors shrink-0">
+                  <Upload className="h-4 w-4 text-[#0bd2b5]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white">Import from file instead</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#666] mt-0.5">PDF · DOCX · PPTX · TXT — we'll fill this in for you</p>
+                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-[#0bd2b5] transition-colors shrink-0" />
+              </button>
 
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
@@ -943,10 +894,20 @@ export function DashboardPage() {
                       {isCoverSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
-                      <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); }}
-                        className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      <>
+                        <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                          <RefreshCw className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
+                        </button>
+                        <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
                     )}
                   </div>
                   {/* Thumbnail grid */}
@@ -1008,13 +969,6 @@ export function DashboardPage() {
         initialFile={droppedFile}
       />
       <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
-      <Lightbox
-        open={lightboxOpen}
-        close={() => setLightboxOpen(false)}
-        index={lightboxIndex}
-        slides={lightboxSlides}
-        styles={{ container: { backgroundColor: "rgba(5,5,5,0.97)" } }}
-      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ module.exports = ({ config }) => ({
     "expo-router",
     [
       "@rnmapbox/maps",
-      { RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOAD_TOKEN ?? "" },
+      { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ?? "" },
     ],
   ],
 });

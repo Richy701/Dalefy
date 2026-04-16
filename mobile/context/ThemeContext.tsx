@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { Appearance } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { darkColors, lightColors, type ThemeColors } from "@/constants/theme";
+
+const THEME_KEY = "daf-theme";
 
 interface ThemeContextValue {
   isDark: boolean;
@@ -18,8 +21,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(Appearance.getColorScheme() !== "light");
   const C = useMemo(() => (isDark ? darkColors : lightColors), [isDark]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_KEY).then(val => {
+      if (val === "light") setIsDark(false);
+      else if (val === "dark") setIsDark(true);
+    }).catch(() => {});
+  }, []);
+
+  const toggle = () => {
+    setIsDark(v => {
+      const next = !v;
+      AsyncStorage.setItem(THEME_KEY, next ? "dark" : "light").catch(() => {});
+      return next;
+    });
+  };
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggle: () => setIsDark(v => !v), C }}>
+    <ThemeContext.Provider value={{ isDark, toggle, C }}>
       {children}
     </ThemeContext.Provider>
   );

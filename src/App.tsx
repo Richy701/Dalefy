@@ -12,6 +12,7 @@ import { TravelersPage } from "@/pages/TravelersPage";
 import { DestinationsPage } from "@/pages/DestinationsPage";
 import { ReportsPage } from "@/pages/ReportsPage";
 import { MediaPage } from "@/pages/MediaPage";
+import { SharedTripPage } from "@/pages/SharedTripPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -47,6 +48,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/shared/:tripId" element={<SharedTripPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

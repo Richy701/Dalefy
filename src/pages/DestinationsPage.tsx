@@ -167,7 +167,7 @@ export function DestinationsPage() {
 
         {destinations.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
-            <img src="/illus-movement.svg" alt="" className="w-72 h-72 object-contain translate-x-10 dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <img src="/illustrations/illus-movement.svg" alt="" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black italic uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>

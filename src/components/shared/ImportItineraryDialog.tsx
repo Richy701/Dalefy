@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, ChevronRight, X, Plane, Hotel, Compass, Utensils } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent } from "@/types";
+import { searchImagesProgressive } from "@/services/imageSearch";
+import { buildImageQueryCandidates } from "@/services/imageQuery";
 
 interface ImportItineraryDialogProps {
   open: boolean;
@@ -67,13 +70,13 @@ async function extractText(file: File): Promise<string> {
 
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const DATE_PATTERNS = [
-  new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH}\\s+(\\d{4})`, "gi"),
-  new RegExp(`${MONTH}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})`, "gi"),
+  new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{4}))?`, "gi"),
+  new RegExp(`${MONTH}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, "gi"),
   /(\d{4})-(\d{2})-(\d{2})/g,
   /(\d{2})\/(\d{2})\/(\d{4})/g,
 ];
 
-function parseDate(str: string): string | null {
+function parseDate(str: string, fallbackYear?: number): string | null {
   const iso = str.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
   const dmy = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -82,15 +85,17 @@ function parseDate(str: string): string | null {
     jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
     jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
   };
-  const m1 = str.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(\w{3})\w*\s+(\d{4})/i);
+  const m1 = str.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(\w{3})\w*(?:\s+(\d{4}))?/i);
   if (m1) {
     const mon = months[m1[2].toLowerCase().slice(0, 3)];
-    if (mon) return `${m1[3]}-${mon}-${m1[1].padStart(2, "0")}`;
+    const year = m1[3] ?? fallbackYear?.toString();
+    if (mon && year) return `${year}-${mon}-${m1[1].padStart(2, "0")}`;
   }
-  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/i);
+  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?/i);
   if (m2) {
     const mon = months[m2[1].toLowerCase().slice(0, 3)];
-    if (mon) return `${m2[3]}-${mon}-${m2[2].padStart(2, "0")}`;
+    const year = m2[3] ?? fallbackYear?.toString();
+    if (mon && year) return `${year}-${mon}-${m2[2].padStart(2, "0")}`;
   }
   return null;
 }
@@ -195,14 +200,18 @@ function parseItinerary(text: string): ParsedTrip {
     if (paxMatch) paxCount = parseInt(paxMatch[1]);
   }
 
-  // Collect all dates
+  // First pass: find any fully-qualified year in the doc to use as fallback
+  const yearMatch = text.match(/\b(20\d{2})\b/);
+  const fallbackYear = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+
+  // Collect all dates (with fallback year for year-less matches)
   const allDates: string[] = [];
   for (const line of lines) {
     for (const pat of DATE_PATTERNS) {
       pat.lastIndex = 0;
       const matches = line.match(pat) ?? [];
       for (const m of matches) {
-        const d = parseDate(m);
+        const d = parseDate(m, fallbackYear);
         if (d) allDates.push(d);
       }
     }
@@ -233,7 +242,7 @@ function parseItinerary(text: string): ParsedTrip {
     for (const pat of DATE_PATTERNS) {
       pat.lastIndex = 0;
       const m = line.match(pat)?.[0];
-      if (m) { const d = parseDate(m); if (d) currentDate = d; }
+      if (m) { const d = parseDate(m, fallbackYear); if (d) currentDate = d; }
     }
 
     if (DAY_SECTION.test(line) || SKIP_SECTION.test(line)) continue;
@@ -270,10 +279,11 @@ function parseItinerary(text: string): ParsedTrip {
 
       // Strip leading "17:30 –" or "10.00:" prefix then clean up
       const title = line
-        .replace(/^\d{1,2}[.:]\d{2}\s*(?:am|pm)?\s*[-–:]\s*/i, "")
+        .replace(/^\d{1,2}[.:]\d{2}\s*(?:am|pm)?\s*[-–—:]\s*/i, "")
         .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm)?\b/gi, "")
         .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, "")
-        .replace(/[-–]\s*$/, "")
+        .replace(/^[\s\-–—:·,]+/, "")
+        .replace(/[\s\-–—:]+$/, "")
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 100) || "Event";
@@ -295,10 +305,11 @@ function parseItinerary(text: string): ParsedTrip {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "extracting" | "review";
+type Step = "upload" | "extracting" | "review" | "importing";
 
 export function ImportItineraryDialog({ open, onOpenChange, initialFile }: ImportItineraryDialogProps) {
   const [step, setStep] = useState<Step>("upload");
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
   const [parsed, setParsed] = useState<ParsedTrip | null>(null);
   const [rawText, setRawText] = useState("");
@@ -354,11 +365,43 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
     if (file) handleFile(file);
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!parsed) return;
-    const coverImage = parsed.destination
-      ? `https://source.unsplash.com/1600x900/?${encodeURIComponent(parsed.destination)},travel`
-      : "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1000&auto=format&fit=crop";
+    setStep("importing");
+    setImportProgress({ done: 0, total: parsed.events.length });
+    const DEFAULT_COVER = "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop";
+    let coverImage = DEFAULT_COVER;
+    if (parsed.destination) {
+      const candidates = buildImageQueryCandidates({ title: parsed.destination, location: parsed.destination });
+      candidates.push(parsed.destination + " travel");
+      const { urls } = await searchImagesProgressive(candidates, 1);
+      if (urls[0]) coverImage = urls[0];
+    }
+
+    // Resolve a per-event image. Throttle to 3 concurrent to stay under rate limits.
+    const CACHE_KEY = "daf-event-image-cache-v1";
+    let cache: Record<string, string> = {};
+    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { /* ignore */ }
+    const resolveEventImage = async (ev: TravelEvent): Promise<string | undefined> => {
+      if (ev.image) return ev.image;
+      const candidates = buildImageQueryCandidates({ title: ev.title, location: ev.location, type: ev.type });
+      const cacheKey = candidates.join("|");
+      if (cache[cacheKey]) return cache[cacheKey];
+      const { urls } = await searchImagesProgressive(candidates, 1);
+      const url = urls[0];
+      if (url) { cache[cacheKey] = url; }
+      return url;
+    };
+    const events: TravelEvent[] = [...parsed.events] as TravelEvent[];
+    const CONCURRENCY = 3;
+    for (let i = 0; i < events.length; i += CONCURRENCY) {
+      const slice = events.slice(i, i + CONCURRENCY);
+      const imgs = await Promise.all(slice.map(resolveEventImage));
+      imgs.forEach((url, j) => { if (url) events[i + j] = { ...events[i + j], image: url }; });
+      setImportProgress({ done: Math.min(i + CONCURRENCY, events.length), total: events.length });
+    }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
+
     const trip: Trip = {
       id: Date.now().toString(),
       name: parsed.name,
@@ -369,7 +412,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
       status: "Draft",
       destination: parsed.destination,
       image: coverImage,
-      events: parsed.events.map(e => ({ ...e } as TravelEvent)),
+      events,
     };
     addTrip(trip);
     showToast(`Imported "${trip.name}" — ${trip.events.length} events`);
@@ -379,15 +422,16 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-10 shadow-2xl">
-        <DialogHeader className="space-y-2 mb-6 text-left">
-          <DialogTitle className="text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-8 md:p-10 shadow-2xl">
+        <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
+          <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
             Import Itinerary
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em]">
             {step === "upload" && "PDF · Word · PowerPoint · Text"}
             {step === "extracting" && "Reading document..."}
             {step === "review" && `${parsed?.events.length ?? 0} events found — review before importing`}
+            {step === "importing" && "Matching images to events..."}
           </DialogDescription>
         </DialogHeader>
 
@@ -397,18 +441,31 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
             <div
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-4 p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl cursor-pointer hover:border-[#0bd2b5] hover:bg-[#0bd2b5]/5 transition-all group"
+              className="flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-[#0bd2b5]/60 transition-colors group"
             >
-              <div className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center group-hover:bg-[#0bd2b5]/20 transition-colors">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-14 w-14 rounded-2xl bg-[#0bd2b5]/10 flex items-center justify-center cursor-pointer hover:bg-[#0bd2b5]/25 hover:scale-105 transition-all shadow-sm"
+                aria-label="Choose a file to upload"
+              >
                 <Upload className="h-6 w-6 text-[#0bd2b5]" />
-              </div>
+              </button>
               <div className="text-center">
-                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Drop a file or click to browse</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Click the icon or drop a file</p>
                 <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT</p>
               </div>
-              <input ref={fileInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
+            {createPortal(
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+                style={{ position: "fixed", top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }}
+              />,
+              document.body
+            )}
 
             {error && (
               <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
@@ -426,7 +483,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
             <div className="space-y-3">
               <textarea
                 placeholder="Paste itinerary text here — the parser will extract dates, flights, hotels, and activities automatically..."
-                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-[#0bd2b5] resize-none transition-colors"
+                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-[#0bd2b5] resize-none transition-colors"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}
               />
@@ -449,11 +506,23 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
           </div>
         )}
 
+        {step === "importing" && (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <Loader2 className="h-10 w-10 text-[#0bd2b5] animate-spin" />
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">
+              Matching images {importProgress.done}/{importProgress.total}
+            </p>
+            <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
+              <div className="h-full bg-[#0bd2b5] transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
+            </div>
+          </div>
+        )}
+
         {/* ── STEP 3: REVIEW ── */}
         {step === "review" && parsed && (
           <div className="space-y-5">
             {/* Trip summary */}
-            <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
+            <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Trip Name</p>
                 <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-[#0bd2b5] transition-colors">
@@ -461,7 +530,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
                 </button>
               </div>
               <p className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{parsed.name}</p>
-              <div className="flex items-center gap-6 pt-1 flex-wrap">
+              <div className="flex items-center gap-4 sm:gap-6 pt-1 flex-wrap">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Start</p>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.start}</p>
@@ -491,20 +560,24 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
 
             {/* Events list */}
             {parsed.events.length > 0 ? (
-              <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[260px] sm:max-h-[280px] overflow-y-auto pr-1 -mx-1 px-1">
                 {parsed.events.map(ev => {
                   const Icon = EVENT_TYPE_ICONS[ev.type];
                   return (
                     <div key={ev.id} className="flex items-start gap-3 p-3 bg-white dark:bg-[#0d0d0d] border border-slate-100 dark:border-[#1f1f1f] rounded-xl">
-                      <div className={`h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1f1f1f] flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
-                        <Icon className="h-3.5 w-3.5" />
+                      <div className={`h-9 w-9 rounded-lg bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1f1f1f] flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
+                        <Icon className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{ev.title}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-0.5">{ev.date} · {ev.time}{ev.location ? ` · ${ev.location}` : ""}</p>
+                        <p className="text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">{ev.title}</p>
+                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 break-words">{ev.date} · {ev.time}{ev.location ? ` · ${ev.location}` : ""}</p>
                       </div>
-                      <button onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)} className="text-slate-300 dark:text-[#444] hover:text-red-400 transition-colors shrink-0 mt-0.5">
-                        <X className="h-3.5 w-3.5" />
+                      <button
+                        aria-label="Remove event"
+                        onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)}
+                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-300 dark:text-[#444] hover:text-red-400 transition-colors shrink-0"
+                      >
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   );
@@ -518,7 +591,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile }: Impor
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2 sticky bottom-0 bg-white dark:bg-[#111111] pb-1 -mx-1 px-1">
               <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
               <Button
                 onClick={handleImport}

@@ -12,7 +12,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Sparkles, Search, X, Upload, Video, Image as ImageIcon2, Trash2, Pencil
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,12 @@ import { TripMap } from "@/components/workspace/TripMap";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
+import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
+import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
+import { notifyTripUpdate } from "@/services/pushNotify";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -124,9 +128,13 @@ export function WorkspacePage() {
   const [imageSearch, setImageSearch] = useState("");
   const [imageResults, setImageResults] = useState<string[]>([]);
   const [isSearchingImages, setIsSearchingImages] = useState(false);
-  const [imageSearchSource, setImageSearchSource] = useState<"google" | "unsplash" | "local" | null>(null);
+  const [imageSearchSource, setImageSearchSource] = useState<"google" | "unsplash" | "pexels" | "local" | null>(null);
+  const [imagePage, setImagePage] = useState(1);
+  const [imageLastQuery, setImageLastQuery] = useState("");
   const [aiZapOpen, setAiZapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media">("itinerary");
+  const [activeDayIdx, setActiveDayIdx] = useState(0);
+  const [rematching, setRematching] = useState({ active: false, done: 0, total: 0 });
   const printRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editTripOpen, setEditTripOpen] = useState(false);
@@ -134,6 +142,8 @@ export function WorkspacePage() {
   const [tripImageSearch, setTripImageSearch] = useState("");
   const [tripImageResults, setTripImageResults] = useState<string[]>([]);
   const [isTripImageSearching, setIsTripImageSearching] = useState(false);
+  const [tripImagePage, setTripImagePage] = useState(1);
+  const [tripImageLastQuery, setTripImageLastQuery] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -165,32 +175,22 @@ export function WorkspacePage() {
     toast.success("Events reordered");
   }, [trip, updateTrip]);
 
-  const runImageSearch = async (query: string) => {
+  const runImageSearch = async (query: string, page = 1) => {
     if (!query.trim()) return;
     setIsSearchingImages(true);
+    setImageLastQuery(query);
+    setImagePage(page);
     try {
-      const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
-      if (unsplashKey) {
-        const res = await fetch(
-          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=9&orientation=landscape&client_id=${unsplashKey}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data.results?.length) {
-            setImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular));
-            setImageSearchSource("unsplash");
-            return;
-          }
-        }
+      const { urls, source } = await searchImages(query, page, 9);
+      if (urls.length) {
+        setImageResults(urls);
+        setImageSearchSource(source as "unsplash" | "pexels");
+        return;
       }
-      // Local bank fallback
       const cat = getEventImageCategory(query, editingEvent?.type || "activity");
       const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
       setImageResults([...bank, ...IMAGE_BANK.activity].slice(0, 9));
       setImageSearchSource("local");
-    } catch {
-      const cat = getEventImageCategory(query, editingEvent?.type || "activity");
-      setImageResults(IMAGE_BANK[cat] ?? IMAGE_BANK.activity);
     } finally {
       setIsSearchingImages(false);
     }
@@ -206,6 +206,40 @@ export function WorkspacePage() {
     sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [trip?.events]);
+
+  // Auto-search + generate image when title changes (must run before any early return)
+  useEffect(() => {
+    if (!editingEvent || !isEditPanelOpen) return;
+    const { title, type, location } = editingEvent;
+    if (title.length < 3) return;
+    if (imageIsAuto) {
+      const img = generateEventImage(title, type, imageSeed);
+      setEditingEvent(prev => prev ? { ...prev, image: img } : null);
+    }
+    const candidates = buildImageQueryCandidates({ title, location, type });
+    const t = setTimeout(async () => {
+      setIsSearchingImages(true);
+      setImagePage(1);
+      try {
+        const { urls, source, matchedQuery } = await searchImagesProgressive(candidates, 9);
+        if (urls.length) {
+          setImageResults(urls);
+          setImageSearchSource(source as "unsplash" | "pexels");
+          setImageLastQuery(matchedQuery || candidates[0]);
+          return;
+        }
+        const cat = getEventImageCategory(title, type);
+        const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
+        setImageResults([...bank, ...IMAGE_BANK.activity].slice(0, 9));
+        setImageSearchSource("local");
+        setImageLastQuery(candidates[0]);
+      } finally {
+        setIsSearchingImages(false);
+      }
+    }, 900);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingEvent?.title, editingEvent?.type, editingEvent?.location, imageSeed, imageIsAuto, isEditPanelOpen]);
 
   if (!trip) {
     return (
@@ -226,21 +260,8 @@ export function WorkspacePage() {
     showToast("Trip published successfully");
     toast.success("Trip published successfully");
     addNotification({ message: "Trip published", detail: trip.name, time: "Just now", type: "success" });
+    notifyTripUpdate(trip.id, trip.name, "published");
   };
-
-  // Auto-search + generate image when title changes
-  useEffect(() => {
-    if (!editingEvent || !isEditPanelOpen) return;
-    const { title, type } = editingEvent;
-    if (title.length < 3) return;
-    if (imageIsAuto) {
-      const img = generateEventImage(title, type, imageSeed);
-      setEditingEvent(prev => prev ? { ...prev, image: img } : null);
-    }
-    const t = setTimeout(() => runImageSearch(title), 400);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingEvent?.title, editingEvent?.type, imageSeed, imageIsAuto, isEditPanelOpen]);
 
   const handleAddEvent = (type: TravelEvent["type"] = "activity") => {
     setImageSeed(0);
@@ -364,18 +385,45 @@ export function WorkspacePage() {
     }
   };
 
-  const runTripImageSearch = async (query: string) => {
+  const handleRematchImages = async () => {
+    if (!trip || rematching.active) return;
+    const CACHE_KEY = "daf-event-image-cache-v1";
+    let cache: Record<string, string> = {};
+    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { /* ignore */ }
+
+    const events = [...trip.events];
+    setRematching({ active: true, done: 0, total: events.length });
+    const CONCURRENCY = 3;
+    for (let i = 0; i < events.length; i += CONCURRENCY) {
+      const slice = events.slice(i, i + CONCURRENCY);
+      const imgs = await Promise.all(slice.map(async ev => {
+        const candidates = buildImageQueryCandidates({ title: ev.title, location: ev.location, type: ev.type });
+        const cacheKey = candidates.join("|");
+        if (cache[cacheKey]) return cache[cacheKey];
+        const { urls } = await searchImagesProgressive(candidates, 1);
+        const url = urls[0];
+        if (url) cache[cacheKey] = url;
+        return url;
+      }));
+      imgs.forEach((url, j) => { if (url) events[i + j] = { ...events[i + j], image: url }; });
+      setRematching(r => ({ ...r, done: Math.min(i + CONCURRENCY, events.length) }));
+    }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
+    updateTrip(trip.id, { events });
+    setRematching({ active: false, done: 0, total: 0 });
+    toast.success("Event images re-matched");
+  };
+
+  const runTripImageSearch = async (query: string, page = 1) => {
     if (!query.trim()) { setTripImageResults([]); return; }
     setIsTripImageSearching(true);
+    setTripImageLastQuery(query);
+    setTripImagePage(page);
     try {
-      const unsplashKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY as string | undefined;
-      if (unsplashKey) {
-        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape&client_id=${unsplashKey}`);
-        if (res.ok) { const data = await res.json(); if (data.results?.length) { setTripImageResults(data.results.map((r: { urls: { regular: string } }) => r.urls.regular)); return; } }
-      }
-      setTripImageResults(COVER_IMAGES.map(i => i.url));
-    } catch {
-      setTripImageResults(COVER_IMAGES.map(i => i.url));
+      const { urls } = await searchImages(query, page, 12);
+      if (urls.length) { setTripImageResults(urls); return; }
+      const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
+      setTripImageResults(shuffled.map(i => i.url));
     } finally {
       setIsTripImageSearching(false);
     }
@@ -410,39 +458,57 @@ export function WorkspacePage() {
     toast.success("Trip deleted");
   };
 
+  const [copied, setCopied] = useState(false);
+  const handleShareTrip = () => {
+    const url = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      toast.success("Share link copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
       {/* Header */}
-      <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-50 shadow-xl">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-colors shadow-sm"><ChevronLeft className="h-5 w-5" /></Button>
+      <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-50 shadow-xl">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-colors shadow-sm shrink-0"><ChevronLeft className="h-5 w-5" /></Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden sm:block" />
-          <div className="flex flex-col">
-            <h2 className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none max-w-[180px] sm:max-w-[300px] truncate">{trip.name}</h2>
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate">{trip.name}</h2>
             <div className="flex items-center gap-2 mt-1 leading-none">
               <Badge className="bg-[#0bd2b5]/10 text-[#0bd2b5] border border-[#0bd2b5]/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline">ATTENDEES: {trip.attendees}</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline truncate">ATTENDEES: {trip.attendees}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 lg:gap-4">
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 shrink-0">
+          <button aria-label="Toggle theme" onClick={toggleTheme} className="flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+          <NotificationPanel />
           <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
             <Pencil className="h-4 w-4" />
           </button>
-          <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+          <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash2 className="h-4 w-4" />
           </button>
           <Button variant="ghost" onClick={() => setShowMap(!showMap)} className={`font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 gap-2 border transition-all hidden lg:flex ${showMap ? "bg-[#0bd2b5] text-slate-900 dark:text-black border-transparent shadow-lg shadow-[#0bd2b5]/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <MapIcon className="h-4 w-4" /> {showMap ? "HIDE MAP" : "SHOW MAP"}
           </Button>
+          <button
+            aria-label="Share trip link"
+            onClick={handleShareTrip}
+            className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm"
+          >
+            {copied ? <Check className="h-4 w-4 text-[#0bd2b5]" /> : <Share2 className="h-4 w-4" />}
+          </button>
           <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-[#0bd2b5] hidden sm:flex">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
           </Button>
-          <Button onClick={handlePublish} disabled={publishing} className="bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 px-4 lg:px-6 rounded-xl shadow-lg shadow-[#0bd2b5]/20 transition-all text-xs uppercase tracking-widest min-w-[100px]">
-            {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : "PUBLISH"}
+          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-[#0bd2b5] hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-[#0bd2b5]/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
+            {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
           </Button>
         </div>
       </header>
@@ -453,14 +519,42 @@ export function WorkspacePage() {
         <aside className="w-64 border-r border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] flex flex-col hidden lg:flex shadow-sm relative z-30">
           <div className="p-5 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between bg-slate-50/30 dark:bg-[#050505]/30">
             <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#0bd2b5]">ITINERARY</span>
-            <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-[#0bd2b5] hover:text-slate-900 dark:hover:text-black text-[#0bd2b5] transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Re-match event images"
+                title={rematching.active ? `Matching ${rematching.done}/${rematching.total}` : "Re-match event images"}
+                onClick={handleRematchImages}
+                disabled={rematching.active}
+                className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-[#0bd2b5] hover:text-slate-900 dark:hover:text-black text-[#0bd2b5] transition-colors shadow-sm disabled:opacity-60"
+              >
+                {rematching.active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              </Button>
+              <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-[#0bd2b5] hover:text-slate-900 dark:hover:text-black text-[#0bd2b5] transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
+            </div>
           </div>
+          {rematching.active && (
+            <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1f1f1f] bg-[#0bd2b5]/5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#0bd2b5] mb-1.5">Matching {rematching.done}/{rematching.total}</p>
+              <div className="h-1 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
+                <div className="h-full bg-[#0bd2b5] transition-all duration-300" style={{ width: `${rematching.total ? (rematching.done / rematching.total) * 100 : 0}%` }} />
+              </div>
+            </div>
+          )}
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
               {groupedEvents.map(([date], i) => (
-                <button key={date} className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === 0 ? "bg-[#0bd2b5]/10 text-[#0bd2b5]" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}>
+                <button
+                  key={date}
+                  onClick={() => {
+                    setActiveDayIdx(i);
+                    document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-[#0bd2b5]/10 text-[#0bd2b5]" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
+                >
                   <div className="flex items-center gap-3 relative z-10 leading-none">
-                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === 0 ? "bg-[#0bd2b5] text-slate-900 dark:text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === activeDayIdx ? "bg-[#0bd2b5] text-slate-900 dark:text-black shadow-lg shadow-[#0bd2b5]/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
                       <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
                       <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
                     </div>
@@ -524,7 +618,7 @@ export function WorkspacePage() {
             </section>
 
             {/* Tab bar */}
-            <div className="px-4 lg:px-10 pt-6 shrink-0">
+            <div className="px-3 sm:px-4 lg:px-10 pt-6 shrink-0">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "itinerary" | "media")}>
                 <TabsList className="bg-transparent h-auto p-0 gap-1">
                   <TabsTrigger
@@ -551,20 +645,22 @@ export function WorkspacePage() {
             {/* Itinerary tab */}
             {activeTab === "itinerary" && (
               <>
-                <div className="px-4 lg:px-10 pt-10 pb-32 w-full relative">
-                  <div className="space-y-16">
+                <div className="px-3 sm:px-4 lg:px-10 pt-6 sm:pt-10 pb-32 w-full relative">
+                  <div className="space-y-10 sm:space-y-16">
                     {groupedEvents.length > 0 ? (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                       {groupedEvents.map(([date, events]) => (
-                        <DaySection key={date} date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} eventCount={events.length} onAddEvent={() => handleAddEvent()}>
-                          <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                            <div className="grid grid-cols-1 gap-6 pl-8">
-                              {events.map(event => (
-                                <SortableEventCard key={event.id} event={event} onClick={() => handleEditEvent(event)} onDelete={() => handleDeleteEvent(event.id)} />
-                              ))}
-                            </div>
-                          </SortableContext>
-                        </DaySection>
+                        <div key={date} id={`day-${date}`} className="scroll-mt-6">
+                          <DaySection date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} eventCount={events.length} onAddEvent={() => handleAddEvent()}>
+                            <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
+                              <div className="grid grid-cols-1 gap-4 sm:gap-6 pl-0 sm:pl-8">
+                                {events.map(event => (
+                                  <SortableEventCard key={event.id} event={event} onClick={() => handleEditEvent(event)} onDelete={() => handleDeleteEvent(event.id)} />
+                                ))}
+                              </div>
+                            </SortableContext>
+                          </DaySection>
+                        </div>
                       ))}
                     </DndContext>
                   ) : (
@@ -811,7 +907,7 @@ export function WorkspacePage() {
                   </div>
                   {imageIsAuto && (
                     <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-[#0bd2b5]" /> Auto-matching from title
+                      <Wand2 className="h-3 w-3 text-[#0bd2b5]" /> Auto-matching from title
                     </p>
                   )}
                 </div>
@@ -827,7 +923,7 @@ export function WorkspacePage() {
                       </div>
                       {imageIsAuto && (
                         <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#0bd2b5] text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
-                          <Sparkles className="h-2.5 w-2.5" /> Auto
+                          <Wand2 className="h-2.5 w-2.5" /> Auto
                         </div>
                       )}
                     </>
@@ -857,6 +953,18 @@ export function WorkspacePage() {
                           </button>
                         ))}
                       </div>
+                      {(imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
+                            className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#aaa] hover:text-[#0bd2b5] hover:border-[#0bd2b5]/40 transition-colors flex items-center justify-center gap-1">
+                            <RefreshCcw className="h-3 w-3" /> Refresh
+                          </button>
+                          <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
+                            className="flex-1 h-7 rounded-lg bg-[#0bd2b5]/10 border border-[#0bd2b5]/40 text-[10px] font-bold uppercase tracking-wider text-[#0bd2b5] hover:bg-[#0bd2b5]/20 transition-colors flex items-center justify-center gap-1">
+                            Next <ChevronRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
                       {imageSearchSource === "local" && (
                         <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
                           Suggested images · APIs unavailable
@@ -870,6 +978,11 @@ export function WorkspacePage() {
                       {imageSearchSource === "unsplash" && (
                         <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
                           Unsplash
+                        </p>
+                      )}
+                      {imageSearchSource === "pexels" && (
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                          Pexels
                         </p>
                       )}
                     </div>
@@ -975,10 +1088,20 @@ export function WorkspacePage() {
                     {isTripImageSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                   </button>
                   {tripImageResults.length > 0 && (
-                    <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); }}
-                      className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    <>
+                      <button type="button" aria-label="Refresh" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage)} disabled={isTripImageSearching}
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                        <RefreshCcw className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
+                      </button>
+                      <button type="button" aria-label="Next page" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage + 1)} disabled={isTripImageSearching}
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-[#0bd2b5] transition-colors shrink-0 disabled:opacity-40">
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); setTripImagePage(1); setTripImageLastQuery(""); }}
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </>
                   )}
                 </div>
                 {/* Grid */}
@@ -1024,11 +1147,31 @@ export function WorkspacePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
-                  <Input type="date" value={editingTrip.start ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, start: e.target.value }))} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                  <Popover>
+                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors flex items-center justify-between gap-2 text-left">
+                      <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
+                        {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
+                      </span>
+                      <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="p-0 w-auto">
+                      <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
-                  <Input type="date" value={editingTrip.end ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, end: e.target.value }))} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-[#0bd2b5] focus-visible:ring-0" />
+                  <Popover>
+                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-[#0bd2b5] transition-colors flex items-center justify-between gap-2 text-left">
+                      <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
+                        {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
+                      </span>
+                      <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="p-0 w-auto">
+                      <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               <div className="space-y-1.5">

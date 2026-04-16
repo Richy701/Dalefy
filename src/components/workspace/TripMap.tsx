@@ -6,6 +6,7 @@ import { Plane, Hotel, Compass, Utensils, MapPin } from "lucide-react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
+import { geocode } from "@/services/geocode";
 
 const ACCENT = "#0bd2b5";
 
@@ -74,70 +75,81 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     ? "mapbox://styles/mapbox/dark-v11"
     : "mapbox://styles/mapbox/light-v11";
 
-  const points: MapPoint[] = useMemo(() => {
-    const seen = new Set<string>();
-    const result: MapPoint[] = [];
-    let order = 0;
-    const sortedEvents = [...trip.events].sort((a, b) =>
-      a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
-    );
-    for (const event of sortedEvents) {
-      const codeMatch = event.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/);
-      if (codeMatch) {
-        for (const code of [codeMatch[1], codeMatch[2]]) {
-          const c = resolveCoords(code);
-          if (c) {
-            const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-            if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: code, type: event.type, order: order++, title: event.title }); }
+  const [points, setPoints] = useState<MapPoint[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const seen = new Set<string>();
+      const result: MapPoint[] = [];
+      let order = 0;
+      const sortedEvents = [...trip.events].sort((a, b) =>
+        a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
+      );
+      const resolve = async (loc: string): Promise<[number, number] | null> =>
+        resolveCoords(loc) ?? (await geocode(loc));
+
+      for (const event of sortedEvents) {
+        const codeMatch = event.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/);
+        if (codeMatch) {
+          for (const code of [codeMatch[1], codeMatch[2]]) {
+            const c = await resolve(code);
+            if (c) {
+              const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
+              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: code, type: event.type, order: order++, title: event.title }); }
+            }
           }
+          continue;
         }
-        continue;
-      }
-      const toMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/);
-      if (toMatch) {
-        for (const loc of [toMatch[1], toMatch[2]]) {
-          const c = resolveCoords(loc.trim());
-          if (c) {
-            const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-            if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: loc.trim(), type: event.type, order: order++, title: event.title }); }
+        const toMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/);
+        if (toMatch) {
+          for (const loc of [toMatch[1], toMatch[2]]) {
+            const c = await resolve(loc.trim());
+            if (c) {
+              const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
+              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: loc.trim(), type: event.type, order: order++, title: event.title }); }
+            }
           }
+          continue;
         }
-        continue;
+        const coords = await resolve(event.location);
+        if (!coords) continue;
+        const key = `${coords[0].toFixed(2)},${coords[1].toFixed(2)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const parts = event.location.split(",");
+        const label = parts[0].trim().length > 22 ? parts[0].trim().slice(0, 20) + "…" : parts[0].trim();
+        result.push({ coords, label, type: event.type, order: order++, title: event.title });
       }
-      const coords = resolveCoords(event.location);
-      if (!coords) continue;
-      const key = `${coords[0].toFixed(2)},${coords[1].toFixed(2)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const parts = event.location.split(",");
-      const label = parts[0].trim().length > 22 ? parts[0].trim().slice(0, 20) + "…" : parts[0].trim();
-      result.push({ coords, label, type: event.type, order: order++, title: event.title });
-    }
-    return result;
+      if (!cancelled) setPoints(result);
+    })();
+    return () => { cancelled = true; };
   }, [trip.events]);
 
   const allCoords = useMemo(() => points.map(p => p.coords), [points]);
 
-  const arcGeoJSON = useMemo(() => {
-    const features = trip.events
-      .filter(e => e.type === "flight")
-      .flatMap(fe => {
+  const [arcGeoJSON, setArcGeoJSON] = useState<{ type: "FeatureCollection"; features: Array<{ type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> }> }>({ type: "FeatureCollection", features: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const flights = trip.events.filter(e => e.type === "flight");
+      const features = [] as Array<{ type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> }>;
+      for (const fe of flights) {
         const match = fe.location.match(/^(.+?)\s+to\s+(.+)$/);
-        if (!match) return [];
-        const from = resolveCoords(match[1].trim());
-        const to   = resolveCoords(match[2].trim());
-        if (!from || !to) return [];
-        return [{
-          type: "Feature" as const,
-          geometry: {
-            type: "LineString" as const,
-            // GeoJSON is [lng, lat]
-            coordinates: buildArc(from, to).map(p => [p[1], p[0]]),
-          },
+        if (!match) continue;
+        const from = resolveCoords(match[1].trim()) ?? (await geocode(match[1].trim()));
+        const to   = resolveCoords(match[2].trim()) ?? (await geocode(match[2].trim()));
+        if (!from || !to) continue;
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: buildArc(from, to).map(p => [p[1], p[0]]) },
           properties: {},
-        }];
-      });
-    return { type: "FeatureCollection" as const, features };
+        });
+      }
+      if (!cancelled) setArcGeoJSON({ type: "FeatureCollection", features });
+    })();
+    return () => { cancelled = true; };
   }, [trip.events]);
 
   // Fit map to all points after first render
@@ -161,8 +173,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     function animate(ts: number) {
       const idx = Math.floor(ts / 50) % DASH_SEQ.length;
       const m = mapRef.current?.getMap();
-      if (m) {
-        try { m.setPaintProperty("arcs-dash", "line-dasharray", DASH_SEQ[idx]); } catch { /* layer not ready */ }
+      if (m && m.getLayer && m.getLayer("arcs-dash")) {
+        try { m.setPaintProperty("arcs-dash", "line-dasharray", DASH_SEQ[idx]); } catch { /* ignore */ }
       }
       rafRef.current = requestAnimationFrame(animate);
     }

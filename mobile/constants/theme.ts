@@ -1,16 +1,16 @@
 export const darkColors = {
-  bg: "#060608",
-  surface: "#0a0a0d",
-  card: "#111116",
-  elevated: "#18181f",
+  bg: "#050505",
+  surface: "#080808",
+  card: "#111111",
+  elevated: "#1a1a1a",
 
-  border: "rgba(255,255,255,0.07)",
-  borderLight: "rgba(255,255,255,0.04)",
+  border: "rgba(255,255,255,0.12)",
+  borderLight: "rgba(255,255,255,0.06)",
 
   textPrimary: "#EDEDEF",
-  textSecondary: "#8A8F98",
-  textTertiary: "#4a4f59",
-  textDim: "#2a2f38",
+  textSecondary: "#888888",
+  textTertiary: "#555555",
+  textDim: "#333333",
 
   teal: "#0bd2b5",
   tealDim: "rgba(11,210,181,0.1)",
@@ -24,10 +24,11 @@ export const darkColors = {
   red: "#ef4444",
   redDim: "rgba(239,68,68,0.12)",
 
-  flight: "#60a5fa",
-  hotel: "#0bd2b5",
-  activity: "#a78bfa",
-  dining: "#fb923c",
+  // Event type colors — matched exactly to web DashboardPage EVENT_COLORS
+  flight: "#60a5fa",    // blue-400  (web: text-blue-500)
+  hotel: "#f59e0b",     // amber-500 (web: text-amber-500)
+  activity: "#0bd2b5",  // teal      (web: text-[#0bd2b5])
+  dining: "#ec4899",    // pink-500  (web: text-pink-500)
 };
 
 export const lightColors = {
@@ -56,10 +57,11 @@ export const lightColors = {
   red: "#c0392b",
   redDim: "rgba(192,57,43,0.1)",
 
-  flight: "#1d6ee6",
-  hotel: "#0099a8",
-  activity: "#6d28d9",
-  dining: "#c2410c",
+  // Event type colors — matched exactly to web DashboardPage EVENT_COLORS (darkened for light bg)
+  flight: "#1d6ee6",    // blue-600   (web: text-blue-500)
+  hotel: "#d97706",     // amber-600  (web: text-amber-500)
+  activity: "#0099a8",  // teal       (web: text-[#0bd2b5], lightened for contrast)
+  dining: "#db2777",    // pink-600   (web: text-pink-500)
 };
 
 // Backward compat — screens not yet migrated to useTheme() will always get dark
@@ -67,16 +69,22 @@ export const C = darkColors;
 
 export type ThemeColors = typeof darkColors;
 
+export const F = {
+  bold: "BarlowCondensed_700Bold",
+  extrabold: "BarlowCondensed_800ExtraBold",
+  black: "BarlowCondensed_900Black",
+} as const;
+
 export const T = {
-  xs: 10,
-  sm: 12,
-  base: 14,
-  md: 15,
-  lg: 17,
-  xl: 20,
-  "2xl": 24,
-  "3xl": 28,
-  "4xl": 34,
+  xs: 11,
+  sm: 13,
+  base: 16,
+  md: 17,
+  lg: 19,
+  xl: 22,
+  "2xl": 26,
+  "3xl": 30,
+  "4xl": 36,
 
   regular: "400" as const,
   medium: "500" as const,

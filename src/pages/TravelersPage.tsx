@@ -247,7 +247,7 @@ export function TravelersPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
         {travelers.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
-            <img src="/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <img src="/illustrations/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black italic uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>

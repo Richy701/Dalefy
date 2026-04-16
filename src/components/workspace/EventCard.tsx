@@ -76,21 +76,21 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
       className="group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-slate-300 dark:hover:border-[#2a2a2a] hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
-      <div className="px-6 py-5 flex items-center gap-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4 sm:gap-6">
         {/* Departure time */}
-        <div className="flex flex-col items-center shrink-0 w-14 text-center">
+        <div className="flex flex-col items-center shrink-0 w-12 sm:w-14 text-center">
           <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888888] flex items-center justify-center mb-2">
             <Plane className="h-3.5 w-3.5" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{event.time.split(" ")[0]}</span>
+          <span className="text-lg sm:text-xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{event.time.split(" ")[0]}</span>
           <span className="text-[10px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
         </div>
 
         {/* Route visualization */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <div className="text-center shrink-0">
-              <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
+              <p className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
@@ -100,7 +100,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
             </div>
             {to && (
               <div className="text-center shrink-0">
-                <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
+                <p className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
               </div>
             )}
@@ -135,26 +135,26 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
       onClick={onClick}
       className="group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-amber-400/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
-      <div className="flex">
+      <div className="flex flex-col sm:flex-row">
         {event.image ? (
-          <div className="w-28 lg:w-40 shrink-0 relative overflow-hidden">
-            <img src={event.image} alt={event.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 min-h-[120px]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+          <div className="w-full h-40 sm:w-36 lg:w-44 sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
+            <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-transparent to-black/10" />
           </div>
         ) : (
-          <div className="w-28 lg:w-40 shrink-0 bg-amber-500/5 flex items-center justify-center min-h-[120px] border-r border-slate-100 dark:border-[#1a1a1a]">
+          <div className="w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 bg-amber-500/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">
             <Hotel className="h-7 w-7 text-amber-400/30" />
           </div>
         )}
 
-        <div className="flex-1 min-w-0 p-5 lg:p-6">
+        <div className="flex-1 min-w-0 p-4 sm:p-5 lg:p-6">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Hotel className="h-3 w-3 text-amber-400 shrink-0" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-500">Accommodation</span>
               </div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight truncate group-hover:text-amber-400 transition-colors">{event.title}</h4>
+              <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-amber-400 transition-colors">{event.title}</h4>
               <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                 <MapPin className="h-3 w-3 shrink-0" />{event.location}
               </p>
@@ -162,7 +162,7 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
             <CardMenu onClick={onClick} onDelete={onDelete} />
           </div>
 
-          <div className="flex items-center gap-4 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
+          <div className="flex items-center gap-3 sm:gap-4 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
             {event.checkin ? (
               <>
                 <div>
@@ -204,18 +204,18 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
       onClick={onClick}
       className={`group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg ${isDining ? "hover:border-pink-400/30" : "hover:border-[#0bd2b5]/30"}`}
     >
-      <div className="flex">
+      <div className="flex flex-col sm:flex-row">
         {event.image ? (
-          <div className="w-32 lg:w-44 shrink-0 relative overflow-hidden">
-            <img src={event.image} alt={event.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 min-h-[130px]" />
+          <div className="w-full h-40 sm:w-36 lg:w-44 sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
+            <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           </div>
         ) : (
-          <div className={`w-24 shrink-0 flex items-center justify-center min-h-[130px] border-r border-slate-100 dark:border-[#1a1a1a] ${isDining ? "bg-pink-500/5" : "bg-[#0bd2b5]/5"}`}>
+          <div className={`w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch ${isDining ? "bg-pink-500/5" : "bg-[#0bd2b5]/5"}`}>
             <Icon className={`h-7 w-7 opacity-20 ${isDining ? "text-pink-400" : "text-[#0bd2b5]"}`} />
           </div>
         )}
 
-        <div className="flex-1 min-w-0 p-5 lg:p-6 flex flex-col justify-between">
+        <div className="flex-1 min-w-0 p-4 sm:p-5 lg:p-6 flex flex-col justify-between">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -224,7 +224,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
                   {isDining ? "Dining" : "Activity"}
                 </span>
               </div>
-              <h4 className={`text-base font-bold text-slate-900 dark:text-white leading-tight truncate transition-colors ${isDining ? "group-hover:text-pink-400" : "group-hover:text-[#0bd2b5]"}`}>{event.title}</h4>
+              <h4 className={`text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors ${isDining ? "group-hover:text-pink-400" : "group-hover:text-[#0bd2b5]"}`}>{event.title}</h4>
               <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                 <MapPin className="h-3 w-3 shrink-0" />{event.location}
               </p>
@@ -235,7 +235,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
             <CardMenu onClick={onClick} onDelete={onDelete} />
           </div>
 
-          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
+          <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
             <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
             {event.endTime && (
               <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888]">→ {event.endTime}</span>
