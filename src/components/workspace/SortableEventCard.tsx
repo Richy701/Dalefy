@@ -8,9 +8,10 @@ interface SortableEventCardProps {
   event: TravelEvent;
   onClick: () => void;
   onDelete: () => void;
+  assignedPeople?: Array<{ initials: string; name: string }>;
 }
 
-export function SortableEventCard({ event, onClick, onDelete }: SortableEventCardProps) {
+export function SortableEventCard({ event, onClick, onDelete, assignedPeople }: SortableEventCardProps) {
   const {
     attributes,
     listeners,
@@ -40,7 +41,7 @@ export function SortableEventCard({ event, onClick, onDelete }: SortableEventCar
       >
         <GripVertical className="h-4 w-4" />
       </div>
-      <EventCard event={event} onClick={onClick} onDelete={onDelete} />
+      <EventCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />
     </div>
   );
 }

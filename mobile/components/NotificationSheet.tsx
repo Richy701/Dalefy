@@ -42,6 +42,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
               <Pressable
                 onPress={markAllRead}
                 style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Mark all as read"
               >
                 <CheckCheck size={14} color={C.teal} strokeWidth={2} />
               </Pressable>
@@ -50,6 +52,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
               <Pressable
                 onPress={clearAll}
                 style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Clear all notifications"
               >
                 <Trash2 size={14} color={C.textTertiary} strokeWidth={2} />
               </Pressable>
@@ -57,6 +61,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
             <Pressable
               onPress={onClose}
               style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Close notifications"
             >
               <X size={18} color={C.textSecondary} strokeWidth={2} />
             </Pressable>
@@ -112,21 +118,20 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
     headerTitle: {
-      fontSize: T.sm, fontWeight: T.black, color: C.textPrimary,
+      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
       letterSpacing: 1.5, textTransform: "uppercase",
     },
     badge: {
       backgroundColor: C.teal, borderRadius: R.full,
       paddingHorizontal: 7, paddingVertical: 2,
     },
-    badgeText: { fontSize: 10, fontWeight: T.black, color: "#000" },
+    badgeText: { fontSize: 10, fontWeight: T.bold, color: "#000" },
     headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-    headerAction: { padding: 4 },
+    headerAction: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     closeBtn: {
-      width: 32, height: 32, borderRadius: 16,
+      width: 44, height: 44, borderRadius: 22,
       backgroundColor: isDark ? C.elevated : "#f1f5f9",
       alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
 
     list: { padding: S.sm, paddingBottom: 40 },
@@ -161,7 +166,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingTop: 80, gap: 12,
     },
     emptyTitle: {
-      fontSize: T.lg, fontWeight: T.black, color: C.textSecondary,
+      fontSize: T.lg, fontWeight: T.bold, color: C.textSecondary,
       letterSpacing: -0.3,
     },
     emptyDesc: {

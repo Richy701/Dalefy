@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils, Clock, ArrowRight, Loader2 } from "lucide-react";
+import { CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils, Clock, Loader2, Check, ChevronDown } from "lucide-react";
 import { isSupabaseConfigured } from "@/services/supabase";
 import { supabase } from "@/services/supabase";
 import type { Trip, TravelEvent } from "@/types";
@@ -21,8 +21,11 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     image: row.image as string,
     events: (row.events as Trip["events"]) ?? [],
     media: (row.media as Trip["media"]) ?? undefined,
+    travelerIds: (row.traveler_ids as string[]) ?? undefined,
+    travelers: (row.travelers as Trip["travelers"]) ?? undefined,
   };
 }
+
 
 function EventRow({ ev }: { ev: TravelEvent }) {
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
@@ -57,6 +60,8 @@ export function SharedTripPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [viewAsId, setViewAsId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!tripId || !isSupabaseConfigured()) {
@@ -85,15 +90,28 @@ export function SharedTripPage() {
       });
   }, [tripId]);
 
-  const grouped = useMemo(() => {
+  const hasTravelers = (trip?.travelers?.length ?? 0) > 0;
+  const viewAsTraveler = useMemo(() => {
+    if (!viewAsId || !trip?.travelers) return null;
+    return trip.travelers.find(t => t.id === viewAsId) ?? null;
+  }, [viewAsId, trip?.travelers]);
+
+  const filteredEvents = useMemo(() => {
     if (!trip) return [];
+    if (!viewAsId) return trip.events;
+    return trip.events.filter(
+      e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId)
+    );
+  }, [trip, viewAsId]);
+
+  const grouped = useMemo(() => {
     const map: Record<string, TravelEvent[]> = {};
-    for (const ev of trip.events) {
+    for (const ev of filteredEvents) {
       if (!map[ev.date]) map[ev.date] = [];
       map[ev.date].push(ev);
     }
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [trip]);
+  }, [filteredEvents]);
 
   const nights = useMemo(() => {
     if (!trip) return 0;
@@ -160,10 +178,76 @@ export function SharedTripPage() {
 
       {/* Itinerary */}
       <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+        {/* Traveler picker */}
+        {hasTravelers && (
+          <div className="mb-6">
+            <div className="relative">
+              <button
+                onClick={() => setPickerOpen(!pickerOpen)}
+                className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                  viewAsId
+                    ? "bg-brand/5 dark:bg-brand/10 border-brand/20"
+                    : "bg-white dark:bg-[#111] border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"
+                }`}
+              >
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-black uppercase shrink-0 ${
+                  viewAsId ? "bg-brand/15 text-brand" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]"
+                }`}>
+                  {viewAsTraveler ? viewAsTraveler.initials : <Users className="h-4 w-4" />}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+                    {viewAsId ? "Viewing as" : "Who are you?"}
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
+                  </p>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#666] transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {pickerOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl overflow-hidden z-20">
+                  <button
+                    onClick={() => { setViewAsId(null); setPickerOpen(false); }}
+                    className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
+                      !viewAsId ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                    }`}
+                  >
+                    <div className="h-8 w-8 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-[#888]">ALL</div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-[#ccc] uppercase tracking-wider">Everyone — Full itinerary</span>
+                    {!viewAsId && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
+                  </button>
+                  <div className="h-px bg-slate-100 dark:bg-[#1a1a1a]" />
+                  {trip.travelers!.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setViewAsId(t.id); setPickerOpen(false); }}
+                      className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${
+                        viewAsId === t.id ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                      }`}
+                    >
+                      <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-[#ccc]">{t.name}</span>
+                      {viewAsId === t.id && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {viewAsTraveler && (
+              <p className="text-[10px] font-bold text-brand/60 uppercase tracking-wider mt-2 px-1">
+                Showing {filteredEvents.length} of {trip.events.length} events for {viewAsTraveler.name}
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mb-6">
           <Compass className="h-4 w-4 text-brand" />
           <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
-            {trip.events.length} events · {grouped.length} days
+            {filteredEvents.length} events · {grouped.length} days
           </span>
         </div>
 

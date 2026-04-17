@@ -1,16 +1,16 @@
 export const darkColors = {
-  bg: "#050505",
-  surface: "#080808",
-  card: "#111111",
-  elevated: "#1a1a1a",
+  bg: "#09090b",
+  surface: "#0c0c0f",
+  card: "#131316",
+  elevated: "#1a1a1f",
 
   border: "rgba(255,255,255,0.12)",
   borderLight: "rgba(255,255,255,0.06)",
 
   textPrimary: "#EDEDEF",
   textSecondary: "#9a9a9a",
-  textTertiary: "#7a7a7a",
-  textDim: "#333333",
+  textTertiary: "#8a8a8a",
+  textDim: "#4a4a4a",
 
   teal: "#0bd2b5",
   tealDim: "rgba(11,210,181,0.1)",
@@ -28,7 +28,7 @@ export const darkColors = {
   flight: "#60a5fa",    // blue-400  (web: text-blue-500)
   hotel: "#f59e0b",     // amber-500 (web: text-amber-500)
   activity: "#0bd2b5",  // teal      (web: text-[#0bd2b5])
-  dining: "#ec4899",    // pink-500  (web: text-pink-500)
+  dining: "#db2777",    // pink-600  (web: text-pink-500, darkened for contrast)
 };
 
 export const lightColors = {
@@ -45,23 +45,22 @@ export const lightColors = {
   textTertiary: "#606878",
   textDim: "#c5cad6",
 
-  teal: "#0099a8",
-  tealDim: "rgba(0,153,168,0.1)",
-  tealMid: "rgba(0,153,168,0.25)",
-  tealGlow: "rgba(0,153,168,0.15)",
+  teal: "#0ab8a0",
+  tealDim: "rgba(10,184,160,0.12)",
+  tealMid: "rgba(10,184,160,0.28)",
+  tealGlow: "rgba(10,184,160,0.18)",
 
-  green: "#0a8f6a",
-  greenDim: "rgba(10,143,106,0.1)",
-  amber: "#b45309",
-  amberDim: "rgba(180,83,9,0.1)",
-  red: "#c0392b",
-  redDim: "rgba(192,57,43,0.1)",
+  green: "#10b981",
+  greenDim: "rgba(16,185,129,0.12)",
+  amber: "#f59e0b",
+  amberDim: "rgba(245,158,11,0.12)",
+  red: "#ef4444",
+  redDim: "rgba(239,68,68,0.12)",
 
-  // Event type colors — matched exactly to web DashboardPage EVENT_COLORS (darkened for light bg)
-  flight: "#1d6ee6",    // blue-600   (web: text-blue-500)
-  hotel: "#d97706",     // amber-600  (web: text-amber-500)
-  activity: "#0099a8",  // teal       (web: text-[#0bd2b5], lightened for contrast)
-  dining: "#db2777",    // pink-600   (web: text-pink-500)
+  flight: "#3b82f6",    // blue-500
+  hotel: "#f59e0b",     // amber-500
+  activity: "#0ab8a0",  // teal — vibrant
+  dining: "#be185d",    // pink-700 (better contrast on white cards)
 };
 
 // Backward compat — screens not yet migrated to useTheme() will always get dark
@@ -70,21 +69,25 @@ export const C = darkColors;
 export type ThemeColors = typeof darkColors;
 
 export const F = {
+  // Brand headings — Barlow Condensed (uppercase, tight tracking)
   bold: "BarlowCondensed_700Bold",
   extrabold: "BarlowCondensed_800ExtraBold",
   black: "BarlowCondensed_900Black",
+  // Body text — iOS system font (SF Pro)
+  system: "System",
+  systemRounded: "System",
 } as const;
 
 export const T = {
-  xs: 12,
-  sm: 13,
-  base: 16,
-  md: 17,
-  lg: 19,
-  xl: 22,
-  "2xl": 26,
-  "3xl": 30,
-  "4xl": 36,
+  xs: 11,
+  sm: 12,
+  base: 15,
+  md: 16,
+  lg: 17,
+  xl: 20,
+  "2xl": 23,
+  "3xl": 27,
+  "4xl": 32,
 
   regular: "400" as const,
   medium: "500" as const,
@@ -96,21 +99,21 @@ export const T = {
 
 export const R = {
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  "2xl": 28,
+  md: 10,
+  lg: 14,
+  xl: 18,
+  "2xl": 24,
   full: 100,
 };
 
 export const S = {
-  "2xs": 4,
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 28,
-  "2xl": 36,
+  "2xs": 3,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 24,
+  "2xl": 32,
 };
 
 export function statusColor(status: string, C: ThemeColors = darkColors) {
@@ -130,12 +133,12 @@ export function eventColor(type: string, C: ThemeColors = darkColors): string {
 }
 
 export const ACCENT_PALETTE = [
-  { id: "teal",    label: "Cyber Teal",      dark: "#0bd2b5", light: "#0099a8" },
-  { id: "violet",  label: "Electric Violet", dark: "#8b5cf6", light: "#7c3aed" },
-  { id: "amber",   label: "Solar Amber",     dark: "#f59e0b", light: "#b45309" },
-  { id: "crimson", label: "Crimson",         dark: "#ef4444", light: "#c0392b" },
-  { id: "cobalt",  label: "Cobalt",          dark: "#3b82f6", light: "#1d6ee6" },
-  { id: "lime",    label: "Lime",            dark: "#84cc16", light: "#5c8a10" },
+  { id: "teal",    label: "Cyber Teal",      dark: "#0bd2b5", light: "#0ab8a0" },
+  { id: "violet",  label: "Electric Violet", dark: "#8b5cf6", light: "#8b5cf6" },
+  { id: "amber",   label: "Solar Amber",     dark: "#f59e0b", light: "#f59e0b" },
+  { id: "crimson", label: "Crimson",         dark: "#ef4444", light: "#ef4444" },
+  { id: "cobalt",  label: "Cobalt",          dark: "#3b82f6", light: "#3b82f6" },
+  { id: "lime",    label: "Lime",            dark: "#84cc16", light: "#84cc16" },
 ] as const;
 
 export type AccentId = typeof ACCENT_PALETTE[number]["id"];

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,19 +10,20 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase} from "lucide-react";
+import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
+import { fetchTripMembers, type TripMember } from "@/services/supabaseTrips";
+import { isSupabaseConfigured } from "@/services/supabase";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
-type Tab = "travelers" | "hr";
+type Tab = "travelers" | "hr" | "app-users";
 
 
 const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
@@ -52,6 +53,48 @@ export function TravelersPage() {
   const [drawerForm, setDrawerForm] = useState({ name: "", email: "", role: "", status: "Active" as UserType["status"] });
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [appUsers, setAppUsers] = useState<TripMember[]>([]);
+  const [appUsersLoading, setAppUsersLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    setAppUsersLoading(true);
+    fetchTripMembers()
+      .then(setAppUsers)
+      .finally(() => setAppUsersLoading(false));
+  }, []);
+
+  // Group app users by device_id (unique person)
+  const groupedAppUsers = useMemo(() => {
+    const map = new Map<string, { name: string; avatar: string | null; trips: { id: string; name: string; joinedAt: string }[] }>();
+    for (const m of appUsers) {
+      const existing = map.get(m.device_id);
+      if (existing) {
+        existing.trips.push({ id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at });
+        // Use latest name/avatar
+        if (new Date(m.joined_at) > new Date(existing.trips[0]?.joinedAt ?? 0)) {
+          existing.name = m.name;
+          existing.avatar = m.avatar;
+        }
+      } else {
+        map.set(m.device_id, {
+          name: m.name,
+          avatar: m.avatar,
+          trips: [{ id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at }],
+        });
+      }
+    }
+    return Array.from(map.entries()).map(([deviceId, data]) => ({ deviceId, ...data }));
+  }, [appUsers]);
+
+  const filteredAppUsers = useMemo(() => {
+    if (!search) return groupedAppUsers;
+    const q = search.toLowerCase();
+    return groupedAppUsers.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      u.trips.some(t => t.name.toLowerCase().includes(q))
+    );
+  }, [groupedAppUsers, search]);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetDoc, setSheetDoc] = useState<ComplianceDoc | null>(null);
@@ -60,18 +103,15 @@ export function TravelersPage() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
 
   const travelers = useMemo(() => {
-    const attendeeMap = new Map<string, string[]>();
-    trips.forEach(t => {
-      const name = t.attendees;
-      if (!attendeeMap.has(name)) attendeeMap.set(name, []);
-      attendeeMap.get(name)!.push(t.name);
-    });
-
     const allUsers = [...MOCK_USERS, ...customTravelers];
     return allUsers.map(user => {
-      const assignedTrips = attendeeMap.get(user.name) || [];
+      const assignedTrips: string[] = [];
       trips.forEach(t => {
-        if (t.attendees.includes(user.name) && !assignedTrips.includes(t.name)) {
+        // Use travelerIds (relational) first, fall back to string matching
+        const linked = t.travelerIds
+          ? t.travelerIds.includes(user.id)
+          : t.attendees.includes(user.name);
+        if (linked && !assignedTrips.includes(t.name)) {
           assignedTrips.push(t.name);
         }
       });
@@ -245,21 +285,6 @@ export function TravelersPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        {travelers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
-            <img src="/illustrations/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
-            <div className="text-center space-y-1.5">
-              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
-              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
-            </div>
-            <button
-              onClick={() => setInviteOpen(true)}
-              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
-            >
-              Add Traveler
-            </button>
-          </div>
-        ) : (
         <div className="px-4 lg:px-8 py-7 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
             <div>
@@ -273,23 +298,53 @@ export function TravelersPage() {
                 </span>
               </div>
             </div>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="shrink-0">
-              <TabsList className="bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] h-auto gap-0">
-                {(["travelers", "hr"] as const).map(t => (
-                  <TabsTrigger
-                    key={t}
-                    value={t}
-                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-brand dark:data-active:text-brand data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
-                  >
-                    {t === "travelers" ? "Team Overview" : "Documents"}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <div className="shrink-0">
+              <div className="inline-flex bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] gap-0">
+                {(["travelers", "hr", "app-users"] as const).map(t => {
+                  const active = tab === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTab(t)}
+                      className={`relative flex-none h-auto px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 ${
+                        active
+                          ? "bg-white dark:bg-[#1a1a1a] text-brand shadow-lg ring-1 ring-brand/20"
+                          : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
+                        <span className="flex items-center gap-1.5">
+                          <Smartphone className="h-3 w-3" />
+                          App Users
+                          {groupedAppUsers.length > 0 && (
+                            <span className="ml-0.5 text-[9px] font-black bg-brand/15 text-brand px-1.5 py-0.5 rounded-full">{groupedAppUsers.length}</span>
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* ───────── TRAVELERS TAB (TANSTACK TABLE) ───────── */}
-          {tab === "travelers" && (
+          {tab === "travelers" && travelers.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 animate-fade-in">
+              <img src="/illustrations/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <div className="text-center space-y-1.5">
+                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
+              </div>
+              <button
+                onClick={() => setInviteOpen(true)}
+                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                Add Traveler
+              </button>
+            </div>
+          )}
+          {tab === "travelers" && travelers.length > 0 && (
             <div className="bg-white dark:bg-[#111111] rounded-2xl animate-fade-in border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -536,8 +591,132 @@ export function TravelersPage() {
               </div>
             </div>
           )}
+
+          {/* ───────── APP USERS TAB ───────── */}
+          {tab === "app-users" && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Stats row */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                {[
+                  { label: "App Users", value: groupedAppUsers.length.toString(), icon: <Smartphone className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-violet-400" },
+                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDays className="h-4 w-4" />, accent: "text-amber-400" },
+                ].map(card => (
+                  <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl">
+                    <div className="p-5 flex flex-col">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{card.label}</span>
+                        <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${card.accent} flex items-center justify-center`}>
+                          {card.icon}
+                        </div>
+                      </div>
+                      <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Users list */}
+              <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center">
+                  <div className="w-14" />
+                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Name</div>
+                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trips Joined</div>
+                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Last Active</div>
+                </div>
+
+                {appUsersLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="h-6 w-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : filteredAppUsers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
+                      <Smartphone className="h-6 w-6 text-brand opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">
+                      {search ? "No matching users" : "No app users yet"}
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">
+                      {search ? "Try a different search" : "Users will appear here when they join a trip via the mobile app"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                    {filteredAppUsers.map((user) => {
+                      const initials = user.name
+                        ? user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+                        : "?";
+                      const latestJoin = user.trips.reduce((a, b) =>
+                        new Date(a.joinedAt) > new Date(b.joinedAt) ? a : b
+                      );
+                      return (
+                        <div
+                          key={user.deviceId}
+                          className="flex items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group"
+                        >
+                          {/* Avatar */}
+                          <div className="w-14 shrink-0">
+                            {user.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.name}
+                                className="h-10 w-10 rounded-xl object-cover"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs">
+                                {initials}
+                              </div>
+                            )}
+                          </div>
+                          {/* Name */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
+                              {user.name || "Unknown"}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
+                              <Smartphone className="h-3 w-3" /> Mobile app user
+                            </div>
+                          </div>
+                          {/* Trips */}
+                          <div className="w-48">
+                            <div className="flex flex-wrap gap-1.5">
+                              {user.trips.slice(0, 3).map(t => (
+                                <span
+                                  key={t.id}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-brand/10 text-brand"
+                                >
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "…" : t.name}
+                                </span>
+                              ))}
+                              {user.trips.length > 3 && (
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">
+                                  +{user.trips.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Last active */}
+                          <div className="w-40 text-right">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                              {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        )}
       </div>
 
       {/* Add Traveler — Vaul Drawer */}

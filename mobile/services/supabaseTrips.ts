@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { Trip } from "@/shared/types";
+import { getDeviceId } from "./deviceId";
 
 const TABLE = "trips";
 
@@ -27,11 +28,45 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void) {
   };
 }
 
+// Columns that may not exist yet — try with them first, fall back without
+let hasTravelerCols = true;
+let hasOrganizerCols = true;
+
 export async function upsertTrip(trip: Trip): Promise<void> {
+  // Always try with all columns first — if columns were added mid-session, recover automatically
   const { error } = await supabase
     .from(TABLE)
-    .upsert(tripToRow(trip), { onConflict: "id" });
-  if (error) throw error;
+    .upsert(tripToRow(trip, true, true), { onConflict: "id" });
+  if (!error) {
+    hasTravelerCols = true;
+    hasOrganizerCols = true;
+    return;
+  }
+  if (error.message?.includes("traveler")) {
+    hasTravelerCols = false;
+    const { error: retryErr } = await supabase
+      .from(TABLE)
+      .upsert(tripToRow(trip), { onConflict: "id" });
+    if (!retryErr) return;
+    if (retryErr.message?.includes("organizer") || retryErr.message?.includes("info")) {
+      hasOrganizerCols = false;
+      const { error: retry2 } = await supabase
+        .from(TABLE)
+        .upsert(tripToRow(trip), { onConflict: "id" });
+      if (retry2) throw retry2;
+      return;
+    }
+    throw retryErr;
+  }
+  if (error.message?.includes("organizer") || error.message?.includes("info")) {
+    hasOrganizerCols = false;
+    const { error: retryErr } = await supabase
+      .from(TABLE)
+      .upsert(tripToRow(trip), { onConflict: "id" });
+    if (retryErr) throw retryErr;
+    return;
+  }
+  throw error;
 }
 
 export async function removeTrip(id: string): Promise<void> {
@@ -61,8 +96,34 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   return rowToTrip(data);
 }
 
-function tripToRow(trip: Trip) {
-  return {
+// ── Trip Members ────────────────────────────────────────────────────────────
+
+export async function logTripJoin(
+  tripId: string,
+  tripName: string,
+  userName: string,
+  avatar?: string,
+): Promise<void> {
+  try {
+    const deviceId = await getDeviceId();
+    await supabase.from("trip_members").upsert(
+      {
+        device_id: deviceId,
+        trip_id: tripId,
+        trip_name: tripName,
+        name: userName,
+        avatar: avatar || null,
+        joined_at: new Date().toISOString(),
+      },
+      { onConflict: "device_id,trip_id" },
+    );
+  } catch {
+    // non-critical — don't block the join flow
+  }
+}
+
+function tripToRow(trip: Trip, forceTraveler?: boolean, forceOrganizer?: boolean) {
+  const row: Record<string, unknown> = {
     id: trip.id,
     name: trip.name,
     attendees: trip.attendees,
@@ -79,6 +140,15 @@ function tripToRow(trip: Trip) {
     media: trip.media ?? null,
     short_code: trip.shortCode ?? null,
   };
+  if (forceTraveler ?? hasTravelerCols) {
+    row.traveler_ids = trip.travelerIds ?? null;
+    row.travelers = trip.travelers ?? null;
+  }
+  if (forceOrganizer ?? hasOrganizerCols) {
+    row.organizer = trip.organizer ?? null;
+    row.info = trip.info ?? null;
+  }
+  return row;
 }
 
 function rowToTrip(row: Record<string, unknown>): Trip {
@@ -98,5 +168,9 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     events: (row.events as Trip["events"]) ?? [],
     media: (row.media as Trip["media"]) ?? undefined,
     shortCode: (row.short_code as string) ?? undefined,
+    travelerIds: (row.traveler_ids as string[]) ?? undefined,
+    travelers: (row.travelers as Trip["travelers"]) ?? undefined,
+    organizer: (row.organizer as Trip["organizer"]) ?? undefined,
+    info: (row.info as Trip["info"]) ?? undefined,
   };
 }

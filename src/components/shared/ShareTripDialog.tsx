@@ -137,7 +137,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 style={{ borderColor: `${activeAccent.hex}40` }}
               >
                 <QRCodeSVG
-                  value={webUrl}
+                  value={deepLink}
                   size={72}
                   bgColor="#ffffff"
                   fgColor={activeAccent.hex}

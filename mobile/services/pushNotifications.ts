@@ -18,7 +18,8 @@ try {
         (prefs.tripReminders || prefs.itineraryUpdates);
 
       return {
-        shouldShowAlert: allowed,
+        shouldShowBanner: allowed,
+        shouldShowList: allowed,
         shouldPlaySound: allowed,
         shouldSetBadge: allowed,
       };

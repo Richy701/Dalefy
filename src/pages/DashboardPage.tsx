@@ -66,7 +66,6 @@ function tripDuration(start: string, end: string) {
   return Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000));
 }
 
-
 export function DashboardPage() {
   const { trips, addTrip, deleteTrip } = useTrips();
   const { theme } = useTheme();
@@ -122,10 +121,12 @@ export function DashboardPage() {
   const firstName = user?.name?.split(" ")[0] || "Traveller";
 
   const filteredTrips = useMemo(() =>
-    trips.filter(t =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.attendees.toLowerCase().includes(searchQuery.toLowerCase())
-    ), [trips, searchQuery]);
+    [...trips]
+      .sort((a, b) => a.start.localeCompare(b.start))
+      .filter(t =>
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.attendees.toLowerCase().includes(searchQuery.toLowerCase())
+      ), [trips, searchQuery]);
 
   // Next 2 upcoming trips for cards
   const upcomingCards = useMemo(() =>

@@ -15,7 +15,7 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("Trip Manager");
   const [loading, setLoading] = useState(false);
-  const { completeOnboarding, demoLogin } = useAuth();
+  const { completeOnboarding } = useAuth();
   const navigate = useNavigate();
 
   const canAdvance = name.trim().length >= 2;
@@ -29,13 +29,6 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     await completeOnboarding({ name, email, role });
-    setLoading(false);
-    navigate("/");
-  };
-
-  const handleDemo = async () => {
-    setLoading(true);
-    await demoLogin();
     setLoading(false);
     navigate("/");
   };
@@ -149,20 +142,6 @@ export function LoginPage() {
             </>
           )}
 
-          <div className="flex items-center gap-4 my-6">
-            <div className="h-px flex-1 bg-[#1f1f1f]" />
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#555]">OR</span>
-            <div className="h-px flex-1 bg-[#1f1f1f]" />
-          </div>
-
-          <Button
-            onClick={handleDemo}
-            disabled={loading}
-            variant="outline"
-            className="w-full h-12 rounded-xl border-[#1f1f1f] bg-[#050505] text-white hover:bg-[#1f1f1f] hover:text-brand font-bold uppercase tracking-wider transition-all"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Try a Demo"}
-          </Button>
         </div>
 
         <p className="text-center text-[11px] font-bold uppercase tracking-widest text-[#444] mt-8">

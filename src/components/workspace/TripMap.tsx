@@ -58,6 +58,25 @@ const DASH_SEQ: number[][] = [
   [0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5],
 ];
 
+/** Interpolate a point along an arc at fraction t (0→1) and compute bearing */
+function interpolateArc(arc: number[][], t: number): { lng: number; lat: number; bearing: number } {
+  const totalLen = arc.length - 1;
+  const idx = Math.min(Math.floor(t * totalLen), totalLen - 1);
+  const frac = (t * totalLen) - idx;
+  const p0 = arc[idx];
+  const p1 = arc[Math.min(idx + 1, totalLen)];
+  const lng = p0[0] + (p1[0] - p0[0]) * frac;
+  const lat = p0[1] + (p1[1] - p0[1]) * frac;
+  // Bearing from p0 → p1
+  const dLng = (p1[0] - p0[0]) * Math.PI / 180;
+  const lat1 = p0[1] * Math.PI / 180;
+  const lat2 = p1[1] * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  return { lng, lat, bearing };
+}
+
 export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const isDark = theme === "dark";
   const mapRef = useRef<MapRef>(null);
@@ -139,13 +158,16 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
   const allCoords = useMemo(() => points.map(p => p.coords), [points]);
 
-  const [arcGeoJSON, setArcGeoJSON] = useState<{ type: "FeatureCollection"; features: Array<{ type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> }> }>({ type: "FeatureCollection", features: [] });
+  type ArcFeature = { type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> };
+  const [arcGeoJSON, setArcGeoJSON] = useState<{ type: "FeatureCollection"; features: ArcFeature[] }>({ type: "FeatureCollection", features: [] });
+  const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
+  const planeRafRef = useRef<number>(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const flights = trip.events.filter(e => e.type === "flight");
-      const features = [] as Array<{ type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> }>;
+      const features: ArcFeature[] = [];
       for (const fe of flights) {
         const match = fe.location.match(/^(.+?)\s+to\s+(.+)$/);
         if (!match) continue;
@@ -162,6 +184,22 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     })();
     return () => { cancelled = true; };
   }, [trip.events]);
+
+  // Animate planes along arcs
+  useEffect(() => {
+    if (arcGeoJSON.features.length === 0) return;
+    const arcs = arcGeoJSON.features.map(f => f.geometry.coordinates);
+    const DURATION = 6000; // ms per full arc traversal
+
+    function animatePlanes(ts: number) {
+      const t = (ts % DURATION) / DURATION;
+      const positions = arcs.map(arc => interpolateArc(arc, t));
+      setPlanePositions(positions);
+      planeRafRef.current = requestAnimationFrame(animatePlanes);
+    }
+    planeRafRef.current = requestAnimationFrame(animatePlanes);
+    return () => cancelAnimationFrame(planeRafRef.current);
+  }, [arcGeoJSON]);
 
   // Fit map to all points after first render
   useEffect(() => {
@@ -217,7 +255,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(() => () => { cancelAnimationFrame(rafRef.current); cancelAnimationFrame(planeRafRef.current); }, []);
 
   if (points.length === 0) {
     return (
@@ -268,6 +306,25 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
             paint={{ "line-color": ACCENT, "line-width": 1.5, "line-opacity": 0.6 }}
           />
         </Source>
+
+        {/* Animated plane icons flying along arcs */}
+        {planePositions.map((pos, i) => (
+          <Marker
+            key={`plane-${i}`}
+            longitude={pos.lng}
+            latitude={pos.lat}
+            anchor="center"
+            style={{ zIndex: 2000 }}
+          >
+            <div style={{
+              transform: `rotate(${pos.bearing - 45}deg)`,
+              filter: `drop-shadow(0 0 6px ${ACCENT}88)`,
+              transition: "transform 0.05s linear",
+            }}>
+              <Plane size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
+            </div>
+          </Marker>
+        ))}
 
         {/* Markers */}
         {points.map(pt => {

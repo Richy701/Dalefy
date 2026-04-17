@@ -168,6 +168,18 @@ const MEAL_DEFAULTS: Record<string, string> = {
   brunch: "10:30 AM",
 };
 
+/** Convert "9:50 AM" / "12:00 PM" to minutes since midnight for numeric sorting */
+function timeToMinutes(t: string): number {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 720; // noon fallback
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const pm = m[3].toUpperCase() === "PM";
+  if (pm && h < 12) h += 12;
+  if (!pm && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 type EventType = "flight" | "hotel" | "activity" | "dining";
 
 function guessEventType(line: string): EventType {
@@ -376,7 +388,7 @@ function parseItinerary(text: string): ParsedTrip {
 
   const allEvents = [...gdsEvents, ...events].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.time.localeCompare(b.time);
+    return timeToMinutes(a.time) - timeToMinutes(b.time);
   });
   return { name: nameLine.slice(0, 80), attendees, paxCount, start, end, destination, events: allEvents };
 }

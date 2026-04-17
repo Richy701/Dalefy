@@ -18,6 +18,17 @@ function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
 }
 
+function timeToMinutes(t: string): number {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 720;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const pm = m[3].toUpperCase() === "PM";
+  if (pm && h < 12) h += 12;
+  if (!pm && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 function isToday(dateStr: string) {
   const d = new Date(dateStr + "T12:00:00");
   const now = new Date();
@@ -43,15 +54,16 @@ function NoTrip() {
 }
 
 export default function ItineraryScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips } = useTrips();
+  const { trips, reload } = useTrips();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 600);
-  }, []);
+    await reload();
+    setRefreshing(false);
+  }, [reload]);
 
   const activeTrip: Trip | undefined = useMemo(() => {
     const sorted = [...trips].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
@@ -75,6 +87,10 @@ export default function ItineraryScreen() {
     acc[ev.date].push(ev);
     return acc;
   }, {});
+  // Sort events within each day by time
+  for (const evs of Object.values(grouped)) {
+    evs.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  }
 
   const tripLabel = isPast ? "PREVIOUS TRIP" : isActive ? "CURRENT TRIP" : `IN ${days} DAYS`;
 
@@ -197,7 +213,7 @@ export default function ItineraryScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 72 },
+    scroll: { paddingBottom: 90 },
 
     // Hero
     hero: { height: 280, position: "relative" },
@@ -208,17 +224,17 @@ function makeStyles(C: ThemeColors) {
     tripLabel: {
       flexDirection: "row", alignItems: "center",
     },
-    tripLabelText: { fontSize: T.xs, fontWeight: T.black, letterSpacing: 1.5 },
+    tripLabelText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 1.5 },
 
     heroContent: {
       position: "absolute", bottom: 0, left: 0, right: 0,
       padding: S.md, paddingBottom: S.lg,
     },
     destRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-    heroDest: { fontSize: T.xs, fontWeight: T.black, color: C.teal, letterSpacing: 1.8 },
+    heroDest: { fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 1.8 },
     heroTitle: {
-      fontSize: T["3xl"] - 2, fontFamily: F.black, fontWeight: T.black,
-      color: "#ffffff", letterSpacing: -0.5, marginBottom: 6, lineHeight: 34,
+      fontSize: T["3xl"] - 2, fontWeight: T.bold,
+      color: "#ffffff", letterSpacing: -0.3, marginBottom: 6, lineHeight: 34,
     },
     heroStats: { flexDirection: "row", alignItems: "center", gap: 6 },
     heroStat: { flexDirection: "row", alignItems: "center", gap: 4 },
@@ -238,10 +254,9 @@ function makeStyles(C: ThemeColors) {
     dayNumBox: {
       width: 38, height: 38, borderRadius: R.md, backgroundColor: C.card,
       alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
-    dayNumBoxToday: { backgroundColor: C.tealDim, borderColor: C.tealMid },
-    dayNum: { fontSize: T.lg, fontWeight: T.black, color: C.textSecondary },
+    dayNumBoxToday: { backgroundColor: C.tealDim },
+    dayNum: { fontSize: T.lg, fontWeight: T.bold, color: C.textSecondary },
     dayNumToday: { color: C.teal },
     dayInfo: { flex: 1 },
     dayTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -250,13 +265,11 @@ function makeStyles(C: ThemeColors) {
     todayChip: {
       backgroundColor: C.tealDim, borderRadius: R.full,
       paddingHorizontal: 8, paddingVertical: 2,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
     },
-    todayChipText: { fontSize: T.xs, fontWeight: T.black, color: C.teal, letterSpacing: 1.5 },
+    todayChipText: { fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 1.5 },
     dayCountBadge: {
       backgroundColor: C.elevated, borderRadius: R.sm,
       paddingHorizontal: 7, paddingVertical: 3,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
     dayCountText: { fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary },
 
@@ -267,7 +280,7 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center", paddingTop: 80,
       paddingHorizontal: S.xl, paddingBottom: S.xl, gap: S.sm,
     },
-    emptyTitle: { fontSize: T.xl, fontFamily: F.black, fontWeight: T.black, color: C.textPrimary, letterSpacing: -0.5 },
+    emptyTitle: { fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
     emptyText: {
       fontSize: T.base, color: C.textTertiary,
       textAlign: "center", lineHeight: 24, maxWidth: 280,
@@ -277,7 +290,7 @@ function makeStyles(C: ThemeColors) {
       borderRadius: R.full, paddingHorizontal: S.lg, paddingVertical: 11,
     },
     emptyBtnText: {
-      fontSize: T.sm, fontWeight: T.black,
+      fontSize: T.sm, fontWeight: T.bold,
       color: "#000", letterSpacing: 0.5, textTransform: "uppercase",
     },
   });

@@ -35,6 +35,7 @@ const NAV_ITEMS = [
 function UserFooter({ onSignOut }: { onSignOut: () => void }) {
   const { user } = useAuth();
   const { state } = useSidebar();
+  const navigate = useNavigate();
   const collapsed = state === "collapsed";
 
   const displayName = user?.name ?? "";
@@ -44,17 +45,23 @@ function UserFooter({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "justify-center" : ""}`}>
-      <Avatar className="h-8 w-8 rounded-xl shrink-0">
-        <AvatarFallback className="rounded-xl bg-brand/15 text-brand text-[10px] font-black border border-brand/20">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-      {!collapsed && (
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-white truncate leading-none">{displayName}</p>
-          <p className="text-[9px] text-[#555] leading-none mt-0.5 truncate">{user?.role ?? ""}</p>
-        </div>
-      )}
+      <button
+        onClick={() => navigate("/settings")}
+        className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-white/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center" : ""}`}
+        aria-label="Settings"
+      >
+        <Avatar className="h-8 w-8 rounded-xl shrink-0">
+          <AvatarFallback className="rounded-xl bg-brand/15 text-brand text-[10px] font-black border border-brand/20">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {!collapsed && (
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-[11px] font-bold text-white truncate leading-none">{displayName}</p>
+            <p className="text-[9px] text-[#555] leading-none mt-0.5 truncate">{user?.role ?? ""}</p>
+          </div>
+        )}
+      </button>
       {!collapsed && (
         <Tooltip>
           <TooltipTrigger

@@ -1,48 +1,62 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import { Appearance } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { darkColors, lightColors, applyAccent, type ThemeColors } from "@/constants/theme";
-import { usePreferences } from "./PreferencesContext";
-
-const THEME_KEY = "daf-theme";
+import { usePreferences, type ThemeMode } from "./PreferencesContext";
 
 interface ThemeContextValue {
   isDark: boolean;
+  mode: ThemeMode;
+  setMode: (m: ThemeMode) => void;
+  /** Legacy toggle — cycles light→dark→system */
   toggle: () => void;
   C: ThemeColors;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   isDark: true,
+  mode: "system",
+  setMode: () => {},
   toggle: () => {},
   C: darkColors,
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark] = useState(Appearance.getColorScheme() !== "light");
-  const { prefs } = usePreferences();
+  const { prefs, setPref } = usePreferences();
+  const mode = prefs.themeMode ?? "system";
+
+  // Track the device scheme for "system" mode
+  const [deviceScheme, setDeviceScheme] = useState<"light" | "dark">(
+    Appearance.getColorScheme() === "light" ? "light" : "dark"
+  );
+
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      setDeviceScheme(colorScheme === "light" ? "light" : "dark");
+    });
+    return () => sub.remove();
+  }, []);
+
+  const isDark =
+    mode === "system" ? deviceScheme === "dark" :
+    mode === "dark";
+
   const C = useMemo(() => {
     const base = isDark ? darkColors : lightColors;
     return applyAccent(base, prefs.accent, isDark);
   }, [isDark, prefs.accent]);
 
-  useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then(val => {
-      if (val === "light") setIsDark(false);
-      else if (val === "dark") setIsDark(true);
-    }).catch(() => {});
-  }, []);
+  const setMode = useCallback((m: ThemeMode) => {
+    setPref("themeMode", m);
+  }, [setPref]);
 
-  const toggle = () => {
-    setIsDark(v => {
-      const next = !v;
-      AsyncStorage.setItem(THEME_KEY, next ? "dark" : "light").catch(() => {});
-      return next;
-    });
-  };
+  const toggle = useCallback(() => {
+    const order: ThemeMode[] = ["light", "dark", "system"];
+    const idx = order.indexOf(mode);
+    setMode(order[(idx + 1) % order.length]);
+  }, [mode, setMode]);
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggle, C }}>
+    <ThemeContext.Provider value={{ isDark, mode, setMode, toggle, C }}>
       {children}
     </ThemeContext.Provider>
   );

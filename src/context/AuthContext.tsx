@@ -3,11 +3,11 @@ import type { User } from "@/types";
 
 const DEMO_USER: User = {
   id: "demo",
-  name: "Ash Murray",
-  email: "ash.murray@dafadventures.com",
+  name: "Richy Lamptey",
+  email: "richmondlamptey75@gmail.com",
   role: "Trip Manager",
   avatar: "",
-  initials: "AM",
+  initials: "RL",
   status: "Active",
 };
 

@@ -2,12 +2,11 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, Sun, Moon } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
-import { useTheme } from "@/context/ThemeContext";
 import {
   Sidebar,
   SidebarContent,
@@ -24,32 +23,24 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-function ThemeToggleButton() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === "dark";
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          onClick={toggleTheme}
-          tooltip={isDark ? "Light mode" : "Dark mode"}
-          className="relative rounded-xl h-10 gap-3 !text-sidebar-foreground/55 hover:!text-sidebar-foreground hover:!bg-black/5 dark:hover:!bg-white/5"
-        >
-          {isDark ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em]">
-            {isDark ? "Light Mode" : "Dark Mode"}
-          </span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  );
-}
-
 function RecentTrip() {
   const { trips } = useTrips();
   const navigate = useNavigate();
   const { state } = useSidebar();
-  const recentTrip = trips.length > 0 ? trips[trips.length - 1] : null;
+  const recentTrip = React.useMemo(() => {
+    if (trips.length === 0) return null;
+    const now = Date.now();
+    const sorted = [...trips].sort((a, b) => {
+      const aEnd = new Date(a.end).getTime();
+      const bEnd = new Date(b.end).getTime();
+      // Active trips first (end >= now), then upcoming (start > now), then most recent past
+      const aActive = aEnd >= now ? 0 : 1;
+      const bActive = bEnd >= now ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return new Date(a.start).getTime() - new Date(b.start).getTime();
+    });
+    return sorted[0];
+  }, [trips]);
 
   if (!recentTrip || state === "collapsed") return null;
 
@@ -119,7 +110,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* ── User footer ── */}
       <SidebarFooter className="border-t border-sidebar-border pb-3 gap-1">
-        <ThemeToggleButton />
         <NavUser />
       </SidebarFooter>
 

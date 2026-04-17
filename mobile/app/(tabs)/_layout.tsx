@@ -1,164 +1,132 @@
 import { Tabs } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, AccessibilityInfo } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import { Text, StyleSheet, Pressable } from "react-native";
+import { BlurView } from "expo-blur";
 import { Compass, Globe, CalendarDays, Images, User } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
+import { useHaptic } from "@/hooks/useHaptic";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, Easing,
+} from "react-native-reanimated";
+import { useEffect } from "react";
 
-const TABS = [
-  { name: "index",        Icon: Compass,      label: "Trips"   },
-  { name: "destinations", Icon: Globe,        label: "World"   },
-  { name: "itinerary",    Icon: CalendarDays, label: "Plan"    },
-  { name: "media",        Icon: Images,       label: "Gallery" },
-  { name: "profile",      Icon: User,         label: "Me"      },
+const ALL_TABS = [
+  { name: "index",        Icon: Compass,      label: "Trips",   visible: true  },
+  { name: "destinations", Icon: Globe,         label: "World",   visible: true  },
+  { name: "itinerary",    Icon: CalendarDays,  label: "Plan",    visible: false },
+  { name: "media",        Icon: Images,        label: "Gallery", visible: false },
+  { name: "profile",      Icon: User,          label: "Me",      visible: true  },
 ] as const;
 
-// Each icon button slot width + gap between items
-const ITEM_W  = 62; // 58px slot + 4px gap
-const BTN_W   = 58; // pressable width (wider to fit label)
-const BLOB_W  = 52; // pill indicator width (Material 3 style)
-const BLOB_H  = 32; // pill indicator height
-const ROW_PAD = 8;
+const TABS = ALL_TABS.filter(t => t.visible);
 
-function FloatingTabBar({ state, navigation }: any) {
-  const { C, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
-  const [reduceMotion, setReduceMotion] = useState(false);
+const EASE = { duration: 250, easing: Easing.out(Easing.cubic) };
 
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
-    return () => sub.remove();
-  }, []);
-
-  // Shared values — animate the blob position & horizontal stretch
-  const blobX      = useSharedValue(state.index * ITEM_W);
-  const blobScaleX = useSharedValue(1);
-  const blobScaleY = useSharedValue(1);
+function AnimatedTab({ Icon, focused, teal, isDark, label }: {
+  Icon: React.ComponentType<any>; focused: boolean; teal: string;
+  isDark: boolean; label: string;
+}) {
+  const lift = useSharedValue(focused ? -3 : 0);
+  const opacity = useSharedValue(focused ? 1 : 0.45);
 
   useEffect(() => {
-    const toX = state.index * ITEM_W;
+    lift.value = withTiming(focused ? -3 : 0, EASE);
+    opacity.value = withTiming(focused ? 1 : 0.45, EASE);
+  }, [focused]);
 
-    if (reduceMotion) {
-      blobX.value = toX;
-      blobScaleX.value = 1;
-      blobScaleY.value = 1;
-      return;
-    }
-
-    // Slide blob with a bouncy spring
-    blobX.value = withSpring(toX, {
-      damping: 16,
-      stiffness: 180,
-      mass: 0.6,
-    });
-
-    // Liquid squish: briefly stretch wide then snap back
-    blobScaleX.value = withSequence(
-      withTiming(1.5, { duration: 90 }),
-      withSpring(1, { damping: 12, stiffness: 240, mass: 0.5 }),
-    );
-
-    // Slight vertical squeeze at the same time (liquid incompressibility)
-    blobScaleY.value = withSequence(
-      withTiming(0.82, { duration: 90 }),
-      withSpring(1, { damping: 12, stiffness: 240, mass: 0.5 }),
-    );
-  }, [state.index, reduceMotion]);
-
-  const blobAnimStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: blobX.value },
-      { scaleX: blobScaleX.value },
-      { scaleY: blobScaleY.value },
-    ],
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: lift.value }],
+    opacity: opacity.value,
   }));
 
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: lift.value }],
+  }));
+
+  const color = focused ? teal : (isDark ? "rgba(170,170,180,1)" : "rgba(80,80,90,1)");
+
   return (
-    <View
-      pointerEvents="box-none"
+    <>
+      <Animated.View style={iconStyle}>
+        <Icon
+          size={21}
+          color={color}
+          fill={focused ? `${teal}30` : "transparent"}
+          strokeWidth={focused ? 2.2 : 1.5}
+        />
+      </Animated.View>
+      <Animated.Text
+        style={[
+          styles.label,
+          { color, fontWeight: focused ? "700" : "500" },
+          labelStyle,
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Animated.Text>
+    </>
+  );
+}
+
+function BottomTabBar({ state, navigation }: any) {
+  const { C, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const haptic = useHaptic();
+
+  const activeRouteName = state.routes[state.index]?.name;
+
+  return (
+    <BlurView
+      intensity={60}
+      tint={isDark ? "dark" : "light"}
       style={[
-        styles.outerWrap,
-        { paddingBottom: insets.bottom > 0 ? insets.bottom - 6 : 16 },
+        styles.bar,
+        {
+          paddingBottom: insets.bottom || 4,
+          backgroundColor: isDark ? "rgba(9,9,11,0.65)" : "rgba(255,255,255,0.7)",
+        },
       ]}
     >
-      <View style={[styles.pillWrap, {
-        backgroundColor: isDark ? "rgba(14,14,18,0.88)" : "rgba(255,255,255,0.92)",
-        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-      }]}>
+      {TABS.map((tab) => {
+        const routeIndex = state.routes.findIndex((r: any) => r.name === tab.name);
+        const focused = activeRouteName === tab.name;
 
-          <View style={styles.tabRowOuter}>
+        const onPress = () => {
+          const route = state.routes[routeIndex];
+          if (!route) return;
+          const event = navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) {
+            haptic.selection();
+            navigation.navigate(route.name);
+          }
+        };
 
-            {/* Liquid blob — slides & squishes behind icons */}
-            <Animated.View style={[styles.blob, blobAnimStyle, {
-              backgroundColor: isDark ? `${C.teal}18` : `${C.teal}12`,
-              borderColor: isDark ? `${C.teal}30` : `${C.teal}20`,
-            }]} />
-
-            {/* Pressable icons (rendered on top of blob) */}
-            <View style={styles.tabRow}>
-              {state.routes.map((route: any, index: number) => {
-                const focused = state.index === index;
-                const { Icon } = TABS[index];
-
-                const onPress = () => {
-                  const event = navigation.emit({
-                    type: "tabPress",
-                    target: route.key,
-                    canPreventDefault: true,
-                  });
-                  if (!focused && !event.defaultPrevented) {
-                    Haptics.selectionAsync();
-                    navigation.navigate(route.name);
-                  }
-                };
-
-                const inactiveColor = isDark
-                  ? "rgba(170,170,180,0.55)"
-                  : "rgba(80,80,90,0.55)";
-                const iconColor = focused ? C.teal : inactiveColor;
-
-                return (
-                  <Pressable
-                    key={route.key}
-                    onPress={onPress}
-                    style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={TABS[index].label}
-                    accessibilityState={{ selected: focused }}
-                  >
-                    <Icon
-                      size={20}
-                      color={iconColor}
-                      fill={focused ? `${C.teal}30` : "transparent"}
-                      strokeWidth={focused ? 2.2 : 1.8}
-                    />
-                    <Text
-                      style={[
-                        styles.label,
-                        { color: iconColor, fontWeight: focused ? "700" : "500" },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {TABS[index].label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-          </View>
-
-      </View>
-    </View>
+        return (
+          <Pressable
+            key={tab.name}
+            onPress={onPress}
+            style={styles.tab}
+            accessibilityRole="button"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: focused }}
+          >
+            <AnimatedTab
+              Icon={tab.Icon}
+              focused={focused}
+              teal={C.teal}
+              isDark={isDark}
+              label={tab.label}
+            />
+          </Pressable>
+        );
+      })}
+    </BlurView>
   );
 }
 
@@ -171,15 +139,16 @@ export default function TabLayout() {
         tabBarHideOnKeyboard: true,
         sceneStyle: { backgroundColor: C.bg },
       }}
-      tabBar={(props) => <FloatingTabBar {...props} />}
+      tabBar={(props) => <BottomTabBar {...props} />}
     >
-      {TABS.map(({ name, label }) => (
+      {ALL_TABS.map(({ name, label, visible }) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
             tabBarLabel: label,
             tabBarAccessibilityLabel: label,
+            href: visible ? undefined : null,
           }}
         />
       ))}
@@ -187,58 +156,26 @@ export default function TabLayout() {
   );
 }
 
-const PILL_R = 34;
-
 const styles = StyleSheet.create({
-  outerWrap: {
+  bar: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
-    alignItems: "center",
-    pointerEvents: "box-none",
-  },
-
-  pillWrap: {
-    borderRadius: PILL_R,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-
-  // Container for blob + icons — sets the coordinate system
-  tabRowOuter: {
-    paddingHorizontal: ROW_PAD,
-    paddingVertical: ROW_PAD,
-  },
-
-  // Animated pill indicator — slides behind icons (Material 3 style)
-  blob: {
-    position: "absolute",
-    top: ROW_PAD,
-    left: ROW_PAD + (BTN_W - BLOB_W) / 2,
-    width: BLOB_W,
-    height: BLOB_H,
-    borderRadius: BLOB_H / 2,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-
-  // Icon row — same padding as tabRowOuter so icons align over blob
-  tabRow: {
+    bottom: 0,
     flexDirection: "row",
-    gap: ITEM_W - BTN_W, // gap between items
+    paddingTop: 6,
   },
 
-  iconBtn: {
-    width: BTN_W,
-    paddingTop: (BLOB_H - 20) / 2, // center icon within pill height
-    paddingBottom: 6,
+  tab: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 4,
+    justifyContent: "center",
+    minHeight: 42,
+    gap: 3,
   },
 
   label: {
-    fontSize: 11,
-    letterSpacing: 0,
+    fontSize: 9,
+    letterSpacing: 0.3,
   },
 });

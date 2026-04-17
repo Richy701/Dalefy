@@ -12,7 +12,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { TravelEvent, Trip } from "@/types";
+import type { TravelEvent, Trip, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { MOCK_USERS } from "@/data/mock-users";
 import { EventCard } from "@/components/workspace/EventCard";
 import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
@@ -41,6 +43,7 @@ import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
+import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
@@ -111,6 +114,17 @@ function generateEventImage(title: string, type: string, seed: number): string {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+function timeToMinutes(t: string): number {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 720;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const pm = m[3].toUpperCase() === "PM";
+  if (pm && h < 12) h += 12;
+  if (!pm && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 export function WorkspacePage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
@@ -133,7 +147,20 @@ export function WorkspacePage() {
   const [imagePage, setImagePage] = useState(1);
   const [imageLastQuery, setImageLastQuery] = useState("");
   const [aiZapOpen, setAiZapOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"itinerary" | "media">("itinerary");
+  const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
+  const [customTravelers] = useLocalStorage<UserType[]>("daf-custom-travelers", []);
+  const allTravelers = useMemo(() => [...MOCK_USERS, ...customTravelers], [customTravelers]);
+  const tripTravelers = useMemo(() => {
+    if (!trip) return [];
+    return allTravelers.filter(u => trip.travelerIds?.includes(u.id));
+  }, [trip, allTravelers]);
+  const availableTravelers = useMemo(() => {
+    if (!trip) return allTravelers;
+    return allTravelers.filter(u => !trip.travelerIds?.includes(u.id));
+  }, [trip, allTravelers]);
+  const [peopleSearch, setPeopleSearch] = useState("");
+  const [viewAsId, setViewAsId] = useState<string | null>(null);
+  const viewAsTraveler = useMemo(() => viewAsId ? allTravelers.find(u => u.id === viewAsId) ?? null : null, [viewAsId, allTravelers]);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [rematching, setRematching] = useState({ active: false, done: 0, total: 0 });
   const printRef = useRef<HTMLDivElement>(null);
@@ -146,6 +173,10 @@ export function WorkspacePage() {
   const [tripImagePage, setTripImagePage] = useState(1);
   const [tripImageLastQuery, setTripImageLastQuery] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [editOrgOpen, setEditOrgOpen] = useState(false);
+  const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
+  const [editInfoOpen, setEditInfoOpen] = useState(false);
+  const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,13 +191,11 @@ export function WorkspacePage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // Find which day these events belong to
     const allEvents = [...trip.events];
     const activeEvent = allEvents.find(e => e.id === activeId);
     const overEvent = allEvents.find(e => e.id === overId);
     if (!activeEvent || !overEvent || activeEvent.date !== overEvent.date) return;
 
-    // Get the events for this day and reorder them
     const dayDate = activeEvent.date;
     const dayEvents = allEvents.filter(e => e.date === dayDate);
     const otherEvents = allEvents.filter(e => e.date !== dayDate);
@@ -175,7 +204,13 @@ export function WorkspacePage() {
     const newIndex = dayEvents.findIndex(e => e.id === overId);
     const reorderedDayEvents = arrayMove(dayEvents, oldIndex, newIndex);
 
-    updateTrip(trip.id, { events: [...otherEvents, ...reorderedDayEvents] });
+    // Swap times so the time-based sort preserves the new order
+    const sortedTimes = reorderedDayEvents
+      .map(e => e.time)
+      .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+    const finalEvents = reorderedDayEvents.map((e, i) => ({ ...e, time: sortedTimes[i] }));
+
+    updateTrip(trip.id, { events: [...otherEvents, ...finalEvents] });
     toast.success("Events reordered");
   }, [trip, updateTrip]);
 
@@ -202,14 +237,21 @@ export function WorkspacePage() {
 
   const groupedEvents = useMemo(() => {
     if (!trip) return [];
+    let events = trip.events;
+    // Filter by "View As" traveler
+    if (viewAsId) {
+      events = events.filter(
+        e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId)
+      );
+    }
     const groups: Record<string, TravelEvent[]> = {};
-    const sorted = [...trip.events].sort((a, b) => {
+    const sorted = [...events].sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return a.time.localeCompare(b.time);
+      return timeToMinutes(a.time) - timeToMinutes(b.time);
     });
     sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-  }, [trip?.events]);
+  }, [trip?.events, viewAsId]);
 
   // Auto-search + generate image when title changes (must run before any early return)
   useEffect(() => {
@@ -408,10 +450,41 @@ export function WorkspacePage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  /** Build a Mapbox Static Images URL with route pins for the trip */
+  const buildStaticMapUrl = useCallback(async (): Promise<string | null> => {
+    const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
+    if (!MAPBOX_TOKEN || !trip) return null;
+    const { resolveCoords } = await import("@/data/coordinates");
+    const { geocode } = await import("@/services/geocode");
+    const resolve = async (loc: string): Promise<[number, number] | null> =>
+      resolveCoords(loc) ?? (await geocode(loc));
+
+    const coords: [number, number][] = [];
+    for (const ev of trip.events.filter(e => e.type === "flight")) {
+      const match = ev.location.match(/^(.+?)\s+to\s+(.+)$/);
+      if (!match) continue;
+      const from = await resolve(match[1].trim());
+      const to = await resolve(match[2].trim());
+      if (from) coords.push(from);
+      if (to) coords.push(to);
+    }
+    if (coords.length === 0) return null;
+
+    // Mapbox Static Images: pin markers + auto-fit
+    const markers = coords
+      .map(([lat, lng]) => `pin-s+0bd2b5(${lng},${lat})`)
+      .join(",");
+    const style = theme === "dark" ? "dark-v11" : "light-v11";
+    return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${markers}/auto/800x300@2x?padding=60&access_token=${MAPBOX_TOKEN}`;
+  }, [trip, theme]);
+
   const handleExportPdf = async () => {
     if (!printRef.current) return;
     setExporting(true);
     try {
+      // Generate static map image for the PDF cover
+      const staticMapUrl = await buildStaticMapUrl();
+
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
@@ -422,22 +495,66 @@ export function WorkspacePage() {
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth;
-      const scaledHeight = imgHeight * ratio;
 
-      let heightLeft = scaledHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = position - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-        heightLeft -= pdfHeight;
+      // If we have a static map, add it as a header on the first page
+      if (staticMapUrl) {
+        try {
+          const mapRes = await fetch(staticMapUrl);
+          const mapBlob = await mapRes.blob();
+          const mapDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(mapBlob);
+          });
+          // Map header: full width, 60mm tall
+          pdf.addImage(mapDataUrl, "PNG", 0, 0, pdfWidth, 60);
+          // Trip title overlay
+          pdf.setFontSize(18);
+          pdf.setTextColor(255, 255, 255);
+          pdf.text(trip.name.toUpperCase(), 10, 50);
+          pdf.setFontSize(8);
+          pdf.text(`${trip.destination || ""} · ${trip.start} — ${trip.end}`, 10, 55);
+          // Itinerary content starts below map
+          const imgWidth = canvas.width;
+          const ratio = pdfWidth / imgWidth;
+          const scaledHeight = canvas.height * ratio;
+          pdf.addImage(imgData, "PNG", 0, 62, pdfWidth, scaledHeight);
+          let heightLeft = scaledHeight - (pdfHeight - 62);
+          let position = -(pdfHeight - 62);
+          while (heightLeft > 0) {
+            pdf.addPage();
+            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+            heightLeft -= pdfHeight;
+            position -= pdfHeight;
+          }
+        } catch {
+          // Fallback: no map header, just the content
+          const imgWidth = canvas.width;
+          const ratio = pdfWidth / imgWidth;
+          const scaledHeight = canvas.height * ratio;
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
+          let heightLeft = scaledHeight - pdfHeight;
+          let position = -pdfHeight;
+          while (heightLeft > 0) {
+            pdf.addPage();
+            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+            heightLeft -= pdfHeight;
+            position -= pdfHeight;
+          }
+        }
+      } else {
+        const imgWidth = canvas.width;
+        const ratio = pdfWidth / imgWidth;
+        const scaledHeight = canvas.height * ratio;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
+        let heightLeft = scaledHeight - pdfHeight;
+        let position = -pdfHeight;
+        while (heightLeft > 0) {
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+          heightLeft -= pdfHeight;
+          position -= pdfHeight;
+        }
       }
 
       const filename = `${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`;
@@ -496,6 +613,30 @@ export function WorkspacePage() {
     }
   };
 
+  const handleOpenEditOrg = () => {
+    setEditOrgData({ ...(trip.organizer ?? {}) });
+    setEditOrgOpen(true);
+  };
+  const handleSaveOrg = (e: React.FormEvent) => {
+    e.preventDefault();
+    const org = editOrgData.name?.trim() ? editOrgData as Trip["organizer"] : undefined;
+    updateTrip(trip.id, { organizer: org });
+    setEditOrgOpen(false);
+    toast.success(org ? "Organizer updated" : "Organizer removed");
+  };
+
+  const handleOpenEditInfo = () => {
+    setEditInfoData(trip.info ? trip.info.map(i => ({ ...i })) : []);
+    setEditInfoOpen(true);
+  };
+  const handleSaveInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim());
+    updateTrip(trip.id, { info: cleaned.length > 0 ? cleaned : undefined });
+    setEditInfoOpen(false);
+    toast.success("Information updated");
+  };
+
   const handleOpenEditTrip = () => {
     setEditingTrip({
       name: trip.name,
@@ -506,6 +647,8 @@ export function WorkspacePage() {
       status: trip.status,
       image: trip.image,
       currency: trip.currency ?? "USD",
+      organizer: trip.organizer ?? undefined,
+      info: trip.info ? trip.info.map(i => ({ ...i })) : [],
     });
     setTripImageSearch("");
     setTripImageResults([]);
@@ -514,7 +657,17 @@ export function WorkspacePage() {
 
   const handleSaveTrip = (e: React.FormEvent) => {
     e.preventDefault();
-    updateTrip(trip.id, editingTrip);
+    // Clean up organizer: null out if name is empty
+    const cleaned = { ...editingTrip };
+    if (cleaned.organizer && !cleaned.organizer.name?.trim()) {
+      cleaned.organizer = undefined;
+    }
+    // Filter out empty info entries
+    if (cleaned.info) {
+      cleaned.info = cleaned.info.filter(i => i.title.trim() || i.body.trim());
+      if (cleaned.info.length === 0) cleaned.info = undefined;
+    }
+    updateTrip(trip.id, cleaned);
     setEditTripOpen(false);
     toast.success("Trip updated");
     addNotification({
@@ -558,6 +711,45 @@ export function WorkspacePage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 shrink-0">
+          {/* View As dropdown */}
+          {tripTravelers.length > 0 && (
+            <Popover>
+              <PopoverTrigger className={`hidden sm:flex h-10 items-center gap-2 px-3 rounded-xl border transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm cursor-pointer ${
+                viewAsId
+                  ? "bg-brand/10 border-brand/30 text-brand"
+                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand"
+              }`}>
+                <Users className="h-3.5 w-3.5" />
+                {viewAsTraveler ? `Viewing as ${viewAsTraveler.name.split(" ")[0]}` : "View As"}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-2 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl">
+                <button
+                  onClick={() => setViewAsId(null)}
+                  className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
+                    !viewAsId ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-[#aaa] hover:bg-slate-50 dark:hover:bg-[#050505]"
+                  }`}
+                >
+                  <div className="h-7 w-7 rounded-md bg-slate-100 dark:bg-[#1f1f1f] flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-[#888]">ALL</div>
+                  <span className="uppercase tracking-wider">Everyone</span>
+                  {!viewAsId && <Check className="h-3 w-3 ml-auto" />}
+                </button>
+                <div className="h-px bg-slate-100 dark:bg-[#1f1f1f] my-1" />
+                {tripTravelers.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setViewAsId(t.id)}
+                    className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
+                      viewAsId === t.id ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-[#aaa] hover:bg-slate-50 dark:hover:bg-[#050505]"
+                    }`}
+                  >
+                    <div className="h-7 w-7 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
+                    <span className="truncate">{t.name}</span>
+                    {viewAsId === t.id && <Check className="h-3 w-3 ml-auto shrink-0" />}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          )}
           <button aria-label="Toggle theme" onClick={toggleTheme} className="flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -691,6 +883,19 @@ export function WorkspacePage() {
               </div>
             </section>
 
+            {/* View As banner */}
+            {viewAsTraveler && (
+              <div className="mx-3 sm:mx-4 lg:mx-10 mt-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/20">
+                <Users className="h-4 w-4 text-brand shrink-0" />
+                <p className="text-[11px] font-bold uppercase tracking-wider text-brand flex-1">
+                  Viewing as {viewAsTraveler.name} — showing {groupedEvents.reduce((n, [, evs]) => n + evs.length, 0)} events
+                </p>
+                <button onClick={() => setViewAsId(null)} className="text-[10px] font-bold uppercase tracking-wider text-brand/70 hover:text-brand transition-colors flex items-center gap-1">
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              </div>
+            )}
+
             {/* Tab bar */}
             <div className="px-3 sm:px-4 lg:px-10 pt-6 shrink-0">
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "itinerary" | "media")}>
@@ -712,6 +917,17 @@ export function WorkspacePage() {
                       </span>
                     )}
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="people"
+                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                  >
+                    PEOPLE
+                    {(trip.travelerIds?.length ?? 0) > 0 && (
+                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "people" ? "bg-black/20 text-black" : "bg-brand/15 text-brand"}`}>
+                        {trip.travelerIds!.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -720,6 +936,89 @@ export function WorkspacePage() {
             {activeTab === "itinerary" && (
               <>
                 <div className="px-3 sm:px-4 lg:px-10 pt-6 sm:pt-10 pb-32 w-full relative">
+
+                  {/* ── Organizer & Info strip (Travefy-inspired) ── */}
+                  {(trip.organizer?.name || (trip.info && trip.info.length > 0)) && (
+                    <div className="mb-8 space-y-3">
+                      {/* Organizer contact card */}
+                      {trip.organizer?.name && (
+                        <div className="group/org rounded-2xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden hover:border-brand/30 transition-colors">
+                          <div className="flex items-center gap-4 p-5">
+                            {/* Avatar */}
+                            <div className="shrink-0 w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+                              <span className="text-lg font-black text-brand uppercase tracking-tight">
+                                {trip.organizer.name.split(" ").slice(0, 2).map(w => w[0]).join("")}
+                              </span>
+                            </div>
+                            {/* Name + meta */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand mb-1">Your Organizer</p>
+                              <p className="text-base font-extrabold text-slate-900 dark:text-white truncate">{trip.organizer.name}</p>
+                              {(trip.organizer.role || trip.organizer.company) && (
+                                <p className="text-xs text-slate-500 dark:text-[#888] font-medium truncate mt-0.5">
+                                  {[trip.organizer.role, trip.organizer.company].filter(Boolean).join(" · ")}
+                                </p>
+                              )}
+                            </div>
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {trip.organizer.email && (
+                                <a href={`mailto:${trip.organizer.email}`} className="h-10 px-4 rounded-xl bg-brand/10 border border-brand/20 flex items-center gap-2 text-brand hover:bg-brand/20 transition-colors">
+                                  <Mail className="h-3.5 w-3.5" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Email</span>
+                                </a>
+                              )}
+                              {trip.organizer.phone && (
+                                <a href={`tel:${trip.organizer.phone}`} className="h-10 px-4 rounded-xl bg-brand/10 border border-brand/20 flex items-center gap-2 text-brand hover:bg-brand/20 transition-colors">
+                                  <Phone className="h-3.5 w-3.5" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Call</span>
+                                </a>
+                              )}
+                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Information & Documents card */}
+                      {trip.info && trip.info.length > 0 && (
+                        <div className="group/info rounded-2xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden hover:border-brand/30 transition-colors">
+                          <div className="p-5">
+                            <div className="flex items-center gap-2 mb-4">
+                              <FileText className="h-3.5 w-3.5 text-brand" />
+                              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</span>
+                              <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">{trip.info.length}</span>
+                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center gap-1.5 text-slate-400 dark:text-[#555] hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
+                                <Pencil className="h-3 w-3" />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              {trip.info.map(item => (
+                                <button key={item.id} type="button" onClick={handleOpenEditInfo} className="w-full text-left rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden hover:border-brand/30 transition-colors cursor-pointer">
+                                  <div className="flex items-start gap-3 p-3.5">
+                                    <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
+                                      <FileText className="h-3.5 w-3.5 text-brand" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white">{item.title || "Untitled"}</p>
+                                      {item.body && (
+                                        <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed">{item.body}</p>
+                                      )}
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-10 sm:space-y-16">
                     {groupedEvents.length > 0 ? (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -729,7 +1028,20 @@ export function WorkspacePage() {
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
                               <div className="grid grid-cols-1 gap-4 sm:gap-6 pl-0 sm:pl-8">
                                 {events.map(event => (
-                                  <SortableEventCard key={event.id} event={event} onClick={() => handleEditEvent(event)} onDelete={() => handleDeleteEvent(event.id)} />
+                                  <SortableEventCard
+                                    key={event.id}
+                                    event={event}
+                                    onClick={() => handleEditEvent(event)}
+                                    onDelete={() => handleDeleteEvent(event.id)}
+                                    assignedPeople={
+                                      event.assignedTo?.length
+                                        ? event.assignedTo.map(id => {
+                                            const t = allTravelers.find(u => u.id === id);
+                                            return t ? { initials: t.initials, name: t.name } : { initials: "?", name: "Unknown" };
+                                          })
+                                        : undefined
+                                    }
+                                  />
                                 ))}
                               </div>
                             </SortableContext>
@@ -755,6 +1067,116 @@ export function WorkspacePage() {
                 media={trip.media ?? []}
                 onUpdate={(media) => updateTrip(trip.id, { media })}
               />
+            )}
+
+            {activeTab === "people" && (
+              <div className="px-3 sm:px-4 lg:px-10 pt-6 sm:pt-10 pb-32 w-full">
+                <div className="max-w-2xl mx-auto space-y-8">
+                  {/* Trip Travelers */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand">Trip Travelers</h3>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{tripTravelers.length} assigned</span>
+                    </div>
+                    {tripTravelers.length > 0 ? (
+                      <div className="space-y-2">
+                        {tripTravelers.map(t => {
+                          const eventCount = trip.events.filter(e => e.assignedTo?.includes(t.id)).length;
+                          const allEventsCount = trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0).length;
+                          return (
+                            <div key={t.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] group hover:border-brand/30 transition-colors">
+                              <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-xs font-black uppercase shrink-0">{t.initials}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium truncate">{t.email}</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-[#666] uppercase tracking-wider hidden sm:inline">
+                                  {eventCount > 0 ? `${eventCount} tagged` : ""}{eventCount > 0 && allEventsCount > 0 ? " · " : ""}{allEventsCount > 0 ? `${allEventsCount} shared` : "all events"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newIds = (trip.travelerIds || []).filter(id => id !== t.id);
+                                    const newTravelers = (trip.travelers || []).filter(tr => tr.id !== t.id);
+                                    updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
+                                    // Also remove from any event assignedTo
+                                    trip.events.forEach(ev => {
+                                      if (ev.assignedTo?.includes(t.id)) {
+                                        updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== t.id) });
+                                      }
+                                    });
+                                    toast.success(`Removed ${t.name} from trip`);
+                                  }}
+                                  className="h-8 w-8 rounded-lg text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-500 dark:text-[#888]">
+                        <Users className="h-10 w-10 mb-3 opacity-20" />
+                        <p className="text-xs font-bold uppercase tracking-[0.2em]">No travelers assigned yet</p>
+                        <p className="text-[10px] text-slate-400 dark:text-[#666] mt-1">Add travelers below to tag them on specific events</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add Travelers */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Add Travelers</h3>
+                    </div>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555]" />
+                      <input
+                        value={peopleSearch}
+                        onChange={e => setPeopleSearch(e.target.value)}
+                        placeholder="Search travelers..."
+                        className="w-full h-10 pl-9 pr-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
+                      />
+                    </div>
+                    {(() => {
+                      const filtered = availableTravelers.filter(t =>
+                        !peopleSearch || t.name.toLowerCase().includes(peopleSearch.toLowerCase()) || t.email.toLowerCase().includes(peopleSearch.toLowerCase())
+                      );
+                      return filtered.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {filtered.map(t => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => {
+                                const newIds = [...(trip.travelerIds || []), t.id];
+                                const newTravelers = [...(trip.travelers || []), { id: t.id, name: t.name, initials: t.initials }];
+                                updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
+                                toast.success(`Added ${t.name} to trip`);
+                              }}
+                              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 hover:bg-brand/5 transition-all group text-left"
+                            >
+                              <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">{t.email}</p>
+                              </div>
+                              <Plus className="h-4 w-4 text-slate-300 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-slate-400 dark:text-[#666]">
+                          <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers created yet" : "All travelers are assigned"}</p>
+                          <p className="text-[10px] mt-1">Add travelers on the Travelers page first</p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
             )}
           </main>
 
@@ -883,10 +1305,15 @@ export function WorkspacePage() {
                     </div>
                   )}
 
-                  {/* Location */}
+                  {/* Location — with Mapbox autocomplete */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
-                    <Input value={editingEvent?.location || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, location: e.target.value } : null)} placeholder="Airport code or Street Address" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                    <LocationAutocomplete
+                      value={editingEvent?.location || ""}
+                      onChange={val => setEditingEvent(prev => prev ? { ...prev, location: val } : null)}
+                      placeholder="Search for a place..."
+                      className="h-10 w-full text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
+                    />
                   </div>
 
                   {/* Supplier + Conf# */}
@@ -923,6 +1350,7 @@ export function WorkspacePage() {
                             {[
                               { key: "airline", label: "Airline" }, { key: "flightNum", label: "Flight No." },
                               { key: "terminal", label: "Dep Terminal" }, { key: "arrTerminal", label: "Arr Terminal" },
+                              { key: "gate", label: "Gate" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
@@ -1143,6 +1571,83 @@ export function WorkspacePage() {
                   )}
                 </div>
 
+                {/* People Assignment */}
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">People</label>
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#1a1a1a] rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          !editingEvent?.assignedTo || editingEvent.assignedTo.length === 0
+                            ? "bg-brand text-black shadow-sm"
+                            : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        Everyone
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: prev.assignedTo?.length ? prev.assignedTo : [] } : null)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                          editingEvent?.assignedTo && editingEvent.assignedTo.length >= 0 && editingEvent.assignedTo !== undefined
+                            ? "bg-brand text-black shadow-sm"
+                            : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        Specific
+                      </button>
+                    </div>
+                  </div>
+                  {editingEvent?.assignedTo !== undefined && (
+                    <div className="space-y-1.5">
+                      {tripTravelers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {tripTravelers.map(t => {
+                            const isAssigned = editingEvent.assignedTo?.includes(t.id);
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => {
+                                  setEditingEvent(prev => {
+                                    if (!prev) return null;
+                                    const current = prev.assignedTo || [];
+                                    const next = isAssigned
+                                      ? current.filter(id => id !== t.id)
+                                      : [...current, t.id];
+                                    return { ...prev, assignedTo: next };
+                                  });
+                                }}
+                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                  isAssigned
+                                    ? "bg-brand/10 border-brand/30 text-brand"
+                                    : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#888] hover:border-brand/30"
+                                }`}
+                              >
+                                <span className="h-5 w-5 rounded-md bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-[8px] font-black shrink-0">{t.initials}</span>
+                                {t.name.split(" ")[0]}
+                                {isAssigned && <Check className="h-3 w-3" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 dark:text-[#666] font-medium">
+                          Add travelers in the People tab first to assign them to events.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Description (visible to travelers) */}
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Description (Visible to Travelers)</label>
+                  <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
+                </div>
+
                 {/* Notes */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Agent Notes (Internal)</label>
@@ -1173,23 +1678,26 @@ export function WorkspacePage() {
 
       {/* Edit Trip Dialog */}
       <Dialog open={editTripOpen} onOpenChange={setEditTripOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
+        <DialogContent className="max-w-2xl bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
           <form onSubmit={handleSaveTrip}>
-            <DialogHeader className="px-8 pt-8 pb-6 border-b border-slate-200 dark:border-[#1f1f1f]">
+            <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f]">
               <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
+              <p className="text-xs text-slate-500 dark:text-[#666] font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
-            <div className="p-8 space-y-5 max-h-[60vh] overflow-y-auto">
-              {/* Cover image */}
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+
+              {/* ── Section: Cover Image ── */}
               <div className="space-y-2.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Cover Image</label>
-                {/* Preview */}
+                <div className="flex items-center gap-2 mb-1">
+                  <ImageIcon2 className="h-3.5 w-3.5 text-brand" />
+                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Cover Image</label>
+                </div>
                 {editingTrip.image && (
-                  <div className="h-32 rounded-2xl overflow-hidden relative">
+                  <div className="h-36 rounded-2xl overflow-hidden relative">
                     <img src={editingTrip.image} alt="" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
                 )}
-                {/* Search bar */}
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
@@ -1222,10 +1730,9 @@ export function WorkspacePage() {
                     </>
                   )}
                 </div>
-                {/* Grid */}
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {isTripImageSearching ? (
-                    <div className="col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                    <div className="col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
                       <Loader2 className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                     </div>
@@ -1248,85 +1755,218 @@ export function WorkspacePage() {
                   )}
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</label>
-                <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Destination</label>
-                  <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+
+              {/* ── Section: Trip Details ── */}
+              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="h-3.5 w-3.5 text-brand" />
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Details</h4>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Attendees</label>
-                  <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</label>
+                    <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Destination</label>
+                      <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Attendees</label>
+                      <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
+                      <Popover>
+                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
+                          <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
+                            {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
+                          </span>
+                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="p-0 w-auto">
+                          <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
+                      <Popover>
+                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
+                          <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
+                            {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
+                          </span>
+                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="p-0 w-auto">
+                          <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Currency</label>
+                      <select
+                        value={editingTrip.currency ?? "USD"}
+                        onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
+                        className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
+                      >
+                        {[
+                          ["USD", "USD — US Dollar"],
+                          ["EUR", "EUR — Euro"],
+                          ["GBP", "GBP — British Pound"],
+                          ["AED", "AED — UAE Dirham"],
+                          ["AUD", "AUD — Australian Dollar"],
+                          ["CAD", "CAD — Canadian Dollar"],
+                          ["CHF", "CHF — Swiss Franc"],
+                          ["CNY", "CNY — Chinese Yuan"],
+                          ["INR", "INR — Indian Rupee"],
+                          ["JPY", "JPY — Japanese Yen"],
+                          ["KES", "KES — Kenyan Shilling"],
+                          ["MXN", "MXN — Mexican Peso"],
+                          ["NGN", "NGN — Nigerian Naira"],
+                          ["SGD", "SGD — Singapore Dollar"],
+                          ["THB", "THB — Thai Baht"],
+                          ["ZAR", "ZAR — South African Rand"],
+                        ].map(([code, label]) => (
+                          <option key={code} value={code}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
-                  <Popover>
-                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                      <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
-                        {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
-                      </span>
-                      <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="p-0 w-auto">
-                      <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
-                    </PopoverContent>
-                  </Popover>
+
+              {/* ── Section: Organizer / Agent ── */}
+              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="h-3.5 w-3.5 text-brand" />
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Organizer / Agent</h4>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
-                  <Popover>
-                    <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                      <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
-                        {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
-                      </span>
-                      <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="p-0 w-auto">
-                      <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
-                    </PopoverContent>
-                  </Popover>
+                <div className="flex gap-5">
+                  {/* Avatar preview */}
+                  <div className="shrink-0 flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+                      {(editingTrip.organizer as any)?.name ? (
+                        <span className="text-lg font-black text-brand uppercase">
+                          {(editingTrip.organizer as any).name.split(" ").slice(0, 2).map((w: string) => w[0]).join("")}
+                        </span>
+                      ) : (
+                        <Users className="h-6 w-6 text-brand/40" />
+                      )}
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">Preview</span>
+                  </div>
+                  {/* Fields */}
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    {[
+                      { key: "name", label: "Full Name", placeholder: "e.g., Jane Smith", span: 2 },
+                      { key: "role", label: "Role", placeholder: "e.g., Travel Consultant" },
+                      { key: "company", label: "Company", placeholder: "e.g., Acme Travel" },
+                      { key: "email", label: "Email", placeholder: "e.g., jane@acme.com" },
+                      { key: "phone", label: "Phone", placeholder: "e.g., +1 555 0123" },
+                    ].map(f => (
+                      <div key={f.key} className={`space-y-1 ${"span" in f && f.span === 2 ? "col-span-2" : ""}`}>
+                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
+                        <Input
+                          value={(editingTrip.organizer as any)?.[f.key] ?? ""}
+                          onChange={e => setEditingTrip(prev => ({ ...prev, organizer: { ...((prev.organizer as any) ?? {}), [f.key]: e.target.value } }))}
+                          placeholder={f.placeholder}
+                          className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Currency</label>
-                <select
-                  value={editingTrip.currency ?? "USD"}
-                  onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
-                  className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
-                >
-                  {[
-                    ["USD", "USD — US Dollar"],
-                    ["EUR", "EUR — Euro"],
-                    ["GBP", "GBP — British Pound"],
-                    ["AED", "AED — UAE Dirham"],
-                    ["AUD", "AUD — Australian Dollar"],
-                    ["CAD", "CAD — Canadian Dollar"],
-                    ["CHF", "CHF — Swiss Franc"],
-                    ["CNY", "CNY — Chinese Yuan"],
-                    ["INR", "INR — Indian Rupee"],
-                    ["JPY", "JPY — Japanese Yen"],
-                    ["KES", "KES — Kenyan Shilling"],
-                    ["MXN", "MXN — Mexican Peso"],
-                    ["NGN", "NGN — Nigerian Naira"],
-                    ["SGD", "SGD — Singapore Dollar"],
-                    ["THB", "THB — Thai Baht"],
-                    ["ZAR", "ZAR — South African Rand"],
-                  ].map(([code, label]) => (
-                    <option key={code} value={code}>{label}</option>
-                  ))}
-                </select>
+
+              {/* ── Section: Information & Documents ── */}
+              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-brand" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</h4>
+                    {(editingTrip.info?.length ?? 0) > 0 && (
+                      <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">{editingTrip.info!.length}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTrip(prev => ({
+                      ...prev,
+                      info: [...(prev.info ?? []), { id: Date.now().toString(), title: "", body: "" }],
+                    }))}
+                    className="h-7 px-3 rounded-lg bg-brand/10 hover:bg-brand/20 text-[10px] font-bold uppercase tracking-wider text-brand transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" /> Add Page
+                  </button>
+                </div>
+                {(editingTrip.info ?? []).length === 0 && (
+                  <div className="text-center py-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
+                    <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
+                      <FileText className="h-5 w-5 text-brand/50" />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-[#666] font-bold">No information pages yet</p>
+                    <p className="text-[10px] text-slate-400 dark:text-[#444] mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
+                  </div>
+                )}
+                {(editingTrip.info ?? []).map((item, idx) => (
+                  <div key={item.id} className="mb-3 group rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    {/* Card header with number badge + title + delete */}
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                        <span className="text-[11px] font-black text-brand">{idx + 1}</span>
+                      </div>
+                      <Input
+                        value={item.title}
+                        onChange={e => {
+                          const updated = [...(editingTrip.info ?? [])];
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          setEditingTrip(prev => ({ ...prev, info: updated }));
+                        }}
+                        placeholder="Page title — e.g., Visa Requirements"
+                        className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
+                          setEditingTrip(prev => ({ ...prev, info: updated }));
+                        }}
+                        className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {/* Body textarea */}
+                    <div className="px-4 pb-4">
+                      <Textarea
+                        value={item.body}
+                        onChange={e => {
+                          const updated = [...(editingTrip.info ?? [])];
+                          updated[idx] = { ...updated[idx], body: e.target.value };
+                          setEditingTrip(prev => ({ ...prev, info: updated }));
+                        }}
+                        placeholder="Write content that travelers will see..."
+                        className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Status</label>
+
+              {/* ── Section: Status ── */}
+              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag className="h-3.5 w-3.5 text-brand" />
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Status</h4>
+                </div>
                 <div className="flex gap-2">
                   {(["Draft", "In Progress", "Published"] as const).map(s => (
                     <button key={s} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, status: s }))}
-                      className={`flex-1 h-10 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex-1 h-11 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
                         editingTrip.status === s
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
                             : s === "In Progress" ? "bg-brand text-black shadow-lg shadow-brand/20"
@@ -1342,6 +1982,129 @@ export function WorkspacePage() {
             <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
               <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Organizer mini-dialog ── */}
+      <Dialog open={editOrgOpen} onOpenChange={setEditOrgOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
+          <form onSubmit={handleSaveOrg}>
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-brand" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Organizer</DialogTitle>
+                  <p className="text-[10px] text-slate-500 dark:text-[#666] font-medium mt-0.5">Trip contact person visible to travelers</p>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 space-y-3">
+              {[
+                { key: "name", label: "Full Name", placeholder: "e.g., Jane Smith" },
+                { key: "role", label: "Role", placeholder: "e.g., Travel Consultant" },
+                { key: "company", label: "Company", placeholder: "e.g., Acme Travel" },
+                { key: "email", label: "Email", placeholder: "e.g., jane@acme.com" },
+                { key: "phone", label: "Phone", placeholder: "e.g., +1 555 0123" },
+              ].map(f => (
+                <div key={f.key} className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">{f.label}</label>
+                  <Input
+                    value={(editOrgData as any)[f.key] ?? ""}
+                    onChange={e => setEditOrgData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
+                  />
+                </div>
+              ))}
+            </div>
+            <DialogFooter className="px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
+              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Information mini-dialog ── */}
+      <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
+          <form onSubmit={handleSaveInfo}>
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-brand" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Information</DialogTitle>
+                    <p className="text-[10px] text-slate-500 dark:text-[#666] font-medium mt-0.5">Pages visible to travelers</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditInfoData(prev => [...prev, { id: Date.now().toString(), title: "", body: "" }])}
+                  className="h-9 px-3 rounded-xl bg-brand/10 hover:bg-brand/20 text-[10px] font-bold uppercase tracking-wider text-brand transition-colors flex items-center gap-1.5"
+                >
+                  <Plus className="h-3 w-3" /> Add Page
+                </button>
+              </div>
+            </DialogHeader>
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
+              {editInfoData.length === 0 && (
+                <div className="text-center py-10 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
+                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
+                    <FileText className="h-5 w-5 text-brand/50" />
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-[#666] font-bold">No pages yet</p>
+                  <p className="text-[10px] text-slate-400 dark:text-[#444] mt-1">Add travel tips, visa info, packing lists</p>
+                </div>
+              )}
+              {editInfoData.map((item, idx) => (
+                <div key={item.id} className="group rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                      <span className="text-[11px] font-black text-brand">{idx + 1}</span>
+                    </div>
+                    <Input
+                      value={item.title}
+                      onChange={e => {
+                        const updated = [...editInfoData];
+                        updated[idx] = { ...updated[idx], title: e.target.value };
+                        setEditInfoData(updated);
+                      }}
+                      placeholder="Page title — e.g., Visa Requirements"
+                      className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
+                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="px-4 pb-4">
+                    <Textarea
+                      value={item.body}
+                      onChange={e => {
+                        const updated = [...editInfoData];
+                        updated[idx] = { ...updated[idx], body: e.target.value };
+                        setEditInfoData(updated);
+                      }}
+                      placeholder="Write content that travelers will see..."
+                      className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <DialogFooter className="px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
+              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>

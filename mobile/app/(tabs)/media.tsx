@@ -1,10 +1,10 @@
 import { Illustration } from "@/components/Illustration";
 import {
   View, Text, ScrollView, Image, StyleSheet,
-  Pressable, Alert, Platform, FlatList,
+  Pressable, Alert, Platform, FlatList, RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Images, Play, Plus, Upload, Camera } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
@@ -42,7 +42,13 @@ async function pickMedia(onPicked: (items: TripMedia[]) => void) {
 export default function MediaScreen() {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, updateTrip } = useTrips();
+  const { trips, updateTrip, reload } = useTrips();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await reload();
+    setRefreshing(false);
+  }, [reload]);
 
   const { photos, videos, totalItems } = useMemo(() => {
     const all = trips.flatMap(t => t.media ?? []);
@@ -82,10 +88,14 @@ export default function MediaScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+      >
 
         {/* ── Header ── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { marginTop: -500, paddingTop: (Platform.OS === "android" ? S.md : S.xs) + 500 }]}>
           <View style={styles.headerLeft}>
             <View style={styles.brandRow}>
               <Logo size={11} color={C.teal} />
@@ -224,8 +234,8 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2,
     },
     pageTitle: {
-      fontSize: T["3xl"] + 2, fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.5, marginBottom: 2,
+      fontSize: T["3xl"] + 2, fontWeight: T.bold,
+      color: C.textPrimary, letterSpacing: -0.3, marginBottom: 2,
     },
     pageSub: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, lineHeight: 20 },
     uploadBtn: {
@@ -233,16 +243,15 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.teal, borderRadius: R.full,
       paddingHorizontal: S.sm, paddingVertical: 9, marginBottom: 2,
     },
-    uploadBtnText: { fontSize: T.sm, fontWeight: T.black, color: C.bg, letterSpacing: 0.3 },
+    uploadBtnText: { fontSize: T.sm, fontWeight: T.bold, color: C.bg, letterSpacing: 0.3 },
 
     // Filters
     filterRow: { paddingHorizontal: S.md, gap: S.xs, marginBottom: S.md },
     filterChip: {
       paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.full,
       backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
-    filterChipActive: { backgroundColor: C.teal, borderColor: C.teal },
+    filterChipActive: { backgroundColor: C.teal },
     filterText: {
       fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
       letterSpacing: 0.5, textTransform: "uppercase",
@@ -256,13 +265,13 @@ function makeStyles(C: ThemeColors) {
     },
     emptyIconRing: {
       width: 72, height: 72, borderRadius: R.full,
-      backgroundColor: C.tealDim, borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.tealMid, alignItems: "center", justifyContent: "center",
+      backgroundColor: C.tealDim,
+      alignItems: "center", justifyContent: "center",
       marginBottom: S.sm,
     },
     emptyTitle: {
-      fontSize: T["2xl"], fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.5, textAlign: "center",
+      fontSize: T["2xl"], fontWeight: T.bold,
+      color: C.textPrimary, letterSpacing: -0.3, textAlign: "center",
     },
     emptyText: {
       fontSize: T.base, color: C.textTertiary,
@@ -270,7 +279,6 @@ function makeStyles(C: ThemeColors) {
     },
     emptyUploadBtn: {
       flexDirection: "row", alignItems: "center", gap: 8, marginTop: S.sm,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
       borderRadius: R.full, paddingHorizontal: S.md, paddingVertical: 10,
       backgroundColor: C.tealDim,
     },
@@ -285,14 +293,13 @@ function makeStyles(C: ThemeColors) {
     tripThumb: { width: 42, height: 42, borderRadius: R.md },
     tripSectionInfo: { flex: 1 },
     tripDest: {
-      fontSize: T.xs, fontWeight: T.black, color: C.teal,
+      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 1.2, marginBottom: 1,
     },
     tripSectionName: { fontSize: T.base, fontWeight: T.bold, color: C.textPrimary },
     tripSectionCount: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, marginTop: 1 },
     addToTripBtn: {
       flexDirection: "row", alignItems: "center", gap: 4,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
       borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
       backgroundColor: C.tealDim,
     },
@@ -314,6 +321,6 @@ function makeStyles(C: ThemeColors) {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: "#00000075", alignItems: "center", justifyContent: "center",
     },
-    moreText: { fontSize: T.lg, fontWeight: T.black, color: "#fff" },
+    moreText: { fontSize: T.lg, fontWeight: T.bold, color: "#fff" },
   });
 }

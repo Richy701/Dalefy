@@ -4,20 +4,26 @@ import type { AccentId } from "@/constants/theme";
 
 const STORAGE_KEY = "daf-prefs";
 
+export type ThemeMode = "light" | "dark" | "system";
+
 export interface Preferences {
   name: string;
+  avatar: string;
   tripReminders: boolean;
   itineraryUpdates: boolean;
   accent: AccentId;
-  compactMode: boolean;
+  haptics: boolean;
+  themeMode: ThemeMode;
 }
 
 const DEFAULT_PREFS: Preferences = {
   name: "",
+  avatar: "",
   tripReminders: true,
   itineraryUpdates: true,
   accent: "teal",
-  compactMode: false,
+  haptics: true,
+  themeMode: "system",
 };
 
 interface PreferencesContextType {

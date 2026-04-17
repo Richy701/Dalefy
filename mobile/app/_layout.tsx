@@ -10,6 +10,8 @@ import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
+import { ToastProvider } from "@/context/ToastContext";
+import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
 
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -108,7 +110,11 @@ export default function RootLayout() {
         <ThemeProvider>
           <NotificationProvider>
             <TripsProvider>
-              <AppStack />
+              <ComplianceProvider>
+                <ToastProvider>
+                  <AppStack />
+                </ToastProvider>
+              </ComplianceProvider>
             </TripsProvider>
           </NotificationProvider>
         </ThemeProvider>

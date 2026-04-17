@@ -17,17 +17,26 @@ Internal travel planning and itinerary management platform for teams. Build, man
 ### Workspace (Itinerary Builder)
 - Day-by-day event management — flights, hotels, activities, dining
 - Inline event editor with date picker, time, notes, and tags
-- Interactive route map powered by Mapbox GL with marching-ants arc animation
+- **Location autocomplete** — Mapbox Geocoding-powered address search in the event editor
+- Interactive route map powered by Mapbox GL with marching-ants arc animation and **animated plane markers** flying along flight arcs
 - Per-trip media tab alongside the itinerary
 - AI Zap — AI-assisted itinerary suggestions
-- PDF export via html2canvas + jsPDF
+- **PDF export** via html2canvas + jsPDF with Mapbox Static Image route map header
+- Organizer contact fields (name, role, company, email, phone) in trip edit
+- Information & documents section — repeatable title + body entries per trip
+- Event description field (visible to travelers) separate from internal agent notes
 - One-click publish with push notifications to mobile devices
 - Shareable trip links (public, no auth required)
 - **Trip PIN** — every published trip gets a 4-digit PIN auto-allocated in Supabase, shown as the hero on the share-pass stub so travelers can type it directly on mobile (no pasting required)
 
 ### Destinations
-- Mapbox world map with pulsing destination markers
+- Dashboard-style hero banner with 3D globe (Mapbox `globe` projection + terrain + atmosphere)
+- **Heatmap layer** — accent-colored density visualization of travel activity
 - Connection lines between visited destinations via GeoJSON layers
+- **Animated planes** flying along connection lines
+- Prev/next navigation buttons to fly between destinations
+- Enhanced tooltip with trip count, event count, and event-type breakdown
+- Geocoding-powered coordinates (no hardcoded location data)
 - Region filtering and search
 - Tall destination cards with event breakdown
 
@@ -70,8 +79,15 @@ Internal travel planning and itinerary management platform for teams. Build, man
 
 Companion Expo React Native app in the `mobile/` directory.
 
-- 5-tab layout: Trips, World, Plan, Gallery, Me
-- Trip detail screen with hero banner, route map, and day-by-day itinerary
+- 3-tab layout: Trips, World, Me
+- **Live countdown** — ticking D:H:M:S departure counter on the home banner
+- Trip detail screen with parallax hero, route map, organizer card, and compact day summary rows
+- **Flight arc lines** — great-circle arcs with animated plane markers on the trip detail map
+- **Heatmap + animated planes** on the destinations world map
+- Day detail drill-in screen with full event cards
+- Organizer contact card with call/email actions
+- Information & documents section per trip
+- Compliance document tracking with sign/remind actions
 - Brand logo mark inline with "DAF Adventures" across every header and footer
 - iOS overscroll bounce matches the app background (no white flash on pull-down)
 - Real-time sync with web app via Supabase Realtime
@@ -79,7 +95,9 @@ Companion Expo React Native app in the `mobile/` directory.
 - Push notifications when trips are published/updated
 - Deep linking (`dafadventures://shared/:tripId`)
 - Shared trip screen for public trip links
-- **Trip PIN entry** — passport modal detects a 4-digit PIN and resolves it via Supabase to the matching trip (falls back to link paste)
+- **Trip PIN entry** — passport modal with PIN, QR scan, and link paste modes
+- Onboarding welcome screen with name entry and notification permission
+- Settings screen with appearance, notification, and account options
 - Dark/light theme with system detection
 - Notification center with persistent history
 

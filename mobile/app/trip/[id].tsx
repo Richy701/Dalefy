@@ -1,5 +1,5 @@
 import {
-  View, Text, ScrollView, Pressable,
+  View, Text, Pressable,
   StyleSheet, Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,15 +7,35 @@ import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, Map
+  ArrowLeft, Compass, MapPin, Users, Moon, Map, ChevronDown, Check,
+  FileText,
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useCompliance } from "@/context/ComplianceContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
-import { EventCard, ConfRow, DocsRow } from "@/components/EventCard";
+import { buildArc, interpolateArc } from "@/shared/mapUtils";
+import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { DaySummaryRow } from "@/components/DaySummaryRow";
+import { OrganizerCard } from "@/components/OrganizerCard";
+import { InfoDocsRow } from "@/components/InfoDocsRow";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
+import { BlurView } from "expo-blur";
+
+const HERO_H = 380;
+const HEADER_H = 56;
+const COLLAPSE_START = 180;
+const COLLAPSE_END = HERO_H - HEADER_H;
 
 // Safe conditional import — @rnmapbox/maps throws at eval time when native module
 // is not linked (Expo Go). Guard so the screen renders without crashing.
@@ -29,15 +49,98 @@ try {
 const DARK_STYLE  = "mapbox://styles/mapbox/dark-v11";
 const LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
 
+function timeToMinutes(t: string): number {
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 720;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const pm = m[3].toUpperCase() === "PM";
+  if (pm && h < 12) h += 12;
+  if (!pm && h === 12) h = 0;
+  return h * 60 + min;
+}
 
 export default function TripScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trips } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
+  const { pendingCount } = useCompliance();
+
+  const insets = useSafeAreaInsets();
+  const safeBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  }, [router]);
   const styles = useMemo(() => makeStyles(C), [C]);
   const trip = trips.find(t => t.id === id);
+
+  // ── Parallax scroll state ──
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => { scrollY.value = e.contentOffset.y; },
+  });
+
+  // Hero image: parallax (moves at 50% scroll speed) + slight scale on overscroll
+  const heroImageStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          scrollY.value,
+          [-100, 0, HERO_H],
+          [-50, 0, HERO_H * 0.4],
+          Extrapolation.CLAMP,
+        ),
+      },
+      {
+        scale: interpolate(
+          scrollY.value,
+          [-200, 0],
+          [1.4, 1],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  // Hero content (title/chips): fade out as we scroll
+  const heroContentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [0, COLLAPSE_START],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
+    transform: [
+      {
+        translateY: interpolate(
+          scrollY.value,
+          [0, COLLAPSE_START],
+          [0, -30],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  // Compact sticky header: fades in as hero collapses
+  const stickyHeaderStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [COLLAPSE_START, COLLAPSE_END],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
+    pointerEvents: scrollY.value > COLLAPSE_START ? "auto" as const : "none" as const,
+  }));
+
+  // Back button: always visible but adjusts bg
+  const backBtnStyle = useAnimatedStyle(() => ({
+    opacity: 1,
+  }));
   const [mapReady, setMapReady] = useState(false);
+  const [viewAsId, setViewAsId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
   // Reset layers when theme swaps styleURL — new style has no layers yet.
@@ -90,12 +193,72 @@ export default function TripScreen() {
     })),
   }), [eventCoords]);
 
+  // Flight arc lines — great-circle arcs for "X to Y" flight locations
+  const [arcGeoJSON, setArcGeoJSON] = useState<GeoJSON.FeatureCollection>({
+    type: "FeatureCollection", features: [],
+  });
+  const [planeGeoJSON, setPlaneGeoJSON] = useState<GeoJSON.FeatureCollection>({
+    type: "FeatureCollection", features: [],
+  });
+  const planeTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    if (!trip) return;
+    let cancelled = false;
+    (async () => {
+      const flights = trip.events.filter(e => e.type === "flight");
+      const features: GeoJSON.Feature[] = [];
+      for (const fe of flights) {
+        const match = fe.location.match(/^(.+?)\s+to\s+(.+)$/);
+        if (!match) continue;
+        const from = resolveCoords(match[1].trim()) ?? (await geocode(match[1].trim()));
+        const to = resolveCoords(match[2].trim()) ?? (await geocode(match[2].trim()));
+        if (!from || !to) continue;
+        // buildArc returns [lat,lng][], convert to [lng,lat][] for Mapbox
+        const arcCoords = buildArc(from, to).map(p => [p[1], p[0]]);
+        features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: arcCoords },
+          properties: {},
+        });
+      }
+      if (!cancelled) setArcGeoJSON({ type: "FeatureCollection", features });
+    })();
+    return () => { cancelled = true; };
+  }, [trip?.events]);
+
+  // Animate planes along flight arcs
+  useEffect(() => {
+    if (arcGeoJSON.features.length === 0) {
+      setPlaneGeoJSON({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    const arcs = arcGeoJSON.features.map(f => (f.geometry as any).coordinates as number[][]);
+    const DURATION = 6000;
+    const start = Date.now();
+
+    planeTimerRef.current = setInterval(() => {
+      const t = ((Date.now() - start) % DURATION) / DURATION;
+      const features: GeoJSON.Feature[] = arcs.map((arc, i) => {
+        const pos = interpolateArc(arc, t);
+        return {
+          type: "Feature",
+          properties: { bearing: pos.bearing, idx: i },
+          geometry: { type: "Point", coordinates: [pos.lng, pos.lat] },
+        };
+      });
+      setPlaneGeoJSON({ type: "FeatureCollection", features });
+    }, 80);
+
+    return () => clearInterval(planeTimerRef.current);
+  }, [arcGeoJSON]);
+
   if (!trip) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.errorText}>Trip not found</Text>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={safeBack} style={styles.backBtn}>
             <Text style={styles.backBtnText}>Go back</Text>
           </Pressable>
         </View>
@@ -107,20 +270,66 @@ export default function TripScreen() {
   const end    = new Date(trip.end);
   const nights = Math.ceil((end.getTime() - start.getTime()) / 86400000);
 
-  const grouped = trip.events.reduce<Record<string, typeof trip.events>>((acc, ev) => {
+  const hasTravelers = (trip.travelers?.length ?? 0) > 0;
+  const viewAsTraveler = viewAsId ? trip.travelers?.find(t => t.id === viewAsId) ?? null : null;
+
+  const filteredEvents = viewAsId
+    ? trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId))
+    : trip.events;
+
+  const grouped = filteredEvents.reduce<Record<string, typeof trip.events>>((acc, ev) => {
     if (!acc[ev.date]) acc[ev.date] = [];
     acc[ev.date].push(ev);
     return acc;
   }, {});
+  for (const evs of Object.values(grouped)) {
+    evs.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* ── Hero banner — matches web WorkspacePage trip banner ── */}
+      {/* ── Sticky compact header — fades in as hero collapses ── */}
+      <Animated.View
+        style={[
+          styles.stickyHeader,
+          { paddingTop: insets.top, height: HEADER_H + insets.top },
+          stickyHeaderStyle,
+        ]}
+      >
+        <BlurView
+          intensity={Platform.OS === "ios" ? 60 : 80}
+          tint={isDark ? "dark" : "light"}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.stickyInner}>
+          <Pressable
+            style={({ pressed }) => [styles.stickyBackBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={safeBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <ArrowLeft size={15} color={C.textPrimary} strokeWidth={2} />
+          </Pressable>
+          <Text style={[styles.stickyTitle, { color: C.textPrimary }]} numberOfLines={1}>
+            {trip.name}
+          </Text>
+          <View style={{ width: 44 }} />
+        </View>
+      </Animated.View>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
+
+        {/* ── Hero banner — parallax ── */}
         <View style={styles.hero}>
-          <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} />
-          {/* Two-layer gradient matching web: top-to-bottom + subtle left-to-right */}
+          <Animated.View style={[StyleSheet.absoluteFillObject, heroImageStyle]}>
+            <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+          </Animated.View>
           <LinearGradient
             colors={["#00000008", "#00000040", "#000000e8"]}
             locations={[0, 0.4, 1]}
@@ -132,29 +341,18 @@ export default function TripScreen() {
             style={StyleSheet.absoluteFillObject}
           />
 
-          {/* Top row: back + status + event/days count */}
-          <View style={[styles.heroTopRow, { top: Platform.OS === "android" ? 20 : 56 }]}>
-            <Pressable
-              style={({ pressed }) => [styles.backCircle, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => router.back()}
-            >
-              <ArrowLeft size={15} color="#fff" strokeWidth={2} />
-            </Pressable>
-            <View style={[
-              styles.statusBadge,
-              trip.status === "Published" ? styles.statusPublished
-                : trip.status === "In Progress" ? styles.statusActive
-                : styles.statusDraft,
-            ]}>
-              <Text style={[
-                styles.statusBadgeText,
-                trip.status === "Draft" ? { color: "#fff" } : { color: trip.status === "Published" ? "#fff" : "#000" },
-              ]}>
-                {trip.status === "In Progress" ? "● ACTIVE"
-                  : trip.status === "Published" ? "✓ PUBLISHED"
-                  : "DRAFT"}
-              </Text>
-            </View>
+          {/* Top row: back + event/days count */}
+          <View style={[styles.heroTopRow, { top: insets.top + 8 }]}>
+            <Animated.View style={backBtnStyle}>
+              <Pressable
+                style={({ pressed }) => [styles.backCircle, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={safeBack}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <ArrowLeft size={15} color="#fff" strokeWidth={2} />
+              </Pressable>
+            </Animated.View>
             <View style={{ flex: 1 }} />
             <View style={styles.countPill}>
               <Text style={styles.countPillText}>{trip.events.length} events</Text>
@@ -163,15 +361,14 @@ export default function TripScreen() {
             </View>
           </View>
 
-          {/* Bottom: eyebrow + title + frosted glass chips */}
-          <View style={styles.heroContent}>
+          {/* Bottom: eyebrow + title + frosted glass chips — fades on scroll */}
+          <Animated.View style={[styles.heroContent, heroContentStyle]}>
             <View style={styles.heroEyebrowRow}>
               <Logo size={10} color={C.teal} />
               <Text style={[styles.heroEyebrow, { marginBottom: 0 }]}>DAF Adventures · Itinerary</Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
 
-            {/* Frosted glass stat chips */}
             <View style={styles.chipsRow}>
               {(() => {
                 const parsedPax = parseInt(trip.paxCount || "", 10);
@@ -206,8 +403,41 @@ export default function TripScreen() {
                 </View>
               ) : null}
             </View>
-          </View>
+          </Animated.View>
         </View>
+
+        {/* ── Organizer contact card ── */}
+        {trip.organizer && <OrganizerCard organizer={trip.organizer} C={C} />}
+
+        {/* ── Information & Documents ── */}
+        {trip.info && trip.info.length > 0 && (
+          <InfoDocsRow
+            count={trip.info.length}
+            C={C}
+            onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
+          />
+        )}
+
+        {/* ── Compliance badge ── */}
+        {pendingCount > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.complianceBadge, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => router.push("/(tabs)/profile")}
+          >
+            <View style={[styles.complianceIcon, { backgroundColor: C.amberDim }]}>
+              <FileText size={14} color={C.amber} strokeWidth={1.5} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.complianceTitle}>Documents pending</Text>
+              <Text style={styles.complianceSub}>
+                {pendingCount} doc{pendingCount === 1 ? "" : "s"} require{pendingCount === 1 ? "s" : ""} your signature
+              </Text>
+            </View>
+            <View style={[styles.complianceCount, { backgroundColor: C.amberDim }]}>
+              <Text style={[styles.complianceCountText, { color: C.amber }]}>{pendingCount}</Text>
+            </View>
+          </Pressable>
+        )}
 
         {/* ── Map (only when native module is linked) ── */}
         {mapCenter && MapboxGL && (
@@ -237,6 +467,44 @@ export default function TripScreen() {
                 />
                 {mapReady && (
                   <>
+                    {/* Flight arc lines */}
+                    <MapboxGL.ShapeSource id="trip-arcs" shape={arcGeoJSON}>
+                      <MapboxGL.LineLayer
+                        id="arc-glow"
+                        style={{
+                          lineColor: C.teal,
+                          lineWidth: 6,
+                          lineOpacity: 0.08,
+                          lineCap: "round",
+                        }}
+                      />
+                      <MapboxGL.LineLayer
+                        id="arc-line"
+                        style={{
+                          lineColor: C.teal,
+                          lineWidth: 1.5,
+                          lineOpacity: 0.6,
+                          lineCap: "round",
+                          lineDasharray: [2, 4],
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                    {/* Animated planes along arcs */}
+                    <MapboxGL.ShapeSource id="trip-planes" shape={planeGeoJSON}>
+                      <MapboxGL.SymbolLayer
+                        id="trip-plane-icons"
+                        style={{
+                          iconImage: "airport",
+                          iconSize: 0.7,
+                          iconColor: C.teal,
+                          iconRotate: ["get", "bearing"],
+                          iconRotationAlignment: "map",
+                          iconAllowOverlap: true,
+                          iconIgnorePlacement: true,
+                        }}
+                      />
+                    </MapboxGL.ShapeSource>
+                    {/* Location rings */}
                     <MapboxGL.ShapeSource id="trip-rings" shape={geojson}>
                       <MapboxGL.CircleLayer
                         id="trip-ring-layer"
@@ -272,6 +540,70 @@ export default function TripScreen() {
           </View>
         )}
 
+        {/* ── View As picker ── */}
+        {hasTravelers && (
+          <View style={styles.viewAsWrap}>
+            <Pressable
+              style={[styles.viewAsBtn, viewAsId ? styles.viewAsBtnActive : null]}
+              onPress={() => setPickerOpen(!pickerOpen)}
+            >
+              <View style={[styles.viewAsAvatar, viewAsId ? styles.viewAsAvatarActive : null]}>
+                {viewAsTraveler
+                  ? <Text style={styles.viewAsAvatarText}>{viewAsTraveler.initials}</Text>
+                  : <Users size={13} color={C.textSecondary} strokeWidth={2} />
+                }
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.viewAsLabel}>
+                  {viewAsId ? "VIEWING AS" : "VIEW AS"}
+                </Text>
+                <Text style={[styles.viewAsName, { color: viewAsId ? C.teal : C.textPrimary }]} numberOfLines={1}>
+                  {viewAsTraveler ? viewAsTraveler.name : "Everyone"}
+                </Text>
+              </View>
+              <ChevronDown
+                size={14} color={C.textTertiary} strokeWidth={2}
+                style={{ transform: [{ rotate: pickerOpen ? "180deg" : "0deg" }] }}
+              />
+            </Pressable>
+
+            {pickerOpen && (
+              <View style={styles.viewAsDropdown}>
+                <Pressable
+                  style={[styles.viewAsOption, !viewAsId && styles.viewAsOptionActive]}
+                  onPress={() => { setViewAsId(null); setPickerOpen(false); }}
+                >
+                  <View style={styles.viewAsOptionDot}>
+                    <Text style={[styles.viewAsOptionDotText, { color: C.textSecondary }]}>ALL</Text>
+                  </View>
+                  <Text style={styles.viewAsOptionName}>Everyone</Text>
+                  {!viewAsId && <Check size={12} color={C.teal} strokeWidth={2.5} />}
+                </Pressable>
+                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginHorizontal: 10 }} />
+                {trip.travelers!.map(t => (
+                  <Pressable
+                    key={t.id}
+                    style={[styles.viewAsOption, viewAsId === t.id && styles.viewAsOptionActive]}
+                    onPress={() => { setViewAsId(t.id); setPickerOpen(false); }}
+                  >
+                    <View style={[styles.viewAsOptionDot, { backgroundColor: `${C.teal}15` }]}>
+                      <Text style={[styles.viewAsOptionDotText, { color: C.teal }]}>{t.initials}</Text>
+                    </View>
+                    <Text style={styles.viewAsOptionName}>{t.name}</Text>
+                    {viewAsId === t.id && <Check size={12} color={C.teal} strokeWidth={2.5} />}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {viewAsTraveler && (
+              <Text style={styles.viewAsSubtext}>
+                Showing {filteredEvents.length} of {trip.events.length} events
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* ── Itinerary ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -279,40 +611,27 @@ export default function TripScreen() {
             <Text style={styles.sectionEyebrow}>ITINERARY</Text>
           </View>
 
-          {Object.entries(grouped)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, events], dayIdx) => {
-              const d = new Date(date + "T12:00:00");
-              return (
-                <View key={date} style={styles.dayGroup}>
-                  <View style={styles.dayHeader}>
-                    <View style={styles.dayNumBox}>
-                      <Text style={styles.dayNum}>{dayIdx + 1}</Text>
-                    </View>
-                    <View style={styles.dayInfo}>
-                      <Text style={styles.dayName}>
-                        {d.toLocaleDateString("en-US", { weekday: "long" })}
-                      </Text>
-                      <Text style={styles.dayMonth}>
-                        {d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {events.map(ev => (
-                    <View key={ev.id} style={styles.eventWrap}>
-                      <EventCard ev={ev} C={C} />
-                      {ev.confNumber && <ConfRow confNumber={ev.confNumber} C={C} />}
-                      {ev.documents && ev.documents.length > 0 && (
-                        <DocsRow documents={ev.documents} C={C} />
-                      )}
-                    </View>
-                  ))}
-                </View>
-              );
-            })}
+          <View style={styles.dayRows}>
+            {(() => {
+              const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+              const todayStr = new Date().toISOString().split("T")[0];
+              return sortedDays.map(([date, events], dayIdx) => (
+                <DaySummaryRow
+                  key={date}
+                  dayIndex={dayIdx + 1}
+                  date={date}
+                  events={events}
+                  C={C}
+                  isToday={date === todayStr}
+                  isFirst={dayIdx === 0}
+                  isLast={dayIdx === sortedDays.length - 1}
+                  onPress={() => router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } })}
+                />
+              ));
+            })()}
+          </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -326,33 +645,42 @@ function makeStyles(C: ThemeColors) {
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
     backBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
 
-    // Hero — matches web WorkspacePage trip banner
-    hero: { height: 380, position: "relative" },
+    // Sticky compact header
+    stickyHeader: {
+      position: "absolute", top: 0, left: 0, right: 0,
+      zIndex: 10, overflow: "hidden",
+    },
+    stickyInner: {
+      flex: 1, flexDirection: "row", alignItems: "center",
+      paddingHorizontal: S.sm,
+    },
+    stickyBackBtn: {
+      width: 44, height: 44, borderRadius: R.full,
+      alignItems: "center", justifyContent: "center",
+    },
+    stickyTitle: {
+      flex: 1, fontSize: T.base, fontWeight: T.semibold,
+      textAlign: "center", letterSpacing: -0.2,
+    },
+
+    // Hero — parallax
+    hero: { height: HERO_H, position: "relative", overflow: "hidden" },
     backCircle: {
-      width: 32, height: 32, borderRadius: R.full,
-      backgroundColor: "#00000055", alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "#ffffff18",
+      width: 36, height: 36, borderRadius: R.full,
+      backgroundColor: C.elevated, alignItems: "center", justifyContent: "center",
     },
 
     heroTopRow: {
       position: "absolute", left: S.md, right: S.md,
       flexDirection: "row", alignItems: "center", gap: 8,
     },
-    statusBadge: {
-      paddingHorizontal: 12, paddingVertical: 5, borderRadius: R.full,
-    },
-    statusPublished: { backgroundColor: "#10b981" },
-    statusActive:    { backgroundColor: C.teal },
-    statusDraft:     { backgroundColor: "rgba(255,255,255,0.2)" },
-    statusBadgeText: { fontSize: 9, fontWeight: T.bold, letterSpacing: 1.2 },
     countPill: {
       flexDirection: "row", alignItems: "center", gap: 4,
-      backgroundColor: "rgba(0,0,0,0.4)", borderRadius: R.full,
+      backgroundColor: "rgba(0,0,0,0.35)", borderRadius: R.full,
       paddingHorizontal: 10, paddingVertical: 5,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.1)",
     },
-    countPillText: { fontSize: 9, fontWeight: T.bold, color: "rgba(255,255,255,0.7)", letterSpacing: 0.8 },
-    countPillDot:  { fontSize: 9, color: "rgba(255,255,255,0.3)" },
+    countPillText: { fontSize: 10, fontWeight: T.bold, color: "rgba(255,255,255,0.7)", letterSpacing: 0.8 },
+    countPillDot:  { fontSize: 10, color: "rgba(255,255,255,0.3)" },
 
     // Bottom content
     heroContent: {
@@ -360,7 +688,7 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md, paddingBottom: S.lg,
     },
     heroEyebrow: {
-      fontSize: 9, fontWeight: T.bold, color: C.teal,
+      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
     },
     heroEyebrowRow: {
@@ -369,7 +697,6 @@ function makeStyles(C: ThemeColors) {
     heroTitle: {
       fontSize: T["3xl"] + 4, fontFamily: F.black, fontWeight: T.black,
       color: "#ffffff", letterSpacing: -0.3, marginBottom: S.sm, lineHeight: 36,
-      textTransform: "uppercase",
     },
 
     // Frosted glass chips — matches web's bg-white/10 backdrop-blur chips
@@ -381,17 +708,59 @@ function makeStyles(C: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.12)",
     },
     chipText: {
-      fontSize: 9, fontWeight: T.bold,
+      fontSize: 10, fontWeight: T.bold,
       color: "rgba(255,255,255,0.9)", letterSpacing: 0.5, textTransform: "uppercase",
     },
 
     // Map
+    // Compliance badge
+    complianceBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: S.sm,
+      marginHorizontal: S.md,
+      marginTop: S.sm,
+      padding: S.sm,
+      backgroundColor: C.card,
+      borderRadius: R.xl,
+      borderWidth: 1,
+      borderColor: C.amberDim,
+    },
+    complianceIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: R.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    complianceTitle: {
+      fontSize: T.sm,
+      fontWeight: T.bold,
+      color: C.textPrimary,
+    },
+    complianceSub: {
+      fontSize: T.xs,
+      color: C.textTertiary,
+      fontWeight: T.medium,
+      marginTop: 1,
+    },
+    complianceCount: {
+      width: 26,
+      height: 26,
+      borderRadius: R.full,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    complianceCountText: {
+      fontSize: T.sm,
+      fontWeight: T.bold,
+    },
+
     mapSection: { paddingTop: S.md },
     mapWrap: {
       height: 220, marginHorizontal: S.md,
       borderRadius: R.xl, overflow: "hidden",
       backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
     mapFade: { position: "absolute", bottom: 0, left: 0, right: 0, height: 60 },
 
@@ -401,33 +770,60 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm,
     },
     sectionEyebrow: {
-      fontSize: 10, fontWeight: T.black, color: C.textTertiary,
+      fontSize: 10, fontWeight: T.bold, color: C.textTertiary,
       letterSpacing: 1.5,
     },
 
     // Itinerary
     section: { paddingBottom: S.md },
-    dayGroup: { marginBottom: S.xl, paddingHorizontal: S.md },
-    dayHeader: {
-      flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.sm,
-      paddingBottom: S.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
-    },
-    dayNumBox: {
-      width: 42, height: 42, borderRadius: R.md, backgroundColor: C.tealDim,
-      alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
-    },
-    dayNum: { fontSize: T.xl, fontWeight: T.black, color: C.teal, letterSpacing: -0.2 },
-    dayInfo: { flex: 1 },
-    dayName: { fontSize: T.md, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.2 },
-    dayMonth: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, marginTop: 1 },
-    dayCountBadge: {
-      backgroundColor: C.elevated, borderRadius: R.sm,
-      paddingHorizontal: S.xs, paddingVertical: 3,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-    },
-    dayCountText: { fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary, letterSpacing: 0.5 },
+    dayRows: { paddingHorizontal: S.md },
 
-    eventWrap: { marginBottom: S.xs },
+    // View As picker
+    viewAsWrap: { paddingHorizontal: S.md, paddingTop: S.sm },
+    viewAsBtn: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      padding: 10, borderRadius: R.lg,
+      backgroundColor: C.elevated,
+    },
+    viewAsBtnActive: {
+      backgroundColor: `${C.teal}10`,
+    },
+    viewAsAvatar: {
+      width: 32, height: 32, borderRadius: R.sm,
+      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
+    },
+    viewAsAvatarActive: { backgroundColor: `${C.teal}20` },
+    viewAsAvatarText: {
+      fontSize: 9, fontWeight: T.bold as any, color: C.teal,
+      textTransform: "uppercase", letterSpacing: 0.3,
+    },
+    viewAsLabel: {
+      fontSize: 10, fontWeight: T.bold as any, color: C.textTertiary,
+      letterSpacing: 1.2, textTransform: "uppercase",
+    },
+    viewAsName: { fontSize: T.sm, fontWeight: T.bold as any, marginTop: 1 },
+    viewAsDropdown: {
+      marginTop: 4, borderRadius: R.lg, overflow: "hidden",
+      backgroundColor: C.elevated,
+    },
+    viewAsOption: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      paddingVertical: 12, paddingHorizontal: 10, minHeight: 44,
+    },
+    viewAsOptionActive: { backgroundColor: `${C.teal}08` },
+    viewAsOptionDot: {
+      width: 26, height: 26, borderRadius: R.sm,
+      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
+    },
+    viewAsOptionDotText: {
+      fontSize: 10, fontWeight: T.bold as any, textTransform: "uppercase" as const, letterSpacing: 0.2,
+    },
+    viewAsOptionName: {
+      flex: 1, fontSize: T.xs, fontWeight: T.bold as any, color: C.textSecondary,
+    },
+    viewAsSubtext: {
+      fontSize: 10, fontWeight: T.bold as any, color: `${C.teal}80`,
+      letterSpacing: 0.6, textTransform: "uppercase", marginTop: 4,
+    },
   });
 }

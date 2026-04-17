@@ -3,6 +3,30 @@ import { Plane, Hotel, Compass, Utensils, MapPin, Clock, MoreVertical, Settings,
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
+interface AssignedPerson { initials: string; name: string }
+
+function AssignedDots({ people }: { people?: AssignedPerson[] }) {
+  if (!people || people.length === 0) return null;
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {people.slice(0, 4).map((p, i) => (
+        <div
+          key={i}
+          title={p.name}
+          className="h-5 w-5 rounded-full bg-brand/15 border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-brand uppercase"
+        >
+          {p.initials}
+        </div>
+      ))}
+      {people.length > 4 && (
+        <div className="h-5 w-5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-slate-500 dark:text-[#888]">
+          +{people.length - 4}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusChip({ status }: { status?: string }) {
   if (!status) return null;
   const cls =
@@ -67,7 +91,7 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
 
 // ─── Compact Row — used when event data is sparse ─────────────────────────────
 function CompactCard({
-  event, onClick, onDelete, Icon, label, hoverBorder, iconBg, iconColor, originCode,
+  event, onClick, onDelete, Icon, label, hoverBorder, iconBg, iconColor, originCode, assignedPeople,
 }: {
   event: TravelEvent;
   onClick: () => void;
@@ -78,6 +102,7 @@ function CompactCard({
   iconBg: string;
   iconColor: string;
   originCode?: string;
+  assignedPeople?: AssignedPerson[];
 }) {
   return (
     <div
@@ -108,13 +133,14 @@ function CompactCard({
       </div>
       <StatusChip status={event.status} />
       <MediaBadge media={event.media} documents={event.documents} />
+      <AssignedDots people={assignedPeople} />
       <CardMenu onClick={onClick} onDelete={onDelete} />
     </div>
   );
 }
 
 // ─── Flight Card ──────────────────────────────────────────────────────────────
-function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
+function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const parts = event.location?.match(/^(.+?)\s+to\s+(.+)$/i);
   const from = parts?.[1]?.trim() ?? event.location ?? "";
   const to = parts?.[2]?.trim() ?? "";
@@ -130,6 +156,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
         iconBg="bg-slate-100 dark:bg-[#1a1a1a]"
         iconColor="text-slate-500 dark:text-[#888]"
         originCode={fromCode}
+        assignedPeople={assignedPeople}
       />
     );
   }
@@ -179,6 +206,7 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{event.title}</p>
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />
+            <AssignedDots people={assignedPeople} />
           </div>
           <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888]">
             {event.airline && <span>{event.airline}{event.flightNum ? ` · ${event.flightNum}` : ""}</span>}
@@ -198,13 +226,13 @@ function FlightCard({ event, onClick, onDelete }: { event: TravelEvent; onClick:
 }
 
 // ─── Hotel Card ───────────────────────────────────────────────────────────────
-function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
+function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   // Sparse: no checkin/out, no roomType, no location → collapse to compact row (image becomes a thumbnail).
   const isSparse = !event.checkin && !event.checkout && !event.roomType && !event.location;
   if (isSparse) {
     return (
       <CompactCard
-        event={event} onClick={onClick} onDelete={onDelete}
+        event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople}
         Icon={Hotel} label="Accommodation"
         hoverBorder="hover:border-amber-400/30"
         iconBg="bg-amber-500/10"
@@ -271,6 +299,7 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
               <span className="ml-auto text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full shrink-0">{event.roomType}</span>
             )}
             <MediaBadge media={event.media} documents={event.documents} />
+            <AssignedDots people={assignedPeople} />
           </div>
         </div>
       </div>
@@ -279,7 +308,7 @@ function HotelCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: 
 }
 
 // ─── Activity / Dining Card ───────────────────────────────────────────────────
-function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
+function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isDining = event.type === "dining";
   const Icon = isDining ? Utensils : Compass;
 
@@ -288,7 +317,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
   if (isSparse) {
     return (
       <CompactCard
-        event={event} onClick={onClick} onDelete={onDelete}
+        event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople}
         Icon={Icon} label={isDining ? "Dining" : "Activity"}
         hoverBorder={isDining ? "hover:border-pink-400/30" : "hover:border-brand/30"}
         iconBg={isDining ? "bg-pink-500/10" : "bg-brand/10"}
@@ -342,6 +371,7 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
             )}
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />
+            <AssignedDots people={assignedPeople} />
           </div>
         </div>
       </div>
@@ -350,8 +380,8 @@ function ActivityCard({ event, onClick, onDelete }: { event: TravelEvent; onClic
 }
 
 // ─── Public export ────────────────────────────────────────────────────────────
-export const EventCard = memo(function EventCard({ event, onClick, onDelete }: { event: TravelEvent; onClick: () => void; onDelete: () => void }) {
-  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDelete={onDelete} />;
-  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDelete={onDelete} />;
-  return <ActivityCard event={event} onClick={onClick} onDelete={onDelete} />;
+export const EventCard = memo(function EventCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
+  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
+  return <ActivityCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
 });

@@ -18,6 +18,7 @@ export interface TravelEvent {
   time: string;
   endTime?: string;
   title: string;
+  description?: string;
   location: string;
   supplier?: string;
   price?: string;
@@ -28,6 +29,7 @@ export interface TravelEvent {
   flightNum?: string;
   terminal?: string;
   arrTerminal?: string;
+  gate?: string;
   seatDetails?: string;
   duration?: string;
   status?: string;
@@ -36,6 +38,8 @@ export interface TravelEvent {
   notes?: string;
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;
   documents?: EventDocument[];
+  /** When undefined/empty = everyone on the trip sees this event. When populated = only these traveler IDs. */
+  assignedTo?: string[];
 }
 
 export interface TripMedia {
@@ -48,10 +52,29 @@ export interface TripMedia {
   uploadedBy?: string;
 }
 
+export interface TripOrganizer {
+  name: string;
+  role?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+}
+
+export interface TripInfo {
+  id: string;
+  title: string;
+  body: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
   attendees: string;
+  /** Actual traveler IDs linked to this trip (source of truth for relationships) */
+  travelerIds?: string[];
+  /** Denormalized traveler display info — synced for shared view access */
+  travelers?: Array<{ id: string; name: string; initials: string }>;
   destination?: string;
   paxCount?: string;
   tripType?: string;
@@ -64,6 +87,8 @@ export interface Trip {
   events: TravelEvent[];
   media?: TripMedia[];
   shortCode?: string;
+  organizer?: TripOrganizer;
+  info?: TripInfo[];
 }
 
 export interface ComplianceDoc {

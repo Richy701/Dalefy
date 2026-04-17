@@ -2,194 +2,106 @@ import { View, Text, Image, StyleSheet, Pressable, Alert } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import {
   Plane, Hotel, Compass, Utensils,
-  MapPin, Clock, ArrowRight, Hash, Tag, Paperclip, FileText,
+  MapPin, ArrowRight, Hash, FileText, Tag,
 } from "lucide-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent, EventDocument } from "@/shared/types";
 
-// ── Documents badge — tiny counter chip ───────────────────────────────────────
-function DocsBadge({ count, color }: { count: number; color: string }) {
-  if (!count) return null;
-  return (
-    <View style={[docsBadge.wrap, { backgroundColor: `${color}18`, borderColor: `${color}30` }]}>
-      <Paperclip size={9} color={color} strokeWidth={2} />
-      <Text style={[docsBadge.text, { color }]}>{count}</Text>
-    </View>
-  );
-}
-const docsBadge = StyleSheet.create({
-  wrap: {
-    flexDirection: "row", alignItems: "center", gap: 3,
-    paddingHorizontal: 6, paddingVertical: 3, borderRadius: R.full,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  text: { fontSize: T.xs, fontWeight: "800", letterSpacing: 0.5 },
-});
-
 // ── Status chip ───────────────────────────────────────────────────────────────
-function StatusChip({ status, color }: { status: string; color: string }) {
+function StatusChip({ status, C }: { status: string; C: ThemeColors }) {
   return (
-    <View style={[chip.wrap, { backgroundColor: `${color}18`, borderColor: `${color}30` }]}>
-      <Text style={[chip.text, { color }]}>{status.toUpperCase()}</Text>
+    <View style={[chip.wrap, { backgroundColor: C.elevated }]}>
+      <Text style={[chip.text, { color: C.textSecondary }]}>{status.toUpperCase()}</Text>
     </View>
   );
 }
 const chip = StyleSheet.create({
-  wrap: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: R.full, borderWidth: StyleSheet.hairlineWidth },
-  text: { fontSize: T.xs, fontWeight: "800", letterSpacing: 0.8 },
+  wrap: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.full },
+  text: { fontSize: T.xs, fontWeight: "700", letterSpacing: 0.6 },
 });
-
-// ── Compact Card — used when event data is sparse ─────────────────────────────
-function CompactCard({
-  ev, C, color, Icon, label, originCode,
-}: {
-  ev: TravelEvent; C: ThemeColors; color: string;
-  Icon: React.ComponentType<any>;
-  label: string;
-  originCode?: string;
-}) {
-  const s = makeCompactStyles(C, color);
-  return (
-    <View style={s.card}>
-      {ev.image ? (
-        <Image source={{ uri: ev.image }} style={s.thumb} />
-      ) : (
-        <View style={s.iconBox}>
-          <Icon size={15} color={color} strokeWidth={1.8} />
-        </View>
-      )}
-
-      {ev.time ? (
-        <View style={s.timeCol}>
-          <Text style={s.timeVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-            {ev.time.split(" ")[0]}
-          </Text>
-          {ev.time.split(" ")[1] ? (
-            <Text style={s.timeAmPm} numberOfLines={1}>{ev.time.split(" ")[1]}</Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      <View style={s.content}>
-        <View style={s.labelRow}>
-          <Text style={[s.label, { color }]}>{label}</Text>
-          {originCode ? <Text style={s.origin}>· {originCode}</Text> : null}
-        </View>
-        <Text style={s.title} numberOfLines={1}>{ev.title}</Text>
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-        <DocsBadge count={ev.documents?.length ?? 0} color={color} />
-        {ev.status ? <StatusChip status={ev.status} color={color} /> : null}
-      </View>
-    </View>
-  );
-}
-
-function makeCompactStyles(C: ThemeColors, color: string) {
-  return StyleSheet.create({
-    card: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      backgroundColor: C.card, borderRadius: R.xl,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      paddingVertical: S.sm, paddingHorizontal: S.sm,
-    },
-    thumb: { width: 44, height: 44, borderRadius: R.md },
-    iconBox: {
-      width: 44, height: 44, borderRadius: R.md,
-      backgroundColor: `${color}15`,
-      alignItems: "center", justifyContent: "center",
-    },
-    timeCol: { alignItems: "center", width: 58 },
-    timeVal: { fontSize: T.md, fontWeight: T.black, color: C.textPrimary, letterSpacing: -0.3, lineHeight: 18 },
-    timeAmPm: { fontSize: 9, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 1 },
-    content: { flex: 1, minWidth: 0 },
-    labelRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
-    label: { fontSize: T.xs, fontWeight: T.black, letterSpacing: 1.2, textTransform: "uppercase" },
-    origin: { fontSize: T.xs, fontWeight: T.black, color: C.textTertiary, letterSpacing: 0.5 },
-    title: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary },
-  });
-}
 
 // ── Flight Card ───────────────────────────────────────────────────────────────
 function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
   const parts = ev.location?.match(/^(.+?)\s+to\s+(.+)$/i);
-  const from      = parts?.[1]?.trim() ?? ev.location ?? "";
-  const to        = parts?.[2]?.trim() ?? "";
+  const from = parts?.[1]?.trim() ?? ev.location ?? "";
+  const to = parts?.[2]?.trim() ?? "";
 
-  // Sparse: no destination → route viz breaks, use compact row.
-  if (!to) {
-    const originCode = from ? (from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase()) : undefined;
-    return <CompactCard ev={ev} C={C} color={C.flight} Icon={Plane} label="FLIGHT" originCode={originCode} />;
-  }
-
-  const fromCode  = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
-  const toCode    = to.length <= 4   ? to.toUpperCase()   : to.slice(0, 3).toUpperCase();
-  const fromLabel = from.length > 4  ? from.slice(0, 14)  : "Departure";
-  const toLabel   = to.length > 4    ? to.slice(0, 14)    : "Arrival";
+  const fromCode = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
+  const toCode = to ? (to.length <= 4 ? to.toUpperCase() : to.slice(0, 3).toUpperCase()) : "";
+  const fromLabel = from.length > 4 ? from.slice(0, 18) : "Departure";
+  const toLabel = to.length > 4 ? to.slice(0, 18) : "Arrival";
 
   const s = makeFlightStyles(C);
   return (
     <View style={s.card}>
-      {/* Left: time + icon */}
-      <View style={s.timeCol}>
+      {/* Header bar */}
+      <View style={s.header}>
         <View style={s.iconBox}>
-          <Plane size={13} color={C.flight} strokeWidth={1.8} />
+          <Plane size={14} color={C.flight} strokeWidth={1.8} />
+        </View>
+        <View style={s.headerText}>
+          <Text style={s.typeLabel}>Flight</Text>
+          {ev.airline ? (
+            <Text style={s.airline}>{ev.airline}{ev.flightNum ? ` · ${ev.flightNum}` : ""}</Text>
+          ) : null}
         </View>
         {ev.time ? (
-          <>
-            <Text style={s.timeVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-              {ev.time.split(" ")[0]}
-            </Text>
-            {ev.time.split(" ")[1] && (
-              <Text style={s.timeAmPm} numberOfLines={1}>{ev.time.split(" ")[1]}</Text>
-            )}
-          </>
+          <View style={s.timeBadge}>
+            <Text style={s.timeText}>{ev.time}</Text>
+          </View>
         ) : null}
       </View>
 
-      {/* Center: route */}
-      <View style={s.routeCol}>
-        <View style={s.routeRow}>
+      {/* Route visualization */}
+      {to ? (
+        <View style={s.routeSection}>
           <View style={s.airport}>
-            <Text style={s.airportCode} numberOfLines={1}>{fromCode}</Text>
+            <Text style={s.airportCode}>{fromCode}</Text>
             <Text style={s.airportLabel} numberOfLines={1}>{fromLabel}</Text>
           </View>
           <View style={s.routeLine}>
             <View style={s.dash} />
-            <Plane size={10} color={C.textTertiary} strokeWidth={1.5} />
+            <View style={s.planeCircle}>
+              <Plane size={12} color={C.flight} strokeWidth={1.8} />
+            </View>
             <View style={s.dash} />
           </View>
-          {to ? (
-            <View style={s.airport}>
-              <Text style={s.airportCode} numberOfLines={1}>{toCode}</Text>
-              <Text style={s.airportLabel} numberOfLines={1}>{toLabel}</Text>
-            </View>
-          ) : null}
+          <View style={s.airport}>
+            <Text style={s.airportCode}>{toCode}</Text>
+            <Text style={s.airportLabel} numberOfLines={1}>{toLabel}</Text>
+          </View>
         </View>
+      ) : null}
 
-        <Text style={s.title} numberOfLines={1}>{ev.title}</Text>
+      {/* Title + description */}
+      <Text style={s.title} numberOfLines={2}>{ev.title}</Text>
+      {ev.description ? <Text style={s.desc}>{ev.description}</Text> : null}
 
-        <View style={s.metaRow}>
-          {ev.airline ? (
-            <Text style={s.meta}>
-              {ev.airline}{ev.flightNum ? ` · ${ev.flightNum}` : ""}
-            </Text>
-          ) : null}
-          {ev.duration ? (
-            <View style={s.metaChip}>
-              <Clock size={9} color={C.textTertiary} strokeWidth={1.5} />
-              <Text style={s.meta}>{ev.duration}</Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
+      {/* Metadata grid */}
+      {(() => {
+        const cells = [
+          ev.terminal && { label: "Terminal", value: ev.terminal },
+          ev.gate && { label: "Gate", value: ev.gate },
+          ev.seatDetails && { label: "Seat", value: ev.seatDetails },
+          ev.duration && { label: "Duration", value: ev.duration },
+        ].filter(Boolean) as Array<{ label: string; value: string }>;
+        if (cells.length === 0) return null;
+        return (
+          <View style={s.metaGrid}>
+            {cells.map(c => (
+              <View key={c.label} style={s.metaCell}>
+                <Text style={s.metaCellLabel}>{c.label}</Text>
+                <Text style={s.metaCellValue} numberOfLines={1}>{c.value}</Text>
+              </View>
+            ))}
+          </View>
+        );
+      })()}
 
-      {/* Right: status + docs */}
-      {(ev.status || (ev.documents?.length ?? 0) > 0) ? (
-        <View style={s.statusWrap}>
-          {ev.status ? <StatusChip status={ev.status} color={C.flight} /> : null}
-          <DocsBadge count={ev.documents?.length ?? 0} color={C.flight} />
+      {/* Status row */}
+      {ev.status ? (
+        <View style={s.bottomRow}>
+          <StatusChip status={ev.status} C={C} />
         </View>
       ) : null}
     </View>
@@ -199,104 +111,133 @@ function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
 function makeFlightStyles(C: ThemeColors) {
   return StyleSheet.create({
     card: {
-      flexDirection: "row", alignItems: "center",
-      backgroundColor: C.card, borderRadius: R.xl,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      paddingVertical: S.sm, paddingHorizontal: S.md, gap: S.sm,
+      backgroundColor: C.card, borderRadius: R.xl, padding: S.md,
     },
-    // Wide enough for "12:00 AM" without wrapping, plus auto-shrink as fallback
-    timeCol: { alignItems: "center", width: 64 },
+    header: {
+      flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.sm,
+    },
     iconBox: {
-      width: 32, height: 32, borderRadius: R.sm,
-      backgroundColor: `${C.flight}18`,
-      alignItems: "center", justifyContent: "center", marginBottom: 4,
+      width: 36, height: 36, borderRadius: R.md,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
     },
-    timeVal: { fontSize: T.lg, fontWeight: T.black, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 22 },
-    timeAmPm: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.5, textTransform: "uppercase" },
+    headerText: { flex: 1 },
+    typeLabel: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary },
+    airline: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, marginTop: 1 },
+    timeBadge: {
+      backgroundColor: C.elevated, borderRadius: R.full,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    timeText: { fontSize: T.xs, fontWeight: T.bold, color: C.flight },
 
-    routeCol: { flex: 1 },
-    routeRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
-    // Wide enough for 3-char IATA codes (e.g. "MAN") at 24px bold without wrapping
-    airport: { alignItems: "center", width: 56 },
-    airportCode: { fontSize: T["2xl"], fontWeight: T.black, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 28 },
-    airportLabel: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.3, textTransform: "uppercase", maxWidth: 56 },
-    routeLine: { flex: 1, flexDirection: "row", alignItems: "center", gap: 3 },
+    routeSection: {
+      flexDirection: "row", alignItems: "center",
+      backgroundColor: C.elevated, borderRadius: R.lg,
+      padding: S.md, marginBottom: S.sm,
+    },
+    airport: { alignItems: "center", width: 70 },
+    airportCode: {
+      fontSize: T["2xl"] + 2, fontWeight: T.bold, color: C.textPrimary,
+      letterSpacing: -0.5, lineHeight: 30,
+    },
+    airportLabel: {
+      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
+      marginTop: 2, maxWidth: 70,
+    },
+    routeLine: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
     dash: { flex: 1, height: 1, borderStyle: "dashed", borderWidth: 0.5, borderColor: C.border },
+    planeCircle: {
+      width: 28, height: 28, borderRadius: R.full,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+    },
 
-    title: { fontSize: T.sm, fontWeight: T.bold, color: C.textSecondary, marginBottom: 3 },
-    metaRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-    metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
-    meta: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 },
-    statusWrap: { alignSelf: "flex-start", flexDirection: "column", alignItems: "flex-end", gap: 4 },
+    title: { fontSize: T.base, fontWeight: T.bold, color: C.textSecondary, marginBottom: 3 },
+    desc: { fontSize: T.sm, color: C.textTertiary, lineHeight: 20, marginBottom: S.xs },
+
+    metaGrid: {
+      flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: S.xs,
+    },
+    metaCell: {
+      backgroundColor: C.elevated, borderRadius: R.sm,
+      paddingHorizontal: 10, paddingVertical: 6, minWidth: 70,
+    },
+    metaCellLabel: { fontSize: 9, fontWeight: T.semibold, color: C.textTertiary, letterSpacing: 0.5, marginBottom: 2 },
+    metaCellValue: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary },
+
+    bottomRow: {
+      flexDirection: "row", alignItems: "center", gap: S.xs,
+      marginTop: S.sm,
+    },
   });
 }
 
 // ── Hotel Card ────────────────────────────────────────────────────────────────
 function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
-  // Sparse: no checkin/out, no roomType, no location → compact row.
-  const isSparse = !ev.checkin && !ev.checkout && !ev.roomType && !ev.location;
-  if (isSparse) {
-    return <CompactCard ev={ev} C={C} color={C.hotel} Icon={Hotel} label="ACCOMMODATION" />;
-  }
   const s = makeHotelStyles(C);
   return (
     <View style={s.card}>
-      {/* Left: image or placeholder */}
+      {/* Image banner */}
       {ev.image ? (
-        <Image source={{ uri: ev.image }} style={s.image} />
+        <Image source={{ uri: ev.image }} style={s.imageBanner} />
       ) : (
         <View style={s.imagePlaceholder}>
-          <Hotel size={22} color={C.hotel} strokeWidth={1.5} style={{ opacity: 0.35 }} />
+          <Hotel size={28} color={C.hotel} strokeWidth={1.2} style={{ opacity: 0.3 }} />
         </View>
       )}
 
-      {/* Right: content */}
       <View style={s.content}>
-        <View style={s.topRow}>
-          <Hotel size={11} color={C.hotel} strokeWidth={1.8} />
-          <Text style={s.typeLabel}>ACCOMMODATION</Text>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={s.iconBox}>
+            <Hotel size={13} color={C.hotel} strokeWidth={1.8} />
+          </View>
+          <Text style={s.typeLabel}>Accommodation</Text>
+          {ev.time ? (
+            <Text style={s.time}>{ev.time}</Text>
+          ) : null}
         </View>
+
         <Text style={s.title} numberOfLines={2}>{ev.title}</Text>
+        {ev.description ? <Text style={s.desc}>{ev.description}</Text> : null}
+
         {ev.location ? (
           <View style={s.locationRow}>
-            <MapPin size={9} color={C.textTertiary} strokeWidth={1.5} />
+            <MapPin size={11} color={C.textTertiary} strokeWidth={1.5} />
             <Text style={s.locationText} numberOfLines={1}>{ev.location}</Text>
           </View>
         ) : null}
 
-        <View style={s.divider} />
-
-        {/* Check-in / Check-out row */}
-        {ev.checkin ? (
-          <View style={s.checkinRow}>
-            <View>
-              <Text style={s.checkLabel}>CHECK IN</Text>
-              <Text style={s.checkVal}>{ev.checkin}</Text>
-            </View>
+        {/* Check-in / Check-out */}
+        {(ev.checkin || ev.checkout) ? (
+          <View style={s.checkRow}>
+            {ev.checkin ? (
+              <View style={s.checkBlock}>
+                <Text style={s.checkLabel}>Check in</Text>
+                <Text style={s.checkVal}>{ev.checkin}</Text>
+              </View>
+            ) : null}
+            {ev.checkin && ev.checkout ? (
+              <ArrowRight size={14} color={C.hotel} strokeWidth={2} />
+            ) : null}
             {ev.checkout ? (
-              <>
-                <ArrowRight size={12} color={C.hotel} strokeWidth={2} />
-                <View>
-                  <Text style={s.checkLabel}>CHECK OUT</Text>
-                  <Text style={s.checkVal}>{ev.checkout}</Text>
-                </View>
-              </>
+              <View style={s.checkBlock}>
+                <Text style={s.checkLabel}>Check out</Text>
+                <Text style={s.checkVal}>{ev.checkout}</Text>
+              </View>
             ) : null}
           </View>
-        ) : ev.time ? (
-          <Text style={s.checkVal}>{ev.time}</Text>
         ) : null}
 
-        {/* Badges row — separate line so they never overlap checkin times */}
-        {(ev.roomType || ev.status || (ev.documents?.length ?? 0) > 0) ? (
+        {/* Bottom badges */}
+        {(ev.roomType || ev.status) ? (
           <View style={s.badgesRow}>
             {ev.roomType ? (
               <View style={s.roomBadge}>
                 <Text style={s.roomText} numberOfLines={1}>{ev.roomType}</Text>
               </View>
             ) : null}
-            {ev.status ? <StatusChip status={ev.status} color={C.hotel} /> : null}
-            <DocsBadge count={ev.documents?.length ?? 0} color={C.hotel} />
+            {ev.status ? <StatusChip status={ev.status} C={C} /> : null}
           </View>
         ) : null}
       </View>
@@ -307,33 +248,45 @@ function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
 function makeHotelStyles(C: ThemeColors) {
   return StyleSheet.create({
     card: {
-      flexDirection: "row",
-      backgroundColor: C.card, borderRadius: R.xl,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      overflow: "hidden", minHeight: 120,
+      backgroundColor: C.card, borderRadius: R.xl, overflow: "hidden",
     },
-    image: { width: 96, alignSelf: "stretch" },
+    imageBanner: { width: "100%", height: 140 },
     imagePlaceholder: {
-      width: 96, alignSelf: "stretch",
-      backgroundColor: `${C.hotel}08`,
+      width: "100%", height: 100,
+      backgroundColor: C.elevated,
       alignItems: "center", justifyContent: "center",
-      borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: C.border,
     },
-    content: { flex: 1, padding: S.sm },
-    topRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-    typeLabel: { fontSize: T.xs, fontWeight: T.black, color: C.hotel, letterSpacing: 1.2 },
-    title: { fontSize: T.base, fontWeight: T.bold, color: C.textPrimary, marginBottom: 3 },
-    locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+    content: { padding: S.md },
+    header: {
+      flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S.xs,
+    },
+    iconBox: {
+      width: 30, height: 30, borderRadius: R.sm,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+    },
+    typeLabel: { flex: 1, fontSize: T.xs, fontWeight: T.bold, color: C.hotel, letterSpacing: 0.5 },
+    time: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary },
+
+    title: { fontSize: T.lg, fontWeight: T.bold, color: C.textPrimary, marginBottom: 4 },
+    desc: { fontSize: T.sm, color: C.textTertiary, lineHeight: 20, marginBottom: S.xs },
+
+    locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: S.sm },
     locationText: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, flex: 1 },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginVertical: S.xs },
-    checkinRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
-    checkLabel: { fontSize: T.xs, fontWeight: T.black, color: C.textTertiary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
-    checkVal: { fontSize: T.sm, fontWeight: T.black, color: C.textPrimary },
-    badgesRow: { flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap", marginTop: 6 },
+
+    checkRow: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      backgroundColor: C.elevated, borderRadius: R.lg,
+      padding: S.sm, marginBottom: S.xs,
+    },
+    checkBlock: {},
+    checkLabel: { fontSize: 9, fontWeight: T.semibold, color: C.textTertiary, letterSpacing: 0.5, marginBottom: 2 },
+    checkVal: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary },
+
+    badgesRow: { flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap", marginTop: S.xs },
     roomBadge: {
-      backgroundColor: `${C.hotel}18`, borderRadius: R.full,
-      paddingHorizontal: 8, paddingVertical: 3, flexShrink: 1,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: `${C.hotel}30`,
+      backgroundColor: C.elevated, borderRadius: R.full,
+      paddingHorizontal: 10, paddingVertical: 4,
     },
     roomText: { fontSize: T.xs, fontWeight: T.bold, color: C.hotel },
   });
@@ -342,94 +295,117 @@ function makeHotelStyles(C: ThemeColors) {
 // ── Activity / Dining Card ────────────────────────────────────────────────────
 function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
   const isDining = ev.type === "dining";
-  const color    = isDining ? C.dining : C.activity;
-  const Icon     = isDining ? Utensils : Compass;
-  const label    = isDining ? "DINING" : "ACTIVITY";
+  const color = isDining ? C.dining : C.activity;
+  const Icon = isDining ? Utensils : Compass;
+  const label = isDining ? "Dining" : "Activity";
 
-  // Sparse: no notes, no endTime, no location → compact row (image becomes thumbnail).
-  const isSparse = !ev.notes && !ev.endTime && !ev.location;
-  if (isSparse) {
-    return <CompactCard ev={ev} C={C} color={color} Icon={Icon} label={label} />;
-  }
-
-  const s = makeActivityStyles(C, color);
+  const s = makeActivityStyles(C);
   return (
     <View style={s.card}>
-      {/* Left: image or placeholder */}
+      {/* Image banner */}
       {ev.image ? (
-        <Image source={{ uri: ev.image }} style={s.image} />
+        <Image source={{ uri: ev.image }} style={s.imageBanner} />
       ) : (
         <View style={s.imagePlaceholder}>
-          <Icon size={22} color={color} strokeWidth={1.5} style={{ opacity: 0.3 }} />
+          <Icon size={28} color={color} strokeWidth={1.2} style={{ opacity: 0.25 }} />
         </View>
       )}
 
-      {/* Right: content */}
       <View style={s.content}>
-        <View style={s.topRow}>
-          <Icon size={11} color={color} strokeWidth={1.8} />
+        {/* Header */}
+        <View style={s.header}>
+          <View style={s.iconBox}>
+            <Icon size={13} color={color} strokeWidth={1.8} />
+          </View>
           <Text style={[s.typeLabel, { color }]}>{label}</Text>
+          {ev.time ? (
+            <View style={s.timeBadge}>
+              <Text style={[s.timeText, { color }]}>{ev.time}</Text>
+              {ev.endTime ? <Text style={[s.timeText, { color, opacity: 0.6 }]}> → {ev.endTime}</Text> : null}
+            </View>
+          ) : null}
         </View>
+
         <Text style={s.title} numberOfLines={2}>{ev.title}</Text>
+        {ev.description ? <Text style={s.desc}>{ev.description}</Text> : null}
+
         {ev.location ? (
           <View style={s.locationRow}>
-            <MapPin size={9} color={C.textTertiary} strokeWidth={1.5} />
+            <MapPin size={11} color={C.textTertiary} strokeWidth={1.5} />
             <Text style={s.locationText} numberOfLines={1}>{ev.location}</Text>
           </View>
         ) : null}
+
         {ev.notes ? (
-          <Text style={s.notes} numberOfLines={2}>{ev.notes}</Text>
+          <View style={s.notesBox}>
+            <Text style={s.notes}>{ev.notes}</Text>
+          </View>
         ) : null}
 
-        <View style={s.divider} />
-
-        <View style={s.bottomRow}>
-          {ev.time ? <Text style={s.timeVal}>{ev.time}</Text> : null}
-          {ev.endTime ? <Text style={s.endTime}>→ {ev.endTime}</Text> : null}
-          {ev.status ? <StatusChip status={ev.status} color={color} /> : null}
-          {ev.price ? (
-            <View style={[s.priceBadge, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}>
-              <Tag size={8} color={color} strokeWidth={1.5} />
-              <Text style={[s.priceText, { color }]}>{ev.price}</Text>
-            </View>
-          ) : null}
-          <DocsBadge count={ev.documents?.length ?? 0} color={color} />
-        </View>
+        {/* Bottom badges */}
+        {(ev.status || ev.price) ? (
+          <View style={s.bottomRow}>
+            {ev.status ? <StatusChip status={ev.status} C={C} /> : null}
+            {ev.price ? (
+              <View style={s.priceBadge}>
+                <Tag size={9} color={color} strokeWidth={1.5} />
+                <Text style={[s.priceText, { color }]}>{ev.price}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
-function makeActivityStyles(C: ThemeColors, color: string) {
+function makeActivityStyles(C: ThemeColors) {
   return StyleSheet.create({
     card: {
-      flexDirection: "row",
-      backgroundColor: C.card, borderRadius: R.xl,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
-      overflow: "hidden", minHeight: 120,
+      backgroundColor: C.card, borderRadius: R.xl, overflow: "hidden",
     },
-    image: { width: 96, alignSelf: "stretch" },
+    imageBanner: { width: "100%", height: 140 },
     imagePlaceholder: {
-      width: 96, alignSelf: "stretch",
-      backgroundColor: `${color}08`,
+      width: "100%", height: 80,
+      backgroundColor: C.elevated,
       alignItems: "center", justifyContent: "center",
-      borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: C.border,
     },
-    content: { flex: 1, padding: S.sm },
-    topRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-    typeLabel: { fontSize: T.xs, fontWeight: T.black, letterSpacing: 1.2 },
-    title: { fontSize: T.base, fontWeight: T.bold, color: C.textPrimary, marginBottom: 3 },
-    locationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+    content: { padding: S.md },
+    header: {
+      flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S.xs,
+    },
+    iconBox: {
+      width: 30, height: 30, borderRadius: R.sm,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+    },
+    typeLabel: { flex: 1, fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.5 },
+    timeBadge: {
+      backgroundColor: C.elevated, borderRadius: R.full,
+      paddingHorizontal: 10, paddingVertical: 4,
+    },
+    timeText: { fontSize: T.xs, fontWeight: T.bold },
+
+    title: { fontSize: T.lg, fontWeight: T.bold, color: C.textPrimary, marginBottom: 4 },
+    desc: { fontSize: T.sm, color: C.textTertiary, lineHeight: 20, marginBottom: S.xs },
+
+    locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: S.xs },
     locationText: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, flex: 1 },
-    notes: { fontSize: T.sm, color: C.textTertiary, lineHeight: 18, marginTop: 3, fontWeight: T.regular },
-    divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginVertical: S.xs },
-    bottomRow: { flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" },
-    timeVal: { fontSize: T.sm, fontWeight: T.black, color: C.textPrimary },
-    endTime: { fontSize: T.sm, fontWeight: T.bold, color: C.textTertiary },
+
+    notesBox: {
+      backgroundColor: C.elevated, borderRadius: R.lg,
+      padding: S.sm, marginBottom: S.xs,
+    },
+    notes: { fontSize: T.sm, color: C.textSecondary, lineHeight: 20 },
+
+    bottomRow: {
+      flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap",
+      marginTop: S.xs,
+    },
     priceBadge: {
-      flexDirection: "row", alignItems: "center", gap: 3,
-      borderRadius: R.full, paddingHorizontal: 7, paddingVertical: 2,
-      borderWidth: StyleSheet.hairlineWidth,
+      flexDirection: "row", alignItems: "center", gap: 4,
+      backgroundColor: C.elevated, borderRadius: R.full,
+      paddingHorizontal: 8, paddingVertical: 3,
     },
     priceText: { fontSize: T.xs, fontWeight: T.bold },
   });
@@ -439,17 +415,16 @@ function makeActivityStyles(C: ThemeColors, color: string) {
 export function ConfRow({ confNumber, C }: { confNumber: string; C: ThemeColors }) {
   const s = StyleSheet.create({
     row: {
-      flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6,
-      backgroundColor: `${C.teal}10`, paddingHorizontal: S.xs, paddingVertical: 4,
+      flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6,
+      backgroundColor: C.elevated, paddingHorizontal: S.sm, paddingVertical: 6,
       borderRadius: R.sm, alignSelf: "flex-start",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: `${C.teal}25`,
     },
-    label: { fontSize: T.xs, fontWeight: T.black as any, color: C.teal, letterSpacing: 1.5 },
+    label: { fontSize: T.xs, fontWeight: T.bold as any, color: C.teal, letterSpacing: 1 },
     value: { fontSize: T.sm, fontWeight: T.bold as any, color: C.teal, letterSpacing: 0.5 },
   });
   return (
     <View style={s.row}>
-      <Hash size={10} color={C.teal} strokeWidth={2} />
+      <Hash size={11} color={C.teal} strokeWidth={2} />
       <Text style={s.label}>CONF</Text>
       <Text style={s.value}>{confNumber}</Text>
     </View>
@@ -461,9 +436,6 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
   if (!documents.length) return null;
 
   const handlePress = async (doc: EventDocument) => {
-    // Data URLs can't be opened directly on iOS without writing to disk.
-    // For v1, copy the URL to clipboard so the user can paste/open in a browser,
-    // and show an Alert with file metadata.
     try {
       await Clipboard.setStringAsync(doc.url);
     } catch { /* ignore */ }
@@ -480,18 +452,16 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
     wrap: { marginTop: 6, gap: 4 },
     row: {
       flexDirection: "row", alignItems: "center", gap: 8,
-      paddingHorizontal: S.sm, paddingVertical: 7,
-      backgroundColor: `${C.teal}0c`,
+      paddingHorizontal: S.sm, paddingVertical: 8,
+      backgroundColor: C.elevated,
       borderRadius: R.md,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: `${C.teal}22`,
     },
     iconBox: {
-      width: 22, height: 22, borderRadius: R.sm,
-      backgroundColor: `${C.teal}20`,
+      width: 24, height: 24, borderRadius: R.sm,
       alignItems: "center", justifyContent: "center",
     },
     name: { fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary, flex: 1 },
-    size: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, letterSpacing: 0.3 },
+    size: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary },
   });
 
   return (
