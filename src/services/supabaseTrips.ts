@@ -9,7 +9,28 @@ export async function fetchTrips(): Promise<Trip[]> {
     .select("*")
     .order("start", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(rowToTrip);
+  const cloudTrips = (data ?? []).map(rowToTrip);
+
+  // Supabase may lack columns for travelerIds, travelers, info, organizer.
+  // Merge these fields from localStorage so refetches don't wipe local-only data.
+  try {
+    const stored = localStorage.getItem("daf-adventures-v4");
+    if (stored) {
+      const localTrips: Trip[] = JSON.parse(stored);
+      const localMap = new Map(localTrips.map(t => [t.id, t]));
+      for (const t of cloudTrips) {
+        const lt = localMap.get(t.id);
+        if (!lt) continue;
+        if (!t.travelerIds?.length && lt.travelerIds?.length) t.travelerIds = lt.travelerIds;
+        if (!t.travelers?.length && lt.travelers?.length) t.travelers = lt.travelers;
+        if (!t.info?.length && lt.info?.length) t.info = lt.info;
+        if (!t.organizer && lt.organizer) t.organizer = lt.organizer;
+        if ((!t.attendees || t.attendees === "Imported Group") && lt.attendees) t.attendees = lt.attendees;
+      }
+    }
+  } catch { /* ignore */ }
+
+  return cloudTrips;
 }
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void) {
@@ -33,39 +54,27 @@ export async function upsertTrip(trip: Trip): Promise<void> {
     .from(TABLE)
     .upsert(tripToRow(trip, true, true), { onConflict: "id" });
   if (!error) {
-    // Columns work — restore flags if they were disabled
     hasTravelerCols = true;
     hasOrganizerCols = true;
     return;
   }
-  // Retry without traveler columns
-  if (error.message?.includes("traveler")) {
-    hasTravelerCols = false;
-    const { error: retryErr } = await supabase
-      .from(TABLE)
-      .upsert(tripToRow(trip), { onConflict: "id" });
-    if (!retryErr) return;
-    // Also try without organizer columns
-    if (retryErr.message?.includes("organizer") || retryErr.message?.includes("info")) {
-      hasOrganizerCols = false;
-      const { error: retry2 } = await supabase
-        .from(TABLE)
-        .upsert(tripToRow(trip), { onConflict: "id" });
-      if (retry2) throw retry2;
-      return;
-    }
-    throw retryErr;
-  }
-  // Retry without organizer/info columns
-  if (error.message?.includes("organizer") || error.message?.includes("info")) {
-    hasOrganizerCols = false;
-    const { error: retryErr } = await supabase
-      .from(TABLE)
-      .upsert(tripToRow(trip), { onConflict: "id" });
-    if (retryErr) throw retryErr;
-    return;
-  }
-  throw error;
+
+  // On ANY error (400, column mismatch, etc.) — progressively strip optional columns
+  console.warn("[upsertTrip] full upsert failed, retrying without optional cols:", error.message);
+
+  // Try without traveler columns
+  hasTravelerCols = false;
+  const { error: e2 } = await supabase
+    .from(TABLE)
+    .upsert(tripToRow(trip), { onConflict: "id" });
+  if (!e2) return;
+
+  // Try without both traveler + organizer columns
+  hasOrganizerCols = false;
+  const { error: e3 } = await supabase
+    .from(TABLE)
+    .upsert(tripToRow(trip), { onConflict: "id" });
+  if (e3) throw e3;
 }
 
 export async function removeTrip(id: string): Promise<void> {

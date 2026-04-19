@@ -1,12 +1,15 @@
 import { View, Text, ScrollView, StyleSheet, TextInput, Pressable, Dimensions, RefreshControl } from "react-native";
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
+import { ScalePress } from "@/components/ScalePress";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Search, Globe, MapPin, Navigation } from "lucide-react-native";
+import { BlurView } from "expo-blur";
+import { Search, Globe, MapPin, Navigation, Plane } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
@@ -39,9 +42,8 @@ async function geocodeDestination(name: string): Promise<[number, number] | null
   }
 }
 
-import { interpolateArc } from "@/shared/mapUtils";
-
 const { width: SCREEN_W } = Dimensions.get("window");
+const MAP_HEIGHT = 320;
 
 type Destination = {
   name: string; region: string; tripCount: number;
@@ -49,6 +51,10 @@ type Destination = {
   nextVisit: string; tripIds: string[];
   types: { flights: number; hotels: number; activities: number; dining: number };
 };
+
+function plural(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
 
 export default function DestinationsScreen() {
   const { C, isDark } = useTheme();
@@ -144,34 +150,6 @@ export default function DestinationsScreen() {
     })),
   }), [pinsWithCoords]);
 
-  const connectionLines: GeoJSON.FeatureCollection = useMemo(() => {
-    const added = new Set<string>();
-    const features: GeoJSON.Feature[] = [];
-    for (const from of pinsWithCoords) {
-      const nearest = [...pinsWithCoords]
-        .filter(p => p.name !== from.name)
-        .sort((a, b) => {
-          const da = Math.hypot(from.coords[0] - a.coords[0], from.coords[1] - a.coords[1]);
-          const db = Math.hypot(from.coords[0] - b.coords[0], from.coords[1] - b.coords[1]);
-          return da - db;
-        })
-        .slice(0, 2);
-      for (const to of nearest) {
-        const key = [from.name, to.name].sort().join("-");
-        if (!added.has(key)) {
-          added.add(key);
-          features.push({
-            type: "Feature",
-            properties: {},
-            geometry: { type: "LineString", coordinates: [from.coords, to.coords] },
-          });
-        }
-      }
-    }
-    return { type: "FeatureCollection", features };
-  }, [pinsWithCoords]);
-
-  // Heatmap GeoJSON — weighted by trip count
   const heatmapGeoJSON: GeoJSON.FeatureCollection = useMemo(() => ({
     type: "FeatureCollection",
     features: pinsWithCoords.map(d => ({
@@ -181,36 +159,6 @@ export default function DestinationsScreen() {
     })),
   }), [pinsWithCoords]);
 
-  // Animated plane positions along connection lines
-  const [planeGeoJSON, setPlaneGeoJSON] = useState<GeoJSON.FeatureCollection>({
-    type: "FeatureCollection", features: [],
-  });
-  const planeTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  useEffect(() => {
-    if (connectionLines.features.length === 0) {
-      setPlaneGeoJSON({ type: "FeatureCollection", features: [] });
-      return;
-    }
-    const arcs = connectionLines.features.map(f => (f.geometry as any).coordinates as number[][]);
-    const DURATION = 8000;
-    const start = Date.now();
-
-    planeTimerRef.current = setInterval(() => {
-      const t = ((Date.now() - start) % DURATION) / DURATION;
-      const features: GeoJSON.Feature[] = arcs.map((arc, i) => {
-        const pos = interpolateArc(arc, t);
-        return {
-          type: "Feature" as const,
-          properties: { bearing: pos.bearing, idx: i },
-          geometry: { type: "Point" as const, coordinates: [pos.lng, pos.lat] },
-        };
-      });
-      setPlaneGeoJSON({ type: "FeatureCollection", features });
-    }, 80); // ~12fps — smooth enough, battery-friendly
-
-    return () => clearInterval(planeTimerRef.current);
-  }, [connectionLines]);
 
   if (destinations.length === 0) {
     return (
@@ -224,14 +172,13 @@ export default function DestinationsScreen() {
     );
   }
 
-  const featured = filtered[0];
-  const gridItems = filtered.slice(1);
-
   const stats = [
-    { label: "Destinations", value: destinations.length, icon: MapPin },
+    { label: "Places", value: destinations.length, icon: MapPin },
     { label: "Regions", value: regionCount, icon: Globe },
-    { label: "Events",  value: totalEvents, icon: Navigation },
+    { label: "Events", value: totalEvents, icon: Navigation },
   ];
+
+  const cardW = (SCREEN_W - S.md * 2 - S.sm) / 2;
 
   return (
     <View style={styles.safe}>
@@ -245,150 +192,161 @@ export default function DestinationsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
-        {/* ── World Map — full bleed with fade ── */}
+        {/* ═══════════════════════════════════════════
+            MAP HERO — immersive full-bleed with
+            glassmorphic stat bar overlaid at bottom
+           ═══════════════════════════════════════════ */}
         <View style={styles.mapWrap}>
-            {MapboxGL ? (
-              <MapboxGL.MapView
-                style={StyleSheet.absoluteFillObject}
-                styleURL={isDark ? DARK_STYLE : LIGHT_STYLE}
-                projection="mercator"
-                scrollEnabled={false}
-                zoomEnabled={false}
-                pitchEnabled={false}
-                rotateEnabled={false}
-                logoEnabled={false}
-                attributionEnabled={false}
-                compassEnabled={false}
-                scaleBarEnabled={false}
-                onDidFinishLoadingStyle={handleMapLoaded}
-              >
-                <MapboxGL.Camera
-                  zoomLevel={0.5}
-                  centerCoordinate={[10, 15]}
-                  animationDuration={0}
-                />
-                {mapReady && (
-                  <>
-                    {/* Heatmap layer */}
-                    <MapboxGL.ShapeSource id="dest-heatmap" shape={heatmapGeoJSON}>
-                      <MapboxGL.HeatmapLayer
-                        id="heatmap"
-                        style={{
-                          heatmapWeight: ["get", "weight"],
-                          heatmapIntensity: 0.6,
-                          heatmapRadius: 40,
-                          heatmapOpacity: 0.5,
-                          heatmapColor: [
-                            "interpolate", ["linear"], ["heatmap-density"],
-                            0, "rgba(0,0,0,0)",
-                            0.2, "rgba(11,210,181,0.15)",
-                            0.4, "rgba(11,210,181,0.3)",
-                            0.6, "rgba(11,210,181,0.5)",
-                            0.8, "rgba(11,210,181,0.7)",
-                            1, C.teal,
-                          ],
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    {/* Connection lines */}
-                    <MapboxGL.ShapeSource id="dest-connections" shape={connectionLines}>
-                      <MapboxGL.LineLayer
-                        id="connection-lines"
-                        style={{
-                          lineColor: C.teal,
-                          lineWidth: 1,
-                          lineOpacity: 0.35,
-                          lineCap: "round",
-                          lineJoin: "round",
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    {/* Animated planes along connections */}
-                    <MapboxGL.ShapeSource id="dest-planes" shape={planeGeoJSON}>
-                      <MapboxGL.SymbolLayer
-                        id="plane-icons"
-                        style={{
-                          iconImage: "airport",
-                          iconSize: 0.7,
-                          iconColor: C.teal,
-                          iconRotate: ["get", "bearing"],
-                          iconRotationAlignment: "map",
-                          iconAllowOverlap: true,
-                          iconIgnorePlacement: true,
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    {/* Destination rings */}
-                    <MapboxGL.ShapeSource id="dest-rings" shape={geojson}>
-                      <MapboxGL.CircleLayer
-                        id="rings"
-                        style={{
-                          circleRadius: 14,
-                          circleColor: "transparent",
-                          circleStrokeWidth: 1.2,
-                          circleStrokeColor: C.teal,
-                          circleStrokeOpacity: 0.3,
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    <MapboxGL.ShapeSource id="dest-dots" shape={geojson}>
-                      <MapboxGL.CircleLayer
-                        id="dots"
-                        style={{
-                          circleRadius: 5,
-                          circleColor: C.teal,
-                          circleStrokeWidth: 2,
-                          circleStrokeColor: isDark ? "#131316" : "#ffffff",
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                  </>
-                )}
-              </MapboxGL.MapView>
-            ) : (
-              <View style={[StyleSheet.absoluteFillObject, styles.mapFallback]} />
-            )}
-          {/* Fade overlay at bottom of map */}
+          {MapboxGL ? (
+            <MapboxGL.MapView
+              style={StyleSheet.absoluteFillObject}
+              styleURL={isDark ? DARK_STYLE : LIGHT_STYLE}
+              projection="mercator"
+              scrollEnabled={false}
+              zoomEnabled={false}
+              pitchEnabled={false}
+              rotateEnabled={false}
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled={false}
+              scaleBarEnabled={false}
+              onDidFinishLoadingStyle={handleMapLoaded}
+            >
+              <MapboxGL.Camera
+                zoomLevel={0.8}
+                centerCoordinate={[10, 20]}
+                animationDuration={0}
+              />
+              {mapReady && (
+                <>
+                  <MapboxGL.ShapeSource id="dest-heatmap" shape={heatmapGeoJSON}>
+                    <MapboxGL.HeatmapLayer
+                      id="heatmap"
+                      style={{
+                        heatmapWeight: ["get", "weight"],
+                        heatmapIntensity: 0.8,
+                        heatmapRadius: 50,
+                        heatmapOpacity: 0.6,
+                        heatmapColor: [
+                          "interpolate", ["linear"], ["heatmap-density"],
+                          0, "rgba(0,0,0,0)",
+                          0.2, "rgba(11,210,181,0.15)",
+                          0.4, "rgba(11,210,181,0.3)",
+                          0.6, "rgba(11,210,181,0.5)",
+                          0.8, "rgba(11,210,181,0.7)",
+                          1, C.teal,
+                        ],
+                      }}
+                    />
+                  </MapboxGL.ShapeSource>
+                  {/* Outer glow ring */}
+                  <MapboxGL.ShapeSource id="dest-glow" shape={geojson}>
+                    <MapboxGL.CircleLayer
+                      id="glow"
+                      style={{
+                        circleRadius: 20,
+                        circleColor: C.teal,
+                        circleOpacity: 0.08,
+                        circleBlur: 1,
+                      }}
+                    />
+                  </MapboxGL.ShapeSource>
+                  {/* Ring */}
+                  <MapboxGL.ShapeSource id="dest-rings" shape={geojson}>
+                    <MapboxGL.CircleLayer
+                      id="rings"
+                      style={{
+                        circleRadius: 12,
+                        circleColor: "transparent",
+                        circleStrokeWidth: 1.5,
+                        circleStrokeColor: C.teal,
+                        circleStrokeOpacity: 0.5,
+                      }}
+                    />
+                  </MapboxGL.ShapeSource>
+                  {/* Center dot */}
+                  <MapboxGL.ShapeSource id="dest-dots" shape={geojson}>
+                    <MapboxGL.CircleLayer
+                      id="dots"
+                      style={{
+                        circleRadius: 5,
+                        circleColor: C.teal,
+                        circleStrokeWidth: 2,
+                        circleStrokeColor: isDark ? "#131316" : "#ffffff",
+                      }}
+                    />
+                  </MapboxGL.ShapeSource>
+                </>
+              )}
+            </MapboxGL.MapView>
+          ) : (
+            <View style={[StyleSheet.absoluteFillObject, styles.mapFallback]} />
+          )}
+
+          {/* Top vignette for status bar legibility */}
           <LinearGradient
-            colors={["transparent", C.bg]}
-            locations={[0.4, 1]}
-            style={styles.mapFade}
+            colors={[isDark ? "rgba(9,9,11,0.7)" : "rgba(247,248,251,0.6)", "transparent"]}
+            locations={[0, 1]}
+            style={styles.mapFadeTop}
             pointerEvents="none"
           />
-          {/* Title overlay */}
-          <View style={[styles.mapTitle, { top: insets.top + 8 }]} pointerEvents="none">
+          {/* Bottom fade into bg */}
+          <LinearGradient
+            colors={["transparent", C.bg]}
+            locations={[0.5, 1]}
+            style={styles.mapFadeBottom}
+            pointerEvents="none"
+          />
+
+          {/* Title */}
+          <View style={[styles.mapTitleWrap, { top: insets.top + 6 }]} pointerEvents="none">
             <Text style={styles.mapTitleText}>Destinations</Text>
-            <Text style={styles.mapSubText}>{destinations.length} places · {regionCount} regions</Text>
+            <Text style={styles.mapSubText}>
+              {plural(destinations.length, "place")} · {plural(regionCount, "region")}
+            </Text>
           </View>
+
         </View>
 
-        {/* ── Stats row ── */}
-        <View style={styles.statsRow}>
-          {stats.map(stat => (
-            <View key={stat.label} style={styles.statChip}>
-              <stat.icon size={13} color={C.teal} strokeWidth={1.8} />
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+        {/* ── Glassmorphic stats bar ── */}
+        <View style={styles.statsBarWrap}>
+          <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.statsBar}>
+            <View style={styles.statsBarInner}>
+              {stats.map((stat, idx) => (
+                <View key={stat.label} style={styles.statItem}>
+                  {idx > 0 && <View style={styles.statDivider} />}
+                  <View style={styles.statBody}>
+                    <View style={styles.statIconWrap}>
+                      <stat.icon size={13} color={C.teal} strokeWidth={2} />
+                    </View>
+                    <Text style={styles.statValue}>{stat.value}</Text>
+                    <Text style={styles.statLabel}>{stat.label}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
-          ))}
+          </BlurView>
         </View>
 
-        {/* ── Search ── */}
+        {/* ═══════════════════════════════════════════
+            SEARCH + FILTERS
+           ═══════════════════════════════════════════ */}
         <View style={styles.searchSection}>
           <View style={styles.searchWrap}>
-            <Search size={14} color={C.textTertiary} strokeWidth={1.5} />
+            <Search size={16} color={C.textTertiary} strokeWidth={1.5} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search destinations"
+              placeholder="Search destinations..."
               placeholderTextColor={C.textTertiary}
               value={search}
               onChangeText={setSearch}
               autoCapitalize="none"
+              accessibilityLabel="Search destinations"
+              accessibilityHint="Filter destinations by name or region"
             />
           </View>
         </View>
 
-        {/* ── Region filter chips ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -400,7 +358,13 @@ export default function DestinationsScreen() {
               <Pressable
                 key={r}
                 style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setRegionFilter(r)}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setRegionFilter(r);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by ${r === "all" ? "all regions" : r}`}
+                accessibilityState={{ selected: active }}
               >
                 <Text style={[styles.filterText, active && styles.filterTextActive]}>
                   {r === "all" ? "All" : r}
@@ -410,252 +374,232 @@ export default function DestinationsScreen() {
           })}
         </ScrollView>
 
+        {/* ═══════════════════════════════════════════
+            DESTINATION CARDS
+           ═══════════════════════════════════════════ */}
         {filtered.length === 0 ? (
           <View style={styles.noMatch}>
             <Text style={styles.noMatchText}>No matches found</Text>
           </View>
         ) : (
-          <>
-            {/* ── Featured destination — full width hero ── */}
-            {featured && (
-              <View style={styles.featuredSection}>
-                <Pressable
-                  style={styles.featuredCard}
-                  onPress={() => featured.tripIds[0] && router.push(`/trip/${featured.tripIds[0]}`)}
-                >
-                  <CachedImage uri={featured.image} style={StyleSheet.absoluteFillObject} />
-                  <LinearGradient
-                    colors={["transparent", "rgba(0,0,0,0.8)"]}
-                    locations={[0.25, 1]}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  {/* Region badge */}
-                  <View style={styles.featuredBadgeWrap}>
-                    <View style={styles.featuredBadge}>
-                      <Text style={styles.featuredBadgeText}>{featured.region}</Text>
+          <View style={styles.gridSection}>
+            <View style={styles.cardsGrid}>
+              {filtered.map((dest, i) => {
+                const isHero = i === 0;
+                return (
+                  <ScalePress
+                    key={dest.name}
+                    style={[styles.card, isHero ? styles.cardHero : { width: cardW }]}
+                    activeScale={0.97}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      dest.tripIds[0] && router.push(`/trip/${dest.tripIds[0]}`);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${dest.name}, ${plural(dest.tripCount, "trip")}, ${plural(dest.eventCount, "event")}`}
+                  >
+                    <CachedImage uri={dest.image} style={StyleSheet.absoluteFillObject} />
+                    <LinearGradient
+                      colors={["transparent", "rgba(0,0,0,0.85)"]}
+                      locations={[isHero ? 0.35 : 0.25, 1]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    {/* Trip count pill */}
+                    <View style={styles.cardTopRow}>
+                      <View style={[styles.cardPill, { backgroundColor: C.teal }]}>
+                        <Plane size={10} color="#000" strokeWidth={2.5} />
+                        <Text style={styles.cardPillText}>
+                          {plural(dest.tripCount, "trip")}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  {/* Bottom content */}
-                  <View style={styles.featuredContent}>
-                    <Text style={styles.featuredName} numberOfLines={2}>{featured.name}</Text>
-                    <View style={styles.featuredMeta}>
-                      <Text style={styles.featuredMetaText}>
-                        {featured.tripCount} {featured.tripCount === 1 ? "trip" : "trips"}
+                    {/* Bottom content */}
+                    <View style={styles.cardBottom}>
+                      <Text style={[styles.cardName, isHero && styles.cardNameHero]} numberOfLines={2}>
+                        {dest.name}
                       </Text>
-                      <View style={styles.metaDot} />
-                      <Text style={styles.featuredMetaText}>{featured.eventCount} events</Text>
+                      <View style={styles.cardMeta}>
+                        <Text style={styles.cardMetaText}>{plural(dest.eventCount, "event")}</Text>
+                      </View>
                     </View>
-                  </View>
-                </Pressable>
-              </View>
-            )}
-
-            {/* ── Grid ── */}
-            {gridItems.length > 0 && (
-              <View style={styles.gridSection}>
-                <Text style={styles.sectionLabel}>All Destinations</Text>
-                <View style={styles.cardsGrid}>
-                  {gridItems.map(dest => {
-                    const cardW = (SCREEN_W - S.md * 2 - S.xs) / 2;
-                    return (
-                      <Pressable
-                        key={dest.name}
-                        style={[styles.card, { width: cardW }]}
-                        onPress={() => dest.tripIds[0] && router.push(`/trip/${dest.tripIds[0]}`)}
-                      >
-                        <CachedImage uri={dest.image} style={StyleSheet.absoluteFillObject} />
-                        <LinearGradient
-                          colors={["transparent", "rgba(0,0,0,0.75)"]}
-                          locations={[0.3, 1]}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <View style={styles.cardTopRow}>
-                          <View style={styles.cardBadge}>
-                            <Text style={styles.cardBadgeText}>{dest.region}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.cardContent}>
-                          <Text style={styles.destName} numberOfLines={2}>{dest.name}</Text>
-                          <View style={styles.cardMeta}>
-                            <Text style={styles.cardMetaText}>
-                              {dest.tripCount} {dest.tripCount === 1 ? "trip" : "trips"}
-                            </Text>
-                            <View style={styles.metaDot} />
-                            <Text style={styles.cardMetaText}>{dest.eventCount} events</Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-          </>
+                  </ScalePress>
+                );
+              })}
+            </View>
+          </View>
         )}
       </ScrollView>
     </View>
   );
 }
 
+/* ═══════════════════════════════════════════════════
+   STYLES
+   ═══════════════════════════════════════════════════ */
+
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    safe: { flex: 1, backgroundColor: C.bg },
+    scroll: { paddingBottom: 120 },
 
-    // Map
+    // ─── Map hero ───
     mapWrap: {
-      height: 240,
-      width: "100%", overflow: "hidden",
+      height: MAP_HEIGHT,
+      width: "100%",
+      overflow: "hidden",
     },
     mapFallback: { backgroundColor: C.card },
-    mapFade: {
-      position: "absolute", bottom: 0, left: 0, right: 0, height: 80,
+    mapFadeTop: {
+      position: "absolute", top: 0, left: 0, right: 0,
+      height: 90, zIndex: 2,
     },
-    mapTitle: {
-      position: "absolute", left: S.md, right: S.md,
+    mapFadeBottom: {
+      position: "absolute", bottom: 0, left: 0, right: 0,
+      height: 120,
+    },
+    mapTitleWrap: {
+      position: "absolute", left: S.lg, right: S.lg, zIndex: 3,
     },
     mapTitleText: {
-      fontSize: T["2xl"], fontWeight: T.bold,
-      color: "#fff", letterSpacing: -0.3,
-      textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+      fontSize: T["3xl"], fontWeight: T.black, letterSpacing: -0.5,
+      color: "#fff",
+      textShadowColor: "rgba(0,0,0,0.7)",
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 8,
     },
     mapSubText: {
-      fontSize: T.xs, fontWeight: T.medium,
-      color: "rgba(255,255,255,0.7)", marginTop: 2,
-      textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+      fontSize: T.sm, fontWeight: T.semibold, letterSpacing: 0.2,
+      color: "rgba(255,255,255,0.65)", marginTop: 3,
+      textShadowColor: "rgba(0,0,0,0.6)",
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
 
-    // Stats
-    statsRow: {
-      flexDirection: "row", paddingHorizontal: S.md, gap: S.xs,
-      marginTop: -S.md,
-      marginBottom: S.sm,
+    // ─── Glassmorphic stats ───
+    statsBarWrap: {
+      paddingHorizontal: S.md, marginTop: -S.xl, zIndex: 4,
     },
-    statChip: {
+    statsBar: {
+      borderRadius: R.xl,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+    },
+    statsBarInner: {
+      flexDirection: "row",
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      backgroundColor: isDark ? "rgba(19,19,22,0.55)" : "rgba(255,255,255,0.55)",
+    },
+    statItem: {
+      flex: 1, flexDirection: "row", alignItems: "center",
+    },
+    statDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 28,
+      backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)",
+    },
+    statBody: {
       flex: 1, alignItems: "center", gap: 2,
-      backgroundColor: C.card, borderRadius: R.lg,
-      paddingVertical: S.sm,
+    },
+    statIconWrap: {
+      width: 26, height: 26, borderRadius: 13,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+      marginBottom: 2,
     },
     statValue: {
-      fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: -0.5,
+      fontSize: T.lg, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary,
+      letterSpacing: -0.3,
+      fontVariant: ["tabular-nums"],
     },
     statLabel: {
-      fontSize: 9, fontWeight: T.medium, color: C.textTertiary, letterSpacing: 0.3,
+      fontSize: 10, fontWeight: T.semibold,
+      color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
     },
 
-    // Search
+    // ─── Search ───
     searchSection: {
-      paddingHorizontal: S.md, marginBottom: S.xs,
+      paddingHorizontal: S.md, marginTop: S.sm, marginBottom: S.xs,
     },
     searchWrap: {
       flexDirection: "row", alignItems: "center", gap: S.xs,
-      backgroundColor: C.card, borderRadius: R.lg,
-      paddingHorizontal: S.sm, height: 40,
+      backgroundColor: C.card, borderRadius: R.xl,
+      paddingHorizontal: S.sm + 2, height: 44,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: C.borderLight,
     },
     searchInput: {
-      flex: 1, fontSize: T.sm, color: C.textPrimary,
+      flex: 1, fontSize: T.base, color: C.textPrimary,
       fontWeight: T.medium,
     },
 
-    // Filters
+    // ─── Filters ───
     filterRow: {
-      paddingHorizontal: S.md, paddingVertical: S.xs, gap: 6,
+      paddingHorizontal: S.md, paddingVertical: S.sm, gap: 8,
     },
     filterChip: {
-      paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.full,
+      paddingHorizontal: 16, minHeight: 36, justifyContent: "center",
+      borderRadius: R.full,
       backgroundColor: C.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: C.borderLight,
     },
-    filterChipActive: { backgroundColor: C.teal },
+    filterChipActive: {
+      backgroundColor: C.teal,
+      borderColor: C.teal,
+    },
     filterText: {
-      fontSize: T.xs, fontWeight: T.semibold, color: C.textSecondary,
+      fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary,
     },
     filterTextActive: { color: "#000" },
 
-    // Featured card
-    featuredSection: {
-      paddingHorizontal: S.md, marginBottom: S.sm,
-    },
-    featuredCard: {
-      height: 240, borderRadius: R.xl,
-      overflow: "hidden", backgroundColor: C.card,
-    },
-    featuredBadgeWrap: {
-      position: "absolute", top: 0, left: 0, right: 0,
-      padding: S.sm, zIndex: 2,
-    },
-    featuredBadge: {
-      alignSelf: "flex-start",
-      backgroundColor: "rgba(0,0,0,0.45)",
-      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 4,
-    },
-    featuredBadgeText: {
-      fontSize: T.xs, fontWeight: T.semibold, color: "rgba(255,255,255,0.9)",
-    },
-    featuredContent: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      padding: S.md,
-    },
-    featuredName: {
-      fontSize: T.xl, fontWeight: T.bold,
-      color: "#fff", letterSpacing: -0.3, marginBottom: 6,
-    },
-    featuredMeta: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-    },
-    featuredMetaText: {
-      fontSize: T.xs, fontWeight: T.medium, color: "rgba(255,255,255,0.7)",
-    },
-
-    // Section label
+    // ─── Card grid ───
     gridSection: {
       paddingHorizontal: S.md,
     },
-    sectionLabel: {
-      fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary,
-      letterSpacing: 0.5, marginBottom: S.sm,
-    },
-
-    // Cards — 2-column grid
     cardsGrid: {
-      flexDirection: "row", flexWrap: "wrap", gap: S.xs,
+      flexDirection: "row", flexWrap: "wrap", gap: S.sm,
     },
     card: {
-      height: 200, borderRadius: R.lg,
+      height: 180, borderRadius: R["2xl"],
       overflow: "hidden", backgroundColor: C.card,
+    },
+    cardHero: {
+      width: "100%", height: 220,
     },
     cardTopRow: {
       position: "absolute", top: 0, left: 0, right: 0,
-      padding: S.xs, zIndex: 2,
+      padding: S.sm, zIndex: 2,
     },
-    cardBadge: {
-      alignSelf: "flex-start",
-      backgroundColor: "rgba(0,0,0,0.45)",
-      borderRadius: R.full, paddingHorizontal: 7, paddingVertical: 3,
+    cardPill: {
+      alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4,
+      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
     },
-    cardBadgeText: {
-      fontSize: 9, fontWeight: T.semibold, color: "rgba(255,255,255,0.85)",
+    cardPillText: {
+      fontSize: T.xs, fontWeight: T.bold, color: "#000",
     },
-    cardContent: {
+    cardBottom: {
       position: "absolute", bottom: 0, left: 0, right: 0,
-      padding: S.xs,
+      padding: S.md,
     },
-    destName: {
-      fontSize: T.base, fontWeight: T.bold,
-      color: "#fff", letterSpacing: -0.2, marginBottom: 3,
+    cardName: {
+      fontSize: T.md, fontWeight: T.bold,
+      color: "#fff", letterSpacing: -0.2, marginBottom: 4,
+    },
+    cardNameHero: {
+      fontSize: T["2xl"], letterSpacing: -0.4,
     },
     cardMeta: {
-      flexDirection: "row", alignItems: "center", gap: 4,
+      flexDirection: "row", alignItems: "center", gap: 6,
     },
     cardMetaText: {
-      fontSize: 9, fontWeight: T.medium, color: "rgba(255,255,255,0.6)",
-    },
-    metaDot: {
-      width: 2, height: 2, borderRadius: 1,
-      backgroundColor: "rgba(255,255,255,0.3)",
+      fontSize: T.xs, fontWeight: T.medium, color: "rgba(255,255,255,0.65)",
     },
 
-    // Empty / no match
+    // ─── Empty states ───
     empty: {
       flex: 1, alignItems: "center", justifyContent: "center",
       paddingTop: 120, paddingHorizontal: S.xl, gap: S.sm,
@@ -664,7 +608,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       fontSize: T.xl, fontWeight: T.bold,
       color: C.textPrimary, letterSpacing: -0.3,
     },
-    emptyText: { fontSize: T.base, color: C.textTertiary, textAlign: "center", lineHeight: 24 },
+    emptyText: {
+      fontSize: T.base, color: C.textTertiary, textAlign: "center", lineHeight: 24,
+    },
     noMatch: { alignItems: "center", paddingTop: 40 },
     noMatchText: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium },
   });

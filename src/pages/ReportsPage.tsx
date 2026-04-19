@@ -2,10 +2,9 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Plane, Hotel, Calendar as LucideCalendar, MapPin, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download } from "lucide-react";
+import { Plane, Hotel, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download, TrendingUp, MapPin, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
@@ -17,11 +16,11 @@ import type { ComplianceDoc } from "@/types";
 
 type Tab = "operations" | "compliance";
 
-function BarTooltip({ active, payload, label, color = "#0bd2b5" }: { active?: boolean; payload?: { value: number }[]; label?: string; color?: string }) {
+function BarTooltip({ active, payload, label, color = "#0bd2b5", bg = "#111", borderColor = "#2a2a2a" }: { active?: boolean; payload?: { value: number }[]; label?: string; color?: string; bg?: string; borderColor?: string }) {
   if (!active || !payload?.length) return null;
   const count = payload[0].value;
   return (
-    <div style={{ background: "var(--tooltip-bg, #111)", border: "1px solid var(--tooltip-border, #2a2a2a)", borderRadius: 12, padding: "10px 14px", minWidth: 130 }}>
+    <div style={{ background: bg, border: `1px solid ${borderColor}`, borderRadius: 12, padding: "10px 14px", minWidth: 130 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>{label}</p>
       <p style={{ fontSize: 20, fontWeight: 900, color, fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
         {count} <span style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.1em" }}>{count === 1 ? "TRIP" : "TRIPS"}</span>
@@ -32,11 +31,11 @@ function BarTooltip({ active, payload, label, color = "#0bd2b5" }: { active?: bo
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.06] dark:border-transparent bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
-          <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
+          <div className={`h-8 w-8 rounded-lg border border-transparent dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
@@ -59,15 +58,29 @@ export function ReportsPage() {
   const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>("daf-compliance", {});
 
   const handleExportCsv = useCallback(() => {
-    const rows = trips.map(t => ({
-      "Trip Name": t.name,
-      "Destination": t.destination || "",
-      "Start Date": t.start,
-      "End Date": t.end,
-      "Event Count": t.events.length,
-      "Traveler Count": t.paxCount || t.attendees || "",
-      "Status": t.status,
-    }));
+    const rows = trips.map(t => {
+      const start = new Date(t.start);
+      const end = new Date(t.end);
+      const days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+      const flights = t.events.filter(e => e.type === "flight").length;
+      const hotels = t.events.filter(e => e.type === "hotel").length;
+      const activities = t.events.filter(e => e.type === "activity").length;
+      const dining = t.events.filter(e => e.type === "dining").length;
+      return {
+        "Trip Name": t.name,
+        "Destination": t.destination || "",
+        "Start Date": t.start,
+        "End Date": t.end,
+        "Duration (Days)": days,
+        "Status": t.status,
+        "Total Events": t.events.length,
+        "Flights": flights,
+        "Hotels": hotels,
+        "Activities": activities,
+        "Dining": dining,
+        "Traveler Count": t.paxCount || t.attendees || "",
+      };
+    });
     const csv = Papa.unparse(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -156,31 +169,33 @@ export function ReportsPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 lg:px-8 py-7 flex flex-col min-h-full">
+        <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 flex flex-col min-h-full">
           {/* Title + tabs */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-[#1a1a1a]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/[0.06] dark:border-transparent">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">DAF Adventures</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="shrink-0">
-              <TabsList className="bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] h-auto gap-0">
-                {(["operations", "compliance"] as const).map(t => (
-                  <TabsTrigger
-                    key={t}
-                    value={t}
-                    className="relative flex-none h-auto px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 data-active:bg-white dark:data-active:bg-[#1a1a1a] data-active:text-brand dark:data-active:text-brand data-active:shadow-md data-active:border-transparent dark:data-active:border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-slate-200"
-                  >
-                    {t === "operations" ? "Overview" : "Documents"}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-black/[0.06] dark:border-[#1f1f1f] shrink-0">
+              {(["operations", "compliance"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
+                    tab === t
+                      ? "bg-brand text-black shadow-md shadow-brand/20"
+                      : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-300"
+                  }`}
+                >
+                  {t === "operations" ? "Overview" : "Documents"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ───────── TRIP OPERATIONS ───────── */}
           {tab === "operations" && (trips.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <img src="/illustrations/illus-sitting.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
@@ -194,23 +209,48 @@ export function ReportsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-8 animate-fade-in">
-              {/* Stat cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                <div className="animate-fade-up stagger-1"><StatCard label="Active Trips" value={stats.activeTrips.toString()} sub="Currently in progress" icon={<Plane className="h-5 w-5" />} /></div>
-                <div className="animate-fade-up stagger-2"><StatCard label="Upcoming" value={stats.upcomingTrips.length.toString()} sub="Next 30 days" icon={<LucideCalendar className="h-5 w-5" />} /></div>
-                <div className="animate-fade-up stagger-3"><StatCard label="Travel Days" value={stats.totalDays.toString()} sub="Total scheduled" icon={<Clock className="h-5 w-5" />} /></div>
-                <div className="animate-fade-up stagger-4"><StatCard label="Destinations" value={stats.destinationCount.toString()} sub="Unique locations" icon={<MapPin className="h-5 w-5" />} /></div>
+            <div className="space-y-8 animate-fade-in mt-8">
+              {/* ── Hero Stats Strip ── */}
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
+                  <div className="text-center lg:text-left shrink-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
+                    <p className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{stats.totalDays}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666] mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
+                  </div>
+                  <div className="hidden lg:block w-px h-20 bg-slate-200 dark:bg-[#1f1f1f]" />
+                  <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
+                    {[
+                      { label: "Active", value: stats.activeTrips.toString(), sub: "In progress", icon: <Plane className="h-4 w-4" /> },
+                      { label: "Upcoming", value: stats.upcomingTrips.length.toString(), sub: "Next 30 days", icon: <LucideCalendar className="h-4 w-4" /> },
+                      { label: "Events", value: stats.totalEvents.toString(), sub: `${stats.avgEventsPerTrip} per trip`, icon: <Briefcase className="h-4 w-4" /> },
+                    ].map((kpi, i, arr) => (
+                      <div key={kpi.label} className="flex items-stretch gap-4 lg:gap-8 flex-1">
+                        <div className="text-center lg:text-left flex-1">
+                          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
+                            <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">{kpi.icon}</div>
+                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666]">{kpi.label}</span>
+                          </div>
+                          <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{kpi.value}</p>
+                          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1.5">{kpi.sub}</p>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div className="hidden lg:block w-px self-stretch bg-slate-200 dark:bg-[#1f1f1f]" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Trip Pipeline — full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
                 </div>
                 {pipelineData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
                     <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                       <Plane className="h-5 w-5 text-brand opacity-60" />
                     </div>
@@ -270,144 +310,249 @@ export function ReportsPage() {
                 )}
               </div>
 
-              {/* Upcoming Departures */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Upcoming Departures</h3>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Sorted by departure date</p>
+              {/* ── Event Breakdown + Trips by Month — 2 col ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Event Type Breakdown */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Event Breakdown</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">By category</p>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {stats.tripTimeline.length === 0 && (
-                    <div className="col-span-2 flex flex-col items-center justify-center py-14 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                        <LucideCalendar className="h-5 w-5 text-brand opacity-60" />
+                  {stats.typeDistribution.length > 0 ? (
+                    <div className="flex flex-col items-center gap-6">
+                      <div className="h-52 w-52">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
+                          <PieChart>
+                            <Pie data={stats.typeDistribution} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" stroke="none" cornerRadius={6}>
+                              {stats.typeDistribution.map((d, i) => {
+                                const tc: Record<string, string> = { Flight: "#38bdf8", Hotel: "#fbbf24", Activity: brandHex, Dining: "#fb7185" };
+                                return <Cell key={i} fill={tc[d.name] || "#64748b"} />;
+                              })}
+                              <Label
+                                content={() => (
+                                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
+                                    <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.05em" }}>{stats.totalEvents}</tspan>
+                                    <tspan x="50%" dy="18" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>EVENTS</tspan>
+                                  </text>
+                                )}
+                              />
+                            </Pie>
+                            <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ background: chartColors.bg, border: `1px solid ${chartColors.grid}`, borderRadius: 12, fontSize: 11, fontWeight: 700 }} />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
-                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No departures scheduled</p>
-                      <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create a trip from the dashboard</p>
+                      <div className="w-full grid grid-cols-2 gap-3">
+                        {stats.typeDistribution.map((t) => {
+                          const pct = stats.totalEvents > 0 ? Math.round((t.value / stats.totalEvents) * 100) : 0;
+                          const cfg: Record<string, { hex: string; icon: React.ReactNode }> = {
+                            Flight:   { hex: "#38bdf8", icon: <Plane className="h-3 w-3" /> },
+                            Hotel:    { hex: "#fbbf24", icon: <Hotel className="h-3 w-3" /> },
+                            Activity: { hex: brandHex,  icon: <MapPin className="h-3 w-3" /> },
+                            Dining:   { hex: "#fb7185", icon: <Clock className="h-3 w-3" /> },
+                          };
+                          const c = cfg[t.name] || { hex: "#64748b", icon: <BarChart3 className="h-3 w-3" /> };
+                          return (
+                            <div key={t.name} className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
+                              <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${c.hex}18`, color: c.hex }}>
+                                {c.icon}
+                              </div>
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 dark:text-white flex-1 truncate">{t.name}</span>
+                              <span className="text-[11px] font-black tabular-nums" style={{ color: c.hex }}>{pct}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-52 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
+                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                        <BarChart3 className="h-5 w-5 text-brand opacity-60" />
+                      </div>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No events yet</p>
                     </div>
                   )}
-                  {stats.tripTimeline.map(t => (
-                    <div key={t.id} className="flex items-center gap-4 py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200/50 dark:border-[#1f1f1f]/50">
-                      <div className="h-10 w-10 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-[#1f1f1f]">
-                        <img src={t.image} alt={t.name} className="h-full w-full object-cover" />
+                </div>
+
+                {/* Trips by Month */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Departure schedule</p>
+                  </div>
+                  {stats.tripsByMonth.length === 0 ? (
+                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
+                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                        <BarChart3 className="h-5 w-5 text-brand opacity-60" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white truncate">{t.name}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">
-                          {new Date(t.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} — {t.duration} days
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {t.daysUntil <= 0 ? (
-                          <span className="text-xs font-bold text-brand uppercase tracking-wider">Now</span>
-                        ) : (
-                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{t.daysUntil}<span className="text-xs font-bold text-slate-500 dark:text-[#888] ml-1 tracking-widest">DAYS</span></span>
-                        )}
-                      </div>
-                      <Badge className={`text-xs font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider shrink-0`} style={{ background: `${STATUS_COLORS[t.status]}18`, color: STATUS_COLORS[t.status] }}>
-                        {t.status}
-                      </Badge>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
+                      <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="flex-1 min-h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
+                        <BarChart data={stats.tripsByMonth} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
+                          <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                          <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip color={brandHex} bg={chartColors.bg} borderColor={chartColors.grid} />} />
+                          <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} background={{ fill: "transparent" }} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Trips by Month — full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
-                <div className="mb-6">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Departure schedule</p>
-                </div>
-                {stats.tripsByMonth.length === 0 ? (
-                  <div className="h-64 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                    <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                      <BarChart3 className="h-5 w-5 text-brand opacity-60" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
-                  </div>
-                ) : (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                      <BarChart data={stats.tripsByMonth} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
-                        <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                        <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip color={brandHex} />} />
-                        <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} background={{ fill: 'transparent' }} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-
-              {/* Top Airlines & Hotels — side by side */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Airlines */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center">
+              {/* ── Top Airlines, Top Destinations, Travel Insights — 3 col ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Top Airlines */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Plane className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Top Airlines</h3>
-                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Most booked carriers</p>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Most booked</p>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {stats.topAirlines.map((a, i) => {
-                      const maxCount = stats.topAirlines[0]?.count || 1;
-                      return (
-                        <div key={a.name} className="flex items-center gap-4">
-                          <span className="text-2xl font-black text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</span>
-                              <span className="text-xs font-black tracking-tighter text-brand shrink-0 ml-2">{a.count}</span>
+                  {stats.topAirlines.length > 0 ? (
+                    <div className="space-y-3">
+                      {stats.topAirlines.map((a) => {
+                        const maxCount = stats.topAirlines[0]?.count || 1;
+                        const logoUrl = a.iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.iata}.png` : "";
+                        return (
+                          <div key={a.name} className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-white dark:bg-white border border-transparent dark:border-transparent flex items-center justify-center shrink-0 overflow-hidden">
+                              {logoUrl ? (
+                                <img src={logoUrl} alt={a.name} className="h-5 w-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
+                              ) : null}
+                              <span className={`fallback text-[9px] font-black text-brand uppercase ${logoUrl ? "hidden" : ""}`}>{a.iata || a.name.slice(0, 2)}</span>
                             </div>
-                            <div className="h-1.5 bg-slate-100 dark:bg-[#050505] rounded-full overflow-hidden">
-                              <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{a.name}</span>
+                                <span className="text-[11px] font-black tabular-nums text-brand shrink-0 ml-2">{a.count}</span>
+                              </div>
+                              <div className="h-1 bg-slate-100 dark:bg-[#0a0a0a] rounded-full overflow-hidden">
+                                <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                    {stats.topAirlines.length === 0 && <p className="text-xs text-slate-500 dark:text-[#888]">No airline data</p>}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
+                        <Plane className="h-5 w-5 text-brand/30" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No airline data</p>
+                    </div>
+                  )}
                 </div>
-                {/* Hotels */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="h-8 w-8 rounded-lg bg-[#f59e0b]/10 text-[#f59e0b] flex items-center justify-center">
-                      <Hotel className="h-4 w-4" />
+
+                {/* Top Itineraries */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                      <BarChart3 className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Top Hotels</h3>
-                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Most booked properties</p>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Itineraries</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Most packed</p>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {stats.topHotels.map((h, i) => {
-                      const maxCount = stats.topHotels[0]?.count || 1;
-                      return (
-                        <div key={h.name} className="flex items-center gap-4">
-                          <span className="text-2xl font-black text-slate-200 dark:text-[#222] w-7 text-right tabular-nums leading-none">{i + 1}</span>
+                  {stats.eventsPerTrip.length > 0 ? (
+                    <div className="space-y-3">
+                      {[...stats.eventsPerTrip].sort((a, b) => b.total - a.total).slice(0, 5).map((t, i) => (
+                        <div key={t.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
+                          <span className="text-lg font-black text-slate-200 dark:text-[#222] w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{h.name}</span>
-                              <span className="text-xs font-black tracking-tighter text-[#f59e0b] shrink-0 ml-2">{h.count}</span>
-                            </div>
-                            <div className="h-1.5 bg-slate-100 dark:bg-[#050505] rounded-full overflow-hidden">
-                              <div className="h-full bg-[#f59e0b] rounded-full transition-all duration-700" style={{ width: `${(h.count / maxCount) * 100}%` }} />
-                            </div>
+                            <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{t.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 dark:text-[#666] mt-0.5">
+                              {[t.flights && `${t.flights} ${t.flights === 1 ? "flight" : "flights"}`, t.hotels && `${t.hotels} ${t.hotels === 1 ? "stay" : "stays"}`, t.activities && `${t.activities} ${t.activities === 1 ? "activity" : "activities"}`].filter(Boolean).join(" · ")}
+                            </p>
                           </div>
+                          <span className="text-sm font-black tracking-tighter text-brand shrink-0">{t.total}</span>
                         </div>
-                      );
-                    })}
-                    {stats.topHotels.length === 0 && <p className="text-xs text-slate-500 dark:text-[#888]">No hotel data</p>}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
+                        <BarChart3 className="h-5 w-5 text-brand/30" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No trips yet</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Travel Insights */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                      <Zap className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Insights</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Smart patterns</p>
+                    </div>
                   </div>
+                  {trips.length > 0 ? (
+                    <div className="space-y-3">
+                      {[
+                        stats.insights.longestTrip && {
+                          icon: <Clock className="h-3.5 w-3.5" />,
+                          label: "Longest trip",
+                          value: `${stats.insights.longestTrip.days}d`,
+                          detail: stats.insights.longestTrip.name,
+                        },
+                        stats.insights.busiestTrip && {
+                          icon: <TrendingUp className="h-3.5 w-3.5" />,
+                          label: "Most packed",
+                          value: `${stats.insights.busiestTrip.events}`,
+                          detail: stats.insights.busiestTrip.name,
+                        },
+                        stats.insights.busiestMonth && {
+                          icon: <LucideCalendar className="h-3.5 w-3.5" />,
+                          label: "Peak month",
+                          value: `${stats.insights.busiestMonth.count}`,
+                          detail: stats.insights.busiestMonth.month,
+                        },
+                        {
+                          icon: <Plane className="h-3.5 w-3.5" />,
+                          label: "Flights",
+                          value: stats.insights.flightCount.toString(),
+                          detail: `${stats.insights.hotelCount} stays · ${stats.insights.activityCount} activities`,
+                        },
+                        {
+                          icon: <MapPin className="h-3.5 w-3.5" />,
+                          label: "Places",
+                          value: stats.insights.destinationCount.toString(),
+                          detail: `Avg ${stats.insights.avgTripDays}d per trip`,
+                        },
+                      ].filter(Boolean).map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
+                          <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                            {item!.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666] leading-none">{item!.label}</p>
+                            <p className="text-[11px] font-black uppercase tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">{item!.detail}</p>
+                          </div>
+                          <span className="text-sm font-black tracking-tighter text-brand shrink-0">{item!.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
+                        <Zap className="h-5 w-5 text-brand/30" />
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No insights yet</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -415,7 +560,7 @@ export function ReportsPage() {
 
           {/* ───────── TEAM & COMPLIANCE ───────── */}
           {tab === "compliance" && (complianceData.travelers.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <img src="/illustrations/illus-together.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
@@ -429,7 +574,7 @@ export function ReportsPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-8 animate-fade-in mt-8">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<ShieldCheck className="h-5 w-5" />} /></div>
@@ -439,7 +584,7 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance — full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
@@ -509,7 +654,7 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type — full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
@@ -540,7 +685,7 @@ export function ReportsPage() {
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-end gap-5 mt-6 pt-4 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center justify-end gap-5 mt-6 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
                   {[{ l: "Signed", c: "#34d399" }, { l: "Pending", c: "#fbbf24" }, { l: "Expired", c: "#f87171" }].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ background: i.c }} />
@@ -553,7 +698,7 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action — side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileCheck className="h-4 w-4" />
@@ -583,7 +728,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
                       <AlertTriangle className="h-4 w-4" />
@@ -632,7 +777,7 @@ export function ReportsPage() {
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
@@ -663,7 +808,7 @@ export function ReportsPage() {
                         });
                         const hasExpired = docNames.some(dn => t.compliance.find(d => d.name === dn)?.status === "Expired");
                         return (
-                          <tr key={t.id} className="border-t border-slate-200/50 dark:border-[#1f1f1f]/50 hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
+                          <tr key={t.id} className="border-t border-transparent dark:border-transparent hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
@@ -695,7 +840,7 @@ export function ReportsPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
                   {[
                     { l: "Signed", icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> },
                     { l: "Pending", icon: <Clock4 className="h-3.5 w-3.5 text-amber-400" /> },

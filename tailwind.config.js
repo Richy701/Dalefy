@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      data: {
+        active: 'active',
+      },
       fontFamily: {
         condensed: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
       },
@@ -55,6 +58,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+      },
+      animation: {
+        fadeIn: "fadeIn 0.4s ease-out",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -82,6 +82,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const mapRef = useRef<MapRef>(null);
   const rafRef = useRef<number>(0);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [tappedIdx, setTappedIdx] = useState<number | null>(null);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   const { accent } = usePreferences();
   const ACCENT = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
@@ -163,38 +165,36 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
   const planeRafRef = useRef<number>(0);
 
+  // Build arcs by connecting consecutive resolved points
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const flights = trip.events.filter(e => e.type === "flight");
-      const features: ArcFeature[] = [];
-      for (const fe of flights) {
-        const match = fe.location.match(/^(.+?)\s+to\s+(.+)$/);
-        if (!match) continue;
-        const from = resolveCoords(match[1].trim()) ?? (await geocode(match[1].trim()));
-        const to   = resolveCoords(match[2].trim()) ?? (await geocode(match[2].trim()));
-        if (!from || !to) continue;
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: buildArc(from, to).map(p => [p[1], p[0]]) },
-          properties: {},
-        });
-      }
-      if (!cancelled) setArcGeoJSON({ type: "FeatureCollection", features });
-    })();
-    return () => { cancelled = true; };
-  }, [trip.events]);
+    if (points.length < 2) {
+      setArcGeoJSON({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    const features: ArcFeature[] = [];
+    for (let i = 0; i < points.length - 1; i++) {
+      features.push({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: buildArc(points[i].coords, points[i + 1].coords).map(p => [p[1], p[0]]) },
+        properties: {},
+      });
+    }
+    setArcGeoJSON({ type: "FeatureCollection", features });
+  }, [points]);
 
-  // Animate planes along arcs
+  // Animate a single plane sequentially across all arcs
   useEffect(() => {
     if (arcGeoJSON.features.length === 0) return;
     const arcs = arcGeoJSON.features.map(f => f.geometry.coordinates);
-    const DURATION = 6000; // ms per full arc traversal
+    const ARC_DURATION = 4000; // ms per arc segment
+    const TOTAL_DURATION = arcs.length * ARC_DURATION;
 
     function animatePlanes(ts: number) {
-      const t = (ts % DURATION) / DURATION;
-      const positions = arcs.map(arc => interpolateArc(arc, t));
-      setPlanePositions(positions);
+      const elapsed = ts % TOTAL_DURATION;
+      const arcIdx = Math.min(Math.floor(elapsed / ARC_DURATION), arcs.length - 1);
+      const t = (elapsed - arcIdx * ARC_DURATION) / ARC_DURATION;
+      const pos = interpolateArc(arcs[arcIdx], t);
+      setPlanePositions([pos]);
       planeRafRef.current = requestAnimationFrame(animatePlanes);
     }
     planeRafRef.current = requestAnimationFrame(animatePlanes);
@@ -210,9 +210,10 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       mapRef.current.flyTo({ center: [lngs[0], lats[0]], zoom: 5, duration: 800 });
       return;
     }
+    const mobile = window.innerWidth < 768;
     mapRef.current.fitBounds(
       [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding: { top: 120, bottom: 200, left: 120, right: 120 }, maxZoom: 4, duration: 1000 }
+      { padding: mobile ? { top: 40, bottom: 100, left: 24, right: 24 } : { top: 120, bottom: 200, left: 120, right: 120 }, maxZoom: 4, duration: 1000 }
     );
   }, [allCoords]);
 
@@ -291,6 +292,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         attributionControl={true}
         style={{ width: "100%", height: "100%" }}
         onLoad={startArcAnimation}
+        onClick={() => setTappedIdx(null)}
       >
         {/* Flight arc — glow halo */}
         <Source id="arcs" type="geojson" data={arcGeoJSON}>
@@ -351,6 +353,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 style={{ position: "relative", width: size, height: size, cursor: "pointer" }}
                 onMouseEnter={() => setHoveredIdx(pt.order)}
                 onMouseLeave={() => setHoveredIdx(null)}
+                onClick={(e) => { e.stopPropagation(); setTappedIdx(prev => prev === pt.order ? null : pt.order); }}
               >
                 {/* Pulse rings for first marker */}
                 {isFirst && (
@@ -400,8 +403,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                   fontFamily: "'Barlow Condensed', system-ui, sans-serif",
                 }}>{pt.order + 1}</div>
 
-                {/* Hover tooltip */}
-                {hoveredIdx === pt.order && (
+                {/* Hover / tap tooltip */}
+                {(hoveredIdx === pt.order || tappedIdx === pt.order) && (
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 10px)", left: "50%",
                     transform: "translateX(-50%)",
@@ -432,8 +435,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
       {/* Route timeline strip */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000]">
-        <div className="mx-3 mb-3 rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
-          <div className="px-4 py-3">
+        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-2xl sm:rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />

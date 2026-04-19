@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, type DragEvent } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -6,7 +6,7 @@ import {
   MoreVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Hotel, Utensils, Compass, Globe,
   X, Upload, Loader2, RefreshCw, ChevronRight,
-  Clock, Hash, Tag, ArrowRight
+  Clock, Hash, Tag, ArrowRight, Copy, FileStack, Save
 } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,16 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
+import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { searchImages } from "@/services/imageSearch";
-import MapboxMap from "react-map-gl/mapbox";
+import MapboxMap, { Source, Layer, Marker } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { resolveCoords } from "@/data/coordinates";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -59,8 +61,46 @@ const COVER_IMGS = [
   { url: IMG("1647363377737-8d0ad7c2f494"), label: "Flight" },
 ];
 
+// Geocode cache shared with Destinations page pattern
+const dashGeoCache: Record<string, [number, number] | null> = {};
+async function geocodeName(name: string): Promise<[number, number] | null> {
+  if (name in dashGeoCache) return dashGeoCache[name];
+  try {
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+    );
+    const json = await res.json();
+    const center = json.features?.[0]?.center as [number, number] | undefined;
+    dashGeoCache[name] = center ?? null;
+    return center ?? null;
+  } catch {
+    dashGeoCache[name] = null;
+    return null;
+  }
+}
+
+const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
+
 function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
+}
+
+function useLiveCountdown(targetDate: string | undefined) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!targetDate) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+  if (!targetDate) return null;
+  const diff = Math.max(0, new Date(targetDate).getTime() - now);
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+    total: diff,
+  };
 }
 function tripDuration(start: string, end: string) {
   return Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000));
@@ -71,6 +111,9 @@ export function DashboardPage() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
+  const { accent } = usePreferences();
+  const accentPreset = ACCENT_PALETTE.find(p => p.id === accent) ?? ACCENT_PALETTE[0];
+  const ACCENT_RGB = accentPreset.rgb.replace(/\s+/g, ", ");
   const stats = useTripStats(trips);
   const navigate = useNavigate();
 
@@ -118,7 +161,10 @@ export function DashboardPage() {
   const isDark = theme === "dark";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
-  const firstName = user?.name?.split(" ")[0] || "Traveller";
+  const firstName = (() => {
+    const raw = user?.name?.split(" ")[0] || "Traveller";
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  })();
 
   const filteredTrips = useMemo(() =>
     [...trips]
@@ -136,6 +182,8 @@ export function DashboardPage() {
       .slice(0, 2),
     [trips]);
 
+  const countdown = useLiveCountdown(upcomingCards[0]?.start);
+
   // Spotlight trip for "For your X Trip"
   const spotlightTrip = useMemo(() =>
     [...trips]
@@ -152,6 +200,52 @@ export function DashboardPage() {
       .slice(0, 3);
   }, [spotlightTrip]);
 
+
+  // ── Mini destination map data ──────────────────────────────────────────
+  const destNames = useMemo(() => {
+    const names = new Set<string>();
+    trips.forEach(trip => {
+      const hotelNames = new Set(trip.events.filter(e => e.type === "hotel").map(e => e.location.toLowerCase()));
+      const isHotel = (n: string) => { const l = n.toLowerCase(); return hotelNames.has(l) || [...hotelNames].some(h => h.includes(l) || l.includes(h)); };
+      let name = trip.destination && !INVALID_DEST.test(trip.destination.trim()) && !isHotel(trip.destination.trim()) ? trip.destination : "";
+      if (!name) {
+        const flights = trip.events.filter(e => e.type === "flight").sort((a, b) => a.date.localeCompare(b.date));
+        for (const f of flights) { const m = f.location.match(/^.+?\s+to\s+(.+)$/i); if (m) { name = m[1].trim(); break; } }
+      }
+      if (!name) { const act = trip.events.find(e => e.type === "activity" && e.location); if (act) name = act.location; }
+      if (!name) name = trip.name;
+      names.add(name);
+    });
+    return [...names];
+  }, [trips]);
+
+  const [mapCoords, setMapCoords] = useState<Record<string, [number, number]>>({});
+
+  useEffect(() => {
+    destNames.forEach(name => {
+      const local = resolveCoords(name);
+      if (local) { setMapCoords(prev => ({ ...prev, [name]: local })); return; }
+      if (!(name in dashGeoCache)) {
+        geocodeName(name).then(c => { if (c) setMapCoords(prev => ({ ...prev, [name]: c })); });
+      } else if (dashGeoCache[name]) {
+        setMapCoords(prev => ({ ...prev, [name]: dashGeoCache[name]! }));
+      }
+    });
+  }, [destNames]);
+
+  const mapPins = useMemo(() =>
+    destNames.filter(n => mapCoords[n]).map(n => ({ name: n, coords: mapCoords[n] })),
+    [destNames, mapCoords],
+  );
+
+  const heatmapData = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: mapPins.map(p => ({
+      type: "Feature" as const,
+      properties: { weight: 1 },
+      geometry: { type: "Point" as const, coordinates: p.coords },
+    })),
+  }), [mapPins]);
 
   const runCoverSearch = async (query: string, page = 1) => {
     if (!query.trim()) { setCoverResults([]); return; }
@@ -209,7 +303,70 @@ export function DashboardPage() {
     toast.success("Trip removed");
   };
 
-  const handleOpenTrip = (trip: Trip) => navigate(`/trip/${trip.id}`);
+  const handleDuplicateTrip = (trip: Trip) => {
+    const dup: Trip = {
+      ...trip,
+      id: Date.now().toString(),
+      name: `${trip.name} (Copy)`,
+      status: "Draft",
+      events: trip.events.map(e => ({ ...e, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })),
+      shortCode: undefined,
+    };
+    addTrip(dup);
+    showToast("Trip duplicated");
+    toast.success("Trip duplicated");
+  };
+
+  const handleSaveAsTemplate = (trip: Trip) => {
+    const templates: Trip[] = JSON.parse(localStorage.getItem("daf-templates") ?? "[]");
+    const tpl: Trip = {
+      ...trip,
+      id: `tpl-${Date.now()}`,
+      name: trip.name,
+      status: "Draft",
+      shortCode: undefined,
+    };
+    templates.push(tpl);
+    localStorage.setItem("daf-templates", JSON.stringify(templates));
+    showToast("Saved as template");
+    toast.success("Saved as template");
+  };
+
+  const handleCreateFromTemplate = (tpl: Trip) => {
+    const today = new Date();
+    const tripStart = new Date(tpl.start);
+    const daysDiff = Math.round((today.getTime() - tripStart.getTime()) / 86400000);
+    const shiftDate = (d: string) => {
+      const dt = new Date(d);
+      dt.setDate(dt.getDate() + daysDiff);
+      return dt.toISOString().split("T")[0];
+    };
+    const newTrip: Trip = {
+      ...tpl,
+      id: Date.now().toString(),
+      name: `${tpl.name}`,
+      start: shiftDate(tpl.start),
+      end: shiftDate(tpl.end),
+      status: "Draft",
+      shortCode: undefined,
+      events: tpl.events.map(e => ({
+        ...e,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        date: shiftDate(e.date),
+      })),
+    };
+    addTrip(newTrip);
+    showToast("Trip created from template");
+    toast.success("Trip created from template");
+    navigate(`/trip/${newTrip.id}`);
+  };
+
+  const templates: Trip[] = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("daf-templates") ?? "[]"); }
+    catch { return []; }
+  }, []);
+
+  const handleOpenTrip = (trip: Trip, eventId?: string) => navigate(`/trip/${trip.id}${eventId ? `?event=${eventId}` : ""}`);
 
   return (
     <div
@@ -236,10 +393,10 @@ export function DashboardPage() {
 
       <PageHeader
         left={
-          <div className="max-w-xs w-full relative group hidden md:flex items-center">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+          <div className="max-w-[160px] sm:max-w-xs w-full relative group flex items-center">
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trips..." className="pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
@@ -273,10 +430,10 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => setImportOpen(true)}
-              className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200 dark:border-[#222] overflow-hidden hover:border-brand/60 transition-colors group cursor-pointer"
+              className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200/50 dark:border-transparent overflow-hidden hover:border-brand/60 transition-colors group cursor-pointer"
             >
               <div className="flex items-center h-10">
-                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200 dark:border-[#222] group-hover:border-brand/40 transition-colors">
+                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200/50 dark:border-transparent group-hover:border-brand/40 transition-colors">
                   <Upload className="h-3 w-3 text-brand" />
                 </div>
                 <div className="flex-1 overflow-hidden relative">
@@ -292,26 +449,45 @@ export function DashboardPage() {
             </button>
           </div>
         ) : (
-        <div data-compact-section className="px-4 lg:px-8 pt-8 pb-16 space-y-8">
+        <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand/25 via-brand/[0.04] to-slate-50 dark:from-brand/25 dark:via-brand/[0.04] dark:to-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] px-6 py-12 lg:px-8 lg:py-16">
-            <div className="relative z-10 max-w-[55%]">
-              <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-slate-200/30 dark:border-white/[0.06] px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+            <div className="relative z-10 max-w-full sm:max-w-[55%]">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
                 {greeting}, {firstName} 👋
               </h1>
-              {upcomingCards[0] ? (
+              {upcomingCards[0] && countdown ? (
                 <button
                   onClick={() => handleOpenTrip(upcomingCards[0])}
                   className="group mt-5 block text-left"
                 >
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">
-                    {daysUntil(upcomingCards[0].start) === 1 ? "Day to Departure" : "Days to Departure"}
+                    Countdown to Departure
                   </p>
-                  <span className="block text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
-                    <NumberFlow value={daysUntil(upcomingCards[0].start)} />
-                  </span>
-                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
+                  <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
+                    {[
+                      { value: countdown.days, label: "DAYS" },
+                      { value: countdown.hours, label: "HRS" },
+                      { value: countdown.minutes, label: "MIN" },
+                      { value: countdown.seconds, label: "SEC" },
+                    ].map((u, i) => (
+                      <div key={u.label} className="flex items-center">
+                        <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px] lg:min-w-[60px]">
+                          <span className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                            <NumberFlow value={u.value} format={{ minimumIntegerDigits: 2 }} />
+                          </span>
+                          <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-0.5">
+                            {u.label}
+                          </span>
+                        </div>
+                        {i < 3 && (
+                          <span className="text-xl sm:text-2xl font-black text-brand/60 mx-0.5 -mt-2.5 sm:-mt-3 select-none">:</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
                     <MapPin className="h-3 w-3 text-brand" />
                     {upcomingCards[0].destination || upcomingCards[0].name}
                     <ArrowUpRight className="h-3 w-3" />
@@ -336,14 +512,14 @@ export function DashboardPage() {
           </div>
 
           {/* ── Two-column layout ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-stretch">
+          <div data-compact-grid className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-stretch">
 
             {/* ══ LEFT COLUMN ══ */}
             <div className="flex flex-col gap-8 min-w-0">
 
               {/* ── Upcoming Trip ── */}
               <section>
-                <div className="mb-4">
+                <div data-compact-section-head className="mb-4">
                   <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
                   <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Departing within 30 days</p>
                 </div>
@@ -356,7 +532,7 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
@@ -384,7 +560,7 @@ export function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
+                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => setIsNewTripOpen(true)} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
@@ -395,7 +571,7 @@ export function DashboardPage() {
               {/* ── For your X Trip — Place Cards ── */}
               {spotlightTrip && (
                 <section className="flex-1 flex flex-col min-h-0">
-                  <div className="mb-1">
+                  <div data-compact-section-head className="mb-1">
                     <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
                       For your{" "}
                       <span className="text-brand">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
@@ -476,11 +652,11 @@ export function DashboardPage() {
                         return (
                           <button
                             key={ev.id}
-                            onClick={() => handleOpenTrip(spotlightTrip!)}
-                            className="text-left bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden flex flex-1 hover:border-brand/30 hover:shadow-md transition-[border-color,box-shadow] duration-200 group"
+                            onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
+                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-md transition-[border-color,box-shadow] duration-200 group"
                           >
-                            {/* Left: image */}
-                            <div className="w-[120px] shrink-0 relative overflow-hidden">
+                            {/* Top/Left: image */}
+                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-[120px] shrink-0 relative overflow-hidden">
                               {hasImg ? (
                                 <img src={ev.image} alt={ev.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               ) : (
@@ -491,12 +667,19 @@ export function DashboardPage() {
                             </div>
 
                             {/* Center: content */}
-                            <div className="flex-1 min-w-0 p-4 flex flex-col justify-between gap-2">
-                              {/* Top: type pill + title */}
+                            <div data-compact-place-body className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-between gap-2">
+                              {/* Top: type pill + title + inline time on mobile */}
                               <div className="min-w-0">
-                                <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
-                                  <cfg.Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
-                                  {typeLabel}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
+                                    <cfg.Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+                                    {typeLabel}
+                                  </div>
+                                  {(timeParts || monthDayLabel) && (
+                                    <span className="sm:hidden text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider shrink-0">
+                                      {timeParts ? timeParts.join(" ") : monthDayLabel}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="mt-1.5 text-sm font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1">
                                   {ev.title}
@@ -531,9 +714,9 @@ export function DashboardPage() {
                               )}
                             </div>
 
-                            {/* Right: when block — weekday, big time, date */}
+                            {/* Right: when block — weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
-                              <div className="shrink-0 flex flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-[#1a1a1a]">
+                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-transparent dark:border-transparent">
                                 {weekdayLabel && (
                                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
                                     {weekdayLabel}
@@ -568,7 +751,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-black/[0.06] dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
@@ -582,14 +765,14 @@ export function DashboardPage() {
             </div>
 
             {/* ══ RIGHT COLUMN ══ */}
-            <div className="hidden lg:block space-y-4">
+            <div data-compact-sidebar className="space-y-4">
 
-              {/* Destinations Map — "Friends Location" equivalent */}
-              <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-3xl overflow-hidden">
+              {/* Destinations Map — mini globe with heatmap + pins */}
+              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
                 <div className="flex items-start justify-between px-5 pt-5 pb-3">
                   <div>
                     <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Destinations</p>
-                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Check your trip coverage</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">{mapPins.length} {mapPins.length === 1 ? "place" : "places"} explored</p>
                   </div>
                   <button
                     onClick={() => navigate("/destinations")}
@@ -598,12 +781,13 @@ export function DashboardPage() {
                     Expand
                   </button>
                 </div>
-                <div className="relative h-[220px] overflow-hidden rounded-b-3xl">
+                <div data-compact-map className="relative h-[200px] sm:h-[220px] overflow-hidden rounded-b-3xl">
                   <MapboxMap
-                    initialViewState={{ longitude: 15, latitude: 5, zoom: 0 }}
+                    key={`${isDark ? "dark" : "light"}-${accent}`}
+                    initialViewState={{ longitude: 15, latitude: 20, zoom: 1.2 }}
                     mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
                     mapboxAccessToken={MAPBOX_TOKEN}
-                    projection="mercator"
+                    projection="globe"
                     attributionControl={false}
                     style={{ width: "100%", height: "100%" }}
                     scrollZoom={false}
@@ -612,9 +796,54 @@ export function DashboardPage() {
                     touchZoomRotate={false}
                     keyboard={false}
                   >
+                    <Source id="dash-heatmap" type="geojson" data={heatmapData}>
+                      <Layer
+                        id="dash-heatmap-layer"
+                        type="heatmap"
+                        paint={{
+                          "heatmap-weight": ["get", "weight"],
+                          "heatmap-intensity": 0.6,
+                          "heatmap-radius": 35,
+                          "heatmap-opacity": 0.5,
+                          "heatmap-color": [
+                            "interpolate", ["linear"], ["heatmap-density"],
+                            0, "rgba(0,0,0,0)",
+                            0.2, `rgba(${ACCENT_RGB},0.15)`,
+                            0.4, `rgba(${ACCENT_RGB},0.3)`,
+                            0.6, `rgba(${ACCENT_RGB},0.5)`,
+                            0.8, `rgba(${ACCENT_RGB},0.7)`,
+                            1, accentPreset.hex,
+                          ],
+                        }}
+                      />
+                    </Source>
+                    {mapPins.map((pin, i) => (
+                      <Marker key={pin.name} longitude={pin.coords[0]} latitude={pin.coords[1]} anchor="center">
+                        <div style={{ position: "relative", width: 32, height: 32 }}>
+                          <div style={{
+                            position: "absolute", top: "50%", left: "50%",
+                            width: 32, height: 32, marginLeft: -16, marginTop: -16, borderRadius: "50%",
+                            border: `1px solid rgba(${accentPreset.rgb},${isDark ? 0.2 : 0.35})`,
+                            background: `rgba(${ACCENT_RGB},${isDark ? 0.06 : 0.1})`,
+                            animation: `dest-pin-pulse 3s ease-in-out ${i * 0.5}s infinite`,
+                            pointerEvents: "none",
+                          }} />
+                          <div style={{
+                            position: "absolute", top: "50%", left: "50%",
+                            width: 12, height: 12, marginLeft: -6, marginTop: -6, borderRadius: "50%",
+                            background: accentPreset.hex,
+                            border: `2px solid ${isDark ? "rgba(17,17,17,0.8)" : "rgba(255,255,255,0.95)"}`,
+                            boxShadow: isDark
+                              ? `0 0 8px rgba(${accentPreset.rgb},0.4)`
+                              : `0 0 6px rgba(${accentPreset.rgb},0.3), 0 0 0 2px rgba(${accentPreset.rgb},0.15)`,
+                            zIndex: 2,
+                          }} />
+                        </div>
+                      </Marker>
+                    ))}
                   </MapboxMap>
                   {/* Edge vignette to blend into card */}
-                  <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 40px 12px ${isDark ? "#111111" : "#f5f7fa"}` }} />
+                  <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 40px 12px ${isDark ? "#111111" : "#ffffff"}` }} />
                 </div>
               </div>
 
@@ -637,9 +866,9 @@ export function DashboardPage() {
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-3xl overflow-hidden">
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
                     {/* Full-bleed hero */}
-                    <div className="relative h-[200px]">
+                    <div data-compact-spotlight-hero className="relative h-[200px]">
                       <img src={spotlightTrip.image} alt={spotlightTrip.name} className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/90" />
                       <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
@@ -693,7 +922,7 @@ export function DashboardPage() {
                     </div>
 
                     {/* Stat row */}
-                    <div className="grid grid-cols-3 gap-2 px-5 pt-4 pb-4">
+                    <div data-compact-stat-grid className="grid grid-cols-3 gap-2 px-3 sm:px-5 pt-4 pb-4">
                       {[
                         { icon: LucideCalendar, label: "Duration", value: `${days} day${days === 1 ? "" : "s"}` },
                         { icon: Users,          label: "Pax",      value: pax },
@@ -701,7 +930,7 @@ export function DashboardPage() {
                       ].map(({ icon: Icon, label, value }) => (
                         <div
                           key={label}
-                          className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] px-3 py-2.5"
+                          className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent px-3 py-2.5"
                         >
                           <div className="flex items-center gap-1.5 mb-1">
                             <Icon className="h-3 w-3 text-brand" strokeWidth={2} />
@@ -734,7 +963,7 @@ export function DashboardPage() {
 
           {/* ── All Trips — full width ── */}
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">All Trips</h3>
                 <span className="text-[10px] font-bold text-brand bg-brand/10 px-3 py-1.5 rounded-full">{filteredTrips.length}</span>
@@ -742,9 +971,9 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-400" />
-                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
+                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
-<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-sm">
+<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none">
                   <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
                   <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
@@ -752,7 +981,7 @@ export function DashboardPage() {
             </div>
 
             {displayMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div data-compact-trip-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredTrips.map((trip) => {
                   const startDate = new Date(trip.start);
                   const endDate = new Date(trip.end);
@@ -761,7 +990,7 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-black/20 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-black/20 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
 
@@ -779,7 +1008,7 @@ export function DashboardPage() {
                       </div>
 
                       {/* Bottom content */}
-                      <div className="relative z-10 mt-auto p-5">
+                      <div data-compact-card-bottom className="relative z-10 mt-auto p-5">
                         {trip.destination && (
                           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand mb-2 flex items-center gap-1.5">
                             <MapPin className="h-2.5 w-2.5" /> {trip.destination}
@@ -797,94 +1026,142 @@ export function DashboardPage() {
                             <span className="text-[11px] font-bold tracking-wide truncate">{trip.paxCount || trip.attendees.split(",").length}</span>
                           </div>
                         </div>
-                        <button aria-label="Delete trip" onClick={(e) => { e.stopPropagation(); setDeletingTripId(trip.id); }} className="absolute -top-14 right-4 h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/60 hover:bg-red-500/40 hover:text-red-300 transition-[background-color,color] flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
+                        <div className="absolute -top-14 right-4 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={() => setIsNewTripOpen(true)} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
-                  <div className="h-14 w-14 rounded-full bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
+                <button onClick={() => setIsNewTripOpen(true)} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-black/[0.06] dark:border-transparent flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                  <div className="h-14 w-14 rounded-full bg-slate-50 dark:bg-[#050505] border border-transparent dark:border-transparent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
                 </button>
               </div>
             ) : (
-              <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm">
-                <Table>
-                  <TableHeader className="bg-slate-50 dark:bg-[#050505]">
-                    <TableRow className="hover:bg-transparent border-slate-200 dark:border-[#1f1f1f]">
-                      <TableHead className="pl-8 py-5 text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Preview</TableHead>
-                      <TableHead className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Destination</TableHead>
-                      <TableHead className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Attendees</TableHead>
-                      <TableHead className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Timeline</TableHead>
-                      <TableHead className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Events</TableHead>
-                      <TableHead className="text-right pr-8 text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.3em]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTrips.length === 0 && (
-                      <TableRow className="hover:bg-transparent border-0">
-                        <TableCell colSpan={6} className="py-20 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-                              <Plane className="h-6 w-6 text-brand opacity-60" />
-                            </div>
-                            <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips yet</p>
-                            <button onClick={() => setIsNewTripOpen(true)} className="text-[11px] font-bold text-brand hover:underline">Create your first trip →</button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {filteredTrips.map(trip => {
-                      const tStart = new Date(trip.start);
-                      const tEnd = new Date(trip.end);
-                      const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-                      return (
-                        <TableRow key={trip.id} className="group hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors cursor-pointer border-slate-200 dark:border-[#1f1f1f] h-20" onClick={() => handleOpenTrip(trip)}>
-                          <TableCell className="pl-8 py-2">
-                            <div className="h-14 w-20 rounded-xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f]"><img src={trip.image} alt={trip.name} className="h-full w-full object-cover" /></div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1.5">
-                              <span className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-brand transition-colors leading-none">{trip.name}</span>
-                              <span className={`inline-flex items-center gap-1.5 w-fit text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
-                                trip.status === "Published"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                  : trip.status === "In Progress"
-                                  ? "bg-brand/10 text-brand"
-                                  : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400"
-                              }`}>
-                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                  trip.status === "Published" ? "bg-emerald-500 dark:bg-emerald-400"
-                                  : trip.status === "In Progress" ? "bg-brand"
-                                  : "bg-slate-400 dark:bg-slate-500"
-                                }`} />
-                                {trip.status}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell><span className="font-medium text-slate-600 dark:text-[#aaa] text-xs">{trip.attendees || "Team"}</span></TableCell>
-                          <TableCell className="text-slate-500 dark:text-[#888]"><div className="flex items-center gap-2 text-xs font-medium"><LucideCalendar className="h-3.5 w-3.5 text-brand" />{tDateStr}</div></TableCell>
-                          <TableCell><span className="text-xs font-bold text-slate-900 dark:text-white">{trip.events.length}</span></TableCell>
-                          <TableCell className="text-right pr-8">
-                            <div onClick={e => e.stopPropagation()} className="flex items-center justify-end gap-3">
-                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-slate-50 dark:bg-[#050505] text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-[background-color,color] shadow-sm" onClick={() => handleOpenTrip(trip)}><ExternalLink className="h-4 w-4" aria-hidden="true" /></Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger className="h-9 w-9 rounded-xl bg-slate-50 dark:bg-[#050505] text-slate-500 dark:text-[#888] hover:text-brand transition-[background-color,border-color,color] focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-[#1f1f1f] shadow-sm">
-                                  <MoreVertical className="h-4 w-4" aria-hidden="true" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                                  <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+              <div className="flex flex-col gap-3">
+                {filteredTrips.length === 0 && (
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-20">
+                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                      <Plane className="h-6 w-6 text-brand opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips yet</p>
+                    <button onClick={() => setIsNewTripOpen(true)} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
+                  </div>
+                )}
+                {filteredTrips.map(trip => {
+                  const tStart = new Date(trip.start);
+                  const tEnd = new Date(trip.end);
+                  const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                  const dLeft = daysUntil(trip.start);
+                  const isActive = trip.status === "In Progress";
+                  return (
+                    <div
+                      key={trip.id}
+                      data-compact-table-row
+                      onClick={() => handleOpenTrip(trip)}
+                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex items-stretch cursor-pointer hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                    >
+                      {/* Image */}
+                      <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
+                        <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate group-hover:text-brand transition-colors">
+                            {trip.name}
+                          </p>
+                          <span className={`inline-flex items-center gap-1 shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                            isActive
+                              ? "bg-brand/10 text-brand"
+                              : trip.status === "Published"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-[#666]"
+                          }`}>
+                            <span className={`h-1 w-1 rounded-full ${
+                              isActive ? "bg-brand animate-pulse"
+                              : trip.status === "Published" ? "bg-emerald-500 dark:bg-emerald-400"
+                              : "bg-slate-400 dark:bg-slate-500"
+                            }`} />
+                            {isActive ? "Active" : trip.status}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                          {trip.destination && (
+                            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5 text-brand" />{trip.destination}</span>
+                          )}
+                          <span className="flex items-center gap-1"><LucideCalendar className="h-2.5 w-2.5 text-brand" />{tDateStr}</span>
+                          <span className="flex items-center gap-1"><Users className="h-2.5 w-2.5" />{trip.paxCount || trip.attendees.split(",").length}</span>
+                          <span className="flex items-center gap-1"><Compass className="h-2.5 w-2.5" />{trip.events.length} events</span>
+                        </div>
+                      </div>
+
+                      {/* Right: countdown + actions */}
+                      <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4">
+                        {dLeft > 0 && new Date(trip.end) >= new Date() && (
+                          <span className="text-[10px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-full leading-none tracking-wide whitespace-nowrap">
+                            {dLeft === 0 ? "Today" : `${dLeft}d`}
+                          </span>
+                        )}
+                        <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-400 dark:text-[#555] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors flex items-center justify-center cursor-pointer">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Templates ── */}
+            {templates.length > 0 && (
+              <div className="mt-6">
+                <div data-compact-section-head className="flex items-center gap-3 mb-3">
+                  <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Templates</h3>
+                  <span className="text-[10px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full">{templates.length}</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {templates.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      onClick={() => handleCreateFromTemplate(tpl)}
+                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                    >
+                      <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">{tpl.name}</p>
+                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                          {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
+                          <span className="flex items-center gap-1"><FileStack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
+                        </div>
+                      </div>
+                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -896,7 +1173,7 @@ export function DashboardPage() {
       <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[90vh] focus:outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
             <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
@@ -904,7 +1181,7 @@ export function DashboardPage() {
                   <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
                   <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1">Build your next adventure</p>
                 </div>
-                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -913,7 +1190,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-black/[0.06] dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
               >
                 <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
                   <Upload className="h-4 w-4 text-brand" />
@@ -930,7 +1207,7 @@ export function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666]">Itinerary Title</label>
                   <input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip"
-                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white text-2xl font-black uppercase tracking-tight focus:outline-none focus:border-brand placeholder:text-slate-300 dark:placeholder:text-[#333] transition-colors" />
+                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-black/[0.08] dark:border-transparent text-slate-900 dark:text-white text-2xl font-black uppercase tracking-tight focus:outline-none focus:border-brand placeholder:text-slate-300 dark:placeholder:text-[#333] transition-colors" />
                 </div>
 
                 {/* Trip Type */}
@@ -939,7 +1216,7 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-2">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
+                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -951,12 +1228,12 @@ export function DashboardPage() {
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
                     <input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
                     <input type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="e.g., 12"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                   </div>
                 </div>
 
@@ -964,7 +1241,7 @@ export function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
                   <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
-                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                 </div>
 
                 {/* Travel Dates — inline to avoid Popover/Drawer z-index conflict */}
@@ -980,7 +1257,7 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] w-full">
+                  <div className="rounded-2xl border border-transparent dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] w-full">
                     <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="w-full" />
                   </div>
                 </div>
@@ -996,7 +1273,7 @@ export function DashboardPage() {
                       value={newTripData.budget}
                       onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
                       placeholder="e.g. 45000"
-                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
+                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
                     />
                     <div className="flex gap-1 flex-wrap items-center">
                       {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => (
@@ -1007,7 +1284,7 @@ export function DashboardPage() {
                           className={`h-12 px-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border ${
                             newTripData.currency === c
                               ? "bg-brand/10 border-brand/40 text-brand"
-                              : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#555] hover:text-slate-800 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#333]"
+                              : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#555] hover:text-slate-800 dark:hover:text-white hover:border-black/[0.12] dark:hover:border-white/[0.12]"
                           }`}
                         >
                           {c}
@@ -1038,7 +1315,7 @@ export function DashboardPage() {
                         onChange={e => setCoverSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
                         placeholder="Search destinations…"
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand/50 transition-colors"
+                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand/50 transition-colors"
                       />
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)}
@@ -1048,15 +1325,15 @@ export function DashboardPage() {
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <RefreshCw className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ChevronRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
@@ -1092,7 +1369,7 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#666] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all">
+                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#666] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/[0.1] dark:hover:border-white/[0.1] transition-all">
                     Cancel
                   </button>
                   <button type="submit"

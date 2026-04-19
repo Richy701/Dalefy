@@ -39,8 +39,8 @@ export function NavMain() {
                 className={`
                   relative rounded-xl h-10 gap-3
                   ${active
-                    ? "!bg-black/8 dark:!bg-white/8 !text-sidebar-foreground hover:!bg-black/10 dark:hover:!bg-white/10"
-                    : "!text-sidebar-foreground/55 hover:!text-sidebar-foreground hover:!bg-black/5 dark:hover:!bg-white/5"
+                    ? "!bg-brand/10 !text-brand hover:!bg-brand/15"
+                    : "!text-sidebar-foreground/55 hover:!text-brand hover:!bg-brand/5"
                   }
                 `}
               >

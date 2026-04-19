@@ -8,6 +8,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { resolveCoords } from "@/data/coordinates";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -58,7 +59,39 @@ export function DestinationsPage() {
   const destinations: Destination[] = useMemo(() => {
     const map = new Map<string, Destination>();
     trips.forEach(trip => {
-      const destName = trip.destination || trip.name;
+      // Derive destination from trip data — prioritise real place names
+      const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
+      // Collect hotel names so we can reject them as destinations
+      const hotelNames = new Set(
+        trip.events.filter(e => e.type === "hotel").map(e => e.location.toLowerCase()),
+      );
+      const isHotelName = (n: string) => {
+        const lower = n.toLowerCase();
+        return hotelNames.has(lower) || [...hotelNames].some(h => h.includes(lower) || lower.includes(h));
+      };
+
+      let destName = "";
+      // 1. Use trip.destination if it's a real place (not a month, not a hotel name)
+      if (trip.destination && !INVALID_DEST.test(trip.destination.trim()) && !isHotelName(trip.destination.trim())) {
+        destName = trip.destination;
+      }
+      // 2. Extract from flight "X to Y" locations
+      if (!destName) {
+        const flights = trip.events
+          .filter(e => e.type === "flight")
+          .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time));
+        for (const f of flights) {
+          const match = f.location.match(/^.+?\s+to\s+(.+)$/i);
+          if (match) { destName = match[1].trim(); break; }
+        }
+      }
+      // 3. Try activity locations (often contain city/region names)
+      if (!destName) {
+        const activity = trip.events.find(e => e.type === "activity" && e.location);
+        if (activity) destName = activity.location;
+      }
+      // 4. Last resort: use trip name
+      if (!destName) destName = trip.name;
       if (!map.has(destName)) {
         map.set(destName, {
           name: destName, region: "International", tripCount: 0, tripNames: [], tripIds: [],
@@ -73,7 +106,17 @@ export function DestinationsPage() {
         dest.tripIds.push(trip.id);
       }
       dest.eventCount += trip.events.length;
-      if (trip.start < dest.nextVisit) dest.nextVisit = trip.start;
+      // Prefer the nearest future date; fall back to the most recent past date
+      const today = new Date().toISOString().slice(0, 10);
+      const isFuture = trip.start >= today;
+      const currentIsFuture = dest.nextVisit >= today;
+      if (isFuture && !currentIsFuture) {
+        dest.nextVisit = trip.start;
+      } else if (isFuture && currentIsFuture) {
+        if (trip.start < dest.nextVisit) dest.nextVisit = trip.start;
+      } else if (!isFuture && !currentIsFuture) {
+        if (trip.start > dest.nextVisit) dest.nextVisit = trip.start;
+      }
       trip.events.forEach(e => {
         if (e.type === "flight") dest.types.flights++;
         else if (e.type === "hotel") dest.types.hotels++;
@@ -106,24 +149,31 @@ export function DestinationsPage() {
   const [geoCoords, setGeoCoords] = useState<Record<string, [number, number]>>({});
 
   useEffect(() => {
-    destinations.forEach(d => {
-      if (d.name in geocodeCache) {
-        const cached = geocodeCache[d.name];
-        if (cached) setGeoCoords(prev => ({ ...prev, [d.name]: cached }));
+    const resolve = (name: string) => {
+      // Try local coordinate lookup first (handles airport codes like LHR, NBO)
+      const local = resolveCoords(name);
+      if (local) {
+        setGeoCoords(prev => ({ ...prev, [name]: local }));
+        return;
+      }
+      // Fall back to Mapbox geocoding API
+      if (name in geocodeCache) {
+        const cached = geocodeCache[name];
+        if (cached) setGeoCoords(prev => ({ ...prev, [name]: cached }));
       } else {
-        geocodeDestination(d.name).then(coords => {
-          if (coords) setGeoCoords(prev => ({ ...prev, [d.name]: coords }));
+        geocodeDestination(name).then(coords => {
+          if (coords) setGeoCoords(prev => ({ ...prev, [name]: coords }));
         });
       }
-    });
+    };
+    destinations.forEach(d => resolve(d.name));
   }, [destinations]);
 
-  const mapPins = useMemo(() =>
-    destinations
+  const mapPins = useMemo(() => {
+    return destinations
       .map(d => ({ ...d, coords: geoCoords[d.name] as [number, number] | undefined }))
-      .filter((d): d is typeof d & { coords: [number, number] } => !!d.coords),
-    [destinations, geoCoords]
-  );
+      .filter((d): d is typeof d & { coords: [number, number] } => !!d.coords);
+  }, [destinations, geoCoords]);
 
   const heatmapGeoJSON = useMemo(() => ({
     type: "FeatureCollection" as const,
@@ -136,13 +186,11 @@ export function DestinationsPage() {
 
   type MapPin = typeof mapPins[0];
   const [hoveredPin, setHoveredPin] = useState<MapPin | null>(null);
+  const [tappedPin, setTappedPin] = useState<MapPin | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const mousePos = useRef({ x: 0, y: 0 });
   const mapRef = useRef<MapRef>(null);
 
-  // Animated plane positions — defined here, effect runs after connectionLines below
-  const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
-  const planeRafRef = useRef<number>(0);
 
   // Navigate between destinations
   const flyToPin = useCallback((idx: number) => {
@@ -207,75 +255,20 @@ export function DestinationsPage() {
     } catch { /* older mapbox versions */ }
   }, [isDark, mapPins]);
 
-  const connectionLines = useMemo(() => {
-    const added = new Set<string>();
-    type LineFeature = { type: "Feature"; geometry: { type: "LineString"; coordinates: [number, number][] }; properties: Record<string, never> };
-    const features: LineFeature[] = [];
-    for (const from of mapPins) {
-      const nearest = [...mapPins]
-        .filter(p => p.name !== from.name)
-        .sort((a, b) => {
-          const da = Math.hypot(from.coords[0] - a.coords[0], from.coords[1] - a.coords[1]);
-          const db = Math.hypot(from.coords[0] - b.coords[0], from.coords[1] - b.coords[1]);
-          return da - db;
-        })
-        .slice(0, 2);
-      for (const to of nearest) {
-        const key = [from.name, to.name].sort().join("-");
-        if (!added.has(key)) {
-          added.add(key);
-          features.push({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: [from.coords, to.coords] },
-            properties: {},
-          });
-        }
-      }
-    }
-    return { type: "FeatureCollection" as const, features };
-  }, [mapPins]);
-
-  // Animate planes along connection lines
-  useEffect(() => {
-    if (connectionLines.features.length === 0) { setPlanePositions([]); return; }
-    const arcs = connectionLines.features.map(f => f.geometry.coordinates);
-    const DURATION = 8000;
-    function interpolate(arc: [number, number][], t: number) {
-      const len = arc.length - 1;
-      const idx = Math.min(Math.floor(t * len), len - 1);
-      const frac = (t * len) - idx;
-      const p0 = arc[idx], p1 = arc[Math.min(idx + 1, len)];
-      const lng = p0[0] + (p1[0] - p0[0]) * frac;
-      const lat = p0[1] + (p1[1] - p0[1]) * frac;
-      const dLng = (p1[0] - p0[0]) * Math.PI / 180;
-      const lat1 = p0[1] * Math.PI / 180, lat2 = p1[1] * Math.PI / 180;
-      const y = Math.sin(dLng) * Math.cos(lat2);
-      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-      const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-      return { lng, lat, bearing };
-    }
-    function animate(ts: number) {
-      const t = (ts % DURATION) / DURATION;
-      setPlanePositions(arcs.map(arc => interpolate(arc, t)));
-      planeRafRef.current = requestAnimationFrame(animate);
-    }
-    planeRafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(planeRafRef.current);
-  }, [connectionLines]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
         left={destinations.length > 0 ? (
-          <div className="max-w-md w-full relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+          <div className="max-w-[160px] sm:max-w-md w-full relative group">
+            <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input
               id="search-destinations"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="SEARCH DESTINATIONS..."
-              className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              placeholder="Search..."
+              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
             />
           </div>
         ) : undefined}
@@ -300,29 +293,32 @@ export function DestinationsPage() {
         ) : (<>
 
         {/* ── Hero Banner ── */}
-        <div className="px-4 lg:px-8 pt-6 pb-2">
+        <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
           {/* Banner — same style as dashboard */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand/25 via-brand/[0.04] to-slate-50 dark:from-brand/25 dark:via-brand/[0.04] dark:to-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] px-6 lg:px-8 h-[520px]">
-            <div className="relative z-10 max-w-[50%] flex flex-col justify-center h-full">
-              <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
-                Destinations
-              </h1>
-              <div className="mt-5">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">Your Travel Footprint</p>
-                <span className="block text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
-                  {destinations.length}
-                </span>
-                <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc]">
-                  <MapPin className="h-3 w-3 text-brand" />
-                  {destinations.length === 1 ? "Destination" : "Destinations"} · {regions.length - 1} {regions.length - 1 === 1 ? "Region" : "Regions"} · {destinations.reduce((s, d) => s + d.eventCount, 0)} Events
-                </p>
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/15 via-brand/[0.03] to-slate-50 dark:from-brand/15 dark:via-brand/[0.03] dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
+            {/* Mobile: stacked layout / Desktop: side-by-side */}
+            <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
+              {/* Text content */}
+              <div className="relative z-10 px-5 py-6 sm:px-6 sm:py-0 sm:max-w-[50%] flex flex-col justify-center lg:px-8">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                  Destinations
+                </h1>
+                <div className="mt-3 sm:mt-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">Your Travel Footprint</p>
+                  <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                    {destinations.length}
+                  </span>
+                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] flex-wrap">
+                    <MapPin className="h-3 w-3 text-brand" />
+                    {destinations.length === 1 ? "Destination" : "Destinations"} · {regions.length - 1} {regions.length - 1 === 1 ? "Region" : "Regions"} · {destinations.reduce((s, d) => s + d.eventCount, 0)} Events
+                  </p>
+                </div>
               </div>
-            </div>
-            {/* Globe map on the right */}
-            <div
-              className="hidden sm:block absolute right-0 top-0 bottom-0 w-[45%] lg:w-[50%] overflow-hidden rounded-r-3xl"
-              onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
-            >
+              {/* Globe map — below text on mobile, right side on sm+ */}
+              <div
+                className="relative h-[220px] sm:h-auto sm:flex-1 overflow-hidden rounded-b-2xl sm:rounded-b-none sm:rounded-r-3xl"
+                onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
+              >
               <MapboxMap
                 ref={mapRef}
                 initialViewState={{ longitude: 10, latitude: 20, zoom: 1.5 }}
@@ -334,7 +330,7 @@ export function DestinationsPage() {
                 scrollZoom={false}
                 dragPan={true}
                 dragRotate={true}
-                touchZoomRotate={false}
+                touchZoomRotate={true}
                 keyboard={false}
                 onLoad={onMapLoad}
               >
@@ -359,20 +355,13 @@ export function DestinationsPage() {
                     }}
                   />
                 </Source>
-                <Source id="connections" type="geojson" data={connectionLines}>
-                  <Layer
-                    id="connections-core"
-                    type="line"
-                    layout={{ "line-cap": "round", "line-join": "round" }}
-                    paint={{ "line-color": ACCENT, "line-width": 1, "line-opacity": 0.5 }}
-                  />
-                </Source>
                 {mapPins.map((pin, i) => (
                   <Marker key={pin.name} longitude={pin.coords[0]} latitude={pin.coords[1]} anchor="center">
                     <div
                       style={{ position: "relative", width: 48, height: 48, cursor: "pointer" }}
                       onMouseEnter={() => setHoveredPin(pin)}
                       onMouseLeave={() => setHoveredPin(null)}
+                      onClick={(e) => { e.stopPropagation(); setTappedPin(prev => prev?.name === pin.name ? null : pin); }}
                     >
                       <div style={{
                         position: "absolute", top: "50%", left: "50%",
@@ -404,58 +393,42 @@ export function DestinationsPage() {
                     </div>
                   </Marker>
                 ))}
-                {/* Animated planes along connection lines */}
-                {planePositions.map((pos, i) => (
-                  <Marker key={`plane-${i}`} longitude={pos.lng} latitude={pos.lat} anchor="center">
-                    <div style={{
-                      transform: `rotate(${pos.bearing - 45}deg)`,
-                      filter: `drop-shadow(0 0 4px ${ACCENT}88)`,
-                    }}>
-                      <Plane size={14} color={ACCENT} fill={ACCENT} strokeWidth={0} />
-                    </div>
-                  </Marker>
-                ))}
               </MapboxMap>
-              {/* Fade edges so map blends into banner */}
-              <div className="absolute inset-y-0 left-0 pointer-events-none z-10"
-                style={{
-                  width: "30%",
-                  background: isDark
-                    ? "linear-gradient(to right, #0a0a0a, rgba(10,10,10,0.6) 50%, transparent)"
-                    : "linear-gradient(to right, rgba(248,250,252,0.95) 10%, rgba(248,250,252,0.5) 50%, transparent)"
-                }}
-              />
               {/* Nav buttons — bottom right of globe */}
               {mapPins.length > 1 && (
                 <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-white/90 dark:bg-[#111111]/90 backdrop-blur-sm rounded-full border border-slate-200 dark:border-[#1f1f1f] shadow-lg px-1 py-1">
                     <button
                       onClick={handlePrev}
-                      className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <ChevronLeft className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                      <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
                     </button>
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-[#888] px-1 min-w-[60px] text-center truncate">
                       {mapPins[activeIdx]?.name?.split(",")[0] || `${activeIdx + 1}/${mapPins.length}`}
                     </span>
                     <button
                       onClick={handleNext}
-                      className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                      <ChevronRight className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
                     </button>
                   </div>
                 </div>
               )}
             </div>
+            </div>{/* end flex row/col */}
           </div>
         </div>
 
-        {/* Tooltip — fixed to cursor */}
-        {hoveredPin && (
+        {/* Tooltip — fixed to cursor (desktop) or centered (mobile tap) */}
+        {(hoveredPin || tappedPin) && (() => {
+          const pin = hoveredPin || tappedPin;
+          if (!pin) return null;
+          return (
           <div
             className="fixed z-[9999] pointer-events-none"
-            style={{ left: mousePos.current.x + 16, top: mousePos.current.y - 16 }}
+            style={hoveredPin ? { left: mousePos.current.x + 16, top: mousePos.current.y - 16 } : { left: "50%", bottom: 24, transform: "translateX(-50%)" }}
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl min-w-[200px] overflow-hidden">
               {/* Header */}
@@ -464,63 +437,64 @@ export function DestinationsPage() {
                   <div className="h-5 w-5 rounded-lg flex items-center justify-center" style={{ background: `rgba(${ACCENT_RGB},0.15)` }}>
                     <MapPin className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                   </div>
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{hoveredPin.name}</p>
+                  <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{pin.name}</p>
                 </div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666] pl-7">{hoveredPin.region}</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666] pl-7">{pin.region}</p>
               </div>
               {/* Stats */}
               <div className="flex items-center border-t border-slate-100 dark:border-[#1a1a1a]">
                 <div className="flex-1 px-4 py-2.5 text-center border-r border-slate-100 dark:border-[#1a1a1a]">
-                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{hoveredPin.tripCount}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-1">{hoveredPin.tripCount === 1 ? "Trip" : "Trips"}</p>
+                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.tripCount}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-1">{pin.tripCount === 1 ? "Trip" : "Trips"}</p>
                 </div>
                 <div className="flex-1 px-4 py-2.5 text-center">
-                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{hoveredPin.eventCount}</p>
+                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.eventCount}</p>
                   <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-1">Events</p>
                 </div>
               </div>
               {/* Event type breakdown */}
-              {(hoveredPin.types.flights > 0 || hoveredPin.types.hotels > 0 || hoveredPin.types.activities > 0 || hoveredPin.types.dining > 0) && (
+              {(pin.types.flights > 0 || pin.types.hotels > 0 || pin.types.activities > 0 || pin.types.dining > 0) && (
                 <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-[#1a1a1a] bg-slate-50 dark:bg-[#0a0a0a]">
-                  {hoveredPin.types.flights > 0 && (
+                  {pin.types.flights > 0 && (
                     <div className="flex items-center gap-1">
                       <Plane className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{hoveredPin.types.flights}</span>
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.flights}</span>
                     </div>
                   )}
-                  {hoveredPin.types.hotels > 0 && (
+                  {pin.types.hotels > 0 && (
                     <div className="flex items-center gap-1">
                       <Hotel className="h-2.5 w-2.5 text-amber-500" />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{hoveredPin.types.hotels}</span>
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.hotels}</span>
                     </div>
                   )}
-                  {hoveredPin.types.activities > 0 && (
+                  {pin.types.activities > 0 && (
                     <div className="flex items-center gap-1">
                       <Compass className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{hoveredPin.types.activities}</span>
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.activities}</span>
                     </div>
                   )}
-                  {hoveredPin.types.dining > 0 && (
+                  {pin.types.dining > 0 && (
                     <div className="flex items-center gap-1">
                       <Utensils className="h-2.5 w-2.5 text-pink-400" />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{hoveredPin.types.dining}</span>
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.dining}</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Cards Section ── */}
-        <div className="px-4 lg:px-8 py-7 space-y-6">
+        <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
           <div className="space-y-6">
             <div className="flex gap-2 flex-wrap">
               {regions.map(r => (
                 <button
                   key={r}
                   onClick={() => setFilter(r)}
-                  className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40"}`}
+                  className={`px-3 sm:px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40"}`}
                 >
                   {r === "all" ? "All Regions" : r}
                 </button>
@@ -528,12 +502,12 @@ export function DestinationsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 pb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 pb-10">
             {filtered.map((dest, idx) => (
               <div
                 key={dest.name}
                 onClick={() => dest.tripIds[0] && navigate(`/trip/${dest.tripIds[0]}`)}
-                className={`group relative rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[380px] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
+                className={`group relative rounded-2xl sm:rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
                 style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
                 <div className="absolute inset-0">

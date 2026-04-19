@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
@@ -13,6 +14,17 @@ import { PreferencesProvider, usePreferences } from "@/context/PreferencesContex
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 let Notifications: typeof import("expo-notifications") | null = null;
 try { Notifications = require("expo-notifications"); } catch { /* Expo Go */ }
@@ -92,33 +104,37 @@ function AppStack() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "slide_from_right",
-          contentStyle: { backgroundColor: C.bg },
-        }}
-      />
+      <ErrorBoundary>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "slide_from_right",
+            contentStyle: { backgroundColor: C.bg },
+          }}
+        />
+      </ErrorBoundary>
     </View>
   );
 }
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <PreferencesProvider>
-        <ThemeProvider>
-          <NotificationProvider>
-            <TripsProvider>
-              <ComplianceProvider>
-                <ToastProvider>
-                  <AppStack />
-                </ToastProvider>
-              </ComplianceProvider>
-            </TripsProvider>
-          </NotificationProvider>
-        </ThemeProvider>
-      </PreferencesProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <PreferencesProvider>
+          <ThemeProvider>
+            <NotificationProvider>
+              <TripsProvider>
+                <ComplianceProvider>
+                  <ToastProvider>
+                    <AppStack />
+                  </ToastProvider>
+                </ComplianceProvider>
+              </TripsProvider>
+            </NotificationProvider>
+          </ThemeProvider>
+        </PreferencesProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }

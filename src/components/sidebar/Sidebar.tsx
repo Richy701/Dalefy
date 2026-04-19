@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, Globe, PieChart, Images,
-  LogOut, ArrowUpRight,
+  LogOut, ArrowUpRight, Plus, Upload, FileDown,
+  Plane, Clock, CalendarDays, Map,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
@@ -87,9 +88,44 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
-  const recentTrip  = trips.length > 0 ? trips[trips.length - 1] : null;
   const currentPath = location.pathname;
   const isActive    = (path: string) => path === "/" ? currentPath === "/" : currentPath === path;
+
+  // Upcoming trip (nearest future trip)
+  const upcomingTrip = useMemo(() => {
+    const now = new Date();
+    return [...trips]
+      .filter((t) => new Date(t.start) > now)
+      .sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
+  }, [trips]);
+
+  // Days until upcoming trip
+  const daysUntil = useMemo(() => {
+    if (!upcomingTrip) return 0;
+    const diff = new Date(upcomingTrip.start).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [upcomingTrip]);
+
+  // Quick stats
+  const stats = useMemo(() => {
+    const now = new Date();
+    const active = trips.filter((t) => new Date(t.start) <= now && new Date(t.end) >= now).length;
+    const upcoming = trips.filter((t) => new Date(t.start) > now).length;
+    let totalDays = 0;
+    trips.forEach((t) => {
+      totalDays += Math.max(0, Math.ceil((new Date(t.end).getTime() - new Date(t.start).getTime()) / (1000 * 60 * 60 * 24)));
+    });
+    return { total: trips.length, active, upcoming, totalDays };
+  }, [trips]);
+
+  // Recent trips (last 3, excluding upcoming)
+  const recentTrips = useMemo(() =>
+    [...trips]
+      .filter((t) => t.id !== upcomingTrip?.id)
+      .slice(-3)
+      .reverse(),
+    [trips, upcomingTrip]
+  );
 
   const handleSignOut = () => { logout(); navigate("/login"); };
 
@@ -119,7 +155,7 @@ export function AppSidebar() {
         <SidebarContent className="pt-2">
           <SidebarGroup>
             {!collapsed && (
-              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-[#3a3a3a] h-auto mb-1 px-2">
+              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/30 h-auto mb-1 px-2">
                 Menu
               </SidebarGroupLabel>
             )}
@@ -157,26 +193,128 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {/* ── Recent trip ── */}
-          {recentTrip && !collapsed && (
+          {/* ── Quick Stats ── */}
+          {!collapsed && trips.length > 0 && (
             <SidebarGroup>
-              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-[#3a3a3a] h-auto mb-1 px-2">
-                Recent
+              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/30 h-auto mb-1 px-2">
+                Overview
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="grid grid-cols-2 gap-1.5 px-2">
+                  {[
+                    { label: "Trips", value: stats.total, icon: Map },
+                    { label: "Active", value: stats.active, icon: Plane },
+                    { label: "Upcoming", value: stats.upcoming, icon: Clock },
+                    { label: "Days", value: stats.totalDays, icon: CalendarDays },
+                  ].map((s) => (
+                    <div
+                      key={s.label}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-sidebar-accent border border-sidebar-border"
+                    >
+                      <s.icon className="h-3 w-3 text-sidebar-foreground/40 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-black leading-none text-sidebar-foreground">{s.value}</p>
+                        <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-sidebar-foreground/40 mt-0.5">{s.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {/* ── Upcoming Trip ── */}
+          {upcomingTrip && !collapsed && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/30 h-auto mb-1 px-2">
+                Next Trip
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <button
-                  onClick={() => navigate(`/trip/${recentTrip.id}`)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-white/[0.04] transition-colors group text-left"
+                  onClick={() => navigate(`/trip/${upcomingTrip.id}`)}
+                  className="w-full rounded-2xl overflow-hidden hover:ring-1 hover:ring-brand/30 transition-all group mx-2"
+                  style={{ width: "calc(100% - 1rem)" }}
                 >
-                  <div className="h-7 w-9 rounded-lg overflow-hidden shrink-0">
-                    <img src={recentTrip.image} alt={recentTrip.name} className="h-full w-full object-cover" />
+                  <div className="relative h-20 overflow-hidden rounded-2xl">
+                    <img
+                      src={upcomingTrip.image}
+                      alt={upcomingTrip.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
+                      <p className="text-[10px] font-black uppercase tracking-tight text-white truncate leading-none">
+                        {upcomingTrip.name}
+                      </p>
+                      <p className="text-[9px] font-bold text-white/50 truncate mt-0.5">
+                        {upcomingTrip.destination}
+                      </p>
+                    </div>
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-brand/90 text-[8px] font-black uppercase tracking-[0.2em] text-black">
+                      {daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `${daysUntil}d`}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-[#aaa] truncate group-hover:text-brand transition-colors">{recentTrip.name}</p>
-                    <p className="text-[9px] text-[#444] mt-0.5 truncate">{recentTrip.destination || recentTrip.status}</p>
-                  </div>
-                  <ArrowUpRight className="h-3 w-3 text-[#444] group-hover:text-brand transition-colors shrink-0" />
                 </button>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {/* ── Quick Actions ── */}
+          {!collapsed && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/30 h-auto mb-1 px-2">
+                Quick Actions
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="flex items-center gap-1.5 px-2">
+                  {[
+                    { label: "New Trip", icon: Plus, action: () => navigate("/") },
+                    { label: "Upload", icon: Upload, action: () => navigate("/media") },
+                    { label: "Export", icon: FileDown, action: () => navigate("/reports") },
+                  ].map((a) => (
+                    <Tooltip key={a.label}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={a.action}
+                          className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl bg-sidebar-accent border border-sidebar-border hover:bg-brand/10 hover:border-brand/20 hover:text-brand text-sidebar-foreground/50 transition-all"
+                        >
+                          <a.icon className="h-3.5 w-3.5" />
+                          <span className="text-[8px] font-black uppercase tracking-[0.15em]">{a.label}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{a.label}</TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {/* ── Recent Trips ── */}
+          {recentTrips.length > 0 && !collapsed && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/30 h-auto mb-1 px-2">
+                Recent
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="space-y-0.5">
+                  {recentTrips.map((trip) => (
+                    <button
+                      key={trip.id}
+                      onClick={() => navigate(`/trip/${trip.id}`)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-sidebar-accent transition-colors group text-left"
+                    >
+                      <div className="h-7 w-9 rounded-lg overflow-hidden shrink-0">
+                        <img src={trip.image} alt={trip.name} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-sidebar-foreground/70 truncate group-hover:text-brand transition-colors">{trip.name}</p>
+                        <p className="text-[9px] text-sidebar-foreground/40 mt-0.5 truncate">{trip.destination || trip.status}</p>
+                      </div>
+                      <ArrowUpRight className="h-3 w-3 text-sidebar-foreground/30 group-hover:text-brand transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
           )}

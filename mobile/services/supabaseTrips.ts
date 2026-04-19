@@ -4,10 +4,28 @@ import { getDeviceId } from "./deviceId";
 
 const TABLE = "trips";
 
+/**
+ * Fetch only trips this device has explicitly joined (via PIN or creation).
+ * 1. Get trip IDs from trip_members where device_id matches
+ * 2. Fetch those trips from the trips table
+ */
 export async function fetchTrips(): Promise<Trip[]> {
+  const deviceId = await getDeviceId();
+
+  // Get the trip IDs this device has joined
+  const { data: memberRows, error: memberErr } = await supabase
+    .from("trip_members")
+    .select("trip_id")
+    .eq("device_id", deviceId);
+
+  if (memberErr) throw memberErr;
+  const tripIds = (memberRows ?? []).map(r => r.trip_id as string);
+  if (tripIds.length === 0) return [];
+
   const { data, error } = await supabase
     .from(TABLE)
     .select("*")
+    .in("id", tripIds)
     .order("start", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(rowToTrip);

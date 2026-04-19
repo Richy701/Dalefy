@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload,
@@ -7,7 +7,12 @@ import {
   Play,
   Images,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
+  Image as ImageIcon,
+  Film,
+  ArrowUpRight,
 } from "lucide-react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -17,12 +22,25 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import type { TripMedia } from "@/types";
 
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
+type MediaFilter = "all" | "image" | "video";
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
 
 export function MediaPage() {
   const { trips, updateTrip } = useTrips();
   const navigate = useNavigate();
 
   const [activeTripFilter, setActiveTripFilter] = useState<string>("all");
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -45,12 +63,29 @@ export function MediaPage() {
     [trips]
   );
 
-  const filtered = useMemo(() =>
-    activeTripFilter === "all"
+  const filtered = useMemo(() => {
+    let items = activeTripFilter === "all"
       ? allItems
-      : allItems.filter((m) => m.tripId === activeTripFilter),
-    [allItems, activeTripFilter]
-  );
+      : allItems.filter((m) => m.tripId === activeTripFilter);
+    if (mediaFilter !== "all") {
+      items = items.filter((m) => m.type === mediaFilter);
+    }
+    return items;
+  }, [allItems, activeTripFilter, mediaFilter]);
+
+  // Group filtered items by trip
+  const groupedByTrip = useMemo(() => {
+    const map = new Map<string, { tripId: string; tripName: string; tripImage: string; items: FilteredItem[] }>();
+    for (const item of filtered) {
+      const existing = map.get(item.tripId);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        map.set(item.tripId, { tripId: item.tripId, tripName: item.tripName, tripImage: item.tripImage, items: [item] });
+      }
+    }
+    return Array.from(map.values());
+  }, [filtered]);
 
   const lightboxSlides = useMemo(() =>
     filtered
@@ -61,13 +96,6 @@ export function MediaPage() {
 
   const totalPhotos = allItems.filter((m) => m.type === "image").length;
   const totalVideos = allItems.filter((m) => m.type === "video").length;
-
-  const heroTrip = useMemo(() => {
-    const upcoming = [...trips]
-      .filter((t) => !!t.image && new Date(t.end) >= new Date())
-      .sort((a, b) => a.start.localeCompare(b.start))[0];
-    return upcoming ?? trips.find((t) => !!t.image) ?? null;
-  }, [trips]);
 
   const selectedTrip = trips.find((t) => t.id === uploadTripId);
 
@@ -151,6 +179,43 @@ export function MediaPage() {
 
   const tripsWithMedia = trips.filter((t) => (t.media?.length ?? 0) > 0);
 
+  // Banner image & context: switches based on active trip filter
+  const bannerTrip = activeTripFilter !== "all"
+    ? trips.find((t) => t.id === activeTripFilter) ?? null
+    : null;
+
+  // For "all" mode — rotating carousel through all trips with images
+  const carouselTrips = useMemo(() =>
+    trips.filter((t) => !!t.image),
+    [trips]
+  );
+  const [carouselIdx, setCarouselIdx] = useState(0);
+
+  // Auto-rotate every 5s when on "All" view
+  useEffect(() => {
+    if (bannerTrip || carouselTrips.length <= 1) return;
+    const timer = setInterval(() => {
+      setCarouselIdx((i) => (i + 1) % carouselTrips.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [bannerTrip, carouselTrips.length]);
+
+  // Reset carousel index when trips change
+  useEffect(() => {
+    if (carouselIdx >= carouselTrips.length) setCarouselIdx(0);
+  }, [carouselTrips.length, carouselIdx]);
+
+  const currentCarouselTrip = carouselTrips[carouselIdx] ?? null;
+
+  const bannerPhotos = bannerTrip
+    ? filtered.filter((m) => m.type === "image").length
+    : totalPhotos;
+  const bannerVideos = bannerTrip
+    ? filtered.filter((m) => m.type === "video").length
+    : totalVideos;
+
+  const chipScrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
@@ -179,251 +244,356 @@ export function MediaPage() {
           </div>
         ) : (<>
 
-        {/* Hero Banner */}
-        <div className="px-6 lg:px-8 pt-6">
-          <div className="relative overflow-hidden rounded-[2rem] min-h-[280px] bg-[#0e0e0e]">
-            {/* Hero background image — latest trip with an image */}
-            {heroTrip?.image && (
+        {/* Hero Banner — rotating carousel (All) or trip-specific cover */}
+        <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]">
+            {/* Background image layer */}
+            {bannerTrip ? (
+              /* ── Trip-specific: full cover image ── */
               <img
-                src={heroTrip.image}
+                key={bannerTrip.id}
+                src={bannerTrip.image}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover animate-fadeIn"
                 draggable={false}
               />
+            ) : (
+              /* ── All trips: rotating carousel with crossfade ── */
+              carouselTrips.map((t, i) => (
+                <img
+                  key={t.id}
+                  src={t.image}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+                  style={{ opacity: i === carouselIdx ? 1 : 0 }}
+                  draggable={false}
+                />
+              ))
             )}
 
-            {/* Dark gradient for legibility */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            {/* Overlay gradients */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-            {/* Content */}
-            <div className="relative px-8 py-10 flex flex-col justify-between min-h-[280px]">
+            <div className="relative px-4 sm:px-8 py-8 sm:py-10 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.55em] text-brand mb-3">
-                  Your Gallery
+                  {bannerTrip ? bannerTrip.destination : "Your Gallery"}
                 </p>
-                <h2 className="text-[2.75rem] font-black uppercase leading-none tracking-tight text-white">
-                  Photos &amp;<br />Videos
+                <h2 className="text-[2.5rem] font-black uppercase leading-none tracking-tight text-white">
+                  {bannerTrip ? (
+                    <>{bannerTrip.name}</>
+                  ) : (
+                    <>Photos &amp;<br />Videos</>
+                  )}
                 </h2>
+                {bannerTrip && (
+                  <p className="text-[11px] font-bold text-white/50 mt-2 uppercase tracking-wider">
+                    {new Date(bannerTrip.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – {new Date(bannerTrip.end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-end justify-between gap-6 mt-8">
                 <div className="flex items-center gap-6">
                   <div>
-                    <p className="text-3xl font-black leading-none text-white">{totalPhotos}</p>
+                    <p className="text-3xl font-black leading-none text-white">{bannerPhotos}</p>
                     <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Photos</p>
                   </div>
                   <div className="h-10 w-px bg-white/15" />
                   <div>
-                    <p className="text-3xl font-black leading-none text-white">{totalVideos}</p>
+                    <p className="text-3xl font-black leading-none text-white">{bannerVideos}</p>
                     <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Videos</p>
                   </div>
-                  <div className="h-10 w-px bg-white/15" />
-                  <div>
-                    <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Trips</p>
-                  </div>
+                  {!bannerTrip && (
+                    <>
+                      <div className="h-10 w-px bg-white/15" />
+                      <div>
+                        <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Trips</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {heroTrip && (
+                {bannerTrip ? (
+                  <button
+                    onClick={() => navigate(`/trip/${bannerTrip.id}`)}
+                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-4 py-2 hover:bg-white/20 transition-colors"
+                  >
+                    Open Trip
+                    <ArrowUpRight className="h-3 w-3" />
+                  </button>
+                ) : currentCarouselTrip ? (
                   <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                    From {heroTrip.name}
+                    {currentCarouselTrip.name}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="px-6 lg:px-8 py-6 space-y-6">
-        {/* Upload zone */}
-        <div className="space-y-3">
-          {/* Trip selector */}
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] shrink-0">
-              Upload to:
-            </span>
-            <div className="relative" ref={pickerRef}>
-              <button
-                onClick={() => setTripPickerOpen((o) => !o)}
-                className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/50 transition-colors text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-white shadow-sm"
-              >
-                {selectedTrip ? (
-                  <>
-                    <div className="h-5 w-6 rounded overflow-hidden shrink-0">
-                      <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
-                    </div>
-                    <span className="truncate max-w-[160px]">{selectedTrip.name}</span>
-                  </>
-                ) : (
-                  <span className="text-slate-500 dark:text-slate-400">Select a trip</span>
-                )}
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400 ml-1 shrink-0" />
-              </button>
-
-              {tripPickerOpen && (
-                <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
-                  {trips.map((t) => (
+            {/* Carousel controls — bottom center of banner */}
+            {!bannerTrip && carouselTrips.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
+                <button
+                  onClick={() => setCarouselIdx((i) => (i - 1 + carouselTrips.length) % carouselTrips.length)}
+                  className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <div className="flex items-center gap-1.5 px-1">
+                  {carouselTrips.map((_, i) => (
                     <button
-                      key={t.id}
-                      onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
-                    >
-                      <div className="h-6 w-8 rounded overflow-hidden shrink-0">
-                        <img src={t.image} alt="" className="h-full w-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-[#888888]">{t.media?.length ?? 0} files</p>
-                      </div>
-                      {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
-                    </button>
+                      key={i}
+                      onClick={() => setCarouselIdx(i)}
+                      className={`rounded-full transition-all duration-300 ${
+                        i === carouselIdx
+                          ? "h-2 w-5 bg-brand"
+                          : "h-2 w-2 bg-white/30 hover:bg-white/50"
+                      }`}
+                    />
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Drop zone */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => !uploading && fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-[2rem] transition-all cursor-pointer flex items-center justify-center gap-6 py-10 ${
-              isDragging
-                ? "border-brand bg-brand/5"
-                : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-brand/50"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={(e) => { processFiles(Array.from(e.target.files || [])); e.target.value = ""; }}
-            />
-
-            {uploading ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-10 w-10 rounded-full border-2 border-brand/20 flex items-center justify-center">
-                  <div className="h-6 w-6 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-                </div>
-                <div className="w-40 h-1 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
-                  <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand">UPLOADING…</p>
+                <button
+                  onClick={() => setCarouselIdx((i) => (i + 1) % carouselTrips.length)}
+                  className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ) : (
-              <>
-                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center transition-all shrink-0 ${isDragging ? "bg-brand text-black scale-110" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"}`}>
-                  <Upload className="h-6 w-6" />
-                </div>
-                <div className="pointer-events-none">
-                  <p className="font-black text-sm uppercase tracking-[0.15em] text-slate-900 dark:text-white">
-                    {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
-                    {selectedTrip ? `Will be added to "${selectedTrip.name}"` : "Select a trip above, then drop files"}
-                  </p>
-                </div>
-              </>
             )}
           </div>
         </div>
 
-        {/* Trip filter chips */}
-        {tripsWithMedia.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+        {/* ── Compact Upload Bar ── */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 rounded-2xl border transition-all ${
+            isDragging
+              ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
+              : "border-black/[0.06] dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={(e) => { processFiles(Array.from(e.target.files || [])); e.target.value = ""; }}
+          />
+
+          {/* Trip picker + upload button row */}
+          <div className="flex items-center gap-2.5 sm:contents">
+          <div className="relative shrink-0 flex-1 sm:flex-none" ref={pickerRef}>
             <button
-              onClick={() => setActiveTripFilter("all")}
-              className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
-                activeTripFilter === "all"
-                  ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
-                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
-              }`}
+              onClick={() => setTripPickerOpen((o) => !o)}
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
             >
-              All Trips · {allItems.length}
+              {selectedTrip ? (
+                <>
+                  <div className="h-5 w-6 rounded overflow-hidden shrink-0">
+                    <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <span className="truncate max-w-[120px]">{selectedTrip.name}</span>
+                </>
+              ) : (
+                <span className="text-slate-400 dark:text-[#666]">Select trip</span>
+              )}
+              <ChevronDown className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
             </button>
-            {tripsWithMedia.map((t) => (
+
+            {tripPickerOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+                {trips.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
+                  >
+                    <div className="h-6 w-8 rounded overflow-hidden shrink-0">
+                      <img src={t.image} alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#888888]">{t.media?.length ?? 0} files</p>
+                    </div>
+                    {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Upload button (mobile: beside trip picker) */}
+          <button
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40 sm:hidden"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload
+          </button>
+          </div>{/* end mobile trip picker + upload row */}
+
+          {/* Upload progress — mobile */}
+          {uploading && (
+            <div className="sm:hidden flex items-center gap-3">
+              <div className="flex-1 h-1.5 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
+            </div>
+          )}
+
+          {/* Drag hint / progress — desktop */}
+          <div className="flex-1 min-w-0 hidden sm:block">
+            {uploading ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
+                  <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
+              </div>
+            ) : (
+              <p className="text-[11px] font-bold text-slate-400 dark:text-[#666] truncate">
+                {isDragging ? "Drop files here…" : "Drag & drop or click upload"}
+              </p>
+            )}
+          </div>
+
+          {/* Upload button (desktop: right side) */}
+          <button
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            disabled={uploading}
+            className="hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload
+          </button>
+        </div>
+
+        {/* ── Filters: scrollable trip chips + type toggle ── */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Trip chips — horizontally scrollable with fade edges */}
+          <div className="relative flex-1 min-w-0">
+            {/* Left fade */}
+            <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-slate-50 dark:from-[#050505] to-transparent z-10 pointer-events-none" />
+            {/* Right fade */}
+            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-slate-50 dark:from-[#050505] to-transparent z-10 pointer-events-none" />
+
+            <div
+              ref={chipScrollRef}
+              className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-1 py-1 -mx-1"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
               <button
-                key={t.id}
-                onClick={() => setActiveTripFilter(t.id)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 ${
-                  activeTripFilter === t.id
+                onClick={() => setActiveTripFilter("all")}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border shrink-0 ${
+                  activeTripFilter === "all"
                     ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
-                    : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
+                    : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40 shadow-sm dark:shadow-none"
                 }`}
               >
-                {t.name} · {t.media!.length}
-                {activeTripFilter === t.id && (
-                  <X className="h-2.5 w-2.5" onClick={(e) => { e.stopPropagation(); setActiveTripFilter("all"); }} />
-                )}
+                All · {allItems.length}
+              </button>
+              {tripsWithMedia.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTripFilter(t.id)}
+                  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 shrink-0 ${
+                    activeTripFilter === t.id
+                      ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
+                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40 shadow-sm dark:shadow-none"
+                  }`}
+                >
+                  {t.name} · {t.media!.length}
+                  {activeTripFilter === t.id && (
+                    <X className="h-2.5 w-2.5" onClick={(e) => { e.stopPropagation(); setActiveTripFilter("all"); }} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Type toggle */}
+          <div className="flex items-center gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none shrink-0">
+            {([
+              { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
+              { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
+              { key: "video" as MediaFilter, label: "Videos", icon: <Film className="h-3.5 w-3.5" /> },
+            ]).map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setMediaFilter(opt.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                  mediaFilter === opt.key
+                    ? "bg-brand text-black shadow-sm"
+                    : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white"
+                }`}
+              >
+                {opt.icon}
+                <span className="hidden sm:inline">{opt.label}</span>
               </button>
             ))}
           </div>
-        )}
+        </div>
 
-        {/* Grid */}
+        {/* ── Gallery grouped by trip ── */}
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filtered.map((item) => {
-              const lbIdx = getLightboxIndex(item);
-              return (
-                <div
-                  key={`${item.tripId}-${item.id}`}
-                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
-                    {item.type === "image" ? (
-                      <img
-                        src={item.url}
-                        alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
-                        onClick={() => setLightboxIndex(lbIdx)}
-                      />
-                    ) : (
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        <video src={item.url} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <div className="h-11 w-11 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                            <Play className="h-4.5 w-4.5 text-white ml-0.5" fill="white" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
-                      {item.type === "image" && (
-                        <button
-                          onClick={() => setLightboxIndex(lbIdx)}
-                          className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-                        >
-                          <ZoomIn className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(item)}
-                        className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+          activeTripFilter !== "all" ? (
+            /* Single trip — flat grid, no header needed */
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {filtered.map((item) => {
+                const lbIdx = getLightboxIndex(item);
+                return (
+                  <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} />
+                );
+              })}
+            </div>
+          ) : (
+            /* All trips — grouped with section headers */
+            <div className="space-y-10">
+              {groupedByTrip.map((group) => (
+                <section key={group.tripId}>
+                  {/* Trip section header */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="h-10 w-14 rounded-xl overflow-hidden shrink-0">
+                      <img src={group.tripImage} alt="" className="h-full w-full object-cover" />
                     </div>
-
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-[#666] uppercase tracking-[0.2em] mt-0.5">
+                        {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/trip/${group.tripId}`)}
+                      className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand hover:opacity-70 transition-opacity shrink-0"
+                    >
+                      View Trip
+                      <ArrowUpRight className="h-3 w-3" />
+                    </button>
                   </div>
 
-                  {/* Footer */}
-                  <div className="px-2.5 py-2">
-                    <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate leading-tight">{item.name}</p>
-                    <p className="text-[9px] font-bold text-brand truncate mt-0.5 uppercase tracking-tight">{item.tripName}</p>
+                  {/* Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {group.items.map((item) => {
+                      const lbIdx = getLightboxIndex(item);
+                      return (
+                        <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} />
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                </section>
+              ))}
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-[#888888]">
             <Images className="h-16 w-16 mb-4 opacity-15" />
@@ -445,6 +615,74 @@ export function MediaPage() {
         index={lightboxIndex}
         slides={lightboxSlides}
       />
+    </div>
+  );
+}
+
+/* ── Media Card Component ── */
+function MediaCard({ item, lbIdx, onZoom, onDelete }: {
+  item: FilteredItem;
+  lbIdx: number;
+  onZoom: (idx: number) => void;
+  onDelete: (item: FilteredItem) => void;
+}) {
+  return (
+    <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none hover:shadow-xl hover:border-brand/30 transition-all duration-300">
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
+        {item.type === "image" ? (
+          <img
+            src={item.url}
+            alt={item.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
+            onClick={() => onZoom(lbIdx)}
+          />
+        ) : (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <video src={item.url} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="h-11 w-11 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                <Play className="h-4.5 w-4.5 text-white ml-0.5" fill="white" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Type badge */}
+        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.15em] text-white/90 flex items-center gap-1">
+          {item.type === "image" ? <ImageIcon className="h-2.5 w-2.5" /> : <Film className="h-2.5 w-2.5" />}
+          {item.type === "image" ? "Photo" : "Video"}
+        </div>
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
+          {item.type === "image" && (
+            <button
+              onClick={() => onZoom(lbIdx)}
+              className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={() => onDelete(item)}
+            className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Footer with metadata */}
+      <div className="px-2.5 py-2">
+        <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate leading-tight">{item.name}</p>
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-[9px] font-bold text-brand truncate uppercase tracking-tight">{item.tripName}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            {item.size && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">{formatSize(item.size)}</span>}
+            {item.uploadedAt && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">{formatDate(item.uploadedAt)}</span>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

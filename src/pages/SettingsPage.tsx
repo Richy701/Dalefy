@@ -113,15 +113,28 @@ export function SettingsPage() {
   );
 
   const exportTrips = () => {
-    const data = JSON.stringify(trips, null, 2);
-    const blob = new Blob([data], { type: "application/json" });
+    // Build CSV with one row per event across all trips
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const headers = ["Trip", "Destination", "Status", "Start", "End", "Pax", "Budget", "Event Type", "Event Title", "Date", "Time", "Location", "Duration", "Airline", "Flight #", "Conf #", "Room Type", "Check-in", "Check-out", "Notes"];
+    const rows = [headers.join(",")];
+    for (const trip of trips) {
+      const base = [trip.name, trip.destination ?? "", trip.status, trip.start, trip.end, trip.paxCount ?? "", trip.budget ? `${trip.currency ?? "USD"} ${trip.budget}` : ""];
+      if (trip.events.length === 0) {
+        rows.push([...base, "", "", "", "", "", "", "", "", "", "", "", ""].map(v => esc(String(v))).join(","));
+      } else {
+        for (const ev of trip.events) {
+          rows.push([...base, ev.type ?? "", ev.title ?? "", ev.date ?? "", ev.time ?? "", ev.location ?? "", ev.duration ?? "", ev.airline ?? "", ev.flightNum ?? "", ev.confNumber ?? "", ev.roomType ?? "", ev.checkin ?? "", ev.checkout ?? "", ev.notes ?? ""].map(v => esc(String(v))).join(","));
+        }
+      }
+    }
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `daf-trips-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `daf-trips-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${trips.length} trips`);
+    toast.success(`Exported ${trips.length} trips as CSV`);
   };
 
   const resetData = () => {
@@ -274,7 +287,7 @@ export function SettingsPage() {
           >
             <Row
               label="Export Trips"
-              value={`${trips.length} trip${trips.length === 1 ? "" : "s"} — download as JSON`}
+              value={`${trips.length} trip${trips.length === 1 ? "" : "s"} — download as CSV`}
               action={
                 <Button
                   onClick={exportTrips}

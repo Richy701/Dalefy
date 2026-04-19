@@ -8,11 +8,11 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
+import { ItineraryPreviewDialog } from "@/components/shared/ItineraryPreviewDialog";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
@@ -47,6 +48,7 @@ import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
+import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -127,12 +129,27 @@ function timeToMinutes(t: string): number {
 
 export function WorkspacePage() {
   const { tripId } = useParams<{ tripId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
+
+  // Auto-open event from ?event= query param (e.g. from Dashboard event cards)
+  useEffect(() => {
+    const eventId = searchParams.get("event");
+    if (!eventId || !trip) return;
+    const ev = trip.events.find(e => e.id === eventId);
+    if (ev) {
+      setEditingEvent(ev);
+      setIsEditPanelOpen(true);
+      searchParams.delete("event");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [trip, searchParams, setSearchParams]);
+
   const [showMap, setShowMap] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -149,15 +166,35 @@ export function WorkspacePage() {
   const [aiZapOpen, setAiZapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
   const [customTravelers] = useLocalStorage<UserType[]>("daf-custom-travelers", []);
-  const allTravelers = useMemo(() => [...MOCK_USERS, ...customTravelers], [customTravelers]);
+  const allTravelers = useMemo(() => {
+    const seen = new Set<string>();
+    return [...MOCK_USERS, ...customTravelers].filter(u => {
+      const key = u.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [customTravelers]);
+
   const tripTravelers = useMemo(() => {
     if (!trip) return [];
-    return allTravelers.filter(u => trip.travelerIds?.includes(u.id));
+    // Resolve from allTravelers by ID
+    const resolved = allTravelers.filter(u => trip.travelerIds?.includes(u.id));
+    if (resolved.length > 0) return resolved;
+    // Fallback: use trip.travelers denormalized array (covers timing gaps after re-import)
+    if (trip.travelers?.length) {
+      return trip.travelers.map(t => {
+        const full = allTravelers.find(u => u.id === t.id);
+        return full ?? { id: t.id, name: t.name, email: "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const } satisfies UserType;
+      });
+    }
+    return [];
   }, [trip, allTravelers]);
   const availableTravelers = useMemo(() => {
     if (!trip) return allTravelers;
-    return allTravelers.filter(u => !trip.travelerIds?.includes(u.id));
-  }, [trip, allTravelers]);
+    const linkedIds = new Set(tripTravelers.map(t => t.id));
+    return allTravelers.filter(u => !linkedIds.has(u.id));
+  }, [trip, allTravelers, tripTravelers]);
   const [peopleSearch, setPeopleSearch] = useState("");
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const viewAsTraveler = useMemo(() => viewAsId ? allTravelers.find(u => u.id === viewAsId) ?? null : null, [viewAsId, allTravelers]);
@@ -173,6 +210,8 @@ export function WorkspacePage() {
   const [tripImagePage, setTripImagePage] = useState(1);
   const [tripImageLastQuery, setTripImageLastQuery] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [reimportOpen, setReimportOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
   const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
   const [editInfoOpen, setEditInfoOpen] = useState(false);
@@ -286,6 +325,34 @@ export function WorkspacePage() {
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingEvent?.title, editingEvent?.type, editingEvent?.location, imageSeed, imageIsAuto, isEditPanelOpen]);
+
+  /** Build a Mapbox Static Images URL with route pins for the trip */
+  const buildStaticMapUrl = useCallback(async (): Promise<string | null> => {
+    const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
+    if (!MAPBOX_TOKEN || !trip) return null;
+    const { resolveCoords } = await import("@/data/coordinates");
+    const { geocode } = await import("@/services/geocode");
+    const resolve = async (loc: string): Promise<[number, number] | null> =>
+      resolveCoords(loc) ?? (await geocode(loc));
+
+    const coords: [number, number][] = [];
+    for (const ev of trip.events.filter(e => e.type === "flight")) {
+      const match = ev.location.match(/^(.+?)\s+to\s+(.+)$/);
+      if (!match) continue;
+      const from = await resolve(match[1].trim());
+      const to = await resolve(match[2].trim());
+      if (from) coords.push(from);
+      if (to) coords.push(to);
+    }
+    if (coords.length === 0) return null;
+
+    // Mapbox Static Images: pin markers + auto-fit
+    const markers = coords
+      .map(([lat, lng]) => `pin-s+0bd2b5(${lng},${lat})`)
+      .join(",");
+    const style = theme === "dark" ? "dark-v11" : "light-v11";
+    return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${markers}/auto/800x300@2x?padding=60&access_token=${MAPBOX_TOKEN}`;
+  }, [trip, theme]);
 
   if (!trip) {
     if (!ready) {
@@ -449,34 +516,6 @@ export function WorkspacePage() {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
-
-  /** Build a Mapbox Static Images URL with route pins for the trip */
-  const buildStaticMapUrl = useCallback(async (): Promise<string | null> => {
-    const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
-    if (!MAPBOX_TOKEN || !trip) return null;
-    const { resolveCoords } = await import("@/data/coordinates");
-    const { geocode } = await import("@/services/geocode");
-    const resolve = async (loc: string): Promise<[number, number] | null> =>
-      resolveCoords(loc) ?? (await geocode(loc));
-
-    const coords: [number, number][] = [];
-    for (const ev of trip.events.filter(e => e.type === "flight")) {
-      const match = ev.location.match(/^(.+?)\s+to\s+(.+)$/);
-      if (!match) continue;
-      const from = await resolve(match[1].trim());
-      const to = await resolve(match[2].trim());
-      if (from) coords.push(from);
-      if (to) coords.push(to);
-    }
-    if (coords.length === 0) return null;
-
-    // Mapbox Static Images: pin markers + auto-fit
-    const markers = coords
-      .map(([lat, lng]) => `pin-s+0bd2b5(${lng},${lat})`)
-      .join(",");
-    const style = theme === "dark" ? "dark-v11" : "light-v11";
-    return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${markers}/auto/800x300@2x?padding=60&access_token=${MAPBOX_TOKEN}`;
-  }, [trip, theme]);
 
   const handleExportPdf = async () => {
     if (!printRef.current) return;
@@ -686,14 +725,68 @@ export function WorkspacePage() {
 
   const handleShareTrip = () => setShareOpen(true);
 
+  const handleSendEmail = () => {
+    const nights = Math.max(1, Math.ceil(
+      (new Date(trip.end).getTime() - new Date(trip.start).getTime()) / 86400000
+    ));
+    const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
+
+    const eventsByDay: Record<string, typeof trip.events> = {};
+    for (const ev of trip.events) {
+      if (!eventsByDay[ev.date]) eventsByDay[ev.date] = [];
+      eventsByDay[ev.date].push(ev);
+    }
+    const sortedDays = Object.entries(eventsByDay).sort(([a], [b]) => a.localeCompare(b));
+
+    let itineraryText = "";
+    sortedDays.forEach(([date, events], i) => {
+      const d = new Date(date + "T12:00:00");
+      itineraryText += `\nDAY ${i + 1} — ${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}\n`;
+      events.forEach(ev => {
+        const type = ev.type.charAt(0).toUpperCase() + ev.type.slice(1);
+        itineraryText += `  ${ev.time || ""} ${type}: ${ev.title}`;
+        if (ev.location) itineraryText += ` (${ev.location})`;
+        itineraryText += "\n";
+      });
+    });
+
+    const subject = `Your Itinerary: ${trip.name}`;
+    const body = [
+      `Hi,`,
+      ``,
+      `Your itinerary for ${trip.name} is ready!`,
+      ``,
+      `TRIP DETAILS`,
+      `${trip.destination ? `Destination: ${trip.destination}` : ""}`,
+      `Dates: ${fmt(trip.start)} — ${fmt(trip.end)} (${nights} night${nights !== 1 ? "s" : ""})`,
+      trip.paxCount ? `Travelers: ${trip.paxCount}` : "",
+      ``,
+      `ITINERARY`,
+      itineraryText,
+      ``,
+      `VIEW FULL ITINERARY`,
+      shareUrl,
+      trip.shortCode ? `\nTrip PIN: ${trip.shortCode}` : "",
+      ``,
+      `—`,
+      `Sent via DAF Adventures`,
+    ].filter(Boolean).join("\n");
+
+    const a = document.createElement("a");
+    a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    a.click();
+    toast.success("Email client opened");
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
       {/* Header */}
       <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-50 shadow-xl">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-colors shadow-sm shrink-0"><ChevronLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-[colors,transform] shadow-sm shrink-0"><ChevronLeft className="h-5 w-5" /></Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden sm:block" />
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col min-w-0 hidden sm:flex">
             <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate">{trip.name}</h2>
             <div className="flex items-center gap-2 mt-1 leading-none">
               <Badge className="bg-brand/10 text-brand border border-brand/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
@@ -750,25 +843,44 @@ export function WorkspacePage() {
               </PopoverContent>
             </Popover>
           )}
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
+          {/* Always visible */}
+          <button aria-label="Toggle theme" onClick={toggleTheme} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <NotificationPanel />
+          <button aria-label="Re-import itinerary" onClick={() => setReimportOpen(true)} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm" title="Re-import itinerary">
+            <Upload className="h-4 w-4" />
+          </button>
           <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
             <Pencil className="h-4 w-4" />
           </button>
+          {/* Desktop only */}
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash2 className="h-4 w-4" />
           </button>
-          <Button variant="ghost" onClick={() => setShowMap(!showMap)} className={`font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 gap-2 border transition-all hidden lg:flex ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-            <MapIcon className="h-4 w-4" /> {showMap ? "HIDE MAP" : "SHOW MAP"}
-          </Button>
+          <button onClick={() => setShowMap(!showMap)} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+            <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">{showMap ? "HIDE MAP" : "SHOW MAP"}</span>
+          </button>
           <button
             aria-label="Share trip link"
             onClick={handleShareTrip}
-            className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm"
+            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
           >
             <Share2 className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Preview itinerary"
+            onClick={() => setPreviewOpen(true)}
+            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Send itinerary to client"
+            onClick={handleSendEmail}
+            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
+          >
+            <MailPlus className="h-4 w-4" />
           </button>
           <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
@@ -838,7 +950,7 @@ export function WorkspacePage() {
         <div className="flex-1 flex flex-row overflow-hidden relative">
           <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
-            <section className="relative h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
+            <section className="relative h-[240px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
               {/* Multi-layer gradient for depth */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
@@ -1057,7 +1169,10 @@ export function WorkspacePage() {
                     )}
                   </div>
                 </div>
-                <DockBar onAddEvent={handleAddEvent} onAiZap={() => setAiZapOpen(true)} />
+                {/* Hide DockBar on mobile when map is fullscreen */}
+                <div className={showMap ? "hidden lg:block" : ""}>
+                  <DockBar onAddEvent={handleAddEvent} onAiZap={() => setAiZapOpen(true)} />
+                </div>
               </>
             )}
 
@@ -1091,9 +1206,11 @@ export function WorkspacePage() {
                                 <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium truncate">{t.email}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-[#666] uppercase tracking-wider hidden sm:inline">
-                                  {eventCount > 0 ? `${eventCount} tagged` : ""}{eventCount > 0 && allEventsCount > 0 ? " · " : ""}{allEventsCount > 0 ? `${allEventsCount} shared` : "all events"}
-                                </span>
+                                {eventCount > 0 && (
+                                  <span className="text-[10px] font-bold text-brand/60 uppercase tracking-wider hidden sm:inline">
+                                    {eventCount} tagged
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1181,7 +1298,15 @@ export function WorkspacePage() {
           </main>
 
           {showMap && (
-            <aside className="w-[40%] h-full border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hidden lg:block animate-in slide-in-from-right duration-500 relative z-40 overflow-hidden shadow-2xl">
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl">
+              {/* Mobile close button */}
+              <button
+                onClick={() => setShowMap(false)}
+                className="absolute top-3 right-3 z-50 lg:hidden h-10 w-10 rounded-xl bg-white/90 dark:bg-[#111111]/90 backdrop-blur-sm border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                aria-label="Close map"
+              >
+                <X className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
+              </button>
               <TripMap theme={theme} trip={trip} />
             </aside>
           )}
@@ -1382,7 +1507,7 @@ export function WorkspacePage() {
               </div>
 
               {/* Right: image search panel */}
-              <div className="md:col-span-2 flex flex-col min-h-0 md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
+              <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
                 {/* Search bar */}
                 <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
@@ -1437,8 +1562,10 @@ export function WorkspacePage() {
                   )}
                 </div>
 
+                {/* Scrollable area: results + media + docs + people + notes */}
+                <div className="flex-1 overflow-y-auto min-h-0">
                 {/* Results grid */}
-                <div className="md:flex-1 md:overflow-y-auto p-3">
+                <div className="p-3">
                   {isSearchingImages ? (
                     <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#888888]">
                       <Loader2 className="h-4 w-4 animate-spin text-brand" />
@@ -1497,7 +1624,7 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Media Upload */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
@@ -1535,7 +1662,7 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Documents / Vouchers */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Documents / Vouchers</label>
                     <button type="button" onClick={() => documentInputRef.current?.click()}
@@ -1572,7 +1699,7 @@ export function WorkspacePage() {
                 </div>
 
                 {/* People Assignment */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">People</label>
                     <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#1a1a1a] rounded-lg p-0.5">
@@ -1643,16 +1770,17 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Description (visible to travelers) */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Description (Visible to Travelers)</label>
                   <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
 
                 {/* Notes */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 shrink-0">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Agent Notes (Internal)</label>
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
+                </div>{/* end scrollable area */}
               </div>
             </div>
 
@@ -1669,11 +1797,23 @@ export function WorkspacePage() {
 
       <AiZapDialog open={aiZapOpen} onOpenChange={setAiZapOpen} />
 
+      <ImportItineraryDialog
+        open={reimportOpen}
+        onOpenChange={setReimportOpen}
+        existingTripId={trip?.id}
+      />
+
       <ShareTripDialog
         open={shareOpen}
         onOpenChange={setShareOpen}
         tripId={trip.id}
         tripName={trip.name}
+      />
+
+      <ItineraryPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        trip={trip}
       />
 
       {/* Edit Trip Dialog */}

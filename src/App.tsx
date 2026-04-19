@@ -1,10 +1,22 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "react-error-boundary";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TripsProvider } from "@/context/TripsContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 import { AppLayout } from "@/layouts/AppLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -81,21 +93,47 @@ function AppToaster() {
   );
 }
 
+function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center p-4">
+      <div className="text-center max-w-md space-y-6">
+        <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto">
+          <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">App Error</h1>
+        <p className="text-sm text-slate-500 dark:text-[#888]">{error.message}</p>
+        <button
+          onClick={resetErrorBoundary}
+          className="h-12 px-8 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-xl shadow-brand/20"
+        >
+          Reload App
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <HashRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <TripsProvider>
-              <PreferencesProvider>
-                <AppRoutes />
-                <AppToaster />
-              </PreferencesProvider>
-            </TripsProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </HashRouter>
+    <ErrorBoundary FallbackComponent={AppErrorFallback}>
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <TripsProvider>
+                <PreferencesProvider>
+                  <AppRoutes />
+                  <AppToaster />
+                </PreferencesProvider>
+              </TripsProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </HashRouter>
+    </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

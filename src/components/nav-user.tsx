@@ -33,7 +33,7 @@ export function NavUser() {
           <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "justify-center" : ""}`}>
             <button
               onClick={() => navigate("/settings")}
-              className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-sidebar-accent/50 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center" : ""}`}
+              className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-brand/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center" : ""}`}
               aria-label="Settings"
             >
               <div className="h-8 w-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-[10px] font-black shrink-0 border border-brand/20">

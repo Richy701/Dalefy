@@ -10,7 +10,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays} from "lucide-react";
+import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -18,6 +18,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, type TripMember } from "@/services/supabaseTrips";
 import { isSupabaseConfigured } from "@/services/supabase";
@@ -27,21 +28,23 @@ type Tab = "travelers" | "hr" | "app-users";
 
 
 const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
-  Signed: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileCheck, bar: "bg-emerald-500" },
-  Pending: { color: "text-amber-500", bg: "bg-amber-500/10", icon: FileClock, bar: "bg-amber-400" },
-  Expired: { color: "text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },
+  Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileCheck, bar: "bg-brand" },
+  Pending: { color: "text-brand", bg: "bg-brand/10", icon: FileClock, bar: "bg-brand" },
+  Expired: { color: "text-brand", bg: "bg-brand/10", icon: FileX, bar: "bg-brand" },
   "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileWarning, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
-  Active: { dot: "bg-emerald-500", badge: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30", label: "Active" },
-  Away: { dot: "bg-amber-500", badge: "bg-amber-500/15 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/30", label: "Away" },
+  Active: { dot: "bg-brand", badge: "bg-brand/15 text-brand ring-1 ring-brand/30", label: "Active" },
+  Away: { dot: "bg-brand/50", badge: "bg-brand/10 text-brand/70 ring-1 ring-brand/20", label: "Away" },
   Offline: { dot: "bg-slate-400", badge: "bg-slate-200 dark:bg-[#222] text-slate-600 dark:text-[#888] ring-1 ring-slate-300 dark:ring-[#333]", label: "Offline" },
 };
 
 export function TravelersPage() {
   const { trips } = useTrips();
   const { showToast, addNotification } = useNotifications();
+  const { accent } = usePreferences();
+  const brandHex = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("travelers");
@@ -102,16 +105,28 @@ export function TravelersPage() {
   const [sheetUserId, setSheetUserId] = useState("");
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
 
+  // Upload document state
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadDocName, setUploadDocName] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadAssignees, setUploadAssignees] = useState<string[]>([]);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
   const travelers = useMemo(() => {
-    const allUsers = [...MOCK_USERS, ...customTravelers];
+    // Deduplicate by name (case-insensitive) — keep first occurrence
+    const seen = new Set<string>();
+    const allUsers = [...MOCK_USERS, ...customTravelers].filter(u => {
+      const key = u.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     return allUsers.map(user => {
       const assignedTrips: string[] = [];
       trips.forEach(t => {
-        // Use travelerIds (relational) first, fall back to string matching
-        const linked = t.travelerIds
-          ? t.travelerIds.includes(user.id)
-          : t.attendees.includes(user.name);
-        if (linked && !assignedTrips.includes(t.name)) {
+        const byId = t.travelerIds?.includes(user.id);
+        const byName = t.attendees?.toLowerCase().includes(user.name.toLowerCase());
+        if ((byId || byName) && !assignedTrips.includes(t.name)) {
           assignedTrips.push(t.name);
         }
       });
@@ -175,6 +190,7 @@ export function TravelersPage() {
       accessorFn: row => row.assignedTrips.length,
       header: "Trips",
       enableSorting: true,
+      sortDescFirst: true,
     },
     {
       id: "compliance",
@@ -258,6 +274,28 @@ export function TravelersPage() {
     addNotification({ message: "Document signed", detail: `${docName} — ${user.name}`, time: "Just now", type: "success" });
   }, [sheetUserId, travelers, setComplianceOverrides, showToast, addNotification]);
 
+  const handleUploadDocument = useCallback(() => {
+    if (!uploadDocName.trim() || !uploadFile || uploadAssignees.length === 0) return;
+    const docName = uploadDocName.trim();
+    const newDoc: ComplianceDoc = { name: docName, status: "Pending", date: new Date().toISOString().split("T")[0] };
+    setComplianceOverrides(prev => {
+      const next = { ...prev };
+      for (const userId of uploadAssignees) {
+        const existing = next[userId] || travelers.find(t => t.id === userId)?.compliance || [];
+        if (!existing.some(d => d.name === docName)) {
+          next[userId] = [...existing, newDoc];
+        }
+      }
+      return next;
+    });
+    showToast(`"${docName}" assigned to ${uploadAssignees.length} ${uploadAssignees.length === 1 ? "person" : "people"}`);
+    addNotification({ message: "Document uploaded", detail: `${docName} — ${uploadAssignees.length} assignees`, time: "Just now", type: "success" });
+    setUploadOpen(false);
+    setUploadDocName("");
+    setUploadFile(null);
+    setUploadAssignees([]);
+  }, [uploadDocName, uploadFile, uploadAssignees, travelers, setComplianceOverrides, showToast, addNotification]);
+
   const handleSendReminder = useCallback(async (userId: string, userName: string, docName: string) => {
     const key = `${userId}-${docName}`;
     setSendingReminder(key);
@@ -271,10 +309,10 @@ export function TravelersPage() {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
         left={travelers.length > 0 ? (
-          <div className="max-w-md w-full relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+          <div className="max-w-[140px] sm:max-w-md w-full relative group">
+            <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH TRAVELERS..." className="pl-12 h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
+            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
         ) : undefined}
         cta={
@@ -285,11 +323,11 @@ export function TravelersPage() {
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="px-4 lg:px-8 py-7 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
-            <div>
-              <h2 className="text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
-              <div className="flex items-center gap-2.5 mt-2">
+        <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
+              <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
                 <span className="text-slate-200 dark:text-[#333]">·</span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
@@ -298,7 +336,7 @@ export function TravelersPage() {
                 </span>
               </div>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 overflow-x-auto scrollbar-hide">
               <div className="inline-flex bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-slate-200 dark:border-[#1a1a1a] gap-0">
                 {(["travelers", "hr", "app-users"] as const).map(t => {
                   const active = tab === t;
@@ -306,10 +344,10 @@ export function TravelersPage() {
                     <button
                       key={t}
                       onClick={() => setTab(t)}
-                      className={`relative flex-none h-auto px-7 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 ${
+                      className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-all duration-300 ${
                         active
-                          ? "bg-white dark:bg-[#1a1a1a] text-brand shadow-lg ring-1 ring-brand/20"
-                          : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-200"
+                          ? "bg-brand text-black shadow-md shadow-brand/20"
+                          : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-300"
                       }`}
                     >
                       {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
@@ -345,7 +383,71 @@ export function TravelersPage() {
             </div>
           )}
           {tab === "travelers" && travelers.length > 0 && (
-            <div className="bg-white dark:bg-[#111111] rounded-2xl animate-fade-in border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+            <div className="animate-fade-in">
+              {/* ── Mobile card layout (< sm) ── */}
+              <div className="sm:hidden space-y-2.5">
+                {table.getRowModel().rows.length === 0 && (
+                  <div className="flex flex-col items-center gap-3 py-16">
+                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-brand opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members yet</p>
+                  </div>
+                )}
+                {table.getRowModel().rows.map(row => {
+                  const user = row.original;
+                  const docs = user.compliance.filter(d => d.status !== "Not Required");
+                  const signedCount = docs.filter(d => d.status === "Signed").length;
+                  const statusCfg = STATUS_CONFIG[user.status] || STATUS_CONFIG["Offline"];
+                  return (
+                    <div key={row.id} className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] p-4 shadow-sm dark:shadow-none">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email}</div>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
+                          {statusCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.role}</span>
+                        <span className="text-slate-200 dark:text-[#333]">·</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
+                        <span className="text-slate-200 dark:text-[#333]">·</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] tabular-nums">{signedCount}/{docs.length} docs</span>
+                      </div>
+                      {user.compliance.length > 0 && (
+                        <div className="flex gap-1 mt-2.5 flex-wrap">
+                          {user.compliance.map(d => {
+                            const abbr = d.name.includes(" ")
+                              ? d.name.split(" ").map((w: string) => w[0]).join("").toUpperCase()
+                              : d.name.slice(0, 3).toUpperCase();
+                            const cfg = DOC_STATUS_CONFIG[d.status];
+                            return (
+                              <button
+                                key={d.name}
+                                onClick={() => openDocSheet(user.id, user.name, d)}
+                                title={`${d.name}: ${d.status}`}
+                                aria-label={`${d.name}: ${d.status}`}
+                                className={`h-[22px] px-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all hover:scale-110 hover:brightness-110 ${cfg.bg} ${cfg.color}`}
+                              >
+                                {abbr}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Desktop table layout (sm+) ── */}
+              <div className="hidden sm:block bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   {table.getHeaderGroups().map(headerGroup => (
@@ -362,13 +464,13 @@ export function TravelersPage() {
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
                               {canSort && (
-                                <span className="opacity-60">
+                                <span className={isSorted ? "text-brand" : "opacity-40"}>
                                   {isSorted === "asc" ? (
-                                    <ChevronUp className="h-3 w-3" />
+                                    <ChevronUp className="h-3.5 w-3.5" />
                                   ) : isSorted === "desc" ? (
-                                    <ChevronDown className="h-3 w-3" />
+                                    <ChevronDown className="h-3.5 w-3.5" />
                                   ) : (
-                                    <ChevronsUpDown className="h-3 w-3" />
+                                    <ChevronsUpDown className="h-3.5 w-3.5" />
                                   )}
                                 </span>
                               )}
@@ -399,7 +501,7 @@ export function TravelersPage() {
                     const signedCount = docs.filter(d => d.status === "Signed").length;
                     const statusCfg = STATUS_CONFIG[user.status] || STATUS_CONFIG["Offline"];
                     return (
-                      <tr key={user.id} className="hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group">
+                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3.5">
                             <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
@@ -413,7 +515,14 @@ export function TravelersPage() {
                           <span className="text-xs font-semibold text-slate-600 dark:text-[#aaa]">{user.role}</span>
                         </td>
                         <td className="px-6 py-5">
-                          <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
+                          {user.assignedTrips.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm font-black tracking-tighter text-slate-400 dark:text-[#555] tabular-nums">0</span>
+                          )}
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2.5">
@@ -450,6 +559,7 @@ export function TravelersPage() {
                   })}
                 </tbody>
               </table>
+              </div>
 
               {/* Pagination — only shown when data > 10 */}
               {table.getPageCount() > 1 && (
@@ -490,6 +600,34 @@ export function TravelersPage() {
                   </div>
                 </div>
               )}
+              </div>
+
+              {/* Mobile pagination */}
+              {table.getPageCount() > 1 && (
+                <div className="sm:hidden flex items-center justify-between mt-3 px-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
+                    {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => table.previousPage()}
+                      disabled={!table.getCanPreviousPage()}
+                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Previous page"
+                    >
+                      <PgLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => table.nextPage()}
+                      disabled={!table.getCanNextPage()}
+                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label="Next page"
+                    >
+                      <PgRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -499,10 +637,10 @@ export function TravelersPage() {
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {[
-                  { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <ShieldCheck className="h-4 w-4" />, accent: "text-emerald-400", bar: "#34d399" },
-                  { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-amber-500", bar: "#fbbf24" },
-                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldAlert className="h-4 w-4" />, accent: "text-red-400", bar: "#f87171" },
-                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <BarChart3 className="h-4 w-4" />, accent: "text-brand", bar: "#0bd2b5" },
+                  { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <ShieldCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldAlert className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <BarChart3 className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                 ].map(card => (
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
                     <div className="p-5 flex flex-col">
@@ -517,6 +655,17 @@ export function TravelersPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Upload button */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">All Documents</p>
+                <button
+                  onClick={() => setUploadOpen(true)}
+                  className="flex items-center gap-2 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-brand/20"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Upload Document
+                </button>
               </div>
 
               <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
@@ -578,7 +727,7 @@ export function TravelersPage() {
                                 <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand text-xs font-black uppercase tracking-widest text-black hover:opacity-90">
                                   <FileCheck className="h-3 w-3" /> SIGN
                                 </button>
-                                <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:border-amber-500/40 transition-all disabled:opacity-50">
+                                <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
                                   <Send className="h-3 w-3" /> {isSending ? "..." : "REMIND"}
                                 </button>
                               </div>
@@ -599,8 +748,8 @@ export function TravelersPage() {
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 {[
                   { label: "App Users", value: groupedAppUsers.length.toString(), icon: <Smartphone className="h-4 w-4" />, accent: "text-brand" },
-                  { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-violet-400" },
-                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDays className="h-4 w-4" />, accent: "text-amber-400" },
+                  { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDays className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl">
                     <div className="p-5 flex flex-col">
@@ -663,12 +812,12 @@ export function TravelersPage() {
                                 src={user.avatar}
                                 alt={user.name}
                                 className="h-10 w-10 rounded-xl object-cover"
+                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
                               />
-                            ) : (
-                              <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs">
-                                {initials}
-                              </div>
-                            )}
+                            ) : null}
+                            <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>
+                              {initials}
+                            </div>
                           </div>
                           {/* Name */}
                           <div className="flex-1 min-w-0">
@@ -829,6 +978,104 @@ export function TravelersPage() {
       </Drawer.Root>
 
       <ComplianceDocSheet open={sheetOpen} onOpenChange={setSheetOpen} doc={sheetDoc} travelerName={sheetTraveler} onSign={handleSign} />
+
+      {/* Upload Document Drawer */}
+      <Drawer.Root open={uploadOpen} onOpenChange={setUploadOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#111111] rounded-t-[2rem] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[85vh] overflow-y-auto">
+            <div className="mx-auto w-12 h-1.5 bg-slate-200 dark:bg-[#333] rounded-full mt-3 mb-2" />
+            <div className="px-6 sm:px-8 pb-8">
+              <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1">Upload Document</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mb-6">Upload a file and assign it to team members for signing</p>
+
+              {/* Document name */}
+              <div className="space-y-2 mb-5">
+                <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Document Name</label>
+                <input
+                  value={uploadDocName}
+                  onChange={e => setUploadDocName(e.target.value)}
+                  placeholder="e.g., NDA, Waiver, Health Declaration"
+                  className="w-full h-11 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
+                />
+              </div>
+
+              {/* File upload */}
+              <div className="space-y-2 mb-5">
+                <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">File</label>
+                <input ref={uploadInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.rtf" className="hidden" onChange={e => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]); }} />
+                {uploadFile ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-brand/5 border border-brand/20">
+                    <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-brand" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{uploadFile.name}</p>
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{(uploadFile.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                    <button onClick={() => { setUploadFile(null); if (uploadInputRef.current) uploadInputRef.current.value = ""; }} className="h-7 w-7 rounded-lg hover:bg-slate-100 dark:hover:bg-[#1a1a1a] flex items-center justify-center transition-colors">
+                      <X className="h-3.5 w-3.5 text-slate-500" />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => uploadInputRef.current?.click()} className="w-full h-14 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888] hover:border-brand/50 hover:text-brand transition-colors">
+                    <Upload className="h-4 w-4" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Choose file (PDF, DOC, TXT)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Assign to travelers */}
+              <div className="space-y-2 mb-6">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Assign To</label>
+                  <button
+                    onClick={() => setUploadAssignees(prev => prev.length === travelers.length ? [] : travelers.map(t => t.id))}
+                    className="text-[10px] font-bold text-brand uppercase tracking-wider hover:opacity-70 transition-opacity"
+                  >
+                    {uploadAssignees.length === travelers.length ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {travelers.map(t => {
+                    const selected = uploadAssignees.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setUploadAssignees(prev => selected ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                          selected
+                            ? "bg-brand/10 border-brand/30 text-brand"
+                            : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-brand/20"
+                        }`}
+                      >
+                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-slate-200 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#666]"}`}>
+                          {selected ? <Check className="h-3 w-3" /> : t.initials}
+                        </div>
+                        {t.name.split(" ")[0]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadFile(null); setUploadAssignees([]); }} className="flex-1 h-12 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUploadDocument}
+                  disabled={!uploadDocName.trim() || !uploadFile || uploadAssignees.length === 0}
+                  className="flex-[2] h-12 rounded-2xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Upload className="h-4 w-4" /> Assign Document
+                </button>
+              </div>
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   );
 }

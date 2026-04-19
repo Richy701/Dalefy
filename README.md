@@ -25,6 +25,8 @@ Internal travel planning and itinerary management platform for teams. Build, man
 - Organizer contact fields (name, role, company, email, phone) in trip edit
 - Information & documents section — repeatable title + body entries per trip
 - Event description field (visible to travelers) separate from internal agent notes
+- **Per-event traveler assignment** — assign specific travelers to individual events with Everyone/Specific toggle
+- **Re-import itinerary** — upload a new version of a document to update an existing trip's events, travelers, and info without losing media or images
 - One-click publish with push notifications to mobile devices
 - Shareable trip links (public, no auth required)
 - **Trip PIN** — every published trip gets a 4-digit PIN auto-allocated in Supabase, shown as the hero on the share-pass stub so travelers can type it directly on mobile (no pasting required)
@@ -40,12 +42,22 @@ Internal travel planning and itinerary management platform for teams. Build, man
 - Region filtering and search
 - Tall destination cards with event breakdown
 
+### Import Parser
+- Parses PDF, Word (.docx), PowerPoint (.pptx), and plain text itineraries
+- Extracts trip name, dates, destination, attendees, and events automatically
+- **Traveler auto-linking** — parsed attendee names are matched to existing travelers or created as new ones, linked to the trip and visible on the Travelers page
+- **Information extraction** — pulls accommodation details, additional activities, notes, and other info sections into editable Information & Documents cards
+- Attendee names shown as individual chips in the import preview
+- Editable info cards in the preview — modify titles and content before importing
+- Media deduplication on re-import (same URL overwrites, doesn't duplicate)
+
 ### Travelers
 - Sortable member table with role, status, and compliance columns
 - Per-traveler document compliance tracking (Signed / Pending / Expired)
 - Sign & remind actions with confirmation dialogs
 - Drawer-based add-traveler form (vaul)
 - HR Documents tab — aggregated compliance view with virtual scrolling
+- **Auto-populated from imports** — travelers extracted from itinerary documents appear automatically
 
 ### Reports
 - Operations overview with Recharts bar, line, and pie charts
@@ -113,6 +125,7 @@ The web and mobile apps sync through Supabase:
 4. **Push notifications** — web sends via Expo Push API to all registered devices
 5. **Shareable links** — public route (`/shared/:tripId`) fetches directly from Supabase
 6. **4-digit Trip PIN** — on share, web allocates a unique `short_code` per trip; mobile accepts the PIN and resolves to the UUID for navigation
+7. **Graceful column fallback** — Supabase upserts progressively strip optional columns (`traveler_ids`, `travelers`, `organizer`, `info`) on failure; localStorage preserves these fields and merges them back on every fetch
 
 Without Supabase configured, both apps fall back to local storage (no sync).
 

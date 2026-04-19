@@ -14,7 +14,7 @@ const ALL_TABS = [
   { name: "index",        Icon: Compass,      label: "Trips",   visible: true  },
   { name: "destinations", Icon: Globe,         label: "World",   visible: true  },
   { name: "itinerary",    Icon: CalendarDays,  label: "Plan",    visible: false },
-  { name: "media",        Icon: Images,        label: "Gallery", visible: false },
+  { name: "media",        Icon: Images,        label: "Gallery", visible: true  },
   { name: "profile",      Icon: User,          label: "Me",      visible: true  },
 ] as const;
 
