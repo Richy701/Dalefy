@@ -12,12 +12,13 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, MoreVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -843,18 +844,17 @@ export function WorkspacePage() {
               </PopoverContent>
             </Popover>
           )}
-          {/* Always visible */}
+          {/* Desktop toolbar buttons */}
           <button aria-label="Toggle theme" onClick={toggleTheme} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <NotificationPanel />
-          <button aria-label="Re-import itinerary" onClick={() => setReimportOpen(true)} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm" title="Re-import itinerary">
+          <button aria-label="Re-import itinerary" onClick={() => setReimportOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm" title="Re-import itinerary">
             <Upload className="h-4 w-4" />
           </button>
-          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Pencil className="h-4 w-4" />
           </button>
-          {/* Desktop only */}
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash2 className="h-4 w-4" />
           </button>
@@ -885,6 +885,48 @@ export function WorkspacePage() {
           <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
           </Button>
+
+          {/* Mobile overflow menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+              <DropdownMenuItem onClick={() => setShowMap(!showMap)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <MapIcon className="h-4 w-4 text-brand" /> {showMap ? "Hide Map" : "Show Map"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <Eye className="h-4 w-4" /> Preview
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenEditTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <Pencil className="h-4 w-4" /> Edit Trip
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <Upload className="h-4 w-4" /> Re-import
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+              <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <Share2 className="h-4 w-4" /> Share Link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <MailPlus className="h-4 w-4" /> Send to Client
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <FileText className="h-4 w-4" /> Export PDF
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+              <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+              <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
+                <Trash2 className="h-4 w-4" /> Delete Trip
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
           </Button>
@@ -950,45 +992,45 @@ export function WorkspacePage() {
         <div className="flex-1 flex flex-row overflow-hidden relative">
           <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
-            <section className="relative h-[240px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
+            <section className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
               {/* Multi-layer gradient for depth */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
               <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
 
               {/* Top row: status + event count pill */}
-              <div className="absolute top-6 left-6 lg:left-8 right-6 lg:right-8 z-20 flex items-center justify-between">
-                <Badge className={`rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-brand text-black border-none" : trip.status === "In Progress" ? "bg-brand/15 text-brand border border-brand/40" : "bg-white/20 text-white border-none"}`}>
+              <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
+                <Badge className={`rounded-full px-3 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-brand text-black border-none" : trip.status === "In Progress" ? "bg-brand/15 text-brand border border-brand/40" : "bg-white/20 text-white border-none"}`}>
                   {trip.status === "In Progress" ? "● ACTIVE" : trip.status === "Published" ? "✓ PUBLISHED" : "DRAFT"}
                 </Badge>
-                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{trip.events.length} events</span>
+                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{trip.events.length} events</span>
                   <span className="text-white/30">·</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{groupedEvents.length} days</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{groupedEvents.length} days</span>
                 </div>
               </div>
 
               {/* Bottom: trip identity */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8 z-20">
-                <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">DAF Adventures · Itinerary</p>
-                <h3 className="text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-5">{trip.name}</h3>
+              <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">DAF Adventures · Itinerary</p>
+                <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
 
                 {/* Stat chips */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
                     <Users className="h-3 w-3 text-brand" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
+                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
                     <CalendarDays className="h-3 w-3 text-brand" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">
                       {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                   </div>
                   {trip.destination && (
-                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
                       <MapPin className="h-3 w-3 text-brand" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
                     </div>
                   )}
                 </div>
@@ -1298,16 +1340,24 @@ export function WorkspacePage() {
           </main>
 
           {showMap && (
-            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl">
-              {/* Mobile close button */}
-              <button
-                onClick={() => setShowMap(false)}
-                className="absolute top-3 right-3 z-50 lg:hidden h-10 w-10 rounded-xl bg-white/90 dark:bg-[#111111]/90 backdrop-blur-sm border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                aria-label="Close map"
-              >
-                <X className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
-              </button>
-              <TripMap theme={theme} trip={trip} />
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+              {/* Mobile header bar */}
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-sm shrink-0 z-50">
+                <div className="flex items-center gap-2.5">
+                  <MapIcon className="h-4 w-4 text-brand" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Route Map</span>
+                </div>
+                <button
+                  onClick={() => setShowMap(false)}
+                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center active:scale-95 transition-transform"
+                  aria-label="Close map"
+                >
+                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0">
+                <TripMap theme={theme} trip={trip} />
+              </div>
             </aside>
           )}
         </div>
