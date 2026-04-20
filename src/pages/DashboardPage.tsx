@@ -26,6 +26,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
+import { usePermissions } from "@/hooks/usePermissions";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
@@ -112,6 +113,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
   const { accent } = usePreferences();
+  const { canDeleteTrip, isOrgMember } = usePermissions();
   const accentPreset = ACCENT_PALETTE.find(p => p.id === accent) ?? ACCENT_PALETTE[0];
   const ACCENT_RGB = accentPreset.rgb.replace(/\s+/g, ", ");
   const stats = useTripStats(trips);
@@ -1034,7 +1036,9 @@ export function DashboardPage() {
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                              {(!isOrgMember || canDeleteTrip) && (
+                                <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1124,7 +1128,9 @@ export function DashboardPage() {
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                              {(!isOrgMember || canDeleteTrip) && (
+                                <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors" />

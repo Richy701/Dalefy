@@ -4,7 +4,8 @@ import { CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils, Clock, Lo
 import { isSupabaseConfigured } from "@/services/supabase";
 import { supabase } from "@/services/supabase";
 import type { Trip, TravelEvent } from "@/types";
-import { BRAND } from "@/config/brand";
+import { resolvedBrand } from "@/config/brand";
+import { fetchBrandingForTrip, type OrgBranding } from "@/services/supabaseBranding";
 
 const EVENT_ICONS = { flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils } as const;
 const EVENT_COLORS = { flight: "#94a3b8", hotel: "#f59e0b", activity: "#0bd2b5", dining: "#f472b6" } as const;
@@ -63,6 +64,8 @@ export function SharedTripPage() {
   const [error, setError] = useState("");
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
+  const brand = resolvedBrand(orgBranding ? { companyName: orgBranding.companyName, logoUrl: orgBranding.logoUrl, accentColor: orgBranding.accentColor } : null);
 
   useEffect(() => {
     if (!tripId || !isSupabaseConfigured()) {
@@ -89,6 +92,9 @@ export function SharedTripPage() {
         }
         setLoading(false);
       });
+
+    // Fetch org branding for this trip
+    fetchBrandingForTrip(tripId).then(b => setOrgBranding(b));
   }, [tripId]);
 
   const hasTravelers = (trip?.travelers?.length ?? 0) > 0;
@@ -146,7 +152,7 @@ export function SharedTripPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">
-            {BRAND.name} · Itinerary
+            {brand.name} · Itinerary
           </p>
           <h1 className="text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-none mb-4">
             {trip.name}
@@ -286,7 +292,7 @@ export function SharedTripPage() {
         {/* Footer */}
         <div className="mt-10 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
-            Powered by {BRAND.name}
+            Powered by {brand.platformName}
           </p>
         </div>
       </div>

@@ -7,6 +7,9 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { TripsProvider } from "@/context/TripsContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
+import { OrgProvider, useOrg } from "@/context/OrgContext";
+import { BrandProvider } from "@/context/BrandContext";
+import { isSupabaseConfigured } from "@/services/supabase";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,19 +30,34 @@ import { ReportsPage } from "@/pages/ReportsPage";
 import { MediaPage } from "@/pages/MediaPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SharedTripPage } from "@/pages/SharedTripPage";
+import { CreateOrgPage } from "@/pages/CreateOrgPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { hasOrg, isLoading: orgLoading } = useOrg();
+  const isRealUser = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+
+  if (authLoading || (isRealUser && orgLoading)) return <AuthLoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  // Real auth users without an org → create one first
+  if (isRealUser && !hasOrg) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
 }
 
+function AuthLoadingScreen() {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center">
+      <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-[#1f1f1f] border-t-brand animate-spin" />
+    </div>
+  );
+}
+
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -63,6 +81,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/create-org" element={<CreateOrgPage />} />
       <Route path="/shared/:tripId" element={<SharedTripPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -122,6 +141,8 @@ export default function App() {
       <HashRouter>
         <ThemeProvider>
           <AuthProvider>
+            <OrgProvider>
+            <BrandProvider>
             <NotificationProvider>
               <TripsProvider>
                 <PreferencesProvider>
@@ -130,6 +151,8 @@ export default function App() {
                 </PreferencesProvider>
               </TripsProvider>
             </NotificationProvider>
+            </BrandProvider>
+            </OrgProvider>
           </AuthProvider>
         </ThemeProvider>
       </HashRouter>

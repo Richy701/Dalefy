@@ -67,10 +67,29 @@ export interface TripInfo {
   body: string;
 }
 
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  createdBy: string;
+}
+
+export interface OrgMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: "owner" | "admin" | "agent";
+  joinedAt: string;
+  profile?: User;
+}
+
+export type OrgRole = OrgMember["role"];
+
 export interface Trip {
   id: string;
   name: string;
   attendees: string;
+  organizationId?: string;
   /** Actual traveler IDs linked to this trip (source of truth for relationships) */
   travelerIds?: string[];
   /** Denormalized traveler display info — synced for shared view access */

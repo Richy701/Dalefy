@@ -153,6 +153,7 @@ function tripToRow(trip: Trip, forceTraveler?: boolean, forceOrganizer?: boolean
     events: trip.events,
     media: trip.media ?? null,
     short_code: trip.shortCode ?? null,
+    organization_id: trip.organizationId ?? null,
   };
   if (forceTraveler ?? hasTravelerCols) {
     row.traveler_ids = trip.travelerIds ?? null;
@@ -186,5 +187,6 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     travelers: (row.travelers as Trip["travelers"]) ?? undefined,
     organizer: (row.organizer as Trip["organizer"]) ?? undefined,
     info: (row.info as Trip["info"]) ?? undefined,
+    organizationId: (row.organization_id as string) ?? undefined,
   };
 }

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
-import { BRAND } from "@/config/brand";
+import { useBrand } from "@/context/BrandContext";
 import { useTrips } from "@/context/TripsContext";
 import { generateUniqueShortCode } from "@/services/supabaseTrips";
 
@@ -21,6 +21,7 @@ interface ShareTripDialogProps {
 export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const { accent } = usePreferences();
+  const { brand } = useBrand();
   const { trips, updateTrip } = useTrips();
   const activeAccent = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
 
@@ -95,7 +96,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 className="text-[10px] font-black uppercase tracking-[0.2em] truncate"
                 style={{ color: activeAccent.hex }}
               >
-                {BRAND.name} · Trip Pass
+                {brand.name} · Trip Pass
               </span>
             </div>
 

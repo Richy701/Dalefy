@@ -7,7 +7,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { BRAND } from "@/config/brand";
+import { useBrand } from "@/context/BrandContext";
 import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 
@@ -26,6 +26,7 @@ interface ItineraryPreviewDialogProps {
 }
 
 export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPreviewDialogProps) {
+  const { brand } = useBrand();
   const grouped = useMemo(() => {
     const map: Record<string, TravelEvent[]> = {};
     for (const ev of trip.events) {
@@ -80,7 +81,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
 
           {/* Eyebrow */}
           <span className="absolute top-3 sm:top-4 left-3 sm:left-4 text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
-            {BRAND.name} · Itinerary Preview
+            {brand.name} · Itinerary Preview
           </span>
 
           {/* Title block */}
@@ -199,7 +200,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
             {/* Footer */}
             <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-slate-200 dark:border-[#1f1f1f] text-center">
               <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-slate-400 dark:text-[#555]">
-                Powered by {BRAND.name}
+                Powered by {brand.platformName}
               </p>
             </div>
           </div>

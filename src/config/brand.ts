@@ -20,4 +20,25 @@ export const BRAND = {
 
   /** Fixed prefix for localStorage keys — DO NOT change after launch */
   storagePrefix: "daf",
+
+  /** Default accent color (cyber teal) */
+  accentColor: "#0bd2b5",
 } as const;
+
+/** Org-level brand overrides — these take priority over BRAND defaults */
+export interface BrandOverrides {
+  companyName?: string | null;
+  logoUrl?: string | null;
+  accentColor?: string | null;
+}
+
+/** Merge platform brand with org overrides */
+export function resolvedBrand(overrides?: BrandOverrides | null) {
+  return {
+    name: overrides?.companyName || BRAND.name,
+    nameUpper: (overrides?.companyName || BRAND.name).toUpperCase(),
+    logoUrl: overrides?.logoUrl || null,
+    accentColor: overrides?.accentColor || BRAND.accentColor,
+    platformName: BRAND.name,
+  };
+}

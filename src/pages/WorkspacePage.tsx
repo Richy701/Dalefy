@@ -47,6 +47,7 @@ import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
+import { usePermissions } from "@/hooks/usePermissions";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
@@ -136,6 +137,7 @@ export function WorkspacePage() {
   const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
+  const { canDeleteTrip, isOrgMember } = usePermissions();
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
 
@@ -921,10 +923,14 @@ export function WorkspacePage() {
               <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light Mode" : "Dark Mode"}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
-              <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
-                <Trash2 className="h-4 w-4" /> Delete Trip
-              </DropdownMenuItem>
+              {(!isOrgMember || canDeleteTrip) && (
+                <>
+                  <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                  <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
+                    <Trash2 className="h-4 w-4" /> Delete Trip
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

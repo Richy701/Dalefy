@@ -7,6 +7,7 @@ import { isSupabaseConfigured, supabase } from "@/services/supabase";
 import { fetchTrips, subscribeToTrips, upsertTrip, removeTrip } from "@/services/supabaseTrips";
 import { deriveAttendeesString, matchOrCreateTravelers, extractNamesFromAttendeesString } from "@/lib/travelerSync";
 import type { User } from "@/types";
+import { useOrg } from "@/context/OrgContext";
 
 interface TripsContextType {
   trips: Trip[];
@@ -95,6 +96,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const useCloud = isSupabaseConfigured();
   const local = useLocalTrips();
   const cloud = useSupabaseTrips();
+  const { currentOrg } = useOrg();
 
   const { setTrips } = useCloud ? cloud : local;
   const ready = useCloud ? cloud.ready : local.ready;
@@ -271,9 +273,10 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [local]);
 
   const addTrip = useCallback((trip: Trip) => {
-    setTrips(prev => [trip, ...prev]);
-    if (useCloud) flushLocal(prev => [trip, ...prev]);
-  }, [setTrips, useCloud, flushLocal]);
+    const tripWithOrg = currentOrg ? { ...trip, organizationId: trip.organizationId ?? currentOrg.id } : trip;
+    setTrips(prev => [tripWithOrg, ...prev]);
+    if (useCloud) flushLocal(prev => [tripWithOrg, ...prev]);
+  }, [setTrips, useCloud, flushLocal, currentOrg]);
 
   const deleteTrip = useCallback((id: string) => {
     setTrips(prev => prev.filter(t => t.id !== id));

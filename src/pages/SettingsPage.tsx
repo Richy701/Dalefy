@@ -2,8 +2,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash2,
+  Sun, Moon, Download, Trash2, Lock, Building2, Upload,
 } from "lucide-react";
+import { isSupabaseConfigured } from "@/services/supabase";
+import { changePassword } from "@/services/supabaseAuth";
+import { updateBranding } from "@/services/supabaseBranding";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BRAND } from "@/config/brand";
@@ -11,6 +14,8 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
+import { useOrg } from "@/context/OrgContext";
+import { useBrand } from "@/context/BrandContext";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { playChime } from "@/lib/sound";
 
@@ -107,7 +112,49 @@ export function SettingsPage() {
     accent, setAccent,
   } = usePreferences();
   const activeAccent = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
+  const { currentOrg, orgRole } = useOrg();
+  const { brand, orgBranding } = useBrand();
   const [resetOpen, setResetOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const realAuth = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+  const canManageOrg = realAuth && currentOrg && (orgRole === "owner" || orgRole === "admin");
+
+  // Org branding form state
+  const [brandName, setBrandName] = useState(orgBranding?.companyName ?? "");
+  const [brandColor, setBrandColor] = useState(orgBranding?.accentColor ?? BRAND.accentColor);
+  const [savingBrand, setSavingBrand] = useState(false);
+
+  const handleSaveBranding = async () => {
+    if (!currentOrg) return;
+    setSavingBrand(true);
+    const { error } = await updateBranding(currentOrg.id, {
+      companyName: brandName || null,
+      accentColor: brandColor !== BRAND.accentColor ? brandColor : null,
+    });
+    setSavingBrand(false);
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success("Branding updated — reload to see changes");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    setChangingPassword(true);
+    const { error } = await changePassword(newPassword);
+    setChangingPassword(false);
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success("Password updated");
+      setNewPassword("");
+    }
+  };
 
   const initials = user?.initials ?? (
     (user?.name ?? "").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "?"
@@ -208,6 +255,98 @@ export function SettingsPage() {
               </div>
             </div>
           </Section>
+
+          {/* ── Security (only for real Supabase auth users) ── */}
+          {realAuth && (
+            <Section
+              icon={Lock}
+              title="Security"
+              description="Manage your account security and password."
+            >
+              <Row
+                label="Change Password"
+                value="Update your sign-in password"
+                action={
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="New password"
+                      className="h-9 w-40 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    />
+                    <Button
+                      onClick={handleChangePassword}
+                      disabled={changingPassword || newPassword.length < 6}
+                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-3 disabled:opacity-40"
+                    >
+                      {changingPassword ? "..." : "Update"}
+                    </Button>
+                  </div>
+                }
+              />
+            </Section>
+          )}
+
+          {/* ── Organization Branding (owner/admin only) ── */}
+          {canManageOrg && (
+            <Section
+              icon={Building2}
+              title="Organization"
+              description="Customize how your agency appears to clients on shared trip pages and PDFs."
+            >
+              <Row
+                label="Company Name"
+                value="Shown in headers, share cards, and itineraries"
+                action={
+                  <input
+                    type="text"
+                    value={brandName}
+                    onChange={e => setBrandName(e.target.value)}
+                    placeholder={BRAND.name}
+                    className="h-9 w-48 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  />
+                }
+              />
+              <Row
+                label="Accent Color"
+                value={`Currently ${brandColor}`}
+                action={
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandColor}
+                      onChange={e => setBrandColor(e.target.value)}
+                      className="h-9 w-9 rounded-lg border border-slate-200 dark:border-[#1f1f1f] cursor-pointer bg-transparent p-0.5"
+                    />
+                    <button
+                      onClick={() => setBrandColor(BRAND.accentColor)}
+                      className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                }
+              />
+              <div className="flex items-center justify-between bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">
+                    Preview
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-[#888888] mt-1">
+                    Clients will see <span className="font-bold text-slate-900 dark:text-white">{brandName || BRAND.name}</span> · Powered by {BRAND.name}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveBranding}
+                  disabled={savingBrand}
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-4 disabled:opacity-40"
+                >
+                  {savingBrand ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </Section>
+          )}
 
           {/* ── Appearance ── */}
           <Section
@@ -354,7 +493,7 @@ export function SettingsPage() {
 
           {/* ── Footer ── */}
           <div className="border-t border-slate-200 dark:border-[#1f1f1f] pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
-            <span>{BRAND.name}</span>
+            <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
         </div>
