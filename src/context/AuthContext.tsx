@@ -153,6 +153,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const role = (data.role ?? "Trip Manager").trim();
 
     if (useSupabase && data.password) {
+      // Clear stale localStorage so new account starts clean
+      localStorage.removeItem("daf-adventures-v4");
+      localStorage.removeItem("daf-auth");
+
       const { user: newUser, error } = await authSignUp(email, data.password, name, role);
       if (error) return error;
       if (newUser) {
@@ -181,6 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSignIn = useCallback(async (email: string, password: string): Promise<string | null> => {
     if (!useSupabase) return "Supabase not configured";
+
+    // Clear stale trip cache from previous user/demo session
+    localStorage.removeItem("daf-adventures-v4");
 
     const { user: signedInUser, error } = await authSignIn(email, password);
     if (error) return error;
@@ -221,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem("daf-auth");
+    localStorage.removeItem("daf-adventures-v4");
     if (useSupabase) {
       authSignOut().catch(() => {});
     }
