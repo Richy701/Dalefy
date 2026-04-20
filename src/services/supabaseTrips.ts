@@ -49,10 +49,14 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void) {
 }
 
 export async function upsertTrip(trip: Trip): Promise<void> {
+  // Attach user_id so RLS scopes trips to their creator
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const userId = authUser?.id ?? null;
+
   // Always try with all columns first — if columns were added mid-session, recover automatically
   const { error } = await supabase
     .from(TABLE)
-    .upsert(tripToRow(trip, true, true), { onConflict: "id" });
+    .upsert({ ...tripToRow(trip, true, true), user_id: userId }, { onConflict: "id" });
   if (!error) {
     hasTravelerCols = true;
     hasOrganizerCols = true;
@@ -66,14 +70,14 @@ export async function upsertTrip(trip: Trip): Promise<void> {
   hasTravelerCols = false;
   const { error: e2 } = await supabase
     .from(TABLE)
-    .upsert(tripToRow(trip), { onConflict: "id" });
+    .upsert({ ...tripToRow(trip), user_id: userId }, { onConflict: "id" });
   if (!e2) return;
 
   // Try without both traveler + organizer columns
   hasOrganizerCols = false;
   const { error: e3 } = await supabase
     .from(TABLE)
-    .upsert(tripToRow(trip), { onConflict: "id" });
+    .upsert({ ...tripToRow(trip), user_id: userId }, { onConflict: "id" });
   if (e3) throw e3;
 }
 
