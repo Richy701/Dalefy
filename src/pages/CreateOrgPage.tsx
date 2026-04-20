@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Loader2, ArrowRight, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,11 @@ export function CreateOrgPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { createOrg } = useOrg();
+  const { createOrg, tablesReady } = useOrg();
   const navigate = useNavigate();
+
+  // If org tables aren't migrated yet, skip this page entirely
+  if (!tablesReady) return <Navigate to="/" replace />;
 
   const canSubmit = name.trim().length >= 2;
 
