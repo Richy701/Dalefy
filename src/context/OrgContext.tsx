@@ -53,6 +53,10 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Reset loading state while we query — prevents ProtectedRoute from
+    // skipping the /create-org redirect before the query completes
+    setIsLoading(true);
+
     let mounted = true;
 
     async function loadOrg() {
