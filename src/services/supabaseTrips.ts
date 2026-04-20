@@ -9,28 +9,7 @@ export async function fetchTrips(): Promise<Trip[]> {
     .select("*")
     .order("start", { ascending: false });
   if (error) throw error;
-  const cloudTrips = (data ?? []).map(rowToTrip);
-
-  // Supabase may lack columns for travelerIds, travelers, info, organizer.
-  // Merge these fields from localStorage so refetches don't wipe local-only data.
-  try {
-    const stored = localStorage.getItem("daf-adventures-v4");
-    if (stored) {
-      const localTrips: Trip[] = JSON.parse(stored);
-      const localMap = new Map(localTrips.map(t => [t.id, t]));
-      for (const t of cloudTrips) {
-        const lt = localMap.get(t.id);
-        if (!lt) continue;
-        if (!t.travelerIds?.length && lt.travelerIds?.length) t.travelerIds = lt.travelerIds;
-        if (!t.travelers?.length && lt.travelers?.length) t.travelers = lt.travelers;
-        if (!t.info?.length && lt.info?.length) t.info = lt.info;
-        if (!t.organizer && lt.organizer) t.organizer = lt.organizer;
-        if ((!t.attendees || t.attendees === "Imported Group") && lt.attendees) t.attendees = lt.attendees;
-      }
-    }
-  } catch { /* ignore */ }
-
-  return cloudTrips;
+  return (data ?? []).map(rowToTrip);
 }
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void) {

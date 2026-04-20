@@ -342,9 +342,6 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent]
   );
 
-  // Don't render children until trips are hydrated — prevents empty-state flash
-  if (!ready) return null;
-
   return (
     <TripsContext.Provider value={value}>
       {children}
