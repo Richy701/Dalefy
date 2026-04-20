@@ -1,3 +1,5 @@
+import { BRAND } from "@/config/brand";
+
 export interface DocSection {
   heading: string;
   body: string;
@@ -20,7 +22,7 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
       },
       {
         heading: "2. Accuracy of Information",
-        body: "I confirm that all passport details provided to DAF Adventures are accurate and match the information printed in my passport exactly. Any discrepancies in name, date of birth, or passport number may result in denied boarding or entry refusal.",
+        body: `I confirm that all passport details provided to ${BRAND.name} are accurate and match the information printed in my passport exactly. Any discrepancies in name, date of birth, or passport number may result in denied boarding or entry refusal.`,
       },
       {
         heading: "3. Notification of Changes",
@@ -28,7 +30,7 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
       },
       {
         heading: "4. Data Handling",
-        body: "I consent to DAF Adventures storing a copy of my passport details securely for the purpose of booking travel, arranging visas, and complying with destination entry requirements. This data will be handled in accordance with GDPR and the company's data protection policy.",
+        body: `I consent to ${BRAND.name} storing a copy of my passport details securely for the purpose of booking travel, arranging visas, and complying with destination entry requirements. This data will be handled in accordance with GDPR and the company's data protection policy.`,
       },
     ],
   },
@@ -39,7 +41,7 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
     sections: [
       {
         heading: "1. Coverage Overview",
-        body: "DAF Adventures provides comprehensive travel insurance for all company-sponsored trips. Coverage includes medical expenses up to £5,000,000, trip cancellation, baggage loss up to £3,000, personal liability, and emergency repatriation. Coverage is activated upon departure and ceases upon return to the UK.",
+        body: `${BRAND.name} provides comprehensive travel insurance for all company-sponsored trips. Coverage includes medical expenses up to £5,000,000, trip cancellation, baggage loss up to £3,000, personal liability, and emergency repatriation. Coverage is activated upon departure and ceases upon return to the UK.`,
       },
       {
         heading: "2. Pre-existing Conditions",
@@ -58,11 +60,11 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
 
   "Behavioural Agreement": {
     title: "Professional Conduct & Behavioural Agreement",
-    preamble: "This agreement sets out the expected standards of professional conduct for all DAF Adventures team members while representing the company during business travel, FAM trips, and client events.",
+    preamble: `This agreement sets out the expected standards of professional conduct for all ${BRAND.name} team members while representing the company during business travel, FAM trips, and client events.`,
     sections: [
       {
         heading: "1. Professional Representation",
-        body: "I understand that while travelling on company business, I am a representative of DAF Adventures at all times. I agree to conduct myself professionally, treat all colleagues, clients, suppliers, and local communities with respect, and uphold the company's reputation in all interactions.",
+        body: `I understand that while travelling on company business, I am a representative of ${BRAND.name} at all times. I agree to conduct myself professionally, treat all colleagues, clients, suppliers, and local communities with respect, and uphold the company's reputation in all interactions.`,
       },
       {
         heading: "2. Alcohol & Substance Policy",
@@ -85,7 +87,7 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
 
   "Code of Conduct Review": {
     title: "Annual Code of Conduct Review",
-    preamble: "All DAF Adventures team members are required to review and acknowledge the company Code of Conduct annually. This ensures ongoing awareness of professional standards and regulatory obligations.",
+    preamble: `All ${BRAND.name} team members are required to review and acknowledge the company Code of Conduct annually. This ensures ongoing awareness of professional standards and regulatory obligations.`,
     sections: [
       {
         heading: "1. Anti-Bribery & Corruption",
@@ -93,7 +95,7 @@ export const COMPLIANCE_DOC_CONTENT: Record<string, DocContent> = {
       },
       {
         heading: "2. Equal Opportunities & Inclusion",
-        body: "I acknowledge DAF Adventures' commitment to equality, diversity, and inclusion in the workplace and during travel. I will treat all colleagues and stakeholders fairly regardless of age, disability, gender, race, religion, sexual orientation, or any other protected characteristic. I will report any witnessed discrimination or harassment.",
+        body: `I acknowledge ${BRAND.name}'s commitment to equality, diversity, and inclusion in the workplace and during travel. I will treat all colleagues and stakeholders fairly regardless of age, disability, gender, race, religion, sexual orientation, or any other protected characteristic. I will report any witnessed discrimination or harassment.`,
       },
       {
         heading: "3. Health & Safety",

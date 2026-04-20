@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: ["favicon.svg"],
         manifest: {
-          name: "DAF Adventures",
-          short_name: "DAF",
+          name: "DAF Adventures", // Update in src/config/brand.ts when renaming
+          short_name: "DAF",     // Update in src/config/brand.ts when renaming
           description: "Plan & manage trips together",
           theme_color: "#050505",
           background_color: "#050505",

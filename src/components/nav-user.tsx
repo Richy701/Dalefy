@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Settings } from "lucide-react";
+import { BRAND } from "@/config/brand";
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -66,7 +67,7 @@ export function NavUser() {
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
         title="Sign Out"
-        description="Are you sure you want to sign out of DAF Adventures?"
+        description={`Are you sure you want to sign out of ${BRAND.name}?`}
         confirmLabel="Sign Out"
         onConfirm={handleSignOut}
         destructive

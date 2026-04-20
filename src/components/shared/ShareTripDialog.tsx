@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { BRAND } from "@/config/brand";
 import { useTrips } from "@/context/TripsContext";
 import { generateUniqueShortCode } from "@/services/supabaseTrips";
 
@@ -94,7 +95,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 className="text-[10px] font-black uppercase tracking-[0.2em] truncate"
                 style={{ color: activeAccent.hex }}
               >
-                DAF Adventures · Trip Pass
+                {BRAND.name} · Trip Pass
               </span>
             </div>
 

@@ -50,6 +50,7 @@ import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
+import { BRAND } from "@/config/brand";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -771,7 +772,7 @@ export function WorkspacePage() {
       trip.shortCode ? `\nTrip PIN: ${trip.shortCode}` : "",
       ``,
       `—`,
-      `Sent via DAF Adventures`,
+      `Sent via ${BRAND.name}`,
     ].filter(Boolean).join("\n");
 
     const a = document.createElement("a");
@@ -1012,7 +1013,7 @@ export function WorkspacePage() {
 
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">DAF Adventures · Itinerary</p>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">{BRAND.name} · Itinerary</p>
                 <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
 
                 {/* Stat chips */}

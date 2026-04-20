@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BRAND } from "@/config/brand";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -131,7 +132,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `daf-trips-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `${BRAND.storagePrefix}-trips-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${trips.length} trips as CSV`);
@@ -353,7 +354,7 @@ export function SettingsPage() {
 
           {/* ── Footer ── */}
           <div className="border-t border-slate-200 dark:border-[#1f1f1f] pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
-            <span>DAF Adventures</span>
+            <span>{BRAND.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
         </div>

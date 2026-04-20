@@ -4,6 +4,7 @@ import { CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils, Clock, Lo
 import { isSupabaseConfigured } from "@/services/supabase";
 import { supabase } from "@/services/supabase";
 import type { Trip, TravelEvent } from "@/types";
+import { BRAND } from "@/config/brand";
 
 const EVENT_ICONS = { flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils } as const;
 const EVENT_COLORS = { flight: "#94a3b8", hotel: "#f59e0b", activity: "#0bd2b5", dining: "#f472b6" } as const;
@@ -145,7 +146,7 @@ export function SharedTripPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">
-            DAF Adventures · Itinerary
+            {BRAND.name} · Itinerary
           </p>
           <h1 className="text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-none mb-4">
             {trip.name}
@@ -285,7 +286,7 @@ export function SharedTripPage() {
         {/* Footer */}
         <div className="mt-10 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
-            Powered by DAF Adventures
+            Powered by {BRAND.name}
           </p>
         </div>
       </div>

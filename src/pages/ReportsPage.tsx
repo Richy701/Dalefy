@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { BRAND } from "@/config/brand";
 import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -86,7 +87,7 @@ export function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `daf-trips-${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `${BRAND.storagePrefix}-trips-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     toast.success("CSV exported successfully");
@@ -173,7 +174,7 @@ export function ReportsPage() {
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/[0.06] dark:border-transparent">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">DAF Adventures</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
             <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-black/[0.06] dark:border-[#1f1f1f] shrink-0">

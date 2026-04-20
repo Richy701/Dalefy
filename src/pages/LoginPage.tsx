@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { BRAND } from "@/config/brand";
 
 const ROLES = ["Trip Manager", "Agent", "Traveller", "Admin"] as const;
 
@@ -45,7 +46,7 @@ export function LoginPage() {
           <div aria-hidden="true" className="h-16 w-16 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl animate-scale-in logo-shimmer">
             <Logo className="text-black h-9 w-9" />
           </div>
-          <h1 className="text-4xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white mb-2">DAF ADVENTURES</h1>
+          <h1 className="text-4xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white mb-2">{BRAND.nameUpper}</h1>
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Plan & manage trips together</p>
         </div>
 

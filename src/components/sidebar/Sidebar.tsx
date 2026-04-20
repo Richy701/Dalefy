@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
+import { BRAND } from "@/config/brand";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Sidebar,
@@ -145,7 +146,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <span className="text-[11px] font-black uppercase tracking-widest text-white whitespace-nowrap">
-                DAF Adventures
+                {BRAND.name}
               </span>
             )}
           </button>
@@ -332,7 +333,7 @@ export function AppSidebar() {
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
         title="Sign Out"
-        description="Are you sure you want to sign out of DAF Adventures?"
+        description={`Are you sure you want to sign out of ${BRAND.name}?`}
         confirmLabel="Sign Out"
         onConfirm={handleSignOut}
         destructive

@@ -7,6 +7,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
+import { BRAND } from "@/config/brand";
 import {
   Sidebar,
   SidebarContent,
@@ -142,7 +143,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Logo className="text-black h-[18px] w-[18px]" />
               </div>
               <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap">
-                DAF Adventures
+                {BRAND.name}
               </span>
             </>
           )}
