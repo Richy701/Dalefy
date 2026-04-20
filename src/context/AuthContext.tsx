@@ -79,9 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const session = await getSession();
         if (session?.user && mounted) {
           const profile = await fetchProfile(session.user.id);
-          if (profile && mounted) {
-            setUser(profile);
-            localStorage.setItem("daf-auth", JSON.stringify(profile));
+          if (mounted) {
+            // Use profile if available, otherwise build a basic user from the session
+            const u = profile ?? {
+              id: session.user.id,
+              name: session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "User",
+              email: session.user.email ?? "",
+              role: session.user.user_metadata?.role ?? "Trip Manager",
+              avatar: "",
+              initials: (session.user.user_metadata?.name ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
+              status: "Active" as const,
+            };
+            setUser(u);
+            localStorage.setItem("daf-auth", JSON.stringify(u));
           }
         } else if (mounted) {
           // Fall back to localStorage cache (covers demo mode)
@@ -114,10 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const session = await getSession();
         if (session?.user) {
           const profile = await fetchProfile(session.user.id);
-          if (profile) {
-            setUser(profile);
-            localStorage.setItem("daf-auth", JSON.stringify(profile));
-          }
+          const u = profile ?? {
+            id: session.user.id,
+            name: session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "User",
+            email: session.user.email ?? "",
+            role: session.user.user_metadata?.role ?? "Trip Manager",
+            avatar: "",
+            initials: (session.user.user_metadata?.name ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
+            status: "Active" as const,
+          };
+          setUser(u);
+          localStorage.setItem("daf-auth", JSON.stringify(u));
         }
       } else if (event === "SIGNED_OUT") {
         setUser(null);
