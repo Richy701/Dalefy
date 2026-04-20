@@ -8,6 +8,7 @@ import { fetchTrips, subscribeToTrips, upsertTrip, removeTrip } from "@/services
 import { deriveAttendeesString, matchOrCreateTravelers, extractNamesFromAttendeesString } from "@/lib/travelerSync";
 import type { User } from "@/types";
 import { useOrg } from "@/context/OrgContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface TripsContextType {
   trips: Trip[];
@@ -97,6 +98,9 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const local = useLocalTrips();
   const cloud = useSupabaseTrips();
   const { currentOrg } = useOrg();
+  const { user } = useAuth();
+  // Only merge localStorage trips for demo/local users — real auth users get clean cloud data
+  const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
 
   const { setTrips } = useCloud ? cloud : local;
   const ready = useCloud ? cloud.ready : local.ready;
@@ -108,7 +112,10 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const trips = useMemo(() => {
     if (!useCloud) return local.trips;
 
-    // Read localStorage directly (sync) to avoid race with useEffect flush
+    // Real auth users: only show cloud trips — no localStorage merge
+    if (!isDemoUser) return cloud.trips;
+
+    // Demo/local users: merge localStorage with cloud
     let localTrips: Trip[] = local.trips;
     try {
       const stored = localStorage.getItem("daf-adventures-v4");
@@ -137,12 +144,12 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     }
 
     return merged;
-  }, [useCloud, cloud.trips, local.trips]);
+  }, [useCloud, cloud.trips, local.trips, isDemoUser]);
 
-  // Seed / recover Supabase from localStorage
+  // Seed / recover Supabase from localStorage (demo users only — real auth users start clean)
   const seeded = useRef(false);
   useEffect(() => {
-    if (!useCloud || !cloud.ready || seeded.current) return;
+    if (!useCloud || !cloud.ready || seeded.current || !isDemoUser) return;
     seeded.current = true;
 
     console.log("[TripsContext] seed check — cloud:", cloud.trips.length, "local:", local.trips.length);
@@ -178,7 +185,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         });
       });
     }
-  }, [useCloud, cloud.ready, cloud.trips.length, local.trips]);
+  }, [useCloud, cloud.ready, cloud.trips.length, local.trips, isDemoUser]);
 
   // Cleanup: dedup daf-custom-travelers by ID
   useEffect(() => {
