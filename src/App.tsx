@@ -34,13 +34,13 @@ import { CreateOrgPage } from "@/pages/CreateOrgPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-  const { hasOrg, isLoading: orgLoading } = useOrg();
+  const { hasOrg, isLoading: orgLoading, tablesReady } = useOrg();
   const isRealUser = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
   if (authLoading || (isRealUser && orgLoading)) return <AuthLoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  // Real auth users without an org → create one first
-  if (isRealUser && !hasOrg) return <Navigate to="/create-org" replace />;
+  // Real auth users without an org → create one first (only if org tables are migrated)
+  if (isRealUser && tablesReady && !hasOrg) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
 }
 

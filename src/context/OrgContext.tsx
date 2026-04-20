@@ -9,6 +9,8 @@ interface OrgContextType {
   orgMembers: OrgMember[];
   isLoading: boolean;
   hasOrg: boolean;
+  /** True when the org tables exist in Supabase and are queryable */
+  tablesReady: boolean;
   createOrg: (name: string) => Promise<{ org: Organization | null; error: string | null }>;
 }
 
@@ -18,6 +20,7 @@ const OrgContext = createContext<OrgContextType>({
   orgMembers: [],
   isLoading: true,
   hasOrg: false,
+  tablesReady: false,
   createOrg: async () => ({ org: null, error: "Not initialized" }),
 });
 
@@ -35,6 +38,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const [orgRole, setOrgRole] = useState<OrgRole | null>(null);
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [tablesReady, setTablesReady] = useState(false);
   const useSupabase = isSupabaseConfigured();
   const isRealUser = useSupabase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
@@ -52,58 +56,83 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function loadOrg() {
-      // Fetch user's org memberships
-      const { data: memberships, error } = await supabase
-        .from("org_members")
-        .select("*, organizations(*)")
-        .eq("user_id", user!.id);
+      try {
+        // Fetch user's org memberships
+        const { data: memberships, error } = await supabase
+          .from("org_members")
+          .select("*, organizations(*)")
+          .eq("user_id", user!.id);
 
-      if (error || !memberships?.length) {
+        // Table doesn't exist yet — silently fall back, don't require org creation
+        if (error) {
+          if (mounted) {
+            setTablesReady(false);
+            setCurrentOrg(null);
+            setOrgRole(null);
+            setOrgMembers([]);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (mounted) setTablesReady(true);
+
+        // No memberships yet — user needs to create an org
+        if (!memberships?.length) {
+          if (mounted) {
+            setCurrentOrg(null);
+            setOrgRole(null);
+            setOrgMembers([]);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Pick current org: use profile.current_org_id if set, else first membership
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("current_org_id")
+          .eq("id", user!.id)
+          .maybeSingle();
+
+        const preferredOrgId = profile?.current_org_id;
+        const membership = memberships.find(m => m.organization_id === preferredOrgId) ?? memberships[0];
+        const orgData = membership.organizations as Record<string, unknown>;
+
+        if (mounted) {
+          setCurrentOrg({
+            id: orgData.id as string,
+            name: orgData.name as string,
+            slug: orgData.slug as string,
+            createdBy: orgData.created_by as string,
+          });
+          setOrgRole(membership.role as OrgRole);
+
+          // Fetch all members of this org
+          const { data: members } = await supabase
+            .from("org_members")
+            .select("*")
+            .eq("organization_id", membership.organization_id);
+
+          if (members && mounted) {
+            setOrgMembers(members.map(m => ({
+              id: m.id,
+              organizationId: m.organization_id,
+              userId: m.user_id,
+              role: m.role as OrgRole,
+              joinedAt: m.joined_at,
+            })));
+          }
+          setIsLoading(false);
+        }
+      } catch {
+        // Tables not migrated yet — graceful fallback
         if (mounted) {
           setCurrentOrg(null);
           setOrgRole(null);
           setOrgMembers([]);
           setIsLoading(false);
         }
-        return;
-      }
-
-      // Pick current org: use profile.current_org_id if set, else first membership
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("current_org_id")
-        .eq("id", user!.id)
-        .maybeSingle();
-
-      const preferredOrgId = profile?.current_org_id;
-      const membership = memberships.find(m => m.organization_id === preferredOrgId) ?? memberships[0];
-      const orgData = membership.organizations as Record<string, unknown>;
-
-      if (mounted) {
-        setCurrentOrg({
-          id: orgData.id as string,
-          name: orgData.name as string,
-          slug: orgData.slug as string,
-          createdBy: orgData.created_by as string,
-        });
-        setOrgRole(membership.role as OrgRole);
-
-        // Fetch all members of this org
-        const { data: members } = await supabase
-          .from("org_members")
-          .select("*")
-          .eq("organization_id", membership.organization_id);
-
-        if (members && mounted) {
-          setOrgMembers(members.map(m => ({
-            id: m.id,
-            organizationId: m.organization_id,
-            userId: m.user_id,
-            role: m.role as OrgRole,
-            joinedAt: m.joined_at,
-          })));
-        }
-        setIsLoading(false);
       }
     }
 
@@ -168,6 +197,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         orgMembers,
         isLoading,
         hasOrg: !!currentOrg,
+        tablesReady,
         createOrg,
       }}
     >
