@@ -1638,7 +1638,10 @@ export function WorkspacePage() {
                       {editingEvent!.media!.map((m, i) => (
                         <div key={i} className="relative group">
                           {m.type === "image" ? (
-                            <img src={m.url} alt={m.name} className="h-14 w-full object-cover rounded-lg border border-slate-200 dark:border-[#252525]" />
+                            <button type="button" onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: m.url } : null); setImageIsAuto(false); }}
+                              className={`block w-full h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === m.url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-slate-200 dark:border-[#252525] hover:border-brand/50"}`}>
+                              <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
+                            </button>
                           ) : (
                             <div className="h-14 w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-lg border border-slate-200 dark:border-[#252525] flex flex-col items-center justify-center gap-0.5 px-1">
                               <Video className="h-4 w-4 text-brand" />

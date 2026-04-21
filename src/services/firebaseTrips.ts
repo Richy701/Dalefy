@@ -2,8 +2,9 @@ import {
   collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { firebaseDb, firebaseAuth, isFirebaseConfigured } from "./firebase";
-import type { Trip } from "@/types";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
+import type { Trip, TravelEvent } from "@/types";
 import { logger } from "@/lib/logger";
 
 const TRIPS = "trips";
@@ -43,7 +44,32 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
 export async function upsertTrip(trip: Trip): Promise<void> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
-  const data = tripToDoc(trip);
+
+  // Upload base64 images to Storage before writing to Firestore
+  const uploadedEvents = await uploadEventMedia(trip.id, trip.events);
+  const cleanTrip = { ...trip, events: uploadedEvents };
+
+  // Trip cover image
+  if (isBase64(cleanTrip.image)) {
+    try {
+      cleanTrip.image = await uploadBase64(`trips/${trip.id}/cover`, cleanTrip.image);
+    } catch (e) { logger.error("upsertTrip", "cover upload failed:", e); }
+  }
+
+  // Trip-level media
+  if (cleanTrip.media?.length) {
+    cleanTrip.media = await Promise.all(cleanTrip.media.map(async (m, i) => {
+      if (isBase64(m.url)) {
+        try {
+          const url = await uploadBase64(`trips/${trip.id}/media/${m.id}`, m.url);
+          return { ...m, url };
+        } catch (e) { logger.error("upsertTrip", "trip media upload failed:", e); }
+      }
+      return m;
+    }));
+  }
+
+  const data = tripToDoc(cleanTrip);
   if (userId) data.user_id = userId;
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name);
@@ -105,6 +131,63 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
   } catch {
     return [];
   }
+}
+
+// ── Storage helpers ────────────────────────────────────────────────────────
+
+function isBase64(url?: string): boolean {
+  return !!url && url.startsWith("data:");
+}
+
+async function uploadBase64(path: string, dataUrl: string): Promise<string> {
+  const [meta, base64] = dataUrl.split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] ?? "application/octet-stream";
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const storageRef = ref(firebaseStorage(), path);
+  await uploadBytes(storageRef, bytes, { contentType: mime });
+  return getDownloadURL(storageRef);
+}
+
+/** Upload any base64 images in events to Storage, return events with URLs. */
+async function uploadEventMedia(tripId: string, events: TravelEvent[]): Promise<TravelEvent[]> {
+  return Promise.all(events.map(async (ev) => {
+    const patched = { ...ev };
+
+    // Event thumbnail
+    if (isBase64(patched.image)) {
+      try {
+        patched.image = await uploadBase64(`trips/${tripId}/events/${ev.id}/image`, patched.image!);
+      } catch (e) { logger.error("uploadEventMedia", "image upload failed:", e); }
+    }
+
+    // Event media
+    if (patched.media?.length) {
+      patched.media = await Promise.all(patched.media.map(async (m, i) => {
+        if (isBase64(m.url)) {
+          try {
+            const url = await uploadBase64(`trips/${tripId}/events/${ev.id}/media/${i}`, m.url);
+            return { ...m, url };
+          } catch (e) { logger.error("uploadEventMedia", "media upload failed:", e); }
+        }
+        return m;
+      }));
+    }
+
+    // Event documents (strip base64 — too large for both Storage and Firestore in bulk)
+    if (patched.documents?.length) {
+      patched.documents = await Promise.all(patched.documents.map(async (d, i) => {
+        if (isBase64(d.url)) {
+          try {
+            const url = await uploadBase64(`trips/${tripId}/events/${ev.id}/docs/${d.id}`, d.url);
+            return { ...d, url };
+          } catch (e) { logger.error("uploadEventMedia", "doc upload failed:", e); }
+        }
+        return d;
+      }));
+    }
+
+    return patched;
+  }));
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────────────
