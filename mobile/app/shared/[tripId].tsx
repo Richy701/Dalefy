@@ -1,8 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, ActivityIndicator, Platform,
+  StyleSheet, Platform,
 } from "react-native";
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+} from "react-native-reanimated";
+import { Skeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -55,13 +59,36 @@ export default function SharedTripScreen() {
     [tripId, trips]
   );
 
-  const handleAddToMyTrips = () => {
-    if (!trip || alreadyInMyTrips) return;
+  const [justAdded, setJustAdded] = useState(false);
+  const addScale = useSharedValue(1);
+  const addCheck = useSharedValue(0);
+
+  const addBtnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: addScale.value }],
+  }));
+  const checkStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: addCheck.value }],
+    opacity: addCheck.value,
+  }));
+
+  const handleAddToMyTrips = useCallback(() => {
+    if (!trip || alreadyInMyTrips || justAdded) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addTrip(trip);
     logTripJoin(trip.id, trip.name, prefs.name, prefs.avatar);
-    router.replace(`/trip/${trip.id}`);
-  };
+
+    // Button bounce + checkmark pop
+    addScale.value = withSpring(0.92, { damping: 10, stiffness: 200 }, () => {
+      addScale.value = withSpring(1, { damping: 14, stiffness: 120 });
+    });
+    addCheck.value = withDelay(100, withSpring(1, { damping: 12, stiffness: 200 }));
+    setJustAdded(true);
+
+    // Navigate to trip detail after brief celebration
+    setTimeout(() => {
+      router.replace(`/trip/${trip.id}`);
+    }, 1200);
+  }, [trip, alreadyInMyTrips, justAdded, addTrip, addScale, addCheck, prefs, router]);
 
   useEffect(() => {
     if (!tripId) return;
@@ -78,8 +105,16 @@ export default function SharedTripScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={C.teal} />
+        {/* Hero skeleton */}
+        <Skeleton width="100%" height={280} borderRadius={0} />
+        <View style={{ padding: S.md, gap: S.md }}>
+          <Skeleton width={80} height={12} borderRadius={6} />
+          <Skeleton width="75%" height={22} borderRadius={8} />
+          <Skeleton width="55%" height={14} borderRadius={6} />
+          <View style={{ height: S.md }} />
+          <Skeleton width="100%" height={64} borderRadius={R.xl} />
+          <Skeleton width="100%" height={64} borderRadius={R.xl} />
+          <Skeleton width="100%" height={64} borderRadius={R.xl} />
         </View>
       </SafeAreaView>
     );
@@ -301,27 +336,33 @@ export default function SharedTripScreen() {
           </View>
         </View>
 
-        <Pressable
-          onPress={handleAddToMyTrips}
-          disabled={alreadyInMyTrips}
-          style={({ pressed }) => [
-            styles.addCta,
-            {
-              backgroundColor: alreadyInMyTrips ? C.elevated : C.teal,
-              opacity: pressed && !alreadyInMyTrips ? 0.85 : 1,
-            },
-          ]}
-        >
-          {alreadyInMyTrips
-            ? <Check size={16} color={C.textSecondary} strokeWidth={2.5} />
-            : <Plus size={16} color="#000" strokeWidth={2.5} />}
-          <Text style={[
-            styles.addCtaText,
-            { color: alreadyInMyTrips ? C.textSecondary : "#000" },
-          ]}>
-            {alreadyInMyTrips ? "Saved to my trips" : "Add to my trips"}
-          </Text>
-        </Pressable>
+        <Animated.View style={addBtnStyle}>
+          <Pressable
+            onPress={handleAddToMyTrips}
+            disabled={alreadyInMyTrips || justAdded}
+            style={({ pressed }) => [
+              styles.addCta,
+              {
+                backgroundColor: (alreadyInMyTrips || justAdded) ? C.tealDim : C.teal,
+                opacity: pressed && !alreadyInMyTrips && !justAdded ? 0.85 : 1,
+              },
+            ]}
+          >
+            {(alreadyInMyTrips || justAdded) ? (
+              <Animated.View style={checkStyle}>
+                <Check size={18} color={C.teal} strokeWidth={2.5} />
+              </Animated.View>
+            ) : (
+              <Plus size={16} color="#000" strokeWidth={2.5} />
+            )}
+            <Text style={[
+              styles.addCtaText,
+              { color: (alreadyInMyTrips || justAdded) ? C.teal : "#000" },
+            ]}>
+              {(alreadyInMyTrips || justAdded) ? "Saved to my trips" : "Add to my trips"}
+            </Text>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

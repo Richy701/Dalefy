@@ -366,12 +366,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setFoundTrip(trip);
-      // Auto-navigate after the reveal animation
+      // Navigate first (while modal still covers the screen), then clean up
       setTimeout(() => {
-        setCodeOpen(false);
-        setFoundTrip(null);
-        setDigits(["", "", "", ""]);
         router.push(`/shared/${trip.id}`);
+        // Delay modal close so the new screen is mounted before we reveal what's underneath
+        setTimeout(() => {
+          setCodeOpen(false);
+          setFoundTrip(null);
+          setDigits(["", "", "", ""]);
+        }, 300);
       }, 1800);
     } catch {
       setCodeError("Couldn't look up PIN. Try again.");
