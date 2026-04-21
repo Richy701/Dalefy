@@ -2,6 +2,10 @@ import {
   View, Text, ScrollView, Image, Pressable,
   StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform,
 } from "react-native";
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  Easing, runOnJS, interpolate,
+} from "react-native-reanimated";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/components/Skeleton";
@@ -17,6 +21,7 @@ import {
   Search, MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
   Bell, Sun, Moon, Plus, X as XIcon, ScanLine, Link2, Hash,
+  Check,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
@@ -48,6 +53,120 @@ const EVENT_TAGS: Record<string, string[]> = {
   dining:   ["Food", "Local Cuisine", "Dining"],
   flight:   ["Transfer", "Flight", "Transit"],
 };
+
+// ── Trip Found Reveal ────────────────────────────────────────────────────────
+function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
+  const scale = useSharedValue(0.3);
+  const opacity = useSharedValue(0);
+  const checkScale = useSharedValue(0);
+  const checkRotate = useSharedValue(-45);
+  const shimmer = useSharedValue(0);
+
+  useEffect(() => {
+    // Card scales in
+    scale.value = withSpring(1, { damping: 14, stiffness: 100, mass: 0.8 });
+    opacity.value = withTiming(1, { duration: 300 });
+    // Checkmark pops after card settles
+    checkScale.value = withDelay(400, withSpring(1, { damping: 12, stiffness: 200 }));
+    checkRotate.value = withDelay(400, withSpring(0, { damping: 14, stiffness: 120 }));
+    // Shimmer sweep across card
+    shimmer.value = withDelay(200, withTiming(1, { duration: 800, easing: Easing.out(Easing.ease) }));
+  }, []);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const checkStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: checkScale.value },
+      { rotate: `${checkRotate.value}deg` },
+    ],
+  }));
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(shimmer.value, [0, 0.5, 1], [0, 0.4, 0]),
+    transform: [{ translateX: interpolate(shimmer.value, [0, 1], [-200, 300]) }],
+  }));
+
+  const days = Math.max(0, Math.ceil((new Date(trip.start).getTime() - Date.now()) / 86400000));
+  const startDate = new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  return (
+    <View style={{ alignItems: "center", paddingVertical: S.lg, paddingHorizontal: S.md }}>
+      <Animated.View style={[{
+        width: "100%", borderRadius: R["2xl"], overflow: "hidden",
+        backgroundColor: C.elevated,
+      }, cardStyle]}>
+        {/* Trip image */}
+        <View style={{ height: 160, overflow: "hidden" }}>
+          <Image source={{ uri: trip.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)"]}
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80 }}
+          />
+          {/* Shimmer sweep */}
+          <Animated.View style={[{
+            position: "absolute", top: 0, bottom: 0, width: 120,
+            backgroundColor: "rgba(255,255,255,0.3)",
+            transform: [{ skewX: "-20deg" }],
+          }, shimmerStyle]} />
+          {/* Checkmark badge */}
+          <Animated.View style={[{
+            position: "absolute", top: 14, right: 14,
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: C.teal,
+            alignItems: "center", justifyContent: "center",
+            shadowColor: C.teal, shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4, shadowRadius: 8,
+          }, checkStyle]}>
+            <Check size={20} color="#000" strokeWidth={3} />
+          </Animated.View>
+        </View>
+
+        {/* Trip info */}
+        <View style={{ padding: S.md, gap: 6 }}>
+          {trip.destination && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <MapPin size={11} color={C.teal} strokeWidth={2} />
+              <Text style={{
+                fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+                letterSpacing: 1.5, textTransform: "uppercase",
+              }}>{trip.destination}</Text>
+            </View>
+          )}
+          <Text style={{
+            fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary,
+            letterSpacing: -0.3,
+          }} numberOfLines={1}>{trip.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm, marginTop: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <CalendarDays size={11} color={C.textTertiary} strokeWidth={1.8} />
+              <Text style={{ fontSize: T.sm, color: C.textSecondary, fontWeight: T.medium }}>{startDate}</Text>
+            </View>
+            {days > 0 && (
+              <View style={{
+                backgroundColor: C.tealDim, borderRadius: R.full,
+                paddingHorizontal: 8, paddingVertical: 3,
+              }}>
+                <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal }}>
+                  {days === 1 ? "Tomorrow" : `${days} days`}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Animated.View>
+
+      <Text style={{
+        fontSize: T.sm, fontWeight: T.bold, color: C.teal,
+        letterSpacing: 1.5, textTransform: "uppercase",
+        marginTop: S.lg,
+      }}>Trip Found</Text>
+    </View>
+  );
+}
 
 // ── QR Scanner Pane ──────────────────────────────────────────────────────────
 function QRScanPane({ C, styles, onScanned }: {
@@ -213,6 +332,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const [entryMode, setEntryMode] = useState<"pin" | "qr" | "link">("pin");
   const [resolving, setResolving] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [foundTrip, setFoundTrip] = useState<Trip | null>(null);
   const pinRefs = useRef<Array<TextInput | null>>([]);
   const styles = useMemo(() => makeGreetingStyles(C), [C]);
   const hour = new Date().getHours();
@@ -229,6 +349,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     setLinkValue("");
     setEntryMode("pin");
     setCodeError(null);
+    setFoundTrip(null);
   };
 
   const submitPin = async (pin: string) => {
@@ -244,9 +365,14 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setCodeOpen(false);
-      setDigits(["", "", "", ""]);
-      router.push(`/shared/${trip.id}`);
+      setFoundTrip(trip);
+      // Auto-navigate after the reveal animation
+      setTimeout(() => {
+        setCodeOpen(false);
+        setFoundTrip(null);
+        setDigits(["", "", "", ""]);
+        router.push(`/shared/${trip.id}`);
+      }, 1800);
     } catch {
       setCodeError("Couldn't look up PIN. Try again.");
     } finally {
@@ -365,13 +491,20 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               <View style={styles.sheetGrabber} />
 
               {/* Header row */}
+              {!foundTrip && (
               <View style={styles.sheetHeader}>
                 <Text style={styles.codeTitle}>Join a Trip</Text>
                 <Pressable onPress={closeSheet} style={styles.codeClose}>
                   <XIcon size={14} color={C.textSecondary} strokeWidth={2} />
                 </Pressable>
               </View>
+              )}
 
+              {/* Success reveal */}
+              {foundTrip ? (
+                <TripFoundReveal trip={foundTrip} C={C} />
+              ) : (
+              <>
               {/* Mode tabs */}
               <View style={styles.modeTabs}>
                 {([
@@ -487,6 +620,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     </Text>
                   </Pressable>
                 </View>
+              )}
+              </>
               )}
             </Pressable>
           </KeyboardAvoidingView>
