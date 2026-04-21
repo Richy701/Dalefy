@@ -3,6 +3,8 @@ import {
   StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { ScalePress } from "@/components/ScalePress";
+import { FadeIn } from "@/components/FadeIn";
+import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -756,11 +758,13 @@ function UpcomingCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
 function makeUpcomingCardStyles(C: ThemeColors) {
   return StyleSheet.create({
     card: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      backgroundColor: C.card, borderRadius: R.xl,
-      padding: S.sm, marginHorizontal: S.md,
+      flexDirection: "row", alignItems: "center", gap: S.md,
+      backgroundColor: C.card, borderRadius: R["2xl"],
+      padding: S.md, marginHorizontal: S.md,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
-    thumb: { width: 48, height: 48, borderRadius: R.md, backgroundColor: C.elevated },
+    thumb: { width: 52, height: 52, borderRadius: R.lg, backgroundColor: C.elevated },
     body: { flex: 1 },
     name: {
       fontSize: T.base, fontWeight: T.bold,
@@ -833,8 +837,10 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
   return StyleSheet.create({
     card: {
       flexDirection: "row",
-      backgroundColor: C.card, borderRadius: R.xl,
+      backgroundColor: C.card, borderRadius: R["2xl"],
       overflow: "hidden", minHeight: 110,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
     img: { width: 110, alignSelf: "stretch" },
     imgPlaceholder: {
@@ -842,7 +848,7 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
       backgroundColor: `${_color}15`,
       alignItems: "center", justifyContent: "center",
     },
-    content: { flex: 1, padding: S.sm, justifyContent: "space-between" },
+    content: { flex: 1, padding: S.md, justifyContent: "space-between" },
     topRow: { flexDirection: "row", gap: S.xs, alignItems: "flex-start" },
     textWrap: { flex: 1 },
     title: {
@@ -927,7 +933,7 @@ export default function HomeScreen() {
   const { C } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, reload } = useTrips();
+  const { trips, ready, reload } = useTrips();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -1020,74 +1026,107 @@ export default function HomeScreen() {
         )}
 
         {/* ── Upcoming Trip ── */}
-        {upcomingCards.length > 0 && (
+        {!ready ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Upcoming Trip</Text>
-              <Text style={styles.sectionSub}>Departing within 30 days</Text>
+              <Text style={styles.sectionSub}>Loading your trips…</Text>
             </View>
             <View style={styles.upcomingList}>
-              {upcomingCards.map(trip => (
-                <UpcomingCard
-                  key={trip.id}
-                  trip={trip}
-                  onPress={() => router.push(`/trip/${trip.id}`)}
-                />
+              <TripCardSkeleton />
+              <TripCardSkeleton />
+            </View>
+          </View>
+        ) : upcomingCards.length > 0 ? (
+          <View style={styles.section}>
+            <FadeIn delay={0}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming Trip</Text>
+                <Text style={styles.sectionSub}>Departing within 30 days</Text>
+              </View>
+            </FadeIn>
+            <View style={styles.upcomingList}>
+              {upcomingCards.map((trip, i) => (
+                <FadeIn key={trip.id} delay={80 + i * 100}>
+                  <UpcomingCard
+                    trip={trip}
+                    onPress={() => router.push(`/trip/${trip.id}`)}
+                  />
+                </FadeIn>
               ))}
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* ── For your X Trip ── */}
-        {spotlightTrip && (
+        {!ready ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>
-                {"For your "}
-                <Text style={styles.spotlightDest}>
-                  {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}
-                </Text>
-                {" Trip"}
-              </Text>
+              <Text style={styles.sectionTitle}>For your Trip</Text>
               <Text style={styles.sectionSub}>Key events on your itinerary</Text>
             </View>
+            <View style={styles.spotList}>
+              <SpotlightCardSkeleton />
+              <SpotlightCardSkeleton />
+            </View>
+          </View>
+        ) : spotlightTrip ? (
+          <View style={styles.section}>
+            <FadeIn delay={200}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  {"For your "}
+                  <Text style={styles.spotlightDest}>
+                    {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}
+                  </Text>
+                  {" Trip"}
+                </Text>
+                <Text style={styles.sectionSub}>Key events on your itinerary</Text>
+              </View>
+            </FadeIn>
 
             {spotlightPlaces.length > 0 ? (
               <View style={styles.spotList}>
-                {spotlightPlaces.map(ev => (
-                  <SpotlightEventCard key={ev.id} ev={ev} />
+                {spotlightPlaces.map((ev, i) => (
+                  <FadeIn key={ev.id} delay={280 + i * 100}>
+                    <SpotlightEventCard ev={ev} />
+                  </FadeIn>
                 ))}
               </View>
             ) : (
-              <Pressable
-                style={styles.spotEmpty}
-                onPress={() => router.push(`/trip/${spotlightTrip.id}`)}
-                accessibilityRole="button"
-                accessibilityLabel="Open trip to add events"
-              >
-                <Compass size={22} color={C.textTertiary} strokeWidth={1.5} />
-                <Text style={styles.spotEmptyText}>Open trip to add events</Text>
-              </Pressable>
+              <FadeIn delay={280}>
+                <Pressable
+                  style={styles.spotEmpty}
+                  onPress={() => router.push(`/trip/${spotlightTrip.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open trip to add events"
+                >
+                  <Compass size={22} color={C.textTertiary} strokeWidth={1.5} />
+                  <Text style={styles.spotEmptyText}>Open trip to add events</Text>
+                </Pressable>
+              </FadeIn>
             )}
           </View>
-        )}
+        ) : null}
 
         {/* ── All Trips ── */}
         {allTrips.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.eyebrowRow}>
-              <Text style={styles.eyebrow}>ALL TRIPS</Text>
-              <Text style={styles.countChip}>{allTrips.length}</Text>
+          <FadeIn delay={400}>
+            <View style={styles.section}>
+              <View style={styles.eyebrowRow}>
+                <Text style={styles.eyebrow}>ALL TRIPS</Text>
+                <Text style={styles.countChip}>{allTrips.length}</Text>
+              </View>
+              <View style={styles.listCard}>
+                {allTrips.map((trip, i) => (
+                  <View key={trip.id}>
+                    <TripRow trip={trip} onPress={() => router.push(`/trip/${trip.id}`)} />
+                    {i < allTrips.length - 1 && <View style={styles.rowDivider} />}
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.listCard}>
-              {allTrips.map((trip, i) => (
-                <View key={trip.id}>
-                  <TripRow trip={trip} onPress={() => router.push(`/trip/${trip.id}`)} />
-                  {i < allTrips.length - 1 && <View style={styles.rowDivider} />}
-                </View>
-              ))}
-            </View>
-          </View>
+          </FadeIn>
         )}
 
 
@@ -1112,9 +1151,9 @@ function makeStyles(C: ThemeColors) {
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: { paddingBottom: 90 },
 
-    section: { marginTop: S.md },
+    section: { marginTop: S.xl },
 
-    sectionHeader: { paddingHorizontal: S.md, marginBottom: S.sm },
+    sectionHeader: { paddingHorizontal: S.md, marginBottom: S.md },
     sectionTitle: {
       fontSize: T.xl, fontWeight: T.bold,
       color: C.textPrimary, letterSpacing: -0.2,
@@ -1122,7 +1161,7 @@ function makeStyles(C: ThemeColors) {
     sectionSub: { fontSize: T.sm, color: C.textSecondary, marginTop: 3, lineHeight: 20 },
     spotlightDest: { color: C.teal, fontStyle: "italic" },
 
-    upcomingList: { gap: S.xs },
+    upcomingList: { gap: S.sm },
 
     eyebrowRow: {
       flexDirection: "row", alignItems: "center",
@@ -1139,7 +1178,7 @@ function makeStyles(C: ThemeColors) {
     },
 
     // ── Spotlight ──
-    spotList: { paddingHorizontal: S.md, gap: S.sm },
+    spotList: { paddingHorizontal: S.md, gap: S.md },
     spotEmpty: {
       marginHorizontal: S.md, backgroundColor: C.card,
       borderRadius: R.xl,
@@ -1163,10 +1202,12 @@ function makeStyles(C: ThemeColors) {
     // ── Trip rows ──
     listCard: {
       marginHorizontal: S.md,
-      backgroundColor: C.card, borderRadius: R.xl,
+      backgroundColor: C.card, borderRadius: R["2xl"],
       overflow: "hidden",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
-    row: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.sm },
+    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md },
     rowDivider: {
       height: StyleSheet.hairlineWidth, backgroundColor: C.border,
       marginLeft: S.sm + 52 + S.sm,

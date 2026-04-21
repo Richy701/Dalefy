@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScalePress } from "@/components/ScalePress";
+import { FadeIn } from "@/components/FadeIn";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -604,14 +605,15 @@ export default function MediaScreen() {
           </View>
         ) : (
           <View style={styles.galleryWrap}>
-            {filteredTrips.map(trip => {
+            {filteredTrips.map((trip, tripIndex) => {
               const media = trip.media ?? [];
               const maxVisible = 7; // hero (1) + 6 small
               const visible = media.slice(0, maxVisible);
               const remaining = media.length - maxVisible;
 
               return (
-                <View key={trip.id} style={styles.tripSection}>
+                <FadeIn key={trip.id} delay={tripIndex * 120}>
+                <View style={styles.tripSection}>
                   {/* Trip section header */}
                   <View style={styles.tripHeader}>
                     <Image source={{ uri: trip.image }} style={styles.tripThumb} />
@@ -664,6 +666,7 @@ export default function MediaScreen() {
                     )}
                   </View>
                 </View>
+                </FadeIn>
               );
             })}
           </View>
@@ -809,7 +812,7 @@ function makeStyles(C: ThemeColors) {
 
     // ── Gallery ──
     galleryWrap: {
-      paddingTop: S.md, gap: S.xl,
+      paddingTop: S.md, gap: S["2xl"],
     },
 
     // ── Trip Section ──

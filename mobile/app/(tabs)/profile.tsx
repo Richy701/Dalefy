@@ -15,6 +15,7 @@ import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { useToast } from "@/context/ToastContext";
+import { FadeIn } from "@/components/FadeIn";
 import { useMemo, useState, useCallback } from "react";
 
 export default function ProfileScreen() {
@@ -82,6 +83,7 @@ export default function ProfileScreen() {
       >
 
         {/* ── Profile hero ── */}
+        <FadeIn delay={0}>
         <Pressable
           style={({ pressed }) => [s.heroCard, pressed && { opacity: 0.8 }]}
           onPress={() => { haptic.selection(); router.push("/welcome"); }}
@@ -102,8 +104,10 @@ export default function ProfileScreen() {
           </View>
           <Pencil size={16} color={C.textTertiary} strokeWidth={1.5} />
         </Pressable>
+        </FadeIn>
 
         {/* ── Appearance ── */}
+        <FadeIn delay={80}>
         <Text style={s.sectionLabel}>Appearance</Text>
         <View style={s.card}>
           {/* Theme */}
@@ -174,8 +178,10 @@ export default function ProfileScreen() {
             />
           </View>
         </View>
+        </FadeIn>
 
         {/* ── Notifications ── */}
+        <FadeIn delay={160}>
         <Text style={s.sectionLabel}>Notifications</Text>
         <View style={s.card}>
           <View style={s.row}>
@@ -200,8 +206,10 @@ export default function ProfileScreen() {
             />
           </View>
         </View>
+        </FadeIn>
 
         {/* ── My Documents ── */}
+        <FadeIn delay={240}>
         <Text style={s.sectionLabel}>My Documents</Text>
         <View style={s.card}>
           <View style={s.docsEmpty}>
@@ -212,8 +220,10 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+        </FadeIn>
 
         {/* ── About ── */}
+        <FadeIn delay={320}>
         <Text style={s.sectionLabel}>About</Text>
         <View style={s.card}>
           <Pressable
@@ -233,6 +243,7 @@ export default function ProfileScreen() {
             <Text style={s.rowValue}>1.0.0</Text>
           </View>
         </View>
+        </FadeIn>
 
         {/* ── Danger zone ── */}
         <View style={s.dangerSection}>
@@ -293,10 +304,12 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       gap: S.md,
-      padding: S.md,
+      padding: S.lg,
       backgroundColor: C.card,
-      borderRadius: R.xl,
+      borderRadius: R["2xl"],
       marginTop: S.md,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
     avatar: {
       width: 52,
@@ -337,14 +350,16 @@ function makeStyles(C: ThemeColors) {
       color: C.textTertiary,
       letterSpacing: 0.8,
       textTransform: "uppercase",
-      marginBottom: S.xs,
-      marginTop: S.lg,
+      marginBottom: S.sm,
+      marginTop: S.xl,
       paddingLeft: S["2xs"],
     },
     card: {
       backgroundColor: C.card,
-      borderRadius: R.xl,
+      borderRadius: R["2xl"],
       overflow: "hidden",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
 
     // ── Rows ──
