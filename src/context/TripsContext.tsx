@@ -109,6 +109,45 @@ function useLocalTrips(shouldSeed: boolean) {
 
 // ── Merge cloud + local trips ─────────────────────────────────────────────────
 
+/** Merge local media/images into a cloud trip (Firestore can't store base64). */
+function mergeLocalMedia(cloud: Trip, local: Trip): Trip {
+  let patched = false;
+  const result = { ...cloud };
+
+  // Trip cover image
+  if (!result.image && local.image) { result.image = local.image; patched = true; }
+
+  // Trip-level media
+  if (local.media?.length && (!result.media?.length || result.media.length < local.media.length)) {
+    result.media = local.media; patched = true;
+  }
+
+  // Event-level images, media, documents
+  if (local.events?.length && result.events?.length) {
+    const localMap = new Map(local.events.map(e => [e.id, e]));
+    result.events = result.events.map(ev => {
+      const le = localMap.get(ev.id);
+      if (!le) return ev;
+      let changed = false;
+      const e = { ...ev };
+      if (!e.image && le.image) { e.image = le.image; changed = true; }
+      if (le.media?.length && (!e.media?.length || e.media.length < le.media.length)) { e.media = le.media; changed = true; }
+      if (le.documents?.length && (!e.documents?.length || e.documents.length < le.documents.length)) { e.documents = le.documents; changed = true; }
+      return changed ? e : ev;
+    });
+    patched = true;
+  }
+
+  // Other fields that may be missing from cloud
+  if (!result.travelerIds?.length && local.travelerIds?.length) { result.travelerIds = local.travelerIds; patched = true; }
+  if (!result.travelers?.length && local.travelers?.length) { result.travelers = local.travelers; patched = true; }
+  if ((!result.attendees || result.attendees === "Imported Group") && local.attendees) { result.attendees = local.attendees; patched = true; }
+  if (!result.info?.length && local.info?.length) { result.info = local.info; patched = true; }
+  if (!result.organizer && local.organizer) { result.organizer = local.organizer; patched = true; }
+
+  return patched ? result : cloud;
+}
+
 function useMergedTrips(
   useCloud: boolean,
   isLocalOnly: boolean,
@@ -116,10 +155,10 @@ function useMergedTrips(
   localTrips: Trip[],
 ) {
   return useMemo(() => {
-    logger.log("useMergedTrips", `useCloud=${useCloud} isLocalOnly=${isLocalOnly} cloud=${cloudTrips.length} local=${localTrips.length} cloudIds=${cloudTrips.map(t=>t.id).join(",")}`);
+    logger.log("useMergedTrips", `useCloud=${useCloud} isLocalOnly=${isLocalOnly} cloud=${cloudTrips.length} local=${localTrips.length}`);
     if (!useCloud) return localTrips;
-    if (!isLocalOnly) return cloudTrips;
 
+    // Read localStorage directly for the freshest local data
     let localSrc: Trip[] = localTrips;
     try {
       const stored = localStorage.getItem(STORAGE.TRIPS);
@@ -129,19 +168,13 @@ function useMergedTrips(
     const localMap = new Map(localSrc.map(t => [t.id, t]));
     const cloudIds = new Set(cloudTrips.map(t => t.id));
 
+    // Merge cloud trips with local media/metadata
     const merged = cloudTrips.map(t => {
       const lt = localMap.get(t.id);
-      if (!lt) return t;
-      const patch: Partial<Trip> = {};
-      if (!t.travelerIds?.length && lt.travelerIds?.length) patch.travelerIds = lt.travelerIds;
-      if (!t.travelers?.length && lt.travelers?.length) patch.travelers = lt.travelers;
-      if ((!t.attendees || t.attendees === "Imported Group") && lt.attendees) patch.attendees = lt.attendees;
-      if (!t.info?.length && lt.info?.length) patch.info = lt.info;
-      if (!t.organizer && lt.organizer) patch.organizer = lt.organizer;
-      return Object.keys(patch).length > 0 ? { ...t, ...patch } : t;
+      return lt ? mergeLocalMedia(t, lt) : t;
     });
 
-    // Only merge user-created local trips, never demo/seed data
+    // Add local-only trips (not in cloud, not demo)
     const demoIds = new Set(INITIAL_TRIPS.map(t => t.id));
     for (const lt of localSrc) {
       if (!cloudIds.has(lt.id) && !demoIds.has(lt.id)) merged.push(lt);

@@ -2,8 +2,7 @@ import {
   collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
+import { firebaseDb, firebaseAuth } from "./firebase";
 import type { Trip, TravelEvent } from "@/types";
 import { logger } from "@/lib/logger";
 
@@ -45,29 +44,9 @@ export async function upsertTrip(trip: Trip): Promise<void> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
-  // Upload base64 images to Storage before writing to Firestore
-  const uploadedEvents = await uploadEventMedia(trip.id, trip.events);
-  const cleanTrip = { ...trip, events: uploadedEvents };
-
-  // Trip cover image
-  if (isBase64(cleanTrip.image)) {
-    try {
-      cleanTrip.image = await uploadBase64(`trips/${trip.id}/cover`, cleanTrip.image);
-    } catch (e) { logger.error("upsertTrip", "cover upload failed:", e); }
-  }
-
-  // Trip-level media
-  if (cleanTrip.media?.length) {
-    cleanTrip.media = await Promise.all(cleanTrip.media.map(async (m, i) => {
-      if (isBase64(m.url)) {
-        try {
-          const url = await uploadBase64(`trips/${trip.id}/media/${m.id}`, m.url);
-          return { ...m, url };
-        } catch (e) { logger.error("upsertTrip", "trip media upload failed:", e); }
-      }
-      return m;
-    }));
-  }
+  // Strip base64 data before writing — Firestore has a 1MB doc limit.
+  // Base64 images are preserved in localStorage; only URLs survive cloud sync.
+  const cleanTrip = stripBase64(trip);
 
   const data = tripToDoc(cleanTrip);
   if (userId) data.user_id = userId;
@@ -133,61 +112,35 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
   }
 }
 
-// ── Storage helpers ────────────────────────────────────────────────────────
+// ── Base64 stripping ──────────────────────────────────────────────────────
+// Firestore docs must be < 1MB. Base64 images easily exceed that.
+// We strip them before cloud write; localStorage keeps the full data.
 
 function isBase64(url?: string): boolean {
   return !!url && url.startsWith("data:");
 }
 
-async function uploadBase64(path: string, dataUrl: string): Promise<string> {
-  const [meta, base64] = dataUrl.split(",");
-  const mime = meta.match(/:(.*?);/)?.[1] ?? "application/octet-stream";
-  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  const storageRef = ref(firebaseStorage(), path);
-  await uploadBytes(storageRef, bytes, { contentType: mime });
-  return getDownloadURL(storageRef);
-}
+function stripBase64(trip: Trip): Trip {
+  const clean = { ...trip };
 
-/** Upload any base64 images in events to Storage, return events with URLs. */
-async function uploadEventMedia(tripId: string, events: TravelEvent[]): Promise<TravelEvent[]> {
-  return Promise.all(events.map(async (ev) => {
-    const patched = { ...ev };
+  // Trip cover
+  if (isBase64(clean.image)) clean.image = "";
 
-    // Event thumbnail
-    if (isBase64(patched.image)) {
-      try {
-        patched.image = await uploadBase64(`trips/${tripId}/events/${ev.id}/image`, patched.image!);
-      } catch (e) { logger.error("uploadEventMedia", "image upload failed:", e); }
-    }
+  // Trip-level media
+  if (clean.media?.length) {
+    clean.media = clean.media.filter(m => !isBase64(m.url));
+  }
 
-    // Event media
-    if (patched.media?.length) {
-      patched.media = await Promise.all(patched.media.map(async (m, i) => {
-        if (isBase64(m.url)) {
-          try {
-            const url = await uploadBase64(`trips/${tripId}/events/${ev.id}/media/${i}`, m.url);
-            return { ...m, url };
-          } catch (e) { logger.error("uploadEventMedia", "media upload failed:", e); }
-        }
-        return m;
-      }));
-    }
+  // Events
+  clean.events = clean.events.map(ev => {
+    const e = { ...ev };
+    if (isBase64(e.image)) e.image = undefined;
+    if (e.media?.length) e.media = e.media.filter(m => !isBase64(m.url));
+    if (e.documents?.length) e.documents = e.documents.filter(d => !isBase64(d.url));
+    return e;
+  });
 
-    // Event documents (strip base64 — too large for both Storage and Firestore in bulk)
-    if (patched.documents?.length) {
-      patched.documents = await Promise.all(patched.documents.map(async (d, i) => {
-        if (isBase64(d.url)) {
-          try {
-            const url = await uploadBase64(`trips/${tripId}/events/${ev.id}/docs/${d.id}`, d.url);
-            return { ...d, url };
-          } catch (e) { logger.error("uploadEventMedia", "doc upload failed:", e); }
-        }
-        return d;
-      }));
-    }
-
-    return patched;
-  }));
+  return clean;
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────────────
