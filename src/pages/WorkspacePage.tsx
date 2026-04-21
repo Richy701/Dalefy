@@ -41,7 +41,7 @@ import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
-import { ItineraryPreviewDialog } from "@/components/shared/ItineraryPreviewDialog";
+import { ItineraryPreviewDialog, ItineraryPreviewContent } from "@/components/shared/ItineraryPreviewDialog";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
@@ -51,6 +51,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
+import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, KEYWORD_MAP, getEventImageCategory, generateEventImage } from "@/data/images";
@@ -77,6 +78,7 @@ export function WorkspacePage() {
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
   const { canDeleteTrip, isOrgMember } = usePermissions();
+  const { brand } = useBrand();
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
 
@@ -144,6 +146,7 @@ export function WorkspacePage() {
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [rematching, setRematching] = useState({ active: false, done: 0, total: 0 });
   const printRef = useRef<HTMLDivElement>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [editTripOpen, setEditTripOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Partial<Trip>>({});
@@ -161,6 +164,7 @@ export function WorkspacePage() {
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -395,6 +399,17 @@ export function WorkspacePage() {
     reader.readAsDataURL(file);
   };
 
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setEditingTrip(prev => ({ ...prev, image: ev.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !editingEvent) return;
@@ -461,7 +476,7 @@ export function WorkspacePage() {
   };
 
   const handleExportPdf = async () => {
-    if (!printRef.current) return;
+    if (!pdfRef.current) return;
     setExporting(true);
     const origSrcs: { el: HTMLImageElement; src: string }[] = [];
     try {
@@ -472,7 +487,7 @@ export function WorkspacePage() {
       ]);
 
       // Pre-convert cross-origin images to data URLs so html2canvas can render them
-      const imgs = printRef.current.querySelectorAll("img");
+      const imgs = pdfRef.current.querySelectorAll("img");
       await Promise.all(
         Array.from(imgs).map(async (img) => {
           const src = img.src;
@@ -497,11 +512,11 @@ export function WorkspacePage() {
         import("html2canvas"),
         import("jspdf"),
       ]);
-      const canvas = await html2canvas(printRef.current, {
+      const canvas = await html2canvas(pdfRef.current, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: theme === "dark" ? "#050505" : "#ffffff",
+        backgroundColor: "#ffffff",
         logging: false,
         imageTimeout: 5000,
       });
@@ -1875,6 +1890,7 @@ export function WorkspacePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
                 )}
+                <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
@@ -1886,6 +1902,11 @@ export function WorkspacePage() {
                       className="w-full h-9 pl-9 pr-3 bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
                     />
                   </div>
+                  <button type="button" onClick={() => coverInputRef.current?.click()}
+                    className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0"
+                    title="Upload cover image">
+                    <Upload className="h-3.5 w-3.5" />
+                  </button>
                   <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
                     className="h-9 px-3 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
                     {isTripImageSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
@@ -2296,6 +2317,15 @@ export function WorkspacePage() {
         onConfirm={handleDeleteTrip}
         destructive
       />
+
+      {/* Hidden off-screen div for PDF export — renders the preview layout in light theme */}
+      <div
+        ref={pdfRef}
+        className="fixed left-[-9999px] top-0 w-[800px] bg-white"
+        style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
+      >
+        <ItineraryPreviewContent trip={trip} forPrint />
+      </div>
     </div>
   );
 }

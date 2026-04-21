@@ -41,30 +41,32 @@ const TripsContext = createContext<TripsContextType>({
 
 // ── Data source hooks ─────────────────────────────────────────────────────────
 
-function useCloudTrips() {
+function useCloudTrips(uid: string | null) {
   const qc = useQueryClient();
 
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
-    queryKey: ["trips"],
+    queryKey: ["trips", uid],
     queryFn: fetchTrips,
     staleTime: 1000 * 60 * 5,
     retry: 2,
+    enabled: !!uid,
   });
 
-  // Firestore realtime listener
+  // Firestore realtime listener — re-subscribe when user changes
   useEffect(() => {
+    if (!uid) return;
     const unsub = subscribeToTrips((updated) => {
-      qc.setQueryData<Trip[]>(["trips"], updated);
+      qc.setQueryData<Trip[]>(["trips", uid], updated);
     });
     return () => unsub();
-  }, [qc]);
+  }, [qc, uid]);
 
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
-    const prev = qc.getQueryData<Trip[]>(["trips"]) ?? [];
+    const prev = qc.getQueryData<Trip[]>(["trips", uid]) ?? [];
     const next = typeof action === "function" ? action(prev) : action;
-    qc.setQueryData<Trip[]>(["trips"], next);
+    qc.setQueryData<Trip[]>(["trips", uid], next);
     syncToCloud(prev, next);
-  }, [qc]);
+  }, [qc, uid]);
 
   return { trips, setTrips, ready: isSuccess };
 }
@@ -192,7 +194,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
   const useCloud = firebaseOn && !isDemoUser;
   const local = useLocalTrips(isDemoUser && !authLoading);
-  const cloud = useCloudTrips();
+  const cloud = useCloudTrips(useCloud ? (user?.id ?? null) : null);
   const { currentOrg } = useOrg();
   const isLocalOnly = !useCloud;
 
