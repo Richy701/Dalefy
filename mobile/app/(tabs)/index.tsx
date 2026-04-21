@@ -32,7 +32,7 @@ import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
-import { fetchTripByShortCode } from "@/services/firebaseTrips";
+import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 import { useBrand } from "@/context/BrandContext";
 import { Logo } from "@/components/Logo";
 let CameraView: any = null;
@@ -352,6 +352,21 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     setFoundTrip(null);
   };
 
+  // Shared reveal → navigate flow for all entry modes
+  const revealAndNavigate = useCallback((trip: Trip) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setFoundTrip(trip);
+    setTimeout(() => {
+      router.push(`/shared/${trip.id}`);
+      setTimeout(() => {
+        setCodeOpen(false);
+        setFoundTrip(null);
+        setDigits(["", "", "", ""]);
+        setLinkValue("");
+      }, 300);
+    }, 1800);
+  }, [router]);
+
   const submitPin = async (pin: string) => {
     if (resolving) return;
     setResolving(true);
@@ -364,20 +379,30 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         pinRefs.current[0]?.focus();
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setFoundTrip(trip);
-      // Navigate first (while modal still covers the screen), then clean up
-      setTimeout(() => {
-        router.push(`/shared/${trip.id}`);
-        // Delay modal close so the new screen is mounted before we reveal what's underneath
-        setTimeout(() => {
-          setCodeOpen(false);
-          setFoundTrip(null);
-          setDigits(["", "", "", ""]);
-        }, 300);
-      }, 1800);
+      revealAndNavigate(trip);
     } catch {
       setCodeError("Couldn't look up PIN. Try again.");
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const submitTripId = async (id: string) => {
+    if (resolving) return;
+    setResolving(true);
+    setCodeError(null);
+    try {
+      const trip = await fetchTripById(id);
+      if (!trip) {
+        // Fallback — navigate directly if fetch fails (trip might still load on the page)
+        setCodeOpen(false);
+        router.push(`/shared/${id}`);
+        return;
+      }
+      revealAndNavigate(trip);
+    } catch {
+      setCodeOpen(false);
+      router.push(`/shared/${id}`);
     } finally {
       setResolving(false);
     }
@@ -388,10 +413,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     if (!raw || resolving) return;
     const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
     const id = match ? match[1] : raw;
-    setCodeOpen(false);
-    setLinkValue("");
-    setEntryMode("pin");
-    router.push(`/shared/${id}`);
+    submitTripId(id);
   };
 
   const handleDigitChange = (idx: number, val: string) => {
@@ -578,9 +600,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     const match = data.match(/shared\/([A-Za-z0-9_-]+)/);
                     const id = match ? match[1] : null;
                     if (id) {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      closeSheet();
-                      router.push(`/shared/${id}`);
+                      submitTripId(id);
                     } else {
                       setCodeError("QR code doesn't contain a valid trip link");
                       setEntryMode("pin");
