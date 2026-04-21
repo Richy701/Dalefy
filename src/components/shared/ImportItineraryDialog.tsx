@@ -1151,34 +1151,34 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] mb-2">
                     Information ({editInfo.length})
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {editInfo.map((item, i) => (
-                      <div key={i} className="relative group/info rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] p-3 hover:border-brand/30 transition-colors">
+                      <div key={i} className="relative group/info rounded-lg bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] px-2.5 py-2 hover:border-brand/30 transition-colors">
                         <button
                           type="button"
                           aria-label="Remove info"
                           onClick={() => setEditInfo(prev => prev.filter((_, j) => j !== i))}
-                          className="absolute top-2 right-2 h-6 w-6 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#444] hover:text-red-400 opacity-0 group-hover/info:opacity-100 transition-all"
+                          className="absolute top-1.5 right-1.5 h-5 w-5 rounded-md flex items-center justify-center text-slate-300 dark:text-[#444] hover:text-red-400 opacity-0 group-hover/info:opacity-100 transition-all"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-2.5 w-2.5" />
                         </button>
-                        <div className="flex items-start gap-2.5">
-                          <div className="h-5 w-5 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-1">
-                            <FileText className="h-3 w-3 text-brand" />
+                        <div className="flex items-start gap-2">
+                          <div className="h-4 w-4 rounded bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <FileText className="h-2.5 w-2.5 text-brand" />
                           </div>
-                          <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="min-w-0 flex-1 space-y-1">
                             <input
                               type="text"
                               value={item.title}
                               onChange={(e) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, title: e.target.value } : it))}
-                              className="w-full text-[11px] font-bold text-slate-700 dark:text-[#ccc] bg-transparent border-none outline-none p-0 placeholder:text-slate-400 dark:placeholder:text-[#555]"
+                              className="w-full text-[10px] font-bold text-slate-700 dark:text-[#ccc] bg-transparent border-none outline-none p-0 placeholder:text-slate-400 dark:placeholder:text-[#555]"
                               placeholder="Title"
                             />
                             <textarea
                               value={item.body}
                               onChange={(e) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, body: e.target.value } : it))}
-                              rows={Math.min(item.body.split("\n").length + 1, 5)}
-                              className="w-full text-[10px] text-slate-500 dark:text-[#888] bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] rounded-lg p-2 leading-relaxed resize-none outline-none focus:border-brand/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-[#555]"
+                              rows={Math.min(item.body.split("\n").length, 3)}
+                              className="w-full text-[9px] text-slate-500 dark:text-[#888] bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] rounded-md p-1.5 leading-relaxed resize-none outline-none focus:border-brand/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-[#555]"
                               placeholder="Details..."
                             />
                           </div>
