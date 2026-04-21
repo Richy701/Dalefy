@@ -2,6 +2,7 @@ import {
   collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { firebaseDb, firebaseAuth } from "./firebase";
 import type { Trip, TravelEvent } from "@/types";
 import { logger } from "@/lib/logger";
@@ -12,8 +13,21 @@ const TRIP_MEMBERS = "trip_members";
 /** Demo/seed trip IDs — never return these from cloud queries */
 const DEMO_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
 
+/** Wait for Firebase Auth to resolve — currentUser is null until the SDK
+ *  restores the session from IndexedDB (takes a few hundred ms on refresh). */
+function waitForAuth(): Promise<string | null> {
+  const auth = firebaseAuth();
+  if (auth.currentUser) return Promise.resolve(auth.currentUser.uid);
+  return new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(user?.uid ?? null);
+    });
+  });
+}
+
 export async function fetchTrips(): Promise<Trip[]> {
-  const uid = firebaseAuth().currentUser?.uid;
+  const uid = await waitForAuth();
   if (!uid) return [];
 
   const snap = await getDocs(
@@ -27,17 +41,22 @@ export async function fetchTrips(): Promise<Trip[]> {
 }
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe {
-  const uid = firebaseAuth().currentUser?.uid;
-  if (!uid) { onChange([]); return () => {}; }
+  let innerUnsub: Unsubscribe | null = null;
 
-  const q = query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc"));
-  return onSnapshot(q, (snap) => {
-    const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
-    const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
-    const blocked = all.length - filtered.length;
-    if (blocked > 0) logger.log("subscribeToTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
-    onChange(filtered);
+  // Wait for auth then set up the real listener
+  waitForAuth().then((uid) => {
+    if (!uid) { onChange([]); return; }
+    const q = query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc"));
+    innerUnsub = onSnapshot(q, (snap) => {
+      const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
+      const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
+      const blocked = all.length - filtered.length;
+      if (blocked > 0) logger.log("subscribeToTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
+      onChange(filtered);
+    });
   });
+
+  return () => { innerUnsub?.(); };
 }
 
 export async function upsertTrip(trip: Trip): Promise<void> {
