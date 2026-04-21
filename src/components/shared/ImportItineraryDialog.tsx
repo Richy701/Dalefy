@@ -61,23 +61,66 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
   const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
 
   // ── Extract page text ──
+  // pdfjs splits styled text (bold times, colored spans) into separate items
+  // that may have slightly different Y offsets. We use both X and Y position
+  // to reconstruct lines: items on the same Y (within tolerance) are joined
+  // with a space when there's an X gap, or concatenated when contiguous.
   const pages: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    let lastY: number | null = null;
-    const chunks: string[] = [];
+
+    // Collect items with position info
+    interface TextItem { str: string; x: number; y: number; width: number; hasEOL: boolean }
+    const items: TextItem[] = [];
     for (const item of content.items) {
-      const textItem = item as { str: string; hasEOL?: boolean; transform?: number[] };
-      const y = textItem.transform?.[5];
-      if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2) {
-        chunks.push("\n");
-      }
-      chunks.push(textItem.str);
-      if (textItem.hasEOL) chunks.push("\n");
-      if (y !== undefined) lastY = y;
+      const ti = item as { str: string; hasEOL?: boolean; transform?: number[]; width?: number };
+      if (!ti.str && !ti.hasEOL) continue;
+      const x = ti.transform?.[4] ?? 0;
+      const y = ti.transform?.[5] ?? 0;
+      const width = ti.width ?? 0;
+      items.push({ str: ti.str, x, y, width, hasEOL: !!ti.hasEOL });
     }
-    pages.push(chunks.join(""));
+
+    // Group items into lines by Y-position (8px tolerance for styled text)
+    const Y_TOLERANCE = 8;
+    const lineGroups: TextItem[][] = [];
+    let currentLine: TextItem[] = [];
+    let lineY: number | null = null;
+
+    for (const item of items) {
+      if (lineY !== null && Math.abs(item.y - lineY) > Y_TOLERANCE) {
+        if (currentLine.length > 0) lineGroups.push(currentLine);
+        currentLine = [];
+        lineY = null;
+      }
+      currentLine.push(item);
+      lineY = lineY ?? item.y;
+    }
+    if (currentLine.length > 0) lineGroups.push(currentLine);
+
+    // Build text from line groups — sort items within each line by X position
+    const pageLines: string[] = [];
+    for (const group of lineGroups) {
+      group.sort((a, b) => a.x - b.x);
+      let lineText = "";
+      let lastEndX = 0;
+      for (const item of group) {
+        // If there's an X gap between items, add a space (avoids mid-word splits)
+        if (lineText.length > 0 && item.x > lastEndX + 2 && !lineText.endsWith(" ")) {
+          lineText += " ";
+        }
+        lineText += item.str;
+        lastEndX = item.x + item.width;
+      }
+      const trimmed = lineText.trim();
+      if (trimmed) pageLines.push(trimmed);
+      // Respect explicit EOL from the last item in the group
+      if (group[group.length - 1]?.hasEOL && pageLines.length > 0) {
+        pageLines.push("");
+      }
+    }
+    pages.push(pageLines.filter(l => l.length > 0).join("\n"));
   }
 
   // ── Extract embedded file attachments (booking confirmations, vouchers) ──
@@ -359,10 +402,12 @@ const MEAL_DEFAULTS: Record<string, string> = {
   brunch: "10:30 AM",
 };
 
-/** Convert "9:50 AM" / "12:00 PM" to minutes since midnight for numeric sorting */
+/** Convert "9:50 AM" / "12:00 PM" to minutes since midnight for numeric sorting.
+ *  Empty/TBD times sort to end of day so confirmed times appear first. */
 function timeToMinutes(t: string): number {
+  if (!t || t === "TBD") return 1440; // end of day — sort after real times
   const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return 720; // noon fallback
+  if (!m) return 1440;
   let h = parseInt(m[1]);
   const min = parseInt(m[2]);
   const pm = m[3].toUpperCase() === "PM";
@@ -373,7 +418,11 @@ function timeToMinutes(t: string): number {
 
 function guessEventType(line: string): EventType {
   const l = line.toLowerCase();
-  if (/\b(flight|fly|depart|arrive|airport|airline|airways|boarding|gate|xq|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
+  // "transfer to airport" / "meet at lobby for airport" = activity, not flight
+  const isTransferToAirport = /\b(transfer|meet|pickup|pick.?up|collect|lobby)\b/.test(l) && /\bairport\b/.test(l);
+  if (!isTransferToAirport && /\b(flight|fly|depart\b|arrive\b|airline|airways|boarding|gate\s+\d|xq\d|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
+  // Also catch flight numbers like "XQ524", "BA123" even without other keywords
+  if (!isTransferToAirport && /\b[A-Z]{2}\d{2,4}\b/i.test(line) && /\b(depart|arrive|airport)\b/.test(l)) return "flight";
   if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx|camp|overnight|fullboard|half.?board|all.?inclusive|panafric|marjani|norfolk)\b/.test(l)) return "hotel";
   if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail|bbq|fish\s*market|seafood)\b/.test(l)) return "dining";
   return "activity";
@@ -639,7 +688,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 
       // Extract time — same alternation as detection so we grab whichever form appeared.
       const timeMatch = line.match(TIME_RE);
-      let time = "12:00 PM";
+      let time = "";
       if (timeMatch) time = parseTime(timeMatch[0]);
 
       // Strip leading "17:30 –" / "10.00:" / "0930 -" / "ETD 1045hrs –" prefixes,
@@ -650,6 +699,12 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, "")
         .replace(/\b\d{4}\s*(?:hrs?|am|pm)\b/gi, "")
         .replace(/\b(?:etd|eta|pickup)\s+\d{4}\b/gi, "")
+        // Clean orphan prepositions left after time removal: "at .", "at on", "at ,"
+        .replace(/\b(at|by|from)\s*[.,]?\s*(?=\s|$|on\b)/gi, "")
+        // Strip "for Name, Name, Name and Name" participant lists from titles
+        .replace(/\bfor\s+(?:[A-Z][a-z]+(?:\s*[,&]\s*|\s+and\s+))*[A-Z][a-z]+\.?\s*/g, "")
+        // Strip trailing "Free" / "Free of charge" cost indicators
+        .replace(/\bfree\s*(?:of\s+charge)?\s*$/i, "")
         .replace(/^[\s\-–—:·.,]+/, "")
         .replace(/[\s\-–—:]+$/, "")
         .replace(/\s+/g, " ")
@@ -662,7 +717,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       if (title.length > 2) {
         events.push({
           id: `imp-${Date.now()}-${events.length}`,
-          type, date: currentDate, time, title, location,
+          type, date: currentDate, time: time || "TBD", title, location,
         });
       }
     }
@@ -936,7 +991,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-8 md:p-10 shadow-2xl">
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-8 md:p-10 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
             {isReimport ? "Re-import Itinerary" : "Import Itinerary"}
@@ -1034,7 +1089,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
         {/* ── STEP 3: REVIEW ── */}
         {step === "review" && parsed && (
-          <div className="space-y-5">
+          <div className="flex flex-col min-h-0 flex-1">
+          <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
             {/* Trip summary */}
             <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
               <div className="flex items-center justify-between">
@@ -1193,7 +1249,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             )}
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-4 sticky bottom-0 bg-white dark:bg-[#111111] pb-1 -mx-1 px-1 border-t border-slate-100 dark:border-[#1f1f1f] mt-2">
+          </div>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-4 shrink-0 bg-white dark:bg-[#111111] border-t border-slate-100 dark:border-[#1f1f1f] mt-2">
               <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
               <Button
                 onClick={handleImport}
