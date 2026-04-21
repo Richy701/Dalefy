@@ -463,9 +463,35 @@ export function WorkspacePage() {
   const handleExportPdf = async () => {
     if (!printRef.current) return;
     setExporting(true);
+    const origSrcs: { el: HTMLImageElement; src: string }[] = [];
     try {
-      // Generate static map image for the PDF cover
-      const staticMapUrl = await buildStaticMapUrl();
+      // Generate static map image for the PDF cover (timeout after 5s)
+      const staticMapUrl = await Promise.race([
+        buildStaticMapUrl(),
+        new Promise<null>(r => setTimeout(() => r(null), 5000)),
+      ]);
+
+      // Pre-convert cross-origin images to data URLs so html2canvas can render them
+      const imgs = printRef.current.querySelectorAll("img");
+      await Promise.all(
+        Array.from(imgs).map(async (img) => {
+          const src = img.src;
+          if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+          try {
+            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(src)}`;
+            const resp = await fetch(proxyUrl);
+            if (!resp.ok) return;
+            const blob = await resp.blob();
+            const dataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            origSrcs.push({ el: img, src });
+            img.src = dataUrl;
+          } catch { /* keep original src */ }
+        }),
+      );
 
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
@@ -474,9 +500,14 @@ export function WorkspacePage() {
       const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: theme === "dark" ? "#050505" : "#ffffff",
         logging: false,
+        imageTimeout: 5000,
       });
+      // Restore original image srcs
+      for (const { el, src } of origSrcs) el.src = src;
+
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -547,7 +578,10 @@ export function WorkspacePage() {
       pdf.save(filename);
       showToast("PDF exported successfully");
       toast.success("PDF exported successfully");
-    } catch {
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      // Restore original image srcs on error too
+      for (const { el, src } of origSrcs) el.src = src;
       showToast("PDF export failed", "error");
       toast.error("PDF export failed");
     } finally {
