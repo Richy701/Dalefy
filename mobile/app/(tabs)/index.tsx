@@ -299,24 +299,16 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       <View style={styles.illustrationWrap} pointerEvents="none">
         <Illustration name="together" width={170} height={140} />
       </View>
-      {/* Brand badge */}
-      <View style={styles.brandRow}>
-        {brand.logoUrl ? (
-          <Image source={{ uri: brand.logoUrl }} style={{ width: 24, height: 24, borderRadius: 5 }} />
-        ) : (
-          <Logo size={20} color={C.teal} />
-        )}
-        <Text style={styles.brandLabel}>{brand.name}</Text>
-      </View>
-
-      <View style={styles.greetingRow}>
-        <Text
-          style={[styles.greeting, { fontSize: greetingFontSize }]}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {greeting} 👋
-        </Text>
+      {/* Top bar — brand + actions */}
+      <View style={styles.topBar}>
+        <View style={styles.brandRow}>
+          {brand.logoUrl ? (
+            <Image source={{ uri: brand.logoUrl }} style={{ width: 24, height: 24, borderRadius: 5 }} />
+          ) : (
+            <Logo size={20} color={C.teal} />
+          )}
+          <Text style={styles.brandLabel}>{brand.name}</Text>
+        </View>
         <View style={styles.headerActions}>
           <Pressable
             onPress={toggle}
@@ -342,6 +334,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           </Pressable>
         </View>
       </View>
+
+      {/* Greeting */}
+      <Text
+        style={[styles.greeting, { fontSize: greetingFontSize }]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {greeting} 👋
+      </Text>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
       <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={closeSheet}>
@@ -553,21 +554,21 @@ function makeGreetingStyles(C: ThemeColors) {
       position: "absolute", right: -10, bottom: -6,
       opacity: 0.55,
     },
+    topBar: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      marginBottom: S.md, zIndex: 2,
+    },
     brandRow: {
       flexDirection: "row", alignItems: "center", gap: 8,
-      marginBottom: S.sm,
     },
     brandLabel: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 2, textTransform: "uppercase",
     },
-    greetingRow: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      marginBottom: S.md, zIndex: 2,
-    },
     greeting: {
       fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.5, flex: 1,
+      color: C.textPrimary, letterSpacing: -0.5,
+      marginBottom: S.md,
     },
     headerActions: {
       flexDirection: "row", alignItems: "center", gap: 8,
