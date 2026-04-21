@@ -463,7 +463,7 @@ export function DestinationsPage() {
                   )}
                   {pin.types.hotels > 0 && (
                     <div className="flex items-center gap-1">
-                      <Hotel className="h-2.5 w-2.5 text-amber-500" />
+                      <Hotel className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                       <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.hotels}</span>
                     </div>
                   )}
@@ -475,7 +475,7 @@ export function DestinationsPage() {
                   )}
                   {pin.types.dining > 0 && (
                     <div className="flex items-center gap-1">
-                      <Utensils className="h-2.5 w-2.5 text-pink-400" />
+                      <Utensils className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                       <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.dining}</span>
                     </div>
                   )}
@@ -529,7 +529,7 @@ export function DestinationsPage() {
                     )}
                     {dest.types.hotels > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Hotel className="h-2.5 w-2.5 text-amber-300" />
+                        <Hotel className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.hotels}</span>
                       </div>
                     )}
@@ -541,7 +541,7 @@ export function DestinationsPage() {
                     )}
                     {dest.types.dining > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Utensils className="h-2.5 w-2.5 text-pink-300" />
+                        <Utensils className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.dining}</span>
                       </div>
                     )}

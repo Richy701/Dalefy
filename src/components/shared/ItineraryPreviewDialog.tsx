@@ -12,13 +12,14 @@ import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 
-interface ItineraryPreviewDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface ItineraryPreviewContentProps {
   trip: Trip;
+  forPrint?: boolean;
+  onClose?: () => void;
+  staticMapUrl?: string | null;
 }
 
-export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPreviewDialogProps) {
+export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl }: ItineraryPreviewContentProps) {
   const { brand } = useBrand();
   const grouped = useMemo(() => {
     const map: Record<string, TravelEvent[]> = {};
@@ -46,6 +47,171 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
   const totalDocs = trip.events.reduce((n, ev) => n + (ev.documents?.length ?? 0), 0);
 
   return (
+    <div className={forPrint ? "bg-white" : "bg-slate-50 dark:bg-[#050505]"}>
+      {/* ── Hero ── */}
+      <div className={cn("relative overflow-hidden shrink-0", forPrint ? "h-[160px]" : "h-[180px] sm:h-[280px] rounded-t-2xl sm:rounded-t-[2rem]")}>
+        {trip.image ? (
+          <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-brand/30 via-[#111] to-[#050505]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
+
+        {/* Close — hidden in print */}
+        {!forPrint && onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/50 transition-colors"
+          >
+            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </button>
+        )}
+
+        {/* Eyebrow */}
+        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5">
+          {brand.logoUrl && (
+            <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded object-contain" />
+          )}
+          <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
+            {brand.name} · Itinerary {forPrint ? "" : "Preview"}
+          </span>
+        </div>
+
+        {/* Title block */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8">
+          <h2 className="text-xl sm:text-3xl font-extrabold uppercase tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
+            {trip.name}
+          </h2>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Pill icon={CalendarDays} forPrint={forPrint}>{dateRange} · {nights} night{nights !== 1 ? "s" : ""}</Pill>
+            {trip.destination && <Pill icon={MapPin} forPrint={forPrint}>{trip.destination}</Pill>}
+            {trip.attendees && <Pill icon={Users} className={forPrint ? undefined : "hidden sm:flex"} forPrint={forPrint}>{trip.attendees}</Pill>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Metadata strip ── */}
+      {hasMeta && (
+        <div className={cn("flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 sm:py-4 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-[#111111] dark:border-[#1f1f1f]")}>
+          {trip.tripType && (
+            <MetaChip icon={Tag} label="Type" value={trip.tripType} forPrint={forPrint} />
+          )}
+          {trip.paxCount && (
+            <MetaChip icon={Users} label="Pax" value={trip.paxCount} forPrint={forPrint} />
+          )}
+          {trip.budget && (
+            <MetaChip icon={DollarSign} label="Budget" value={`${trip.currency ?? "USD"} ${trip.budget}`} forPrint={forPrint} />
+          )}
+          {trip.organizer?.name && (
+            <MetaChip icon={User} label="Organizer" value={[trip.organizer.name, trip.organizer.company].filter(Boolean).join(" · ")} forPrint={forPrint} />
+          )}
+          {trip.attendees && (
+            <div className={forPrint ? undefined : "sm:hidden"}>
+              <MetaChip icon={Users} label="Attendees" value={trip.attendees} forPrint={forPrint} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Trip Info Sections ── */}
+      {hasInfo && (
+        <div className={cn("px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-[#111111] dark:border-[#1f1f1f]")}>
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="h-3.5 w-3.5 text-brand" />
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
+            </div>
+            <div className={cn("grid gap-3", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
+              {trip.info!.map(item => (
+                <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-slate-50 border-slate-100" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-100 dark:border-[#1a1a1a]")}>
+                  <p className={cn("text-xs font-bold uppercase tracking-tight mb-1", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{item.title}</p>
+                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#999]")}>{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Itinerary body ── */}
+      <div className={cn(forPrint ? "px-8 py-8" : "px-3 sm:px-8 py-5 sm:py-8")}>
+        <div className="max-w-3xl mx-auto">
+          {/* Event count */}
+          <div className="flex items-center gap-2 mb-5 sm:mb-6">
+            <Compass className="h-4 w-4 text-brand" />
+            <span className={cn("text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+              {trip.events.length} event{trip.events.length !== 1 ? "s" : ""} · {grouped.length} day{grouped.length !== 1 ? "s" : ""}
+              {totalDocs > 0 && <> · {totalDocs} document{totalDocs !== 1 ? "s" : ""}</>}
+            </span>
+          </div>
+
+          {grouped.length === 0 ? (
+            <div className={cn("border border-dashed rounded-2xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888]")}>
+              <Compass className="h-7 w-7 mb-3 opacity-40" />
+              <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
+              <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>Add events in the workspace to see them here</p>
+            </div>
+          ) : (
+            <div className="space-y-6 sm:space-y-8">
+              {grouped.map(([date, events], dayIdx) => {
+                const d = new Date(date + "T12:00:00");
+                return (
+                  <div key={date}>
+                    {/* Day header */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+                      <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-brand/10 border border-brand/20 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[9px] sm:text-[10px] font-black text-brand leading-none">
+                          {d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}
+                        </span>
+                        <span className="text-[11px] sm:text-xs font-black text-brand leading-none mt-0.5">
+                          {d.getDate()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className={cn("text-xs sm:text-sm font-bold uppercase tracking-tight", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>
+                          Day {dayIdx + 1} · {d.toLocaleDateString("en-US", { weekday: "long" })}
+                        </p>
+                        <p className={cn("text-[10px] sm:text-[11px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+                          {events.length} event{events.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Events */}
+                    <div className={cn("border rounded-xl sm:rounded-2xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] divide-slate-100 dark:divide-[#1a1a1a]")}>
+                      {events.map(ev => (
+                        <PreviewEventCard key={ev.id} ev={ev} forPrint={forPrint} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className={cn("mt-8 sm:mt-10 pt-5 sm:pt-6 border-t text-center", forPrint ? "border-slate-200" : "border-slate-200 dark:border-[#1f1f1f]")}>
+            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>
+              Powered by {brand.platformName}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dialog wrapper ── */
+interface ItineraryPreviewDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trip: Trip;
+}
+
+export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPreviewDialogProps) {
+  const { brand } = useBrand();
+
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
@@ -55,164 +221,16 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
           <DialogTitle>{trip.name} — Preview</DialogTitle>
           <DialogDescription>Read-only itinerary preview</DialogDescription>
         </DialogHeader>
-
-        {/* ── Hero ── */}
-        <div className="relative h-[180px] sm:h-[280px] overflow-hidden rounded-t-2xl sm:rounded-t-[2rem] shrink-0">
-          {trip.image ? (
-            <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-brand/30 via-[#111] to-[#050505]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
-
-          {/* Close */}
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/50 transition-colors"
-          >
-            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </button>
-
-          {/* Eyebrow */}
-          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5">
-            {brand.logoUrl && (
-              <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded object-contain" />
-            )}
-            <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
-              {brand.name} · Itinerary Preview
-            </span>
-          </div>
-
-          {/* Title block */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8">
-            <h2 className="text-xl sm:text-3xl font-extrabold uppercase tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
-              {trip.name}
-            </h2>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <Pill icon={CalendarDays}>{dateRange} · {nights} night{nights !== 1 ? "s" : ""}</Pill>
-              {trip.destination && <Pill icon={MapPin}>{trip.destination}</Pill>}
-              {trip.attendees && <Pill icon={Users} className="hidden sm:flex">{trip.attendees}</Pill>}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Metadata strip ── */}
-        {hasMeta && (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 sm:py-4 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f]">
-            {trip.tripType && (
-              <MetaChip icon={Tag} label="Type" value={trip.tripType} />
-            )}
-            {trip.paxCount && (
-              <MetaChip icon={Users} label="Pax" value={trip.paxCount} />
-            )}
-            {trip.budget && (
-              <MetaChip icon={DollarSign} label="Budget" value={`${trip.currency ?? "USD"} ${trip.budget}`} />
-            )}
-            {trip.organizer?.name && (
-              <MetaChip icon={User} label="Organizer" value={[trip.organizer.name, trip.organizer.company].filter(Boolean).join(" · ")} />
-            )}
-            {/* Show attendees on mobile since hidden in hero pills */}
-            {trip.attendees && (
-              <div className="sm:hidden">
-                <MetaChip icon={Users} label="Attendees" value={trip.attendees} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Trip Info Sections ── */}
-        {hasInfo && (
-          <div className="px-4 sm:px-8 py-4 sm:py-6 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f]">
-            <div className="max-w-3xl mx-auto">
-              <div className="flex items-center gap-2 mb-3">
-                <Info className="h-3.5 w-3.5 text-brand" />
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {trip.info!.map(item => (
-                  <div key={item.id} className="bg-slate-50 dark:bg-[#0a0a0a] rounded-xl p-3 sm:p-4 border border-slate-100 dark:border-[#1a1a1a]">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-1">{item.title}</p>
-                    <p className="text-[11px] text-slate-600 dark:text-[#999] leading-relaxed whitespace-pre-wrap">{item.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Itinerary body ── */}
-        <div className="px-3 sm:px-8 py-5 sm:py-8">
-          <div className="max-w-3xl mx-auto">
-            {/* Event count */}
-            <div className="flex items-center gap-2 mb-5 sm:mb-6">
-              <Compass className="h-4 w-4 text-brand" />
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
-                {trip.events.length} event{trip.events.length !== 1 ? "s" : ""} · {grouped.length} day{grouped.length !== 1 ? "s" : ""}
-                {totalDocs > 0 && <> · {totalDocs} document{totalDocs !== 1 ? "s" : ""}</>}
-              </span>
-            </div>
-
-            {grouped.length === 0 ? (
-              <div className="bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl flex flex-col items-center justify-center py-12 sm:py-16 text-slate-500 dark:text-[#888]">
-                <Compass className="h-7 w-7 mb-3 opacity-40" />
-                <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
-                <p className="text-[10px] text-slate-400 dark:text-[#555] mt-1">Add events in the workspace to see them here</p>
-              </div>
-            ) : (
-              <div className="space-y-6 sm:space-y-8">
-                {grouped.map(([date, events], dayIdx) => {
-                  const d = new Date(date + "T12:00:00");
-                  return (
-                    <div key={date}>
-                      {/* Day header */}
-                      <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
-                        <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-brand/10 border border-brand/20 flex flex-col items-center justify-center shrink-0">
-                          <span className="text-[9px] sm:text-[10px] font-black text-brand leading-none">
-                            {d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}
-                          </span>
-                          <span className="text-[11px] sm:text-xs font-black text-brand leading-none mt-0.5">
-                            {d.getDate()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                            Day {dayIdx + 1} · {d.toLocaleDateString("en-US", { weekday: "long" })}
-                          </p>
-                          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-[#888]">
-                            {events.length} event{events.length !== 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Events */}
-                      <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl sm:rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-[#1a1a1a]">
-                        {events.map(ev => (
-                          <PreviewEventCard key={ev.id} ev={ev} />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-slate-200 dark:border-[#1f1f1f] text-center">
-              <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-slate-400 dark:text-[#555]">
-                Powered by {brand.platformName}
-              </p>
-            </div>
-          </div>
-        </div>
+        <ItineraryPreviewContent trip={trip} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
 /* ── Pill badge (hero) ── */
-function Pill({ icon: Icon, children, className }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string }) {
+function Pill({ icon: Icon, children, className, forPrint }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string; forPrint?: boolean }) {
   return (
-    <div className={cn("flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5", className)}>
+    <div className={cn("flex items-center gap-1.5 border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5", forPrint ? "bg-white/15" : "bg-white/10 backdrop-blur-sm", className)}>
       <Icon className="h-3 w-3 text-brand" />
       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{children}</span>
     </div>
@@ -220,66 +238,59 @@ function Pill({ icon: Icon, children, className }: { icon: React.ComponentType<{
 }
 
 /* ── Metadata chip ── */
-function MetaChip({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
-    <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 border border-slate-100 dark:border-[#1a1a1a]">
-      <Icon className="h-3 w-3 text-brand shrink-0" />
+    <div className="flex items-center gap-2">
+      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")} strokeWidth={1.8} />
       <div className="min-w-0">
-        <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">{label}</p>
-        <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 dark:text-[#ccc] truncate">{value}</p>
+        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>{label}</p>
+        <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-[#ccc]")}>{value}</p>
       </div>
     </div>
   );
 }
 
 /* ── Event card ── */
-function PreviewEventCard({ ev }: { ev: TravelEvent }) {
+function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolean }) {
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
-  const colors = EVENT_COLORS[ev.type] ?? EVENT_COLORS.activity;
+  const typeLabel = ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : "Activity";
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4">
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        {/* Type icon */}
-        <div
-          className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0 border", colors.bg)}
-          style={{ borderColor: `${colors.hex}30` }}
-        >
-          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", colors.text)} />
+        {/* Icon */}
+        <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-[#1a1a1a]")}>
+          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} strokeWidth={1.8} />
         </div>
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          {/* Type pill + title */}
-          <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-[0.15em] mb-1", colors.bg, colors.text)}>
-            <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
-            {ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : "Activity"}
-          </div>
-          <p className="text-[13px] sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
+          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")}>{typeLabel}</p>
+          <p className={cn("text-[13px] sm:text-sm font-bold leading-snug", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{ev.title}</p>
 
           {/* Description */}
           {ev.description && (
-            <p className="mt-1 text-[11px] text-slate-600 dark:text-[#999] leading-relaxed line-clamp-3">{ev.description}</p>
+            <p className={cn("mt-1 text-[11px] leading-relaxed line-clamp-3", forPrint ? "text-slate-500" : "text-slate-600 dark:text-[#999]")}>{ev.description}</p>
           )}
 
           {/* Time + location */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
+          <div className={cn("flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] flex-wrap", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
             {ev.time && (
-              <span className="flex items-center gap-1 font-bold">
-                <Clock className="h-3 w-3" strokeWidth={2} />
+              <span className="flex items-center gap-1 font-semibold">
+                <Clock className="h-3 w-3" strokeWidth={1.8} />
                 {ev.time}
-                {ev.endTime && <> → {ev.endTime}</>}
+                {ev.endTime && <> — {ev.endTime}</>}
               </span>
             )}
             {ev.location && (
-              <span className="flex items-center gap-1 font-medium">
-                <MapPin className="h-3 w-3" strokeWidth={2} />
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" strokeWidth={1.8} />
                 <span className="truncate max-w-[180px] sm:max-w-[200px]">{ev.location}</span>
               </span>
             )}
             {ev.duration && (
-              <span className="flex items-center gap-1 font-medium">
-                <Clock className="h-3 w-3 opacity-60" strokeWidth={2} />
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3 opacity-60" strokeWidth={1.8} />
                 {ev.duration}
               </span>
             )}
@@ -287,77 +298,48 @@ function PreviewEventCard({ ev }: { ev: TravelEvent }) {
 
           {/* Type-specific details */}
           {ev.type === "flight" && (ev.airline || ev.flightNum || ev.terminal) && (
-            <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#ccc]")}>
               {(ev.airline || ev.flightNum) && (
-                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-[#ddd]">
-                  <Plane className="h-3 w-3 text-blue-500" strokeWidth={2} />
-                  {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
-                </span>
+                <span>{[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}</span>
               )}
-              {ev.terminal && (
-                <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-[#999]">
-                  T{ev.terminal}
-                </span>
-              )}
-              {ev.gate && (
-                <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-[#999]">
-                  Gate {ev.gate}
-                </span>
-              )}
-              {ev.seatDetails && (
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-[#888]">
-                  Seat {ev.seatDetails}
-                </span>
-              )}
+              {ev.terminal && <span>Terminal {ev.terminal}</span>}
+              {ev.gate && <span>Gate {ev.gate}</span>}
+              {ev.seatDetails && <span>Seat {ev.seatDetails}</span>}
             </div>
           )}
 
           {ev.type === "hotel" && (ev.roomType || ev.checkin || ev.checkout) && (
-            <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
-              {ev.roomType && (
-                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-[#ddd]">
-                  <Hotel className="h-3 w-3 text-amber-500" strokeWidth={2} />
-                  {ev.roomType}
-                </span>
-              )}
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#ccc]")}>
+              {ev.roomType && <span>{ev.roomType}</span>}
               {(ev.checkin || ev.checkout) && (
-                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-[#888]">
-                  {ev.checkin || "—"}
-                  <ArrowRight className="h-2.5 w-2.5" strokeWidth={2.5} />
-                  {ev.checkout || "—"}
+                <span className={forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#888]"}>
+                  {ev.checkin || "—"} → {ev.checkout || "—"}
                 </span>
               )}
             </div>
           )}
 
           {(ev.type === "dining" || ev.type === "activity") && ev.supplier && (
-            <p className="mt-1.5 text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-[#888]">
-              <Briefcase className="h-3 w-3 inline mr-1" strokeWidth={2} />
+            <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#888]")}>
               {ev.supplier}
             </p>
           )}
 
           {/* Bottom row: conf number, price, status */}
           {(ev.confNumber || ev.price || ev.status) && (
-            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
               {ev.confNumber && (
-                <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                  <Hash className="h-2.5 w-2.5" strokeWidth={2.5} />
-                  {ev.confNumber}
-                </span>
+                <span className="font-semibold">Ref: {ev.confNumber}</span>
               )}
               {ev.price && (
-                <span className={cn("inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full", colors.bg, colors.text)}>
-                  <DollarSign className="h-2.5 w-2.5" strokeWidth={2.5} />
-                  {ev.price}
-                </span>
+                <span className="font-semibold">{ev.price}</span>
               )}
               {ev.status && (
                 <span className={cn(
-                  "text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full border",
+                  "font-semibold",
                   ev.status === "Confirmed" || ev.status === "On Time"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-brand",
                 )}>
                   {ev.status}
                 </span>
@@ -374,9 +356,9 @@ function PreviewEventCard({ ev }: { ev: TravelEvent }) {
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#1f1f1f] text-slate-600 dark:text-[#aaa] hover:text-brand hover:border-brand/30 transition-colors"
+                  className={cn("inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded border transition-colors", forPrint ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#aaa] hover:text-brand hover:border-brand/30")}
                 >
-                  <Paperclip className="h-3 w-3 shrink-0" strokeWidth={2} />
+                  <Paperclip className="h-2.5 w-2.5 shrink-0" strokeWidth={1.8} />
                   <span className="truncate max-w-[120px] sm:max-w-[160px]">{doc.name}</span>
                 </a>
               ))}
@@ -385,7 +367,7 @@ function PreviewEventCard({ ev }: { ev: TravelEvent }) {
 
           {/* Notes */}
           {ev.notes && (
-            <p className="mt-2 text-[10px] sm:text-[11px] italic text-slate-400 dark:text-[#666] line-clamp-2 leading-relaxed">
+            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic line-clamp-2 leading-relaxed", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")}>
               {ev.notes}
             </p>
           )}

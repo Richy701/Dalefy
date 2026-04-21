@@ -288,7 +288,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         mapStyle={mapStyle}
         mapboxAccessToken={MAPBOX_TOKEN}
         reuseMaps
-        attributionControl={true}
+        attributionControl={false}
         style={{ width: "100%", height: "100%" }}
         onLoad={startArcAnimation}
         onClick={() => setTappedIdx(null)}

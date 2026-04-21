@@ -44,9 +44,9 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 const EVENT_COLORS = {
   activity: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.activity },
-  hotel:    { bg: "bg-amber-400/10",  text: "text-amber-500",  Icon: EVENT_ICONS.hotel },
-  dining:   { bg: "bg-pink-400/10",   text: "text-pink-500",   Icon: EVENT_ICONS.dining },
-  flight:   { bg: "bg-blue-400/10",   text: "text-blue-500",   Icon: EVENT_ICONS.flight },
+  hotel:    { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.hotel },
+  dining:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.dining },
+  flight:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.flight },
 };
 
 
@@ -412,12 +412,12 @@ export function DashboardPage() {
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-slate-200/30 dark:border-white/[0.06] px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-slate-200/30 dark:border-white/[0.06] px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
             <div className="relative z-10 max-w-full sm:max-w-[55%]">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
                 {greeting}, {firstName} 👋
               </h1>
-              {upcomingCards[0] && countdown ? (
+              {upcomingCards[0] && countdown && countdown.total > 0 ? (
                 <button
                   onClick={() => handleOpenTrip(upcomingCards[0])}
                   className="group mt-5 block text-left"
@@ -454,12 +454,9 @@ export function DashboardPage() {
                   </p>
                 </button>
               ) : (
-                <button
-                  onClick={() => setIsNewTripOpen(true)}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Plan a Trip
-                </button>
+                <p className="mt-4 text-sm sm:text-base font-black uppercase tracking-[0.15em] text-slate-400 dark:text-[#555]">
+                  Where to next?
+                </p>
               )}
             </div>
             <BrandIllustration
@@ -564,7 +561,7 @@ export function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {(ev.airline || ev.flightNum) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
-                                  <Plane className="h-3 w-3 text-blue-500" strokeWidth={2} />
+                                  <Plane className="h-3 w-3 text-brand" strokeWidth={2} />
                                   {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
                                 </span>
                               )}
@@ -579,7 +576,7 @@ export function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {ev.roomType && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
-                                  <Hotel className="h-3 w-3 text-amber-500" strokeWidth={2} />
+                                  <Hotel className="h-3 w-3 text-brand" strokeWidth={2} />
                                   {ev.roomType}
                                 </span>
                               )}

@@ -137,6 +137,18 @@ html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes landing-float-alt {
+  0%, 100% { transform: translateY(-10px); }
+  50% { transform: translateY(0); }
+}
+@keyframes landing-glow-pulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(11,210,181,0.25); }
+  50% { box-shadow: 0 0 40px rgba(11,210,181,0.4); }
+}
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -271,7 +283,20 @@ button:focus-visible,
 /* Hide Mapbox logo and attribution across all maps */
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-attrib-inner,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right,
 .maplibregl-ctrl-logo,
-.maplibregl-ctrl-attrib {
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
   display: none !important;
+}
+
+/* Fix Mapbox tile rendering seams */
+.mapboxgl-canvas {
+  image-rendering: -webkit-optimize-contrast;
+}
+.mapboxgl-map {
+  overflow: hidden;
 }

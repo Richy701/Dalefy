@@ -53,12 +53,12 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors";
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f1f1f] bg-amber-50/40 dark:bg-amber-950/10">
+    <div className="border-b border-slate-200 dark:border-[#1f1f1f]">
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-500 mb-2">Live Hotel Search</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Live Hotel Search</p>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           <div className="col-span-2 sm:flex-[1.5] sm:min-w-[120px]">
             <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Location</label>
@@ -100,7 +100,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             type="button"
             onClick={search}
             disabled={loading || !query || !checkin || !checkout}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:bg-brand/80 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Hotel className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search
@@ -119,23 +119,23 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
               onClick={() => pick(h)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all ${
                 selected === h.name
-                  ? "border-amber-400 bg-amber-50 dark:bg-amber-950/40"
-                  : "border-slate-200 dark:border-[#252525] hover:border-amber-300 dark:hover:border-amber-800 bg-white dark:bg-[#0d0d0d]"
+                  ? "border-brand bg-brand/5"
+                  : "border-slate-200 dark:border-[#252525] hover:border-brand/40 bg-white dark:bg-[#0d0d0d]"
               }`}
             >
               {h.image ? (
                 <img src={h.image} alt={h.name} className="h-10 w-14 object-cover rounded-lg shrink-0" />
               ) : (
-                <div className="h-10 w-14 rounded-lg bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center shrink-0">
-                  <Hotel className="h-4 w-4 text-amber-400" />
+                <div className="h-10 w-14 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                  <Hotel className="h-4 w-4 text-brand" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black text-slate-900 dark:text-white truncate">{h.name}</p>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   {h.rating > 0 && (
-                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500">
-                      <Flame className="h-2.5 w-2.5 fill-amber-500" />{h.rating}
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-brand">
+                      <Flame className="h-2.5 w-2.5 fill-brand" />{h.rating}
                     </span>
                   )}
                   {h.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-400">({h.reviews.toLocaleString()})</span>}
@@ -149,7 +149,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                     <p className="text-[9px] text-slate-500 dark:text-slate-400">/night</p>
                   </>
                 )}
-                {selected === h.name && <CheckCircle2 className="h-3.5 w-3.5 text-amber-500" />}
+                {selected === h.name && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

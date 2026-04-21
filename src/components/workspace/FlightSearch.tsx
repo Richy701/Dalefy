@@ -62,7 +62,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
     "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f1f1f] bg-brand/5 dark:bg-brand/[0.04]">
+    <div className="border-b border-slate-200 dark:border-[#1f1f1f]">
       <div className="px-3 sm:px-4 pt-3 pb-2">
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Live Flight Search</p>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">

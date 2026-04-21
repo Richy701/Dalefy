@@ -24,11 +24,11 @@ export const darkColors = {
   red: "#ef4444",
   redDim: "rgba(239,68,68,0.12)",
 
-  // Event type colors — matched exactly to web DashboardPage EVENT_COLORS
-  flight: "#60a5fa",    // blue-400  (web: text-blue-500)
-  hotel: "#f59e0b",     // amber-500 (web: text-amber-500)
-  activity: "#0bd2b5",  // teal      (web: text-[#0bd2b5])
-  dining: "#db2777",    // pink-600  (web: text-pink-500, darkened for contrast)
+  // Event type colors — all use brand accent
+  flight: "#0bd2b5",
+  hotel: "#0bd2b5",
+  activity: "#0bd2b5",
+  dining: "#0bd2b5",
 };
 
 export const lightColors = {
@@ -57,10 +57,10 @@ export const lightColors = {
   red: "#ef4444",
   redDim: "rgba(239,68,68,0.12)",
 
-  flight: "#3b82f6",    // blue-500
-  hotel: "#f59e0b",     // amber-500
-  activity: "#0ab8a0",  // teal — vibrant
-  dining: "#be185d",    // pink-700 (better contrast on white cards)
+  flight: "#0ab8a0",
+  hotel: "#0ab8a0",
+  activity: "#0ab8a0",
+  dining: "#0ab8a0",
 };
 
 // Backward compat — screens not yet migrated to useTheme() will always get dark
@@ -166,6 +166,9 @@ export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
     tealDim: `rgba(${r},${g},${b},0.1)`,
     tealMid: `rgba(${r},${g},${b},0.25)`,
     tealGlow: `rgba(${r},${g},${b},0.15)`,
+    flight: hex,
+    hotel: hex,
     activity: hex,
+    dining: hex,
   };
 }

@@ -38,7 +38,6 @@ import { DaySection } from "@/components/workspace/DaySection";
 import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
-import { AiZapDialog } from "@/components/shared/AiZapDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
 import { ItineraryPreviewDialog, ItineraryPreviewContent } from "@/components/shared/ItineraryPreviewDialog";
@@ -108,7 +107,6 @@ export function WorkspacePage() {
   const [imageSearchSource, setImageSearchSource] = useState<"google" | "unsplash" | "pexels" | "local" | null>(null);
   const [imagePage, setImagePage] = useState(1);
   const [imageLastQuery, setImageLastQuery] = useState("");
-  const [aiZapOpen, setAiZapOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
   const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
   const allTravelers = useMemo(() => {
@@ -144,7 +142,6 @@ export function WorkspacePage() {
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const viewAsTraveler = useMemo(() => viewAsId ? allTravelers.find(u => u.id === viewAsId) ?? null : null, [viewAsId, allTravelers]);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
-  const [rematching, setRematching] = useState({ active: false, done: 0, total: 0 });
   const printRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -297,9 +294,8 @@ export function WorkspacePage() {
     const markers = coords
       .map(([lat, lng]) => `pin-s+0bd2b5(${lng},${lat})`)
       .join(",");
-    const style = theme === "dark" ? "dark-v11" : "light-v11";
-    return `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${markers}/auto/800x300@2x?padding=60&access_token=${MAPBOX_TOKEN}`;
-  }, [trip, theme]);
+    return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${markers}/auto/800x300@2x?padding=60&logo=false&attribution=false&access_token=${MAPBOX_TOKEN}`;
+  }, [trip]);
 
   if (!trip) {
     if (!ready) {
@@ -475,16 +471,21 @@ export function WorkspacePage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
+
   const handleExportPdf = async () => {
     if (!pdfRef.current) return;
     setExporting(true);
     const origSrcs: { el: HTMLImageElement; src: string }[] = [];
     try {
-      // Generate static map image for the PDF cover (timeout after 5s)
-      const staticMapUrl = await Promise.race([
+      // Generate static map URL and set it so the hidden div renders it
+      const mapUrl = await Promise.race([
         buildStaticMapUrl(),
         new Promise<null>(r => setTimeout(() => r(null), 5000)),
       ]);
+      setPdfMapUrl(mapUrl);
+      // Wait a tick for React to render the map image in the hidden div
+      await new Promise(r => setTimeout(r, 500));
 
       // Pre-convert cross-origin images to data URLs so html2canvas can render them
       const imgs = pdfRef.current.querySelectorAll("img");
@@ -493,9 +494,13 @@ export function WorkspacePage() {
           const src = img.src;
           if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
           try {
-            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(src)}`;
-            const resp = await fetch(proxyUrl);
-            if (!resp.ok) return;
+            // Try direct fetch first (works for CORS-enabled sources like Mapbox)
+            // Fall back to proxy for other cross-origin images
+            let resp = await fetch(src, { mode: "cors" }).catch(() => null);
+            if (!resp?.ok) {
+              resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(src)}`).catch(() => null);
+            }
+            if (!resp?.ok) return;
             const blob = await resp.blob();
             const dataUrl = await new Promise<string>((resolve) => {
               const reader = new FileReader();
@@ -528,65 +533,50 @@ export function WorkspacePage() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      // If we have a static map, add it as a header on the first page
-      if (staticMapUrl) {
+      // If we have a static map, add it as a dedicated first page
+      if (mapUrl) {
         try {
-          const mapRes = await fetch(staticMapUrl);
-          const mapBlob = await mapRes.blob();
-          const mapDataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(mapBlob);
-          });
-          // Map header: full width, 60mm tall
-          pdf.addImage(mapDataUrl, "PNG", 0, 0, pdfWidth, 60);
-          // Trip title overlay
-          pdf.setFontSize(18);
-          pdf.setTextColor(255, 255, 255);
-          pdf.text(trip.name.toUpperCase(), 10, 50);
-          pdf.setFontSize(8);
-          pdf.text(`${trip.destination || ""} · ${trip.start} — ${trip.end}`, 10, 55);
-          // Itinerary content starts below map
-          const imgWidth = canvas.width;
-          const ratio = pdfWidth / imgWidth;
-          const scaledHeight = canvas.height * ratio;
-          pdf.addImage(imgData, "PNG", 0, 62, pdfWidth, scaledHeight);
-          let heightLeft = scaledHeight - (pdfHeight - 62);
-          let position = -(pdfHeight - 62);
-          while (heightLeft > 0) {
+          let mapResp = await fetch(mapUrl, { mode: "cors" }).catch(() => null);
+          if (!mapResp?.ok) mapResp = null;
+          if (mapResp) {
+            const mapBlob = await mapResp.blob();
+            const mapDataUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(mapBlob);
+            });
+            // Map centered on the page
+            const mapH = 80;
+            const mapY = (pdfHeight - mapH) / 2 - 20;
+            pdf.addImage(mapDataUrl, "PNG", 10, mapY, pdfWidth - 20, mapH);
+            // Trip name below map
+            pdf.setFontSize(18);
+            pdf.setTextColor(30, 30, 30);
+            pdf.text(trip.name.toUpperCase(), pdfWidth / 2, mapY + mapH + 15, { align: "center" });
+            pdf.setFontSize(9);
+            pdf.setTextColor(120, 120, 120);
+            pdf.text(
+              [trip.destination, `${trip.start} — ${trip.end}`].filter(Boolean).join(" · "),
+              pdfWidth / 2, mapY + mapH + 22, { align: "center" }
+            );
+            // Start itinerary content on page 2
             pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-            heightLeft -= pdfHeight;
-            position -= pdfHeight;
           }
-        } catch {
-          // Fallback: no map header, just the content
-          const imgWidth = canvas.width;
-          const ratio = pdfWidth / imgWidth;
-          const scaledHeight = canvas.height * ratio;
-          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
-          let heightLeft = scaledHeight - pdfHeight;
-          let position = -pdfHeight;
-          while (heightLeft > 0) {
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-            heightLeft -= pdfHeight;
-            position -= pdfHeight;
-          }
-        }
-      } else {
-        const imgWidth = canvas.width;
-        const ratio = pdfWidth / imgWidth;
-        const scaledHeight = canvas.height * ratio;
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
-        let heightLeft = scaledHeight - pdfHeight;
-        let position = -pdfHeight;
-        while (heightLeft > 0) {
-          pdf.addPage();
-          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-          heightLeft -= pdfHeight;
-          position -= pdfHeight;
-        }
+        } catch { /* skip map page on error */ }
+      }
+
+      const imgWidth = canvas.width;
+      const ratio = pdfWidth / imgWidth;
+      const scaledHeight = canvas.height * ratio;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
+      let heightLeft = scaledHeight - pdfHeight;
+      let position = -pdfHeight;
+      while (heightLeft > 0) {
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+        heightLeft -= pdfHeight;
+        position -= pdfHeight;
       }
 
       const filename = `${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`;
@@ -595,42 +585,13 @@ export function WorkspacePage() {
       toast.success("PDF exported successfully");
     } catch (err) {
       console.error("PDF export failed:", err);
-      // Restore original image srcs on error too
       for (const { el, src } of origSrcs) el.src = src;
       showToast("PDF export failed", "error");
       toast.error("PDF export failed");
     } finally {
       setExporting(false);
+      setPdfMapUrl(null);
     }
-  };
-
-  const handleRematchImages = async () => {
-    if (!trip || rematching.active) return;
-    const CACHE_KEY = STORAGE.EVENT_IMAGE_CACHE;
-    let cache: Record<string, string> = {};
-    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { /* ignore */ }
-
-    const events = [...trip.events];
-    setRematching({ active: true, done: 0, total: events.length });
-    const CONCURRENCY = 3;
-    for (let i = 0; i < events.length; i += CONCURRENCY) {
-      const slice = events.slice(i, i + CONCURRENCY);
-      const imgs = await Promise.all(slice.map(async ev => {
-        const candidates = buildImageQueryCandidates({ title: ev.title, location: ev.location, type: ev.type });
-        const cacheKey = candidates.join("|");
-        if (cache[cacheKey]) return cache[cacheKey];
-        const { urls } = await searchImagesProgressive(candidates, 1);
-        const url = urls[0];
-        if (url) cache[cacheKey] = url;
-        return url;
-      }));
-      imgs.forEach((url, j) => { if (url) events[i + j] = { ...events[i + j], image: url }; });
-      setRematching(r => ({ ...r, done: Math.min(i + CONCURRENCY, events.length) }));
-    }
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
-    updateTrip(trip.id, { events });
-    setRematching({ active: false, done: 0, total: 0 });
-    toast.success("Event images re-matched");
   };
 
   const runTripImageSearch = async (query: string, page = 1) => {
@@ -938,29 +899,8 @@ export function WorkspacePage() {
         <aside className="w-64 border-r border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] flex flex-col hidden lg:flex shadow-sm relative z-30">
           <div className="p-5 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between bg-slate-50/30 dark:bg-[#050505]/30">
             <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">ITINERARY</span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Re-match event images"
-                title={rematching.active ? `Matching ${rematching.done}/${rematching.total}` : "Re-match event images"}
-                onClick={handleRematchImages}
-                disabled={rematching.active}
-                className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm disabled:opacity-60"
-              >
-                {rematching.active ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-              </Button>
-              <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
-            </div>
+            <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
           </div>
-          {rematching.active && (
-            <div className="px-4 py-2 border-b border-slate-200 dark:border-[#1f1f1f] bg-brand/5">
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-brand mb-1.5">Matching {rematching.done}/{rematching.total}</p>
-              <div className="h-1 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
-                <div className="h-full bg-brand transition-all duration-300" style={{ width: `${rematching.total ? (rematching.done / rematching.total) * 100 : 0}%` }} />
-              </div>
-            </div>
-          )}
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
               {groupedEvents.map(([date], i) => (
@@ -1212,7 +1152,7 @@ export function WorkspacePage() {
                 </div>
                 {/* Hide DockBar on mobile when map is fullscreen */}
                 <div className={showMap ? "hidden lg:block" : ""}>
-                  <DockBar onAddEvent={handleAddEvent} onAiZap={() => setAiZapOpen(true)} />
+                  <DockBar onAddEvent={handleAddEvent} />
                 </div>
               </>
             )}
@@ -1399,13 +1339,13 @@ export function WorkspacePage() {
                 {/* Category tabs */}
                 <div className="grid grid-cols-4 border-b border-slate-200 dark:border-[#1f1f1f]">
                   {([
-                    { id: "flight", label: "Flight", icon: Plane, color: "text-blue-400" },
-                    { id: "hotel", label: "Hotel", icon: Hotel, color: "text-amber-400" },
-                    { id: "activity", label: "Activity", icon: Compass, color: "text-brand" },
-                    { id: "dining", label: "Dining", icon: Utensils, color: "text-pink-400" },
+                    { id: "flight", label: "Flight", icon: Plane },
+                    { id: "hotel", label: "Hotel", icon: Hotel },
+                    { id: "activity", label: "Activity", icon: Compass },
+                    { id: "dining", label: "Dining", icon: Utensils },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? `border-brand bg-brand/5 ${cat.color}` : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
+                      className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
                       <cat.icon className="h-5 w-5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
                     </button>
@@ -1846,8 +1786,6 @@ export function WorkspacePage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      <AiZapDialog open={aiZapOpen} onOpenChange={setAiZapOpen} />
 
       <ImportItineraryDialog
         open={reimportOpen}

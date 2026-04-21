@@ -1,5 +1,4 @@
-import { Plane, Hotel, Compass, Utensils, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plane, Hotel, Compass, Utensils } from "lucide-react";
 import type { TravelEvent } from "@/types";
 
 function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
@@ -13,7 +12,7 @@ function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: st
   );
 }
 
-export function DockBar({ onAddEvent, onAiZap }: { onAddEvent: (type: TravelEvent["type"]) => void; onAiZap: () => void }) {
+export function DockBar({ onAddEvent }: { onAddEvent: (type: TravelEvent["type"]) => void }) {
   return (
     <div className="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-300 max-w-[calc(100vw-2rem)]">
       <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] p-1.5 sm:p-2 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex items-center gap-0.5 sm:gap-1 ring-1 ring-slate-900/5 dark:ring-white/5 shadow-xl overflow-x-auto">
@@ -21,10 +20,6 @@ export function DockBar({ onAddEvent, onAiZap }: { onAddEvent: (type: TravelEven
         <DockButton icon={<Hotel className="h-4 w-4" />} label="Hotel" onClick={() => onAddEvent("hotel")} />
         <DockButton icon={<Compass className="h-4 w-4" />} label="Activity" onClick={() => onAddEvent("activity")} />
         <DockButton icon={<Utensils className="h-4 w-4" />} label="Dining" onClick={() => onAddEvent("dining")} />
-        <div className="h-8 w-px bg-slate-200 dark:bg-[#1f1f1f] mx-2 shrink-0" />
-        <Button onClick={onAiZap} aria-label="AI suggestions" className="h-10 w-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black shadow-xl shadow-brand/20 p-0 shrink-0">
-          <Zap className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );

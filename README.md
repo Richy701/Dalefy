@@ -9,7 +9,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Agency code system for custom logos, colors, and organization theming
-- **PDF Reports** -- Export trip summaries and itineraries as polished PDFs
+- **PDF Export** -- Polished PDF itineraries matching the preview layout with static map headers
+- **Unified Theming** -- Single brand accent color across all event types, light and dark modes
+- **Live Flight & Hotel Search** -- SerpAPI-powered search integrated into the trip workspace
 - **PWA Support** -- Installable as a progressive web app with offline caching
 
 ## Tech Stack
@@ -20,6 +22,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Maps:** Mapbox GL JS via react-map-gl
 - **Charts:** Recharts
 - **Routing:** react-router-dom v7 (HashRouter)
+- **PDF:** html2canvas + jsPDF
 - **Mobile:** Expo / React Native (in `/mobile`)
 
 ## Getting Started
@@ -31,6 +34,16 @@ npm install --legacy-peer-deps
 # Start dev server
 npm run dev
 ```
+
+## Mobile App
+
+```bash
+cd mobile
+npm install
+npx expo start --ios
+```
+
+The mobile app is traveler-facing — no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
 
 ## Environment Variables
 
