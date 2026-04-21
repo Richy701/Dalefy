@@ -27,6 +27,7 @@ import {
   signUp as authSignUp,
   signIn as authSignIn,
   signInWithGoogle as authSignInWithGoogle,
+  handleRedirectResult,
   signOut as authSignOut,
   getSession,
   onAuthStateChange,
@@ -114,6 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let mounted = true;
+
+    // Complete any pending Google redirect sign-in
+    handleRedirectResult().then(({ user: redirectUser, error }) => {
+      if (!mounted) return;
+      if (error) logger.log("Auth", `redirect result error: ${error}`);
+      if (redirectUser) {
+        loggedSetUser(setUser, redirectUser, "google-redirect");
+        localStorage.setItem(STORAGE.AUTH, JSON.stringify(redirectUser));
+        setIsLoading(false);
+      }
+    }).catch(() => {});
 
     async function validate() {
       try {

@@ -10,6 +10,69 @@ import { cn } from "@/lib/utils";
 
 const fadeUp = "animate-[fade-up_0.6s_cubic-bezier(0.16,1,0.3,1)_both]";
 
+/* ── iPhone Mockup ─────────────────────────────────────────────────────────
+   Pure SVG frame (430×880 viewBox matching iPhone 15 Pro proportions).
+   The screenshot fills the screen cutout via absolute positioning.
+   No images for the device chrome — everything is vector.                  */
+
+function PhoneMockup({ src, alt, className, style }: { src: string; alt: string; className?: string; style?: React.CSSProperties }) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+
+  const frame = dark ? "#1a1a1a" : "#e2e2e2";
+  const edgeOuter = dark ? "#444" : "#ccc";
+  const edgeInner = dark ? "#222" : "#d9d9d9";
+  const bezel = dark ? "#0d0d0d" : "#bbb";
+  const buttons = dark ? "#2a2a2a" : "#c5c5c5";
+
+  return (
+    <div className={cn("relative", className)} style={style}>
+      {/* Screenshot — fills the screen area */}
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          top: "1.48%",
+          left: "3.02%",
+          width: "93.95%",
+          height: "97.05%",
+          borderRadius: "8.4% / 4%",
+        }}
+      >
+        <img src={src} alt={alt} className="w-full h-full object-cover object-top" loading="lazy" />
+      </div>
+
+      {/* SVG device frame */}
+      <svg
+        viewBox="0 0 430 880"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="relative w-full h-auto block"
+        overflow="visible"
+      >
+        {/* Outer metallic edge highlight */}
+        <rect x="0.5" y="0.5" width="429" height="879" rx="57.5" stroke={edgeOuter} strokeWidth="1" />
+        <rect x="1.5" y="1.5" width="427" height="877" rx="56.5" stroke={edgeInner} strokeWidth="1" />
+
+        {/* Frame body with screen cutout (evenodd) */}
+        <path
+          fillRule="evenodd"
+          d="M58 0H372C405.1 0 430 24.9 430 58V822C430 855.1 405.1 880 372 880H58C24.9 880 0 855.1 0 822V58C0 24.9 24.9 0 58 0ZM47 13C28.2 13 13 28.2 13 47V833C13 851.8 28.2 867 47 867H383C401.8 867 417 851.8 417 833V47C417 28.2 401.8 13 383 13H47Z"
+          fill={frame}
+        />
+
+        {/* Inner screen bezel — subtle inset ring */}
+        <rect x="12.5" y="12.5" width="405" height="855" rx="34.5" stroke={bezel} strokeWidth="1" />
+
+        {/* Side buttons — left: action, vol up, vol down | right: power */}
+        <rect x="-3.5" y="190" width="4" height="34" rx="2" fill={buttons} />
+        <rect x="-3.5" y="250" width="4" height="64" rx="2" fill={buttons} />
+        <rect x="-3.5" y="326" width="4" height="64" rx="2" fill={buttons} />
+        <rect x="429.5" y="270" width="4" height="96" rx="2" fill={buttons} />
+      </svg>
+    </div>
+  );
+}
+
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
   { label: "FAQ", href: "#faq" },
@@ -270,6 +333,42 @@ export function LandingPage() {
           </div>
           <div className="lg:w-7/12">
             <img src="/hero-workspace.png" alt="Itinerary workspace" className="w-full h-auto block rounded-xl shadow-lg dark:shadow-none" loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Mobile App ───────────────────────────────────────────── */}
+      <section className="py-20 sm:py-28 px-5 border-t border-slate-200 dark:border-white/[0.04]">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center mb-14">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand mb-3">
+              Mobile App
+            </p>
+            <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight mb-4">
+              Your trips, in your pocket
+            </h2>
+            <p className="text-sm sm:text-base text-slate-500 dark:text-[#888] max-w-md mx-auto leading-relaxed">
+              Travelers access their itineraries on the go — no login needed. Just a PIN and they're in.
+            </p>
+          </div>
+          <div className="relative flex items-end justify-center" style={{ perspective: "1200px" }}>
+            {/* Ambient glow */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-[280px] h-[280px] sm:w-[460px] sm:h-[460px] rounded-full bg-brand/[0.05] dark:bg-brand/[0.07] blur-3xl" />
+            </div>
+
+            <PhoneMockup
+              src="/mobile-home.png"
+              alt="Dalefy mobile — trips home"
+              className={cn(fadeUp, "w-[180px] sm:w-[250px] relative z-10")}
+              style={{ animationDelay: "100ms", transform: "rotateY(6deg) rotateX(2deg)" }}
+            />
+            <PhoneMockup
+              src="/mobile-trip.png"
+              alt="Dalefy mobile — trip detail"
+              className={cn(fadeUp, "w-[180px] sm:w-[250px] relative z-20 -ml-6 sm:-ml-10 mb-8 sm:mb-12")}
+              style={{ animationDelay: "250ms", transform: "rotateY(-6deg) rotateX(2deg)" }}
+            />
           </div>
         </div>
       </section>

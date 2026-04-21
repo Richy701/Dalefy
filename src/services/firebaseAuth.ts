@@ -2,6 +2,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as fbSignOut,
   onAuthStateChanged,
@@ -71,32 +73,70 @@ export async function signIn(
 
 // ── Google Sign In ──────────────────────────────────────────────────────────
 
+async function upsertGoogleProfile(fbUser: FbUser): Promise<User> {
+  let profile = await fetchProfile(fbUser.uid);
+  if (!profile) {
+    const name = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "User";
+    profile = {
+      id: fbUser.uid,
+      name,
+      email: fbUser.email ?? "",
+      role: "Trip Manager",
+      avatar: fbUser.photoURL ?? "",
+      initials: initialsFrom(name),
+      status: "Active",
+    };
+    await setDoc(doc(firebaseDb(), "profiles", fbUser.uid), {
+      ...profile,
+      created_at: new Date().toISOString(),
+    });
+  }
+  return profile;
+}
+
 export async function signInWithGoogle(): Promise<{ user: User | null; error: string | null }> {
   if (!isFirebaseConfigured()) return { user: null, error: "Firebase not configured" };
 
   try {
     const provider = new GoogleAuthProvider();
-    const { user: fbUser } = await signInWithPopup(firebaseAuth(), provider);
+    let fbUser: FbUser;
 
-    // Check if profile exists, create one if not
-    let profile = await fetchProfile(fbUser.uid);
-    if (!profile) {
-      const name = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "User";
-      profile = {
-        id: fbUser.uid,
-        name,
-        email: fbUser.email ?? "",
-        role: "Trip Manager",
-        avatar: fbUser.photoURL ?? "",
-        initials: initialsFrom(name),
-        status: "Active",
-      };
-      await setDoc(doc(firebaseDb(), "profiles", fbUser.uid), {
-        ...profile,
-        created_at: new Date().toISOString(),
-      });
+    try {
+      // Try popup first (works on desktop, some mobile)
+      const result = await signInWithPopup(firebaseAuth(), provider);
+      fbUser = result.user;
+    } catch (popupErr: unknown) {
+      const code = (popupErr as { code?: string }).code ?? "";
+      // If popup was blocked or closed, fall back to redirect
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        await signInWithRedirect(firebaseAuth(), provider);
+        // signInWithRedirect navigates away — result handled by handleRedirectResult()
+        return { user: null, error: null };
+      }
+      throw popupErr;
     }
 
+    const profile = await upsertGoogleProfile(fbUser);
+    return { user: profile, error: null };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Google sign-in failed";
+    return { user: null, error: msg.replace("Firebase: ", "") };
+  }
+}
+
+/** Call on app init to complete any pending Google redirect sign-in */
+export async function handleRedirectResult(): Promise<{ user: User | null; error: string | null }> {
+  if (!isFirebaseConfigured()) return { user: null, error: null };
+
+  try {
+    const result = await getRedirectResult(firebaseAuth());
+    if (!result) return { user: null, error: null };
+
+    const profile = await upsertGoogleProfile(result.user);
     return { user: profile, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Google sign-in failed";

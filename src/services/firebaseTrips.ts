@@ -13,8 +13,11 @@ const TRIP_MEMBERS = "trip_members";
 const DEMO_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
 
 export async function fetchTrips(): Promise<Trip[]> {
+  const uid = firebaseAuth().currentUser?.uid;
+  if (!uid) return [];
+
   const snap = await getDocs(
-    query(collection(firebaseDb(), TRIPS), orderBy("start", "desc")),
+    query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc")),
   );
   const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
   const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
@@ -24,7 +27,10 @@ export async function fetchTrips(): Promise<Trip[]> {
 }
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe {
-  const q = query(collection(firebaseDb(), TRIPS), orderBy("start", "desc"));
+  const uid = firebaseAuth().currentUser?.uid;
+  if (!uid) { onChange([]); return () => {}; }
+
+  const q = query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc"));
   return onSnapshot(q, (snap) => {
     const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
     const filtered = all.filter((t) => !DEMO_IDS.has(t.id));

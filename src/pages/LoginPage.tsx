@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import {
   Loader2, ArrowRight, ArrowLeft, Eye, EyeOff, Upload, X, Check,
   Briefcase, Users, Compass, Shield, Palette, Paintbrush,
@@ -114,9 +115,22 @@ function OrDivider() {
 const inputClass =
   "h-14 bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] rounded-xl text-base text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
 
-// ── Brand Panel (left side on desktop) ──────────────────────────────────
+// ── Animated hero background ────────────────────────────────────────────
 
-function BrandPanel() {
+function HeroBackground() {
+  const [titleNumber, setTitleNumber] = useState(0);
+  const titles = useMemo(
+    () => ["reimagined", "simplified", "connected", "effortless", "seamless"],
+    []
+  );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setTitleNumber(titleNumber === titles.length - 1 ? 0 : titleNumber + 1);
+    }, 2500);
+    return () => clearTimeout(timeoutId);
+  }, [titleNumber, titles]);
+
   const features = [
     { icon: Globe, label: "Multi-tenant workspaces" },
     { icon: MapPin, label: "Interactive trip mapping" },
@@ -125,41 +139,99 @@ function BrandPanel() {
   ];
 
   return (
-    <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-col justify-between bg-gradient-to-br from-brand/[0.08] via-brand/[0.03] to-transparent dark:from-brand/[0.06] dark:via-brand/[0.02] dark:to-transparent border-r border-slate-200/60 dark:border-[#1a1a1a] p-12 xl:p-16 relative overflow-hidden">
-      {/* Decorative orbs */}
-      <div className="absolute -top-32 -right-32 w-[400px] h-[400px] bg-brand/[0.08] rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-[300px] h-[300px] bg-purple-500/[0.04] rounded-full blur-[100px] pointer-events-none" />
+    <div className="absolute inset-0 pointer-events-none select-none">
+      {/* Dot grid */}
+      <div
+        className="absolute inset-0 opacity-[0.035] dark:opacity-[0.06]"
+        style={{
+          backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
 
-      {/* Top — brand */}
-      <div className="relative z-10">
-        <div className="flex items-center gap-3.5 mb-16">
-          <div className="h-11 w-11 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/20">
-            <Logo className="text-black h-6 w-6" />
+      {/* Radial glow behind hero text */}
+      <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-brand/[0.06] rounded-full blur-[160px]" />
+      <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-purple-500/[0.04] rounded-full blur-[120px]" />
+
+      {/* Hero content — pinned left, stops before form card */}
+      <div className="absolute inset-y-0 left-0 right-[520px] xl:right-[580px] flex flex-col justify-center px-12 xl:px-20">
+        {/* Logo */}
+        <motion.div
+          className="flex items-center gap-3.5 mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <div className="h-12 w-12 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/25">
+            <Logo className="text-black h-7 w-7" />
           </div>
-          <span className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+          <span className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
             {BRAND.nameUpper}
           </span>
-        </div>
+        </motion.div>
 
-        <h2 className="text-3xl xl:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-[1.1] mb-4">
-          Travel management,<br />
-          <span className="text-brand">reimagined.</span>
-        </h2>
-        <p className="text-base text-slate-500 dark:text-[#999] leading-relaxed max-w-sm">
-          Plan, manage, and share group itineraries with your team and travelers — all from one platform.
-        </p>
-      </div>
+        {/* Big animated heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+        >
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.95]">
+            Travel
+            <br />
+            management,
+            <span className="relative flex overflow-hidden h-[1.1em]">
+              &nbsp;
+              {titles.map((title, index) => (
+                <motion.span
+                  key={index}
+                  className="absolute font-black uppercase text-brand drop-shadow-[0_0_40px_rgba(11,210,181,0.3)]"
+                  initial={{ opacity: 0, y: "-100%" }}
+                  transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                  animate={
+                    titleNumber === index
+                      ? { y: 0, opacity: 1 }
+                      : { y: titleNumber > index ? "-120%" : "120%", opacity: 0 }
+                  }
+                >
+                  {title}.
+                </motion.span>
+              ))}
+            </span>
+          </h1>
+        </motion.div>
 
-      {/* Bottom — feature list */}
-      <div className="relative z-10 space-y-4">
-        {features.map(({ icon: Icon, label }) => (
-          <div key={label} className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/[0.06] border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
-              <Icon className="h-4 w-4 text-brand" strokeWidth={2} />
-            </div>
-            <span className="text-sm font-semibold text-slate-600 dark:text-[#bbb]">{label}</span>
-          </div>
-        ))}
+        {/* Subtitle */}
+        <motion.p
+          className="text-base lg:text-lg text-slate-500 dark:text-[#777] leading-relaxed max-w-lg mt-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          Plan, manage, and share group itineraries with your team
+          and travelers — all from one platform.
+        </motion.p>
+
+        {/* Feature pills */}
+        <motion.div
+          className="flex flex-wrap gap-3 mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+        >
+          {features.map(({ icon: Icon, label }, i) => (
+            <motion.div
+              key={label}
+              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.8 + i * 0.1 }}
+            >
+              <Icon className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">{label}</span>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </div>
   );
@@ -322,19 +394,33 @@ export function LoginPage() {
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh bg-slate-50 dark:bg-[#050505] flex">
-      {/* Left — brand panel (desktop only) */}
-      <BrandPanel />
+    <div className="min-h-dvh bg-slate-50 dark:bg-[#050505] relative overflow-hidden">
+      {/* Full-canvas animated hero background */}
+      <div className="hidden lg:block">
+        <HeroBackground />
+      </div>
 
-      {/* Right — form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative overflow-hidden">
-        {/* Mobile-only ambient orbs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none lg:hidden">
-          <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-brand/[0.07] rounded-full blur-[100px]" />
-          <div className="absolute bottom-1/3 -right-40 w-[400px] h-[400px] bg-brand/[0.05] rounded-full blur-[100px]" />
-        </div>
+      {/* Mobile hero — compact version */}
+      <div className="lg:hidden absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-brand/[0.07] rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/3 -right-40 w-[400px] h-[400px] bg-brand/[0.05] rounded-full blur-[100px]" />
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+      </div>
 
-        <div className="w-full max-w-[480px] relative z-10">
+      {/* Form card — glass overlay on right */}
+      <div className="relative z-20 min-h-dvh flex items-center justify-center lg:justify-end p-6 sm:p-10 lg:pr-16 xl:pr-24">
+        <motion.div
+          className="w-full max-w-[480px] lg:bg-white/70 lg:dark:bg-[#0a0a0a]/80 lg:backdrop-blur-2xl lg:border lg:border-slate-200/50 lg:dark:border-[#1f1f1f] lg:rounded-3xl lg:shadow-2xl lg:shadow-black/5 lg:dark:shadow-black/40 lg:p-10 xl:lg:p-12"
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        >
           {/* Mobile-only logo */}
           <div className="text-center mb-10 lg:hidden">
             <div
@@ -812,7 +898,7 @@ export function LoginPage() {
                 ? "Secured with end-to-end encryption"
                 : "Your profile is stored on this device only"}
           </p>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
