@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { BRAND } from "@/config/brand";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import type { ComplianceDoc } from "@/types";
 
 type Tab = "operations" | "compliance";
@@ -49,14 +51,14 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 
 export function ReportsPage() {
   const { trips } = useTrips();
-  const { accent } = usePreferences();
-  const brandHex = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
+  const { accentColor } = usePreferences();
+  const brandHex = accentColor;
   const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: brandHex, "In Progress": "#f59e0b" };
   const { theme } = useTheme();
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
-  const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>("daf-compliance", {});
+  const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
 
   const handleExportCsv = useCallback(() => {
     const rows = trips.map(t => {
@@ -197,13 +199,13 @@ export function ReportsPage() {
           {/* ───────── TRIP OPERATIONS ───────── */}
           {tab === "operations" && (trips.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
-              <img src="/illustrations/illus-sitting.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <BrandIllustration src="/illustrations/illus-sitting.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to see your analytics</p>
               </div>
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/dashboard")}
                 className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Create a Trip
@@ -562,7 +564,7 @@ export function ReportsPage() {
           {/* ───────── TEAM & COMPLIANCE ───────── */}
           {tab === "compliance" && (complianceData.travelers.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
-              <img src="/illustrations/illus-together.svg" alt="" className="w-72 h-72 object-contain mb-[-32px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <BrandIllustration src="/illustrations/illus-together.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add travelers to track compliance</p>

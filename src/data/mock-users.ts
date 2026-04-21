@@ -1,3 +1,110 @@
 import type { User } from "@/types";
 
-export const MOCK_USERS: User[] = [];
+export const MOCK_USERS: User[] = [
+  {
+    id: "t1",
+    name: "Sophia Chen",
+    email: "sophia.chen@luxuryescapes.com",
+    role: "Trip Manager",
+    avatar: "",
+    initials: "SC",
+    status: "Active",
+    compliance: [
+      { name: "Passport", status: "Signed", date: "2026-02-15" },
+      { name: "Visa (Kenya)", status: "Signed", date: "2026-02-20" },
+      { name: "Travel Insurance", status: "Signed", date: "2026-03-01" },
+    ],
+  },
+  {
+    id: "t2",
+    name: "Marcus Johnson",
+    email: "marcus.j@travelagency.co",
+    role: "Agent",
+    avatar: "",
+    initials: "MJ",
+    status: "Active",
+    compliance: [
+      { name: "NDA", status: "Signed", date: "2025-09-01" },
+      { name: "Travel Insurance", status: "Expired", date: "2025-06-30" },
+    ],
+  },
+  {
+    id: "t3",
+    name: "Amara Osei",
+    email: "amara.osei@outlook.com",
+    role: "Traveller",
+    avatar: "",
+    initials: "AO",
+    status: "Active",
+    compliance: [
+      { name: "Passport", status: "Signed", date: "2026-01-05" },
+      { name: "Visa (Japan)", status: "Pending" },
+    ],
+  },
+  {
+    id: "t4",
+    name: "Liam O'Brien",
+    email: "liam.obrien@gmail.com",
+    role: "Traveller",
+    avatar: "",
+    initials: "LO",
+    status: "Away",
+    compliance: [
+      { name: "Health Declaration", status: "Signed", date: "2026-03-05" },
+      { name: "Travel Insurance", status: "Signed", date: "2026-01-15" },
+    ],
+  },
+  {
+    id: "t5",
+    name: "Priya Sharma",
+    email: "priya.sharma@wanderlust.io",
+    role: "Agent",
+    avatar: "",
+    initials: "PS",
+    status: "Active",
+    compliance: [
+      { name: "NDA", status: "Signed", date: "2025-12-15" },
+      { name: "Liability Waiver", status: "Pending" },
+    ],
+  },
+  {
+    id: "t6",
+    name: "Ash Murray",
+    email: "ash.murray@hotmail.co.uk",
+    role: "Traveller",
+    avatar: "",
+    initials: "AM",
+    status: "Active",
+    compliance: [
+      { name: "Passport", status: "Signed", date: "2026-03-20" },
+      { name: "Travel Insurance", status: "Pending" },
+    ],
+  },
+  {
+    id: "t7",
+    name: "Elena Rossi",
+    email: "elena.rossi@viaggi.it",
+    role: "Agent",
+    avatar: "",
+    initials: "ER",
+    status: "Active",
+    compliance: [
+      { name: "Agency Agreement", status: "Signed", date: "2025-07-01" },
+      { name: "Background Check", status: "Signed", date: "2025-10-10" },
+    ],
+  },
+  {
+    id: "t8",
+    name: "James Whitfield",
+    email: "j.whitfield@corporate.com",
+    role: "Admin",
+    avatar: "",
+    initials: "JW",
+    status: "Offline",
+    compliance: [
+      { name: "NDA", status: "Signed", date: "2025-11-01" },
+      { name: "Background Check", status: "Signed", date: "2025-06-15" },
+      { name: "Data Protection Agreement", status: "Expired", date: "2025-04-01" },
+    ],
+  },
+];

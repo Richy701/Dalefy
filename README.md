@@ -72,6 +72,7 @@ Internal travel planning and itinerary management platform for teams. Build, man
 - Command palette (Cmd+K) — search trips, navigate pages, trigger actions
 - Dark / light mode with instant switching (also toggleable from the sidebar)
 - Accent color picker — 6 swatches (Cyber Teal, Electric Violet, Solar Amber, Crimson, Cobalt, Lime) that swap the brand color everywhere, including Recharts data viz, via a runtime CSS custom property
+- **Agency code management** — set and manage a unique agency code in Settings → White-Label so travelers can connect via the mobile app
 - Compact mode, toast notifications toggle, and success-sound chime — all persisted in Settings → Appearance / Notifications
 - Brand logo mark rendered in the sidebar header and across mobile screens
 - Sidebar with collapsible icon mode, recent trip shortcut, theme toggle, user footer
@@ -91,16 +92,18 @@ Internal travel planning and itinerary management platform for teams. Build, man
 
 Companion Expo React Native app in the `mobile/` directory.
 
-- 3-tab layout: Trips, World, Me
+- 4-tab layout: Trips, World, Gallery, Me
+- **Agency code onboarding** — travelers enter their travel agency's code on first launch to brand the app (logo, name, accent color)
+- **White-label branding** — agency logo, name, and colors appear across home, gallery, and profile screens
 - **Live countdown** — ticking D:H:M:S departure counter on the home banner
 - Trip detail screen with parallax hero, route map, organizer card, and compact day summary rows
 - **Flight arc lines** — great-circle arcs with animated plane markers on the trip detail map
 - **Heatmap + animated planes** on the destinations world map
+- **Gallery** — photo and video uploads organized by trip with masonry grid, hero banner, and full-screen viewer
 - Day detail drill-in screen with full event cards
 - Organizer contact card with call/email actions
 - Information & documents section per trip
-- Compliance document tracking with sign/remind actions
-- Brand logo mark inline with "DAF Adventures" across every header and footer
+- Documents section — agency-uploaded documents (empty state when none shared)
 - iOS overscroll bounce matches the app background (no white flash on pull-down)
 - Real-time sync with web app via Supabase Realtime
 - Offline-first — AsyncStorage cache with cloud sync
@@ -108,7 +111,7 @@ Companion Expo React Native app in the `mobile/` directory.
 - Deep linking (`dafadventures://shared/:tripId`)
 - Shared trip screen for public trip links
 - **Trip PIN entry** — passport modal with PIN, QR scan, and link paste modes
-- Onboarding welcome screen with name entry and notification permission
+- Onboarding welcome screen with agency code entry and profile setup
 - Settings screen with appearance, notification, and account options
 - Dark/light theme with system detection
 - Notification center with persistent history

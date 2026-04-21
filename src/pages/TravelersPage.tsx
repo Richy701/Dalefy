@@ -16,12 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { BrandIllustration } from "@/components/shared/BrandIllustration";
+import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
-import { fetchTripMembers, type TripMember } from "@/services/supabaseTrips";
-import { isSupabaseConfigured } from "@/services/supabase";
+import { fetchTripMembers, type TripMember } from "@/services/firebaseTrips";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { useAuth } from "@/context/AuthContext";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
 type Tab = "travelers" | "hr" | "app-users";
@@ -43,24 +46,29 @@ const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string 
 export function TravelersPage() {
   const { trips } = useTrips();
   const { showToast, addNotification } = useNotifications();
-  const { accent } = usePreferences();
-  const brandHex = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
+  const { accentColor } = usePreferences();
+  const { user } = useAuth();
+  const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
+  const brandHex = accentColor;
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("travelers");
 
-  const [complianceOverrides, setComplianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>("daf-compliance", {});
-  const [customTravelers, setCustomTravelers] = useLocalStorage<UserType[]>("daf-custom-travelers", []);
+  const [complianceOverrides, setComplianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
+  const [customTravelers, setCustomTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
 
   // Add Traveler drawer form
   const [drawerForm, setDrawerForm] = useState({ name: "", email: "", role: "", status: "Active" as UserType["status"] });
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set());
+  const [hrPage, setHrPage] = useState(0);
+  const HR_PER_PAGE = 6;
   const [appUsers, setAppUsers] = useState<TripMember[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isFirebaseConfigured()) return;
     setAppUsersLoading(true);
     fetchTripMembers()
       .then(setAppUsers)
@@ -113,9 +121,11 @@ export function TravelersPage() {
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const travelers = useMemo(() => {
+    // Only show mock users for demo accounts; real accounts start empty
+    const baseUsers = isDemoUser ? MOCK_USERS : [];
     // Deduplicate by name (case-insensitive) — keep first occurrence
     const seen = new Set<string>();
-    const allUsers = [...MOCK_USERS, ...customTravelers].filter(u => {
+    const allUsers = [...baseUsers, ...customTravelers].filter(u => {
       const key = u.name.trim().toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
@@ -133,7 +143,7 @@ export function TravelersPage() {
       const compliance = complianceOverrides[user.id] || user.compliance || [];
       return { ...user, assignedTrips, compliance };
     });
-  }, [trips, complianceOverrides, customTravelers]);
+  }, [trips, complianceOverrides, customTravelers, isDemoUser]);
 
   const filtered = useMemo(() => {
     if (!search) return travelers;
@@ -158,17 +168,34 @@ export function TravelersPage() {
 
   const allDocs = useMemo(() => {
     const docs: { userId: string; userName: string; initials: string; doc: ComplianceDoc }[] = [];
+    const seen = new Set<string>();
     travelers.forEach(t => {
       t.compliance.forEach(d => {
-        if (d.status !== "Not Required") {
-          docs.push({ userId: t.id, userName: t.name, initials: t.initials, doc: d });
-        }
+        if (d.status === "Not Required") return;
+        const key = `${t.id}:${d.name}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        docs.push({ userId: t.id, userName: t.name, initials: t.initials, doc: d });
       });
     });
     const priority: Record<string, number> = { Expired: 0, Pending: 1, Signed: 2 };
     docs.sort((a, b) => (priority[a.doc.status] ?? 3) - (priority[b.doc.status] ?? 3));
     return docs;
   }, [travelers]);
+
+  // Group docs by person for the HR view
+  const groupedDocs = useMemo(() => {
+    const map = new Map<string, { userId: string; userName: string; initials: string; docs: ComplianceDoc[] }>();
+    for (const entry of allDocs) {
+      const existing = map.get(entry.userId);
+      if (existing) {
+        existing.docs.push(entry.doc);
+      } else {
+        map.set(entry.userId, { userId: entry.userId, userName: entry.userName, initials: entry.initials, docs: [entry.doc] });
+      }
+    }
+    return Array.from(map.values());
+  }, [allDocs]);
 
   type TravelerRow = typeof travelers[number];
 
@@ -231,6 +258,17 @@ export function TravelersPage() {
     const q = search.toLowerCase();
     return d.userName.toLowerCase().includes(q) || d.doc.name.toLowerCase().includes(q);
   }), [allDocs, search]);
+
+  const filteredGroupedDocs = useMemo(() => {
+    if (!search) return groupedDocs;
+    const q = search.toLowerCase();
+    return groupedDocs
+      .map(g => ({
+        ...g,
+        docs: g.docs.filter(d => g.userName.toLowerCase().includes(q) || d.name.toLowerCase().includes(q)),
+      }))
+      .filter(g => g.docs.length > 0);
+  }, [groupedDocs, search]);
 
 
   const handleAddTraveler = useCallback((e: React.FormEvent) => {
@@ -312,7 +350,7 @@ export function TravelersPage() {
           <div className="max-w-[140px] sm:max-w-md w-full relative group">
             <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
+            <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search..." className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
         ) : undefined}
         cta={
@@ -369,7 +407,7 @@ export function TravelersPage() {
           {/* ───────── TRAVELERS TAB (TANSTACK TABLE) ───────── */}
           {tab === "travelers" && travelers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 gap-3 animate-fade-in">
-              <img src="/illustrations/illus-discussion.svg" alt="" className="w-72 h-72 object-contain mb-[-24px] dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+              <BrandIllustration src="/illustrations/illus-discussion.svg" className="w-72 h-72 object-contain mb-[-24px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
@@ -668,76 +706,151 @@ export function TravelersPage() {
                 </button>
               </div>
 
-              <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
-                <div className="pl-8 pr-6 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center gap-4 lg:gap-6">
-                  <div className="h-9 w-9 shrink-0" />
-                  <div className="min-w-[140px] text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Traveler</div>
-                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Document Type</div>
-                  <div className="w-24 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-center">Status</div>
-                  <div className="w-28 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right hidden md:block">Date Signed</div>
-                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Actions</div>
+              {filteredGroupedDocs.length === 0 ? (
+                <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
+                      <FileCheck className="h-6 w-6 text-brand opacity-60" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No documents yet</p>
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add team members to track compliance</p>
+                  </div>
+                </div>
+              ) : (() => {
+                const hrTotalPages = Math.ceil(filteredGroupedDocs.length / HR_PER_PAGE);
+                const safePage = Math.min(hrPage, hrTotalPages - 1);
+                const paged = filteredGroupedDocs.slice(safePage * HR_PER_PAGE, (safePage + 1) * HR_PER_PAGE);
+                return (<>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {paged.map(({ userId, userName, initials, docs: personDocs }) => {
+                    const signed = personDocs.filter(d => d.status === "Signed").length;
+                    const total = personDocs.length;
+                    const allGood = signed === total;
+                    const isExpanded = expandedPersons.has(userId);
+                    const MAX_VISIBLE = 3;
+                    const hasOverflow = personDocs.length > MAX_VISIBLE;
+                    // Sort: expired first, then pending, then signed
+                    const sortedDocs = [...personDocs].sort((a, b) => {
+                      const p: Record<string, number> = { Expired: 0, Pending: 1, Signed: 2 };
+                      return (p[a.status] ?? 3) - (p[b.status] ?? 3);
+                    });
+                    const visibleDocs = isExpanded ? sortedDocs : sortedDocs.slice(0, MAX_VISIBLE);
+                    const hiddenCount = sortedDocs.length - MAX_VISIBLE;
+                    return (
+                      <div key={userId} className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-xl">
+                        {/* Person header */}
+                        <div className="px-5 pt-5 pb-4 flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{initials}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#666]">
+                              {allGood ? "All signed" : `${signed} of ${total} signed`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Document rows */}
+                        <div className="border-t border-slate-100 dark:border-[#1a1a1a]">
+                          {visibleDocs.map(doc => {
+                            const cfg = DOC_STATUS_CONFIG[doc.status];
+                            const Icon = cfg.icon;
+                            const reminderKey = `${userId}-${doc.name}`;
+                            const isSending = sendingReminder === reminderKey;
+                            return (
+                              <div
+                                key={`${userId}-${doc.name}`}
+                                className="flex items-center px-5 py-3 gap-3 border-b border-slate-50 dark:border-[#151515] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-colors"
+                              >
+                                <div className={`h-7 w-7 rounded-lg ${cfg.bg} ${cfg.color} flex items-center justify-center shrink-0`}>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-[#aaa] truncate">{doc.name}</p>
+                                  <p className="text-[10px] font-bold text-slate-400 dark:text-[#555]">
+                                    {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Not signed yet"}
+                                  </p>
+                                </div>
+                                <Badge className={`text-[10px] font-bold px-2 py-0.5 rounded-full border-none uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
+                                {doc.status === "Signed" ? (
+                                  <button onClick={() => openDocSheet(userId, userName, doc)} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#777] hover:text-brand hover:border-brand/40 transition-all">
+                                    <Eye className="h-3 w-3" />
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 transition-opacity">
+                                      Sign
+                                    </button>
+                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#777] hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
+                                      <Send className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Show more / less toggle */}
+                        {hasOverflow && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedPersons(prev => {
+                              const next = new Set(prev);
+                              if (next.has(userId)) next.delete(userId); else next.add(userId);
+                              return next;
+                            })}
+                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[#555] hover:text-brand transition-colors border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer"
+                          >
+                            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            {isExpanded ? "Show less" : `${hiddenCount} more`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Docs list */}
-                <div>
-                    {filteredAllDocs.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-16 gap-3">
-                        <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-                          <FileCheck className="h-6 w-6 text-brand opacity-60" />
-                        </div>
-                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No documents yet</p>
-                        <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add team members to track compliance</p>
-                      </div>
-                    )}
-                    {filteredAllDocs.map(({ userId, userName, initials, doc }) => {
-                      const cfg = DOC_STATUS_CONFIG[doc.status];
-                      const Icon = cfg.icon;
-                      const reminderKey = `${userId}-${doc.name}`;
-                      const isSending = sendingReminder === reminderKey;
-                      return (
-                        <div
-                          key={`${userId}-${doc.name}`}
-                          className="flex items-center px-6 h-[68px] gap-4 lg:gap-6 hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-all group border-b border-slate-100 dark:border-[#1a1a1a]"
+                {/* HR Pagination */}
+                {hrTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
+                      Page {safePage + 1} of {hrTotalPages} · {filteredGroupedDocs.length} people
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setHrPage(p => Math.max(0, p - 1))}
+                        disabled={safePage === 0}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        aria-label="Previous page"
+                      >
+                        <PgLeft className="h-4 w-4" />
+                      </button>
+                      {Array.from({ length: hrTotalPages }, (_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setHrPage(i)}
+                          className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                            safePage === i
+                              ? "bg-brand text-black shadow-sm"
+                              : "text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5"
+                          }`}
                         >
-                          <div className="h-9 w-9 rounded-lg bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{initials}</div>
-                          <div className="min-w-[140px]">
-                            <div className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</div>
-                          </div>
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div className={`h-7 w-7 rounded-lg ${cfg.bg} ${cfg.color} flex items-center justify-center shrink-0`}>
-                              <Icon className="h-3.5 w-3.5" />
-                            </div>
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#aaa] truncate">{doc.name}</span>
-                          </div>
-                          <div className="w-24 flex justify-center">
-                            <Badge className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border-none uppercase tracking-wider ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
-                          </div>
-                          <div className="w-28 text-right hidden md:block">
-                            <span className={`text-xs font-bold uppercase tracking-wider ${doc.date ? "text-slate-500 dark:text-slate-400" : "text-slate-300 "}`}>
-                              {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Pending"}
-                            </span>
-                          </div>
-                          <div className="w-48 flex justify-end shrink-0">
-                            {doc.status === "Signed" ? (
-                              <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-brand hover:border-brand/40 transition-all">
-                                <Eye className="h-3 w-3" /> REVIEW
-                              </button>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand text-xs font-black uppercase tracking-widest text-black hover:opacity-90">
-                                  <FileCheck className="h-3 w-3" /> SIGN
-                                </button>
-                                <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
-                                  <Send className="h-3 w-3" /> {isSending ? "..." : "REMIND"}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
+                          {i + 1}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setHrPage(p => Math.min(hrTotalPages - 1, p + 1))}
+                        disabled={safePage >= hrTotalPages - 1}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        aria-label="Next page"
+                      >
+                        <PgRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>);
+              })()}
             </div>
           )}
 
@@ -912,7 +1025,7 @@ export function TravelersPage() {
                     type="email"
                     value={drawerForm.email}
                     onChange={e => setDrawerForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="name@dafadventures.com"
+                    placeholder="name@dalefy.com"
                     className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
                   />
                 </div>

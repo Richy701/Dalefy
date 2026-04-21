@@ -110,7 +110,7 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
             {onNewTrip && (
               <Command.Item
                 value="new trip create"
-                onSelect={() => run(() => { navigate("/"); onNewTrip(); })}
+                onSelect={() => run(() => { navigate("/dashboard"); onNewTrip(); })}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
               >
                 <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">

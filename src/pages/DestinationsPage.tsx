@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Calendar as LucideCalendar, Plane, Hotel, Compass, Utensils, Globe, ChevronLeft, ChevronRight } from "lucide-react";
 import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { resolveCoords } from "@/data/coordinates";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
@@ -47,10 +47,9 @@ async function geocodeDestination(name: string): Promise<[number, number] | null
 export function DestinationsPage() {
   const { trips } = useTrips();
   const { theme } = useTheme();
-  const { accent } = usePreferences();
-  const accentPreset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
-  const ACCENT = accentPreset.hex;
-  const ACCENT_RGB = accentPreset.rgb.replace(/\s+/g, ", ");
+  const { accentColor } = usePreferences();
+  const ACCENT = accentColor;
+  const ACCENT_RGB = (() => { const r = parseInt(accentColor.slice(1, 3), 16), g = parseInt(accentColor.slice(3, 5), 16), b = parseInt(accentColor.slice(5, 7), 16); return `${r}, ${g}, ${b}`; })();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
@@ -153,7 +152,8 @@ export function DestinationsPage() {
       // Try local coordinate lookup first (handles airport codes like LHR, NBO)
       const local = resolveCoords(name);
       if (local) {
-        setGeoCoords(prev => ({ ...prev, [name]: local }));
+        // resolveCoords returns [lat, lng], normalize to [lng, lat] for Mapbox
+        setGeoCoords(prev => ({ ...prev, [name]: [local[1], local[0]] }));
         return;
       }
       // Fall back to Mapbox geocoding API
@@ -223,7 +223,7 @@ export function DestinationsPage() {
         "horizon-blend": 0.02,
         "space-color": cardBg,
         "star-intensity": isDark ? 0.1 : 0,
-      } as any);
+      } as Parameters<typeof map.setFog>[0]);
       if (!map.getSource("mapbox-dem")) {
         map.addSource("mapbox-dem", {
           type: "raster-dem",
@@ -278,13 +278,13 @@ export function DestinationsPage() {
 
         {destinations.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
-            <img src="/illustrations/illus-movement.svg" alt="" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
+            <BrandIllustration src="/illustrations/illus-movement.svg" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
             </div>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip

@@ -7,16 +7,16 @@
  */
 export const BRAND = {
   /** Display name shown in headers, footers, PDFs, emails, etc. */
-  name: "DAF Adventures",
+  name: "Dalefy",
 
   /** Uppercase variant for hero / login headings */
-  nameUpper: "DAF ADVENTURES",
+  nameUpper: "DALEFY",
 
   /** Short name for PWA manifest, share text, etc. */
-  shortName: "DAF",
+  shortName: "Dalefy",
 
   /** One-line tagline */
-  tagline: "Plan & manage trips together",
+  tagline: "Trip planning without the mess",
 
   /** Fixed prefix for localStorage keys — DO NOT change after launch */
   storagePrefix: "daf",

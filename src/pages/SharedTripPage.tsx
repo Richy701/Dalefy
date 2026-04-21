@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils, Clock, Loader2, Check, ChevronDown } from "lucide-react";
-import { isSupabaseConfigured } from "@/services/supabase";
-import { supabase } from "@/services/supabase";
+import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import type { Trip, TravelEvent } from "@/types";
 import { resolvedBrand } from "@/config/brand";
-import { fetchBrandingForTrip, type OrgBranding } from "@/services/supabaseBranding";
-
-const EVENT_ICONS = { flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils } as const;
-const EVENT_COLORS = { flight: "#94a3b8", hotel: "#f59e0b", activity: "#0bd2b5", dining: "#f472b6" } as const;
+import { hexToRgb } from "@/context/BrandContext";
+import { fetchBrandingForTrip, type OrgBranding } from "@/services/firebaseBranding";
+import { EVENT_ICONS, EVENT_HEX } from "@/config/eventStyles";
 
 function rowToTrip(row: Record<string, unknown>): Trip {
   return {
@@ -31,7 +30,7 @@ function rowToTrip(row: Record<string, unknown>): Trip {
 
 function EventRow({ ev }: { ev: TravelEvent }) {
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
-  const color = EVENT_COLORS[ev.type] ?? "#0bd2b5";
+  const color = EVENT_HEX[ev.type] ?? "#0bd2b5";
 
   return (
     <div className="flex items-start gap-3 p-3 sm:p-4">
@@ -68,28 +67,28 @@ export function SharedTripPage() {
   const brand = resolvedBrand(orgBranding ? { companyName: orgBranding.companyName, logoUrl: orgBranding.logoUrl, accentColor: orgBranding.accentColor } : null);
 
   useEffect(() => {
-    if (!tripId || !isSupabaseConfigured()) {
-      setError("Trip sharing requires Supabase to be configured.");
+    if (!tripId || !isFirebaseConfigured()) {
+      setError("Trip sharing requires Firebase to be configured.");
       setLoading(false);
       return;
     }
 
-    supabase
-      .from("trips")
-      .select("*")
-      .eq("id", tripId)
-      .single()
-      .then(({ data, error: err }) => {
-        if (err || !data) {
+    getDoc(doc(firebaseDb(), "trips", tripId))
+      .then((snap) => {
+        if (!snap.exists()) {
           setError("Trip not found or no longer available.");
         } else {
-          const t = rowToTrip(data);
+          const t = rowToTrip({ id: snap.id, ...snap.data() });
           if (t.status !== "Published") {
             setError("This trip hasn't been published yet.");
           } else {
             setTrip(t);
           }
         }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Trip not found or no longer available.");
         setLoading(false);
       });
 
@@ -145,15 +144,23 @@ export function SharedTripPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#050505]">
+    <div
+      className="min-h-screen bg-slate-50 dark:bg-[#050505]"
+      style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
+    >
       {/* Hero */}
       <div className="relative h-[320px] sm:h-[400px] overflow-hidden">
         <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-2">
-            {brand.name} · Itinerary
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            {brand.logoUrl && (
+              <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
+            )}
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand">
+              {brand.name} · Itinerary
+            </p>
+          </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-none mb-4">
             {trip.name}
           </h1>

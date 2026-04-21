@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { Theme } from "@/types";
+import { STORAGE } from "@/config/storageKeys";
 
 interface ThemeContextType {
   theme: Theme;
@@ -10,7 +11,7 @@ const ThemeContext = createContext<ThemeContextType>({ theme: "dark", toggleThem
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("daf-theme");
+    const saved = localStorage.getItem(STORAGE.THEME);
     return (saved === "light" || saved === "dark") ? saved : "dark";
   });
 
@@ -19,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     html.classList.remove("light", "dark");
     html.classList.add(theme);
     html.style.colorScheme = theme;
-    localStorage.setItem("daf-theme", theme);
+    localStorage.setItem(STORAGE.THEME, theme);
   }, [theme]);
 
   const toggleTheme = () => {

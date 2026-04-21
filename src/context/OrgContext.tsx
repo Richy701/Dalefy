@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { supabase, isSupabaseConfigured } from "@/services/supabase";
-import { useAuth } from "@/context/AuthContext";
+import { createContext, useContext, type ReactNode } from "react";
 import type { Organization, OrgMember, OrgRole } from "@/types";
+import { useOrgLoad } from "@/hooks/useOrgLoad";
 
 interface OrgContextType {
   currentOrg: Organization | null;
@@ -9,9 +8,8 @@ interface OrgContextType {
   orgMembers: OrgMember[];
   isLoading: boolean;
   hasOrg: boolean;
-  /** True when the org tables exist in Supabase and are queryable */
   tablesReady: boolean;
-  createOrg: (name: string) => Promise<{ org: Organization | null; error: string | null }>;
+  createOrg: (name: string, agencyCode?: string) => Promise<{ org: Organization | null; error: string | null }>;
 }
 
 const OrgContext = createContext<OrgContextType>({
@@ -24,174 +22,8 @@ const OrgContext = createContext<OrgContextType>({
   createOrg: async () => ({ org: null, error: "Not initialized" }),
 });
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40) || "org";
-}
-
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
-  const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
-  const [orgRole, setOrgRole] = useState<OrgRole | null>(null);
-  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [tablesReady, setTablesReady] = useState(false);
-  const useSupabase = isSupabaseConfigured();
-  const isRealUser = useSupabase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
-
-  // ── Load org on auth change ───────────────────────────────────────────
-
-  useEffect(() => {
-    if (!isRealUser || !user) {
-      setCurrentOrg(null);
-      setOrgRole(null);
-      setOrgMembers([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Reset loading state while we query — prevents ProtectedRoute from
-    // skipping the /create-org redirect before the query completes
-    setIsLoading(true);
-
-    let mounted = true;
-
-    async function loadOrg() {
-      try {
-        // Fetch user's org memberships
-        const { data: memberships, error } = await supabase
-          .from("org_members")
-          .select("*, organizations(*)")
-          .eq("user_id", user!.id);
-
-        // Table doesn't exist yet — silently fall back, don't require org creation
-        if (error) {
-          if (mounted) {
-            setTablesReady(false);
-            setCurrentOrg(null);
-            setOrgRole(null);
-            setOrgMembers([]);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        if (mounted) setTablesReady(true);
-
-        // No memberships yet — user needs to create an org
-        if (!memberships?.length) {
-          if (mounted) {
-            setCurrentOrg(null);
-            setOrgRole(null);
-            setOrgMembers([]);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        // Pick current org: use profile.current_org_id if set, else first membership
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("current_org_id")
-          .eq("id", user!.id)
-          .maybeSingle();
-
-        const preferredOrgId = profile?.current_org_id;
-        const membership = memberships.find(m => m.organization_id === preferredOrgId) ?? memberships[0];
-        const orgData = membership.organizations as Record<string, unknown>;
-
-        if (mounted) {
-          setCurrentOrg({
-            id: orgData.id as string,
-            name: orgData.name as string,
-            slug: orgData.slug as string,
-            createdBy: orgData.created_by as string,
-          });
-          setOrgRole(membership.role as OrgRole);
-
-          // Fetch all members of this org
-          const { data: members } = await supabase
-            .from("org_members")
-            .select("*")
-            .eq("organization_id", membership.organization_id);
-
-          if (members && mounted) {
-            setOrgMembers(members.map(m => ({
-              id: m.id,
-              organizationId: m.organization_id,
-              userId: m.user_id,
-              role: m.role as OrgRole,
-              joinedAt: m.joined_at,
-            })));
-          }
-          setIsLoading(false);
-        }
-      } catch {
-        // Tables not migrated yet — graceful fallback
-        if (mounted) {
-          setCurrentOrg(null);
-          setOrgRole(null);
-          setOrgMembers([]);
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadOrg();
-    return () => { mounted = false; };
-  }, [isRealUser, user?.id]);
-
-  // ── Create organization ───────────────────────────────────────────────
-
-  const createOrg = useCallback(async (name: string): Promise<{ org: Organization | null; error: string | null }> => {
-    if (!isRealUser || !user) return { org: null, error: "Not authenticated" };
-
-    const slug = slugify(name) + "-" + Math.random().toString(36).slice(2, 6);
-
-    // Insert org
-    const { data: orgData, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name, slug, created_by: user.id })
-      .select()
-      .single();
-
-    if (orgError || !orgData) return { org: null, error: orgError?.message ?? "Failed to create organization" };
-
-    // Insert user as owner
-    const { error: memberError } = await supabase
-      .from("org_members")
-      .insert({ organization_id: orgData.id, user_id: user.id, role: "owner" });
-
-    if (memberError) return { org: null, error: memberError.message };
-
-    // Set as current org on profile
-    await supabase
-      .from("profiles")
-      .update({ current_org_id: orgData.id })
-      .eq("id", user.id);
-
-    const org: Organization = {
-      id: orgData.id,
-      name: orgData.name,
-      slug: orgData.slug,
-      createdBy: orgData.created_by,
-    };
-
-    setCurrentOrg(org);
-    setOrgRole("owner");
-    setOrgMembers([{
-      id: crypto.randomUUID(),
-      organizationId: org.id,
-      userId: user.id,
-      role: "owner",
-      joinedAt: new Date().toISOString(),
-    }]);
-
-    return { org, error: null };
-  }, [isRealUser, user]);
+  const { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg } = useOrgLoad();
 
   return (
     <OrgContext.Provider

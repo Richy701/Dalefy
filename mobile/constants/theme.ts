@@ -155,6 +155,10 @@ function hexToRgbTuple(hex: string): [number, number, number] {
 export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean): ThemeColors {
   const preset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
   const hex = isDark ? preset.dark : preset.light;
+  return applyAccentHex(base, hex);
+}
+
+export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
   const [r, g, b] = hexToRgbTuple(hex);
   return {
     ...base,

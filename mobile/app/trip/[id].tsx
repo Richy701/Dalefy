@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable,
+  View, Text, Pressable, Image,
   StyleSheet, Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ import { resolveCoords } from "@/shared/coordinates";
 import { buildArc, interpolateArc } from "@/shared/mapUtils";
 import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
+import { useBrand } from "@/context/BrandContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
@@ -65,6 +66,7 @@ export default function TripScreen() {
   const { trips } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
+  const { brand } = useBrand();
   const { pendingCount } = useCompliance();
 
   const insets = useSafeAreaInsets();
@@ -364,8 +366,12 @@ export default function TripScreen() {
           {/* Bottom: eyebrow + title + frosted glass chips — fades on scroll */}
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             <View style={styles.heroEyebrowRow}>
-              <Logo size={10} color={C.teal} />
-              <Text style={[styles.heroEyebrow, { marginBottom: 0 }]}>DAF Adventures · Itinerary</Text>
+              {brand.logoUrl ? (
+                <Image source={{ uri: brand.logoUrl }} style={{ width: 10, height: 10, borderRadius: 2 }} />
+              ) : (
+                <Logo size={10} color={C.teal} />
+              )}
+              <Text style={[styles.heroEyebrow, { marginBottom: 0 }]}>{brand.name} · Itinerary</Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
 

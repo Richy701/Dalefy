@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useOrg } from "@/context/OrgContext";
-import { isSupabaseConfigured } from "@/services/supabase";
+import { isFirebaseConfigured } from "@/services/firebase";
 
 export function usePermissions() {
   const { user } = useAuth();
   const { orgRole, currentOrg } = useOrg();
 
   return useMemo(() => {
-    const realAuth = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+    const realAuth = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
     const inOrg = realAuth && !!currentOrg;
     const role = orgRole;
 

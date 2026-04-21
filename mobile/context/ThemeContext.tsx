@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import { Appearance } from "react-native";
-import { darkColors, lightColors, applyAccent, type ThemeColors } from "@/constants/theme";
+import { darkColors, lightColors, applyAccent, applyAccentHex, type ThemeColors } from "@/constants/theme";
 import { usePreferences, type ThemeMode } from "./PreferencesContext";
+import { useBrand } from "./BrandContext";
 
 interface ThemeContextValue {
   isDark: boolean;
@@ -22,6 +23,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { prefs, setPref } = usePreferences();
+  const { brand } = useBrand();
   const mode = prefs.themeMode ?? "system";
 
   // Track the device scheme for "system" mode
@@ -42,8 +44,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const C = useMemo(() => {
     const base = isDark ? darkColors : lightColors;
+    // Org branding accent takes priority over local preset
+    if (brand.accentColor) {
+      return applyAccentHex(base, brand.accentColor);
+    }
     return applyAccent(base, prefs.accent, isDark);
-  }, [isDark, prefs.accent]);
+  }, [isDark, prefs.accent, brand.accentColor]);
 
   const setMode = useCallback((m: ThemeMode) => {
     setPref("themeMode", m);

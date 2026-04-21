@@ -8,6 +8,9 @@ import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
 import { searchImagesProgressive } from "@/services/imageSearch";
 import { buildImageQueryCandidates } from "@/services/imageQuery";
+import { STORAGE } from "@/config/storageKeys";
+import { logger } from "@/lib/logger";
+import { EVENT_TEXT_COLORS, EVENT_ICONS, type EventType } from "@/config/eventStyles";
 import { matchOrCreateTravelers } from "@/lib/travelerSync";
 import { notifyLocalStorage } from "@/hooks/useLocalStorage";
 
@@ -64,13 +67,14 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
     const content = await page.getTextContent();
     let lastY: number | null = null;
     const chunks: string[] = [];
-    for (const item of content.items as any[]) {
-      const y = item.transform?.[5];
+    for (const item of content.items) {
+      const textItem = item as { str: string; hasEOL?: boolean; transform?: number[] };
+      const y = textItem.transform?.[5];
       if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2) {
         chunks.push("\n");
       }
-      chunks.push(item.str);
-      if (item.hasEOL) chunks.push("\n");
+      chunks.push(textItem.str);
+      if (textItem.hasEOL) chunks.push("\n");
       if (y !== undefined) lastY = y;
     }
     pages.push(chunks.join(""));
@@ -80,7 +84,7 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
   let attachmentText = "";
   try {
     const attachments: Record<string, { filename: string; content: Uint8Array }> | null =
-      await (doc as any).getAttachments();
+      await (doc as unknown as { getAttachments(): Promise<Record<string, { filename: string; content: Uint8Array }> | null> }).getAttachments();
     if (attachments) {
       for (const [, att] of Object.entries(attachments)) {
         const name = (att.filename ?? "").toLowerCase();
@@ -91,7 +95,7 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
             for (let i = 1; i <= subDoc.numPages; i++) {
               const pg = await subDoc.getPage(i);
               const ct = await pg.getTextContent();
-              attachmentText += "\n" + ct.items.map((it: any) => it.str + (it.hasEOL ? "\n" : "")).join("");
+              attachmentText += "\n" + ct.items.map((it) => (it as { str: string; hasEOL?: boolean }).str + ((it as { hasEOL?: boolean }).hasEOL ? "\n" : "")).join("");
             }
           } catch { /* skip corrupt/unreadable attached PDFs */ }
         } else if (name.endsWith(".txt") || name.endsWith(".csv")) {
@@ -114,7 +118,7 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
         if (ops.fnArray[j] === 85 || ops.fnArray[j] === 82) {
           try {
             const imgName = ops.argsArray[j][0];
-            const img = await (page as any).objs.get(imgName);
+            const img = await (page as unknown as { objs: { get(name: string): Promise<{ data: Uint8ClampedArray; width: number; height: number } | null> } }).objs.get(imgName);
             if (!img?.data || !img.width || !img.height) continue;
             // Skip tiny images (logos, bullets, decorations)
             const rawSize = img.data.length;
@@ -367,8 +371,6 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
-type EventType = "flight" | "hotel" | "activity" | "dining";
-
 function guessEventType(line: string): EventType {
   const l = line.toLowerCase();
   if (/\b(flight|fly|depart|arrive|airport|airline|airways|boarding|gate|xq|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
@@ -377,16 +379,8 @@ function guessEventType(line: string): EventType {
   return "activity";
 }
 
-const EVENT_TYPE_ICONS: Record<EventType, typeof Plane> = {
-  flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils,
-};
-
-const EVENT_TYPE_COLORS: Record<EventType, string> = {
-  flight: "text-slate-500 dark:text-slate-400",
-  hotel: "text-amber-400",
-  activity: "text-brand",
-  dining: "text-pink-400",
-};
+const EVENT_TYPE_ICONS = EVENT_ICONS;
+const EVENT_TYPE_COLORS = EVENT_TEXT_COLORS;
 
 interface ParsedEvent {
   id: string;
@@ -784,7 +778,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const processText = (text: string, media: ExtractedMedia[] = []) => {
     setRawText(text);
     const result = parseItinerary(text, media);
-    console.log("[Import] parsed info:", result.info.length, result.info.map(i => i.title), "organizer:", result.organizer);
+    logger.log("Import", "parsed info:", result.info.length, result.info.map(i => i.title), "organizer:", result.organizer);
     setParsed(result);
     setEditInfo(result.info.map(i => ({ ...i })));
     setStep("review");
@@ -823,7 +817,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     }
 
     // Resolve a per-event image. Throttle to 3 concurrent to stay under rate limits.
-    const CACHE_KEY = "daf-event-image-cache-v1";
+    const CACHE_KEY = STORAGE.EVENT_IMAGE_CACHE;
     let cache: Record<string, string> = {};
     try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { /* ignore */ }
     const resolveEventImage = async (ev: TravelEvent): Promise<string | undefined> => {
@@ -869,20 +863,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     let finalPaxCount = parsed.paxCount > 0 ? String(parsed.paxCount) : undefined;
 
     if (parsed.parsedTravelerNames.length > 0) {
-      const stored = JSON.parse(localStorage.getItem("daf-custom-travelers") || "[]") as User[];
+      const stored = JSON.parse(localStorage.getItem(STORAGE.CUSTOM_TRAVELERS) || "[]") as User[];
       const result = matchOrCreateTravelers(parsed.parsedTravelerNames, stored);
       travelerIds = result.travelerIds;
       tripTravelers = result.travelers;
       finalAttendees = result.attendees;
       finalPaxCount = String(result.travelerIds.length);
       if (result.newTravelers.length > 0) {
-        localStorage.setItem("daf-custom-travelers", JSON.stringify([...stored, ...result.newTravelers]));
-        notifyLocalStorage("daf-custom-travelers");
+        localStorage.setItem(STORAGE.CUSTOM_TRAVELERS, JSON.stringify([...stored, ...result.newTravelers]));
+        notifyLocalStorage(STORAGE.CUSTOM_TRAVELERS);
       }
     }
 
     const cleanedInfo = editInfo.filter(i => i.title.trim() || i.body.trim());
-    console.log("[Import] editInfo:", editInfo.length, "cleanedInfo:", cleanedInfo.length, "organizer:", parsed.organizer);
+    logger.log("Import", "editInfo:", editInfo.length, "cleanedInfo:", cleanedInfo.length, "organizer:", parsed.organizer);
 
     if (isReimport && existingTripId) {
       // Re-import: update text/events/travelers but keep existing media, image, status

@@ -9,6 +9,8 @@ export type ThemeMode = "light" | "dark" | "system";
 export interface Preferences {
   name: string;
   avatar: string;
+  orgId: string;
+  orgSlug: string;
   tripReminders: boolean;
   itineraryUpdates: boolean;
   accent: AccentId;
@@ -19,6 +21,8 @@ export interface Preferences {
 const DEFAULT_PREFS: Preferences = {
   name: "",
   avatar: "",
+  orgId: "",
+  orgSlug: "",
   tripReminders: true,
   itineraryUpdates: true,
   accent: "teal",

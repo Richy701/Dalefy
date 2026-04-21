@@ -1,7 +1,7 @@
 import { LOCATION_COORDS } from "@/data/coordinates";
+import { STORAGE } from "@/config/storageKeys";
 
-const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
-const CACHE_KEY = "daf-geocode-cache-v1";
+const CACHE_KEY = STORAGE.GEOCODE_CACHE;
 
 type Coord = [number, number]; // [lat, lng]
 
@@ -37,17 +37,14 @@ export async function geocode(location: string): Promise<Coord | null> {
   if (key in memCache) return memCache[key];
   if (inflight.has(key)) return inflight.get(key)!;
 
-  if (!TOKEN) return null;
-
   const p = (async () => {
     try {
       const q = encodeURIComponent(key);
-      const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${TOKEN}&limit=1`);
+      const res = await fetch(`/api/geocode?q=${q}`);
       if (!res.ok) return null;
       const data = await res.json();
-      const feat = data?.features?.[0];
-      if (!feat?.center) return null;
-      const coord: Coord = [feat.center[1], feat.center[0]]; // [lat, lng]
+      if (!data.coord) return null;
+      const coord: Coord = data.coord;
       memCache[key] = coord;
       saveCache(memCache);
       return coord;

@@ -1,13 +1,19 @@
-import { createContext, useContext, useCallback, useMemo, useEffect, useState, useRef, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip, TravelEvent } from "@/types";
-import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
-import { isSupabaseConfigured, supabase } from "@/services/supabase";
-import { fetchTrips, subscribeToTrips, upsertTrip, removeTrip } from "@/services/supabaseTrips";
-import { deriveAttendeesString, matchOrCreateTravelers, extractNamesFromAttendeesString } from "@/lib/travelerSync";
-import type { User } from "@/types";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips } from "@/services/firebaseTrips";
+import { deriveAttendeesString } from "@/lib/travelerSync";
 import { useOrg } from "@/context/OrgContext";
+import { STORAGE } from "@/config/storageKeys";
+import { logger } from "@/lib/logger";
+import { useAuth } from "@/context/AuthContext";
+import { useCloudSync } from "@/hooks/useCloudSync";
+import { useTravelerMigration } from "@/hooks/useTravelerMigration";
+
+// ── Context type ──────────────────────────────────────────────────────────────
 
 interface TripsContextType {
   trips: Trip[];
@@ -33,10 +39,11 @@ const TripsContext = createContext<TripsContextType>({
   deleteEvent: () => {},
 });
 
-function useSupabaseTrips() {
+// ── Data source hooks ─────────────────────────────────────────────────────────
+
+function useCloudTrips() {
   const qc = useQueryClient();
 
-  // Initial fetch via React Query — cached, retried, deduplicated
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
     queryKey: ["trips"],
     queryFn: fetchTrips,
@@ -44,88 +51,85 @@ function useSupabaseTrips() {
     retry: 2,
   });
 
-  // Realtime subscription updates the query cache
+  // Firestore realtime listener
   useEffect(() => {
-    const channel = supabase
-      .channel("trips-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
-        qc.invalidateQueries({ queryKey: ["trips"] });
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const unsub = subscribeToTrips((updated) => {
+      qc.setQueryData<Trip[]>(["trips"], updated);
+    });
+    return () => unsub();
   }, [qc]);
 
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
     const prev = qc.getQueryData<Trip[]>(["trips"]) ?? [];
     const next = typeof action === "function" ? action(prev) : action;
-    // Optimistic update
     qc.setQueryData<Trip[]>(["trips"], next);
-    syncToSupabase(prev, next);
+    syncToCloud(prev, next);
   }, [qc]);
 
   return { trips, setTrips, ready: isSuccess };
 }
 
-function syncToSupabase(prev: Trip[], next: Trip[]) {
-  const prevIds = new Set(prev.map((t) => t.id));
-  const nextIds = new Set(next.map((t) => t.id));
+/** Demo/seed trip IDs — never push to cloud */
+const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
+
+function syncToCloud(prev: Trip[], next: Trip[]) {
+  const prevIds = new Set(prev.map(t => t.id));
+  const nextIds = new Set(next.map(t => t.id));
 
   for (const trip of next) {
-    const old = prev.find((t) => t.id === trip.id);
+    if (DEMO_IDS.has(trip.id)) continue; // never push demo data
+    const old = prev.find(t => t.id === trip.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
-      console.log("[syncToSupabase] upserting trip:", trip.id, trip.name, "events:", trip.events.length);
-      upsertTrip(trip).catch(err => console.error("[syncToSupabase] upsert failed:", err));
+      logger.log("syncToCloud", "upserting trip:", trip.id, trip.name, "events:", trip.events.length);
+      upsertTrip(trip).catch(err => logger.error("syncToCloud", "upsert failed:", err));
     }
   }
 
   for (const id of prevIds) {
+    if (DEMO_IDS.has(id)) continue; // never touch demo data in cloud
     if (!nextIds.has(id)) {
-      console.log("[syncToSupabase] removing trip:", id);
-      removeTrip(id).catch(err => console.error("[syncToSupabase] remove failed:", err));
+      logger.log("syncToCloud", "removing trip:", id);
+      removeTrip(id).catch(err => logger.error("syncToCloud", "remove failed:", err));
     }
   }
 }
 
-function useLocalTrips() {
-  const [trips, setTrips] = useLocalStorage<Trip[]>("daf-adventures-v4", INITIAL_TRIPS);
+function useLocalTrips(shouldSeed: boolean) {
+  // Only use demo data as default for demo users — real users start with []
+  const defaultTrips = shouldSeed ? INITIAL_TRIPS : [];
+  const [trips, setTrips] = useLocalStorage<Trip[]>(STORAGE.TRIPS, defaultTrips);
+  if (shouldSeed && trips.length === 0 && INITIAL_TRIPS.length > 0) {
+    const stored = localStorage.getItem(STORAGE.TRIPS);
+    if (!stored || stored === "[]") {
+      setTrips(INITIAL_TRIPS);
+    }
+  }
   return { trips, setTrips, ready: true };
 }
 
-export function TripsProvider({ children }: { children: ReactNode }) {
-  const useCloud = isSupabaseConfigured();
-  const local = useLocalTrips();
-  const cloud = useSupabaseTrips();
-  const { currentOrg } = useOrg();
-  // When Supabase is configured, never merge localStorage — cloud is the source of truth.
-  // localStorage merge only applies when running without Supabase (pure demo/local mode).
-  const isLocalOnly = !useCloud;
+// ── Merge cloud + local trips ─────────────────────────────────────────────────
 
-  const { setTrips } = useCloud ? cloud : local;
-  const ready = useCloud ? cloud.ready : local.ready;
+function useMergedTrips(
+  useCloud: boolean,
+  isLocalOnly: boolean,
+  cloudTrips: Trip[],
+  localTrips: Trip[],
+) {
+  return useMemo(() => {
+    logger.log("useMergedTrips", `useCloud=${useCloud} isLocalOnly=${isLocalOnly} cloud=${cloudTrips.length} local=${localTrips.length} cloudIds=${cloudTrips.map(t=>t.id).join(",")}`);
+    if (!useCloud) return localTrips;
+    if (!isLocalOnly) return cloudTrips;
 
-  // Merge: when cloud trips are missing traveler data, fill from localStorage copy
-  // Merge cloud + local: Supabase may lack columns for travelerIds, travelers, info,
-  // organizer. We use localStorage as the source of truth for those fields, and also
-  // include local-only trips that haven't been synced to cloud yet.
-  const trips = useMemo(() => {
-    if (!useCloud) return local.trips;
-
-    // Real auth users: only show cloud trips — no localStorage merge
-    if (!isLocalOnly) return cloud.trips;
-
-    // Demo/local users: merge localStorage with cloud
-    let localTrips: Trip[] = local.trips;
+    let localSrc: Trip[] = localTrips;
     try {
-      const stored = localStorage.getItem("daf-adventures-v4");
-      if (stored) localTrips = JSON.parse(stored);
+      const stored = localStorage.getItem(STORAGE.TRIPS);
+      if (stored) localSrc = JSON.parse(stored);
     } catch { /* use React state fallback */ }
 
-    const localMap = new Map(localTrips.map(t => [t.id, t]));
-    const cloudIds = new Set(cloud.trips.map(t => t.id));
+    const localMap = new Map(localSrc.map(t => [t.id, t]));
+    const cloudIds = new Set(cloudTrips.map(t => t.id));
 
-    // Patch cloud trips with local-only fields
-    const merged = cloud.trips.map(t => {
+    const merged = cloudTrips.map(t => {
       const lt = localMap.get(t.id);
       if (!lt) return t;
       const patch: Partial<Trip> = {};
@@ -137,146 +141,47 @@ export function TripsProvider({ children }: { children: ReactNode }) {
       return Object.keys(patch).length > 0 ? { ...t, ...patch } : t;
     });
 
-    // Include local-only trips not yet in cloud
-    for (const lt of localTrips) {
-      if (!cloudIds.has(lt.id)) merged.push(lt);
+    // Only merge user-created local trips, never demo/seed data
+    const demoIds = new Set(INITIAL_TRIPS.map(t => t.id));
+    for (const lt of localSrc) {
+      if (!cloudIds.has(lt.id) && !demoIds.has(lt.id)) merged.push(lt);
     }
 
     return merged;
-  }, [useCloud, cloud.trips, local.trips, isLocalOnly]);
+  }, [useCloud, cloudTrips, localTrips, isLocalOnly]);
+}
 
-  // Seed / recover Supabase from localStorage (demo users only — real auth users start clean)
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!useCloud || !cloud.ready || seeded.current || !isLocalOnly) return;
-    seeded.current = true;
+// ── Provider ──────────────────────────────────────────────────────────────────
 
-    console.log("[TripsContext] seed check — cloud:", cloud.trips.length, "local:", local.trips.length);
+export function TripsProvider({ children }: { children: ReactNode }) {
+  const firebaseOn = isFirebaseConfigured();
+  const { user, isLoading: authLoading } = useAuth();
+  const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
+  const useCloud = firebaseOn && !isDemoUser;
+  const local = useLocalTrips(isDemoUser && !authLoading);
+  const cloud = useCloudTrips();
+  const { currentOrg } = useOrg();
+  const isLocalOnly = !useCloud;
 
-    // Full seed when Supabase is empty
-    if (cloud.trips.length === 0 && local.trips.length > 0) {
-      console.log("[TripsContext] seeding Supabase from localStorage:", local.trips.map(t => t.name));
-      Promise.all(local.trips.map(upsertTrip))
-        .then(() => {
-          console.log("[TripsContext] seed complete");
-          subscribeToTrips((incoming) => {
-            if (incoming.length > 0) cloud.setTrips(incoming);
-          });
-        })
-        .catch(err => console.error("[TripsContext] seed failed:", err));
-      return;
-    }
+  const { setTrips } = useCloud ? cloud : local;
+  const ready = useCloud ? cloud.ready : local.ready;
 
-    // Recover: if localStorage has more events for a trip, push it back
-    const toRecover: Trip[] = [];
-    for (const lt of local.trips) {
-      const ct = cloud.trips.find((t) => t.id === lt.id);
-      if (ct && lt.events.length > ct.events.length) {
-        console.log("[TripsContext] recovering trip from localStorage:", lt.name, `(${lt.events.length} vs ${ct.events.length} events)`);
-        toRecover.push(lt);
-      }
-    }
-    if (toRecover.length > 0) {
-      Promise.all(toRecover.map(upsertTrip)).then(() => {
-        console.log("[TripsContext] recovery complete, refreshing...");
-        subscribeToTrips((incoming) => {
-          if (incoming.length > 0) cloud.setTrips(incoming);
-        });
-      });
-    }
-  }, [useCloud, cloud.ready, cloud.trips.length, local.trips, isLocalOnly]);
+  const trips = useMergedTrips(useCloud, isLocalOnly, cloud.trips, local.trips);
 
-  // Cleanup: dedup daf-custom-travelers by ID
-  useEffect(() => {
-    const raw = localStorage.getItem("daf-custom-travelers");
-    if (!raw) return;
-    try {
-      const arr: User[] = JSON.parse(raw);
-      const seen = new Set<string>();
-      const deduped = arr.filter(u => {
-        if (seen.has(u.id)) return false;
-        seen.add(u.id);
-        return true;
-      });
-      if (deduped.length < arr.length) {
-        localStorage.setItem("daf-custom-travelers", JSON.stringify(deduped));
-        notifyLocalStorage("daf-custom-travelers");
-      }
-    } catch { /* ignore */ }
-  }, []);
+  // Side-effect hooks (extracted)
+  useCloudSync(useCloud, isLocalOnly, cloud.ready, cloud.trips, local.trips, cloud.setTrips);
+  useTravelerMigration(trips, ready, setTrips, useCloud, local.setTrips);
 
-  // One-time migration: backfill travelerIds for existing trips that only have attendees string
-  const migrated = useRef(false);
-  useEffect(() => {
-    if (!ready || migrated.current) return;
-    if (trips.length === 0) return;
-    migrated.current = true;
-
-    // v2: nuke corrupted data from previous migration runs, then migrate cleanly once
-    if (localStorage.getItem("daf-travelers-migrated") === "2") return;
-    // Wipe any stale/duplicate travelers from broken earlier migrations
-    localStorage.removeItem("daf-custom-travelers");
-    notifyLocalStorage("daf-custom-travelers");
-
-    const needsMigration = trips.filter(t => !t.travelerIds?.length && t.attendees && t.attendees !== "Imported Group");
-    if (needsMigration.length === 0) {
-      localStorage.setItem("daf-travelers-migrated", "2");
-      console.log("[TripsContext] no trips need traveler migration");
-      return;
-    }
-
-    const stored: User[] = [];
-    let allExisting: User[] = [];
-    const allNewTravelers: User[] = [];
-    const migrationMap = new Map<string, { travelerIds: string[]; travelers: NonNullable<Trip["travelers"]>; attendees: string; paxCount: string }>();
-
-    for (const t of needsMigration) {
-      const names = extractNamesFromAttendeesString(t.attendees);
-      if (names.length === 0) continue;
-      const result = matchOrCreateTravelers(names, allExisting);
-      allExisting = [...allExisting, ...result.newTravelers];
-      allNewTravelers.push(...result.newTravelers);
-      migrationMap.set(t.id, {
-        travelerIds: result.travelerIds,
-        travelers: result.travelers,
-        attendees: result.attendees,
-        paxCount: String(result.travelerIds.length),
-      });
-    }
-
-    if (migrationMap.size === 0) {
-      localStorage.setItem("daf-travelers-migrated", "2");
-      return;
-    }
-
-    // Persist new travelers first so TravelersPage can read them
-    if (allNewTravelers.length > 0) {
-      localStorage.setItem("daf-custom-travelers", JSON.stringify([...stored, ...allNewTravelers]));
-      notifyLocalStorage("daf-custom-travelers");
-      console.log(`[TripsContext] created ${allNewTravelers.length} new traveler(s)`);
-    }
-
-    // Update trips
-    const updater = (prev: Trip[]) => prev.map(t => {
-      const patch = migrationMap.get(t.id);
-      return patch ? { ...t, ...patch } : t;
-    });
-    setTrips(updater);
-    if (useCloud) local.setTrips(updater);
-
-    localStorage.setItem("daf-travelers-migrated", "2");
-    console.log(`[TripsContext] migrated ${migrationMap.size} trip(s) — linked travelers`);
-  }, [ready, trips]);
-
-  // Flush updater to localStorage synchronously so the merge useMemo always
-  // sees the latest local data, even if useEffect hasn't run yet.
+  // Flush updater to localStorage synchronously
   const flushLocal = useCallback((updater: (prev: Trip[]) => Trip[]) => {
     local.setTrips(updater);
     try {
-      const prev: Trip[] = JSON.parse(localStorage.getItem("daf-adventures-v4") || "[]");
-      localStorage.setItem("daf-adventures-v4", JSON.stringify(updater(prev)));
+      const prev: Trip[] = JSON.parse(localStorage.getItem(STORAGE.TRIPS) || "[]");
+      localStorage.setItem(STORAGE.TRIPS, JSON.stringify(updater(prev)));
     } catch { /* ignore */ }
   }, [local]);
+
+  // ── CRUD operations ────────────────────────────────────────────────────────
 
   const addTrip = useCallback((trip: Trip) => {
     const tripWithOrg = currentOrg ? { ...trip, organizationId: trip.organizationId ?? currentOrg.id } : trip;
@@ -286,13 +191,11 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   const deleteTrip = useCallback((id: string) => {
     setTrips(prev => prev.filter(t => t.id !== id));
-    if (useCloud) {
-      flushLocal(prev => prev.filter(t => t.id !== id));
-    }
+    if (useCloud) flushLocal(prev => prev.filter(t => t.id !== id));
   }, [setTrips, useCloud, flushLocal]);
 
   const updateTrip = useCallback((id: string, updates: Partial<Trip>) => {
-    console.log("[updateTrip] id:", id, "info in updates:", updates.info?.length ?? "undefined", "keys:", Object.keys(updates).join(","));
+    logger.log("updateTrip", "id:", id, "info in updates:", updates.info?.length ?? "undefined", "keys:", Object.keys(updates).join(","));
     const updater = (prev: Trip[]) => prev.map(t => {
       if (t.id !== id) return t;
       const merged = { ...t, ...updates };
@@ -339,7 +242,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({ trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent }),
-    [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent]
+    [trips, ready, setTrips, addTrip, deleteTrip, updateTrip, addEvent, updateEvent, deleteEvent],
   );
 
   return (

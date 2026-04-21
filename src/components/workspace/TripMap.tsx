@@ -1,13 +1,14 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { Plane, Hotel, Compass, Utensils, MapPin } from "lucide-react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
+import { ARC_ANIMATION_MS } from "@/config/constants";
+import { EVENT_HEX } from "@/config/eventStyles";
 import { geocode } from "@/services/geocode";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { usePreferences } from "@/context/PreferencesContext";
 
 const TYPE_ICONS = {
   flight:   Plane,
@@ -85,13 +86,12 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  const { accent } = usePreferences();
-  const ACCENT = ACCENT_PALETTE.find((p) => p.id === accent)?.hex ?? "#0bd2b5";
+  const { accentColor } = usePreferences();
+  const ACCENT = accentColor;
   const TYPE_COLORS: Record<string, string> = {
+    ...EVENT_HEX,
     flight:   ACCENT,
-    hotel:    "#f59e0b",
     activity: ACCENT,
-    dining:   "#f472b6",
   };
 
   const mapStyle = isDark
@@ -186,13 +186,12 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   useEffect(() => {
     if (arcGeoJSON.features.length === 0) return;
     const arcs = arcGeoJSON.features.map(f => f.geometry.coordinates);
-    const ARC_DURATION = 4000; // ms per arc segment
-    const TOTAL_DURATION = arcs.length * ARC_DURATION;
+    const TOTAL_DURATION = arcs.length * ARC_ANIMATION_MS;
 
     function animatePlanes(ts: number) {
       const elapsed = ts % TOTAL_DURATION;
-      const arcIdx = Math.min(Math.floor(elapsed / ARC_DURATION), arcs.length - 1);
-      const t = (elapsed - arcIdx * ARC_DURATION) / ARC_DURATION;
+      const arcIdx = Math.min(Math.floor(elapsed / ARC_ANIMATION_MS), arcs.length - 1);
+      const t = (elapsed - arcIdx * ARC_ANIMATION_MS) / ARC_ANIMATION_MS;
       const pos = interpolateArc(arcs[arcIdx], t);
       setPlanePositions([pos]);
       planeRafRef.current = requestAnimationFrame(animatePlanes);

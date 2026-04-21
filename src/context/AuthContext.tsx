@@ -1,33 +1,58 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User } from "@/types";
-import { isSupabaseConfigured } from "@/services/supabase";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { initialsFrom } from "@/lib/names";
+import { STORAGE } from "@/config/storageKeys";
+import { logger } from "@/lib/logger";
+
+/** Wrapper around setUser that logs every state change */
+function loggedSetUser(
+  setter: React.Dispatch<React.SetStateAction<User | null>>,
+  valueOrUpdater: User | null | ((prev: User | null) => User | null),
+  reason: string,
+) {
+  if (typeof valueOrUpdater === "function") {
+    setter(prev => {
+      const next = valueOrUpdater(prev);
+      logger.log("Auth", `setUser [${reason}]: ${prev?.id ?? "null"} → ${next?.id ?? "null"}`);
+      return next;
+    });
+  } else {
+    logger.log("Auth", `setUser [${reason}]: → ${valueOrUpdater?.id ?? "null"}`);
+    setter(valueOrUpdater);
+  }
+}
+import { SESSION_TIMEOUT_MS, PROFILE_TIMEOUT_MS } from "@/config/constants";
 import {
   signUp as authSignUp,
   signIn as authSignIn,
+  signInWithGoogle as authSignInWithGoogle,
   signOut as authSignOut,
   getSession,
   onAuthStateChange,
   fetchProfile,
   updateProfile as authUpdateProfile,
-} from "@/services/supabaseAuth";
+} from "@/services/firebaseAuth";
 
-// ── Demo user (for development / when Supabase not configured) ──────────────
+// ── Demo user (for development / when Firebase not configured) ──────────────
 
 const DEMO_USER: User = {
   id: "demo",
-  name: "Richy Lamptey",
-  email: "richmondlamptey75@gmail.com",
+  name: "Alex Morgan",
+  email: "alex@demo.dalefy.com",
   role: "Trip Manager",
   avatar: "",
-  initials: "RL",
+  initials: "AM",
   status: "Active",
 };
 
-function initialsFrom(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+/** Clear all per-user data from localStorage so a new session starts clean. */
+function clearUserData() {
+  const dataKeys: (keyof typeof STORAGE)[] = [
+    "TRIPS", "CUSTOM_TRAVELERS", "TRAVELERS_MIGRATED",
+    "COMPLIANCE", "TEMPLATES", "GEOCODE_CACHE", "EVENT_IMAGE_CACHE",
+  ];
+  for (const k of dataKeys) localStorage.removeItem(STORAGE[k]);
 }
 
 // ── Context types ───────────────────────────────────────────────────────────
@@ -45,6 +70,7 @@ interface AuthContextType {
   isLoading: boolean;
   completeOnboarding: (data: OnboardingData) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
+  signInWithGoogle: () => Promise<{ error: string | null; isNewUser: boolean }>;
   demoLogin: () => Promise<void>;
   updateProfile: (patch: Partial<User>) => void;
   logout: () => void;
@@ -56,6 +82,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   completeOnboarding: async () => null,
   signIn: async () => null,
+  signInWithGoogle: async () => ({ error: null, isNewUser: false }),
   demoLogin: async () => {},
   updateProfile: () => {},
   logout: () => {},
@@ -64,86 +91,138 @@ const AuthContext = createContext<AuthContextType>({
 // ── Provider ────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const useSupabase = isSupabaseConfigured();
+  // Restore user from localStorage synchronously — prevents loading flash on refresh
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE.AUTH);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  // If we already have a cached user, skip the loading state entirely
+  const [isLoading, setIsLoading] = useState(() => {
+    const saved = localStorage.getItem(STORAGE.AUTH);
+    return !saved; // only show loading when there's no cached user
+  });
+  const useFirebase = isFirebaseConfigured();
 
-  // ── Boot: restore session ───────────────────────────────────────────────
+  // ── Boot: validate session with Firebase (background) ──────────────────
 
   useEffect(() => {
+    if (!useFirebase) {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
 
-    async function init() {
-      if (useSupabase) {
-        // Try Supabase session first
-        const session = await getSession();
-        if (session?.user && mounted) {
-          const profile = await fetchProfile(session.user.id);
-          if (mounted) {
-            // Use profile if available, otherwise build a basic user from the session
-            const u = profile ?? {
-              id: session.user.id,
-              name: session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "User",
-              email: session.user.email ?? "",
-              role: session.user.user_metadata?.role ?? "Trip Manager",
-              avatar: "",
-              initials: (session.user.user_metadata?.name ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
-              status: "Active" as const,
-            };
-            setUser(u);
-            localStorage.setItem("daf-auth", JSON.stringify(u));
-          }
-        } else if (mounted) {
-          // Fall back to localStorage cache (covers demo mode)
-          const saved = localStorage.getItem("daf-auth");
-          if (saved) {
-            try { setUser(JSON.parse(saved)); } catch { /* ignore */ }
-          }
+    async function validate() {
+      try {
+        // Race against a timeout so a slow network never blocks the app
+        const TIMED_OUT = Symbol("timeout");
+        const sessionOrTimeout = await Promise.race([
+          getSession(),
+          new Promise<typeof TIMED_OUT>(r => setTimeout(() => r(TIMED_OUT), SESSION_TIMEOUT_MS)),
+        ]);
+
+        if (!mounted) return;
+
+        // If timed out, keep cached user — don't log out on slow network
+        if (sessionOrTimeout === TIMED_OUT) {
+          logger.log("Auth", "session validation still running — using cached user");
+          if (mounted) setIsLoading(false);
+          // Continue validating in the background (no timeout)
+          getSession().then(session => {
+            if (!mounted) return;
+            if (session?.user) {
+              fetchProfile(session.user.uid).then(profile => {
+                if (!mounted) return;
+                const u = profile ?? {
+                  id: session.user.uid,
+                  name: session.user.displayName ?? session.user.email?.split("@")[0] ?? "User",
+                  email: session.user.email ?? "",
+                  role: "Trip Manager",
+                  avatar: session.user.photoURL ?? "",
+                  initials: (session.user.displayName ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
+                  status: "Active" as const,
+                };
+                loggedSetUser(setUser, u, "validate-bg-profile");
+                localStorage.setItem(STORAGE.AUTH, JSON.stringify(u));
+              });
+            }
+          }).catch(() => {});
+          return;
         }
-      } else {
-        // No Supabase — pure localStorage
-        const saved = localStorage.getItem("daf-auth");
-        if (saved) {
-          try { setUser(JSON.parse(saved)); } catch { /* ignore */ }
+
+        const sessionResult = sessionOrTimeout;
+
+        if (sessionResult?.user) {
+          const profile = await Promise.race([
+            fetchProfile(sessionResult.user.uid),
+            new Promise<null>(r => setTimeout(() => r(null), PROFILE_TIMEOUT_MS)),
+          ]);
+          if (!mounted) return;
+
+          const u = profile ?? {
+            id: sessionResult.user.uid,
+            name: sessionResult.user.displayName ?? sessionResult.user.email?.split("@")[0] ?? "User",
+            email: sessionResult.user.email ?? "",
+            role: "Trip Manager",
+            avatar: sessionResult.user.photoURL ?? "",
+            initials: (sessionResult.user.displayName ?? sessionResult.user.email ?? "U").slice(0, 2).toUpperCase(),
+            status: "Active" as const,
+          };
+          loggedSetUser(setUser, u, "validate-profile");
+          localStorage.setItem(STORAGE.AUTH, JSON.stringify(u));
+        } else {
+          logger.log("Auth", "validate: no session returned — clearing user");
+          loggedSetUser(setUser, prev => {
+            if (prev && prev.id !== "demo" && (prev.id?.length ?? 0) > 20) {
+              localStorage.removeItem(STORAGE.AUTH);
+              return null;
+            }
+            return prev;
+          }, "validate-no-session");
         }
+      } catch {
+        // Network error — keep cached user, don't block the app
       }
       if (mounted) setIsLoading(false);
     }
 
-    init();
+    validate();
     return () => { mounted = false; };
-  }, [useSupabase]);
+  }, [useFirebase]);
 
-  // ── Listen for Supabase auth changes ────────────────────────────────────
+  // ── Listen for Firebase auth changes ────────────────────────────────────
 
   useEffect(() => {
-    if (!useSupabase) return;
+    if (!useFirebase) return;
 
     const subscription = onAuthStateChange(async (event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         const session = await getSession();
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
+          const profile = await fetchProfile(session.user.uid);
           const u = profile ?? {
-            id: session.user.id,
-            name: session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "User",
+            id: session.user.uid,
+            name: session.user.displayName ?? session.user.email?.split("@")[0] ?? "User",
             email: session.user.email ?? "",
-            role: session.user.user_metadata?.role ?? "Trip Manager",
-            avatar: "",
-            initials: (session.user.user_metadata?.name ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
+            role: "Trip Manager",
+            avatar: session.user.photoURL ?? "",
+            initials: (session.user.displayName ?? session.user.email ?? "U").slice(0, 2).toUpperCase(),
             status: "Active" as const,
           };
-          setUser(u);
-          localStorage.setItem("daf-auth", JSON.stringify(u));
+          loggedSetUser(setUser, u, "listener-SIGNED_IN");
+          localStorage.setItem(STORAGE.AUTH, JSON.stringify(u));
         }
       } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        localStorage.removeItem("daf-auth");
+        loggedSetUser(setUser, null, "listener-SIGNED_OUT");
+        localStorage.removeItem(STORAGE.AUTH);
       }
     });
 
     return () => { subscription.unsubscribe(); };
-  }, [useSupabase]);
+  }, [useFirebase]);
 
   // ── Sign up (onboarding) ────────────────────────────────────────────────
 
@@ -152,21 +231,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = (data.email ?? "").trim();
     const role = (data.role ?? "Trip Manager").trim();
 
-    if (useSupabase && data.password) {
+    if (useFirebase && data.password) {
       // Clear stale localStorage so new account starts clean
-      localStorage.removeItem("daf-adventures-v4");
-      localStorage.removeItem("daf-auth");
+      clearUserData();
+      localStorage.removeItem(STORAGE.AUTH);
 
       const { user: newUser, error } = await authSignUp(email, data.password, name, role);
       if (error) return error;
       if (newUser) {
         setUser(newUser);
-        localStorage.setItem("daf-auth", JSON.stringify(newUser));
+        localStorage.setItem(STORAGE.AUTH, JSON.stringify(newUser));
       }
       return null;
     }
 
-    // Fallback: localStorage-only (no Supabase or no password)
+    // Fallback: localStorage-only (no Firebase or no password)
     const next: User = {
       id: `user-${Date.now()}`,
       name,
@@ -177,33 +256,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "Active",
     };
     setUser(next);
-    localStorage.setItem("daf-auth", JSON.stringify(next));
+    localStorage.setItem(STORAGE.AUTH, JSON.stringify(next));
     return null;
-  }, [useSupabase]);
+  }, [useFirebase]);
 
   // ── Sign in ─────────────────────────────────────────────────────────────
 
   const handleSignIn = useCallback(async (email: string, password: string): Promise<string | null> => {
-    if (!useSupabase) return "Supabase not configured";
+    if (!useFirebase) return "Firebase not configured";
 
-    // Clear stale trip cache from previous user/demo session
-    localStorage.removeItem("daf-adventures-v4");
+    // Clear stale data from previous user/demo session
+    clearUserData();
 
     const { user: signedInUser, error } = await authSignIn(email, password);
     if (error) return error;
     if (signedInUser) {
       setUser(signedInUser);
-      localStorage.setItem("daf-auth", JSON.stringify(signedInUser));
+      localStorage.setItem(STORAGE.AUTH, JSON.stringify(signedInUser));
     }
     return null;
-  }, [useSupabase]);
+  }, [useFirebase]);
+
+  // ── Google sign in ──────────────────────────────────────────────────────
+
+  const handleGoogleSignIn = useCallback(async (): Promise<{ error: string | null; isNewUser: boolean }> => {
+    if (!useFirebase) return { error: "Firebase not configured", isNewUser: false };
+
+    clearUserData();
+
+    const { user: googleUser, error } = await authSignInWithGoogle();
+    if (error) return { error, isNewUser: false };
+    if (googleUser) {
+      setUser(googleUser);
+      localStorage.setItem(STORAGE.AUTH, JSON.stringify(googleUser));
+      // If the profile was just created, it's a new user
+      const isNewUser = !!(googleUser as User & { _isNew?: boolean })._isNew;
+      return { error: null, isNewUser };
+    }
+    return { error: null, isNewUser: false };
+  }, [useFirebase]);
 
   // ── Demo login ──────────────────────────────────────────────────────────
 
   const demoLogin = useCallback(async () => {
     await new Promise(r => setTimeout(r, 600));
     setUser(DEMO_USER);
-    localStorage.setItem("daf-auth", JSON.stringify(DEMO_USER));
+    localStorage.setItem(STORAGE.AUTH, JSON.stringify(DEMO_USER));
   }, []);
 
   // ── Update profile ──────────────────────────────────────────────────────
@@ -213,26 +311,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!prev) return prev;
       const next = { ...prev, ...patch };
       if (patch.name) next.initials = initialsFrom(patch.name);
-      localStorage.setItem("daf-auth", JSON.stringify(next));
+      localStorage.setItem(STORAGE.AUTH, JSON.stringify(next));
 
-      // Sync to Supabase if it's a real user (not demo)
-      if (useSupabase && prev.id !== "demo" && prev.id.length > 20) {
+      // Sync to Firebase if it's a real user (not demo)
+      if (useFirebase && prev.id !== "demo" && prev.id.length > 20) {
         authUpdateProfile(prev.id, patch).catch(() => {});
       }
       return next;
     });
-  }, [useSupabase]);
+  }, [useFirebase]);
 
   // ── Logout ──────────────────────────────────────────────────────────────
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem("daf-auth");
-    localStorage.removeItem("daf-adventures-v4");
-    if (useSupabase) {
+    localStorage.removeItem(STORAGE.AUTH);
+    clearUserData();
+    if (useFirebase) {
       authSignOut().catch(() => {});
     }
-  }, [useSupabase]);
+  }, [useFirebase]);
 
   return (
     <AuthContext.Provider
@@ -242,6 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         completeOnboarding,
         signIn: handleSignIn,
+        signInWithGoogle: handleGoogleSignIn,
         demoLogin,
         updateProfile: handleUpdateProfile,
         logout,

@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { BRAND } from "@/config/brand";
+import { useBrand } from "@/context/BrandContext";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Sidebar,
@@ -88,6 +89,7 @@ export function AppSidebar() {
   const { logout }  = useAuth();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { brand } = useBrand();
 
   const currentPath = location.pathname;
   const isActive    = (path: string) => path === "/" ? currentPath === "/" : currentPath === path;
@@ -137,16 +139,20 @@ export function AppSidebar() {
         {/* ── Logo ── */}
         <SidebarHeader className="h-16 border-b border-[#1a1a1a] px-3 flex-row items-center gap-3">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             aria-label="Go to dashboard"
             className="flex items-center gap-3 min-w-0"
           >
-            <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
-              <Globe className="text-black h-4 w-4" />
-            </div>
+            {brand.logoUrl ? (
+              <img src={brand.logoUrl} alt="" className="h-8 w-8 rounded-xl object-contain shrink-0" />
+            ) : (
+              <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                <Globe className="text-black h-4 w-4" />
+              </div>
+            )}
             {!collapsed && (
               <span className="text-[11px] font-black uppercase tracking-widest text-white whitespace-nowrap">
-                {BRAND.name}
+                {brand.name}
               </span>
             )}
           </button>
@@ -269,7 +275,7 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <div className="flex items-center gap-1.5 px-2">
                   {[
-                    { label: "New Trip", icon: Plus, action: () => navigate("/") },
+                    { label: "New Trip", icon: Plus, action: () => navigate("/dashboard") },
                     { label: "Upload", icon: Upload, action: () => navigate("/media") },
                     { label: "Export", icon: FileDown, action: () => navigate("/reports") },
                   ].map((a) => (
@@ -333,7 +339,7 @@ export function AppSidebar() {
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
         title="Sign Out"
-        description={`Are you sure you want to sign out of ${BRAND.name}?`}
+        description={`Are you sure you want to sign out of ${brand.name}?`}
         confirmLabel="Sign Out"
         onConfirm={handleSignOut}
         destructive

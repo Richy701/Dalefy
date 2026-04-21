@@ -2,7 +2,18 @@ import { useState } from "react";
 import { Zap, BarChart3, Lightbulb, Sparkles, FileText, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useNotifications } from "@/context/NotificationContext";
-import { simulateAiAction } from "@/services/api";
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+async function simulateAiAction(action: string): Promise<string> {
+  await delay(1500);
+  const responses: Record<string, string> = {
+    optimize: "Itinerary optimized! Reduced transit time by 2 hours.",
+    suggest: "Added 3 suggested activities based on destination and season.",
+    budget: "Budget estimate generated: $12,450 per person (flights + accommodation + activities).",
+    summary: "Executive summary generated with key highlights and logistics overview.",
+  };
+  return responses[action] || "AI action completed successfully.";
+}
 
 interface AiZapDialogProps {
   open: boolean;

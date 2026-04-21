@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -11,10 +11,25 @@ import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
+import { BrandProvider } from "@/context/BrandContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+/** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
+function BrandBridge({ children }: { children: React.ReactNode }) {
+  const { prefs } = usePreferences();
+  const { trips } = useTrips();
+
+  // Primary: org set during onboarding (agency code)
+  // Fallback: first trip's org
+  const orgId = prefs.orgId
+    || trips.find(t => t.organizationId)?.organizationId
+    || null;
+
+  return <BrandProvider orgId={orgId}>{children}</BrandProvider>;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,10 +101,11 @@ function AppStack() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!prefs.name && pathname !== "/welcome") {
+    // Send to welcome if no name OR no agency connected
+    if ((!prefs.name || !prefs.orgId) && pathname !== "/welcome") {
       router.replace("/welcome");
     }
-  }, [ready, prefs.name, pathname, router]);
+  }, [ready, prefs.name, prefs.orgId, pathname, router]);
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {
@@ -122,17 +138,19 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <PreferencesProvider>
-          <ThemeProvider>
-            <NotificationProvider>
-              <TripsProvider>
-                <ComplianceProvider>
-                  <ToastProvider>
-                    <AppStack />
-                  </ToastProvider>
-                </ComplianceProvider>
-              </TripsProvider>
-            </NotificationProvider>
-          </ThemeProvider>
+          <TripsProvider>
+            <BrandBridge>
+              <ThemeProvider>
+                <NotificationProvider>
+                  <ComplianceProvider>
+                    <ToastProvider>
+                      <AppStack />
+                    </ToastProvider>
+                  </ComplianceProvider>
+                </NotificationProvider>
+              </ThemeProvider>
+            </BrandBridge>
+          </TripsProvider>
         </PreferencesProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

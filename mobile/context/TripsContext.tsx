@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
-import { fetchTrips, upsertTrip as upsertTripRemote } from "@/services/supabaseTrips";
-import { supabase } from "@/services/supabase";
+import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/services/firebaseTrips";
 
 const CACHE_KEY = "daf-trips-cache";
 
@@ -34,13 +33,14 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(CACHE_KEY)
       .then(raw => {
         if (raw && mounted.current) setLocalCache(JSON.parse(raw) as Trip[]);
+        else if (mounted.current) setLocalCache([]);          // no cache → empty
       })
-      .catch(() => {});
+      .catch(() => { if (mounted.current) setLocalCache([]); });
     return () => { mounted.current = false; };
   }, []);
 
   // React Query handles fetching, caching, retries, deduplication
-  const { data: remoteTrips, isSuccess } = useQuery<Trip[]>({
+  const { data: remoteTrips, isSuccess, isError } = useQuery<Trip[]>({
     queryKey: ["trips"],
     queryFn: fetchTrips,
     staleTime: 1000 * 60 * 5,
@@ -54,21 +54,17 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [remoteTrips]);
 
-  // Realtime subscription — invalidates the query cache on changes
+  // Firestore realtime subscription — invalidates the query cache on changes
   useEffect(() => {
-    const channel = supabase
-      .channel("trips-realtime-mobile")
-      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => {
-        qc.invalidateQueries({ queryKey: ["trips"] });
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const unsub = subscribeToTrips(() => {
+      qc.invalidateQueries({ queryKey: ["trips"] });
+    });
+    return () => unsub();
   }, [qc]);
 
   // Use remote data when available, fall back to local cache
   const trips = remoteTrips ?? localCache ?? [];
-  const ready = isSuccess || localCache !== null;
+  const ready = isSuccess || isError || localCache !== null;
 
   const addTrip = useCallback((trip: Trip) => {
     qc.setQueryData<Trip[]>(["trips"], (prev = []) => {
@@ -93,7 +89,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
       save(next);
       return next;
     });
-    // Persist to Supabase
+    // Persist to Firestore
     upsertTripRemote(trip).catch(err =>
       console.warn("[TripsContext] updateTrip upsert failed:", err)
     );

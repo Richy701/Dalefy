@@ -11,7 +11,7 @@ export function useGlobalShortcuts() {
     window.dispatchEvent(new CustomEvent(OPEN_COMMAND_PALETTE_EVENT));
   }, { enableOnFormTags: false });
 
-  useHotkeys("g>d", () => navigate("/"), { enableOnFormTags: false });
+  useHotkeys("g>d", () => navigate("/dashboard"), { enableOnFormTags: false });
   useHotkeys("g>t", () => navigate("/travelers"), { enableOnFormTags: false });
   useHotkeys("g>m", () => navigate("/destinations"), { enableOnFormTags: false });
   useHotkeys("g>s", () => navigate("/settings"), { enableOnFormTags: false });

@@ -19,6 +19,7 @@ import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { useTrips } from "@/context/TripsContext";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import type { TripMedia } from "@/types";
 
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
@@ -230,13 +231,13 @@ export function MediaPage() {
 
         {trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
-            <img src="/illustrations/illus-wavy.svg" alt="" className="w-72 h-72 object-contain dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
+            <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-72 h-72 object-contain" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No media yet</p>
               <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create a trip first, then upload your photos and videos</p>
             </div>
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip

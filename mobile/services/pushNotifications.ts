@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
-import { supabase } from "./supabase";
+import { doc, setDoc } from "firebase/firestore";
+import { firebaseDb, isFirebaseConfigured } from "./firebase";
 import { readPreferencesFromStorage } from "@/context/PreferencesContext";
 
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -54,16 +55,22 @@ export async function registerForPushNotifications(): Promise<string | null> {
       projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     });
 
-    await saveTokenToSupabase(token);
+    await saveTokenToFirestore(token);
     return token;
   } catch {
     return null;
   }
 }
 
-async function saveTokenToSupabase(token: string) {
+async function saveTokenToFirestore(token: string) {
+  if (!isFirebaseConfigured()) return;
+
   const deviceName = Device?.deviceName ?? `${Platform.OS} device`;
-  await supabase
-    .from("push_tokens")
-    .upsert({ token, device_name: deviceName }, { onConflict: "token" });
+  // Use token as document ID for natural upsert behavior
+  const tokenId = token.replace(/[/\\]/g, "_");
+  await setDoc(doc(firebaseDb(), "push_tokens", tokenId), {
+    token,
+    device_name: deviceName,
+    updated_at: new Date().toISOString(),
+  }, { merge: true });
 }

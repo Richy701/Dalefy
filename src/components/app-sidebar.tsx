@@ -7,7 +7,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
-import { BRAND } from "@/config/brand";
+import { useBrand } from "@/context/BrandContext";
 import {
   Sidebar,
   SidebarContent,
@@ -125,25 +125,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { brand } = useBrand();
 
   return (
     <Sidebar collapsible="icon" {...props}>
       {/* ── Logo ── */}
       <SidebarHeader className="border-b border-sidebar-border p-0">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           aria-label="Go to dashboard"
           className={`flex items-center w-full h-16 overflow-hidden ${collapsed ? "justify-center px-0" : "gap-3 px-4"}`}
         >
           {collapsed ? (
-            <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
+            brand.logoUrl ? (
+              <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded-lg object-contain shrink-0" />
+            ) : (
+              <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
+            )
           ) : (
             <>
-              <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
-                <Logo className="text-black h-[18px] w-[18px]" />
-              </div>
+              {brand.logoUrl ? (
+                <img src={brand.logoUrl} alt="" className="h-8 w-8 rounded-xl object-contain shrink-0" />
+              ) : (
+                <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                  <Logo className="text-black h-[18px] w-[18px]" />
+                </div>
+              )}
               <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap">
-                {BRAND.name}
+                {brand.name}
               </span>
             </>
           )}

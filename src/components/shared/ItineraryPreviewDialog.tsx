@@ -7,17 +7,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { useBrand } from "@/context/BrandContext";
+import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
-
-const EVENT_ICONS = { flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils } as const;
-const EVENT_COLORS = {
-  flight:   { bg: "bg-blue-400/10",   text: "text-blue-500",   hex: "#60a5fa" },
-  hotel:    { bg: "bg-amber-400/10",  text: "text-amber-500",  hex: "#f59e0b" },
-  activity: { bg: "bg-brand/10",      text: "text-brand",      hex: "#0bd2b5" },
-  dining:   { bg: "bg-pink-400/10",   text: "text-pink-500",   hex: "#f472b6" },
-} as const;
+import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 
 interface ItineraryPreviewDialogProps {
   open: boolean;
@@ -56,6 +49,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
+        style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{trip.name} — Preview</DialogTitle>
@@ -80,9 +74,14 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
           </button>
 
           {/* Eyebrow */}
-          <span className="absolute top-3 sm:top-4 left-3 sm:left-4 text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
-            {brand.name} · Itinerary Preview
-          </span>
+          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 flex items-center gap-1.5">
+            {brand.logoUrl && (
+              <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded object-contain" />
+            )}
+            <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.25em] text-brand uppercase">
+              {brand.name} · Itinerary Preview
+            </span>
+          </div>
 
           {/* Title block */}
           <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8">

@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { SvgXml } from "react-native-svg";
+import { useTheme } from "@/context/ThemeContext";
 import {
   ILLUS_RIDING,
   ILLUS_SITTING,
@@ -8,6 +10,8 @@ import {
 } from "@/constants/illustrations";
 
 export type IllustrationName = "riding" | "sitting" | "together" | "movement" | "wavy";
+
+const DEFAULT_ACCENT = "#0bd2b5";
 
 const MAP: Record<IllustrationName, string> = {
   riding:   ILLUS_RIDING,
@@ -24,5 +28,12 @@ interface Props {
 }
 
 export function Illustration({ name, width = 240, height = 240 }: Props) {
-  return <SvgXml xml={MAP[name]} width={width} height={height} />;
+  const { C } = useTheme();
+  const xml = useMemo(() => {
+    const raw = MAP[name];
+    if (C.teal.toLowerCase() === DEFAULT_ACCENT) return raw;
+    return raw.replaceAll(DEFAULT_ACCENT, C.teal);
+  }, [name, C.teal]);
+
+  return <SvgXml xml={xml} width={width} height={height} />;
 }

@@ -13,7 +13,7 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
-import { fetchTripById, logTripJoin } from "@/services/supabaseTrips";
+import { fetchTripById, logTripJoin } from "@/services/firebaseTrips";
 import { usePreferences } from "@/context/PreferencesContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";

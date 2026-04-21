@@ -25,7 +25,9 @@ import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
-import { fetchTripByShortCode } from "@/services/supabaseTrips";
+import { fetchTripByShortCode } from "@/services/firebaseTrips";
+import { useBrand } from "@/context/BrandContext";
+import { Logo } from "@/components/Logo";
 let CameraView: any = null;
 let useCameraPermissions: any = null;
 try {
@@ -197,6 +199,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   onPress: (t: Trip) => void;
 }) {
   const { C, isDark, toggle } = useTheme();
+  const { brand } = useBrand();
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
   const router = useRouter();
@@ -294,6 +297,16 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       <View style={styles.illustrationWrap} pointerEvents="none">
         <Illustration name="together" width={170} height={140} />
       </View>
+      {/* Brand badge */}
+      <View style={styles.brandRow}>
+        {brand.logoUrl ? (
+          <Image source={{ uri: brand.logoUrl }} style={{ width: 24, height: 24, borderRadius: 5 }} />
+        ) : (
+          <Logo size={20} color={C.teal} />
+        )}
+        <Text style={styles.brandLabel}>{brand.name}</Text>
+      </View>
+
       <View style={styles.greetingRow}>
         <Text
           style={[styles.greeting, { fontSize: greetingFontSize }]}
@@ -537,6 +550,14 @@ function makeGreetingStyles(C: ThemeColors) {
     illustrationWrap: {
       position: "absolute", right: -10, bottom: -6,
       opacity: 0.55,
+    },
+    brandRow: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      marginBottom: S.sm,
+    },
+    brandLabel: {
+      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+      letterSpacing: 2, textTransform: "uppercase",
     },
     greetingRow: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",

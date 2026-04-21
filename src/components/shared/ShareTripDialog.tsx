@@ -6,10 +6,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
-import { useBrand } from "@/context/BrandContext";
+import { usePreferences } from "@/context/PreferencesContext";
+import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { useTrips } from "@/context/TripsContext";
-import { generateUniqueShortCode } from "@/services/supabaseTrips";
+import { generateUniqueShortCode } from "@/services/firebaseTrips";
 
 interface ShareTripDialogProps {
   open: boolean;
@@ -20,10 +20,9 @@ interface ShareTripDialogProps {
 
 export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const { accent } = usePreferences();
+  const { accentColor } = usePreferences();
   const { brand } = useBrand();
   const { trips, updateTrip } = useTrips();
-  const activeAccent = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
 
   const trip = trips.find((t) => t.id === tripId);
   const [shortCode, setShortCode] = useState<string | undefined>(trip?.shortCode);
@@ -46,7 +45,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
       })
       .catch((err) => {
         const msg = err?.message?.includes("short_code")
-          ? "Run the short_code migration on Supabase first"
+          ? "Couldn't generate trip code — please try again"
           : "Couldn't generate trip code";
         toast.error(msg);
       })
@@ -57,7 +56,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
     typeof window !== "undefined"
       ? `${window.location.origin}${window.location.pathname}#/shared/${tripId}`
       : "";
-  const deepLink = `dafadventures://shared/${tripId}`;
+  const deepLink = `dalefy://shared/${tripId}`;
 
   const copy = (key: string, value: string, label: string) => {
     navigator.clipboard.writeText(value).then(() => {
@@ -69,7 +68,10 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-md bg-slate-100 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-3xl p-0 overflow-hidden">
+      <DialogContent
+        className="w-[calc(100vw-2rem)] max-w-md bg-slate-100 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-3xl p-0 overflow-hidden"
+        style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>Share trip — {tripName}</DialogTitle>
           <DialogDescription>Scan QR to open itinerary</DialogDescription>
@@ -82,19 +84,23 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
             <div
               className="px-4 py-3 flex items-center justify-center gap-2 border-b"
               style={{
-                backgroundColor: `${activeAccent.hex}14`,
-                borderColor: `${activeAccent.hex}30`,
+                backgroundColor: `${accentColor}14`,
+                borderColor: `${accentColor}30`,
               }}
             >
-              <div
-                className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: activeAccent.hex }}
-              >
-                <Plane className="h-3 w-3 text-black" strokeWidth={2.5} />
-              </div>
+              {brand.logoUrl ? (
+                <img src={brand.logoUrl} alt="" className="h-5 w-5 rounded-full object-contain shrink-0" />
+              ) : (
+                <div
+                  className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  <Plane className="h-3 w-3 text-black" strokeWidth={2.5} />
+                </div>
+              )}
               <span
                 className="text-[10px] font-black uppercase tracking-[0.2em] truncate"
-                style={{ color: activeAccent.hex }}
+                style={{ color: accentColor }}
               >
                 {brand.name} · Trip Pass
               </span>
@@ -111,7 +117,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 </h3>
                 {trip?.destination && (
                   <div className="mt-2 flex items-center gap-1.5 min-w-0">
-                    <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: activeAccent.hex }} strokeWidth={2.5} />
+                    <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: accentColor }} strokeWidth={2.5} />
                     <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:text-[#cccccc] truncate">
                       {trip.destination}
                     </span>
@@ -130,25 +136,25 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                     Gate
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider">
-                    DAF
+                    Dalefy
                   </span>
                 </div>
               </div>
               <div
                 className="shrink-0 p-1.5 rounded-lg bg-white border"
-                style={{ borderColor: `${activeAccent.hex}40` }}
+                style={{ borderColor: `${accentColor}40` }}
               >
                 <QRCodeSVG
                   value={deepLink}
                   size={72}
                   bgColor="#ffffff"
-                  fgColor={activeAccent.hex}
+                  fgColor={accentColor}
                   level="M"
                   marginSize={0}
                 />
                 <p
                   className="mt-1 text-center text-[7px] font-black uppercase tracking-[0.15em]"
-                  style={{ color: activeAccent.hex }}
+                  style={{ color: accentColor }}
                 >
                   Scan
                 </p>
@@ -182,9 +188,9 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                       key={i}
                       className="w-12 h-14 rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums text-[32px] leading-none transition-colors"
                       style={{
-                        borderColor: filled ? `${activeAccent.hex}50` : "rgba(148,163,184,0.25)",
-                        backgroundColor: filled ? `${activeAccent.hex}10` : "transparent",
-                        color: filled ? activeAccent.hex : "rgba(148,163,184,0.4)",
+                        borderColor: filled ? `${accentColor}50` : "rgba(148,163,184,0.25)",
+                        backgroundColor: filled ? `${accentColor}10` : "transparent",
+                        color: filled ? accentColor : "rgba(148,163,184,0.4)",
                       }}
                     >
                       {filled ? digit : allocating ? "·" : "·"}
@@ -195,8 +201,8 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#888888]">
                 {copiedKey === "pin" ? (
                   <>
-                    <Check className="h-2.5 w-2.5" style={{ color: activeAccent.hex }} strokeWidth={3} />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: activeAccent.hex }}>
+                    <Check className="h-2.5 w-2.5" style={{ color: accentColor }} strokeWidth={3} />
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: accentColor }}>
                       Copied
                     </span>
                   </>

@@ -9,7 +9,8 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
 import { OrgProvider, useOrg } from "@/context/OrgContext";
 import { BrandProvider } from "@/context/BrandContext";
-import { isSupabaseConfigured } from "@/services/supabase";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { STORAGE } from "@/config/storageKeys";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,14 +32,18 @@ import { MediaPage } from "@/pages/MediaPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SharedTripPage } from "@/pages/SharedTripPage";
 import { CreateOrgPage } from "@/pages/CreateOrgPage";
+import { LandingPage } from "@/pages/LandingPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { hasOrg, isLoading: orgLoading, tablesReady } = useOrg();
-  const isRealUser = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+  const isRealUser = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
-  if (authLoading || (isRealUser && orgLoading)) return <AuthLoadingScreen />;
+  // Only block on auth loading — org loading happens in the background
+  if (authLoading) return <AuthLoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  // Wait briefly for org check, but don't block forever
+  if (isRealUser && orgLoading) return <AuthLoadingScreen />;
   // Real auth users without an org → create one first (only if org tables are migrated)
   if (isRealUser && tablesReady && !hasOrg) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
@@ -54,10 +59,13 @@ function AuthLoadingScreen() {
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  // During onboarding step 3 (branding), user is authenticated but should stay on login
+  const pendingBranding = typeof sessionStorage !== "undefined" && sessionStorage.getItem(STORAGE.PENDING_BRANDING);
 
   return (
     <Routes>
-      <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+      <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : (isAuthenticated && !pendingBranding) ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -65,7 +73,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/trips" element={<DashboardPage />} />
         <Route path="/travelers" element={<TravelersPage />} />
         <Route path="/destinations" element={<DestinationsPage />} />
@@ -83,7 +91,7 @@ function AppRoutes() {
       />
       <Route path="/create-org" element={<CreateOrgPage />} />
       <Route path="/shared/:tripId" element={<SharedTripPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

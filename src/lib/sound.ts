@@ -3,7 +3,8 @@ let ctx: AudioContext | null = null;
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!ctx) {
-    const AC = (window as any).AudioContext ?? (window as any).webkitAudioContext;
+    const w = window as unknown as Window & { webkitAudioContext?: typeof AudioContext };
+    const AC = w.AudioContext ?? w.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
   }

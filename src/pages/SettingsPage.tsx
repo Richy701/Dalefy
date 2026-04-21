@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
   Sun, Moon, Download, Trash2, Lock, Building2, Upload,
 } from "lucide-react";
-import { isSupabaseConfigured } from "@/services/supabase";
-import { changePassword } from "@/services/supabaseAuth";
-import { updateBranding } from "@/services/supabaseBranding";
+import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
+import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { changePassword } from "@/services/firebaseAuth";
+import { STORAGE } from "@/config/storageKeys";
+import { logger } from "@/lib/logger";
+import { updateBranding, uploadLogo } from "@/services/firebaseBranding";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BRAND } from "@/config/brand";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -16,7 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { useOrg } from "@/context/OrgContext";
 import { useBrand } from "@/context/BrandContext";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { usePreferences, ACCENT_PRESETS } from "@/context/PreferencesContext";
 import { playChime } from "@/lib/sound";
 
 interface SectionProps {
@@ -109,34 +113,96 @@ export function SettingsPage() {
     compactMode, setCompactMode,
     toastsEnabled, setToastsEnabled,
     soundEnabled, setSoundEnabled,
-    accent, setAccent,
+    accentColor, setAccentColor,
   } = usePreferences();
-  const activeAccent = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
-  const { currentOrg, orgRole } = useOrg();
-  const { brand, orgBranding } = useBrand();
+  const { currentOrg, orgRole, tablesReady, isLoading: orgLoading, createOrg } = useOrg();
+  const { brand, orgBranding, refreshBranding } = useBrand();
   const [resetOpen, setResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const realAuth = isSupabaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
+  const realAuth = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
   const canManageOrg = realAuth && currentOrg && (orgRole === "owner" || orgRole === "admin");
+  // Show branding section: org owners/admins, or demo mode (localStorage branding)
+  const showBrandingSection = canManageOrg || (realAuth && orgLoading) || !isFirebaseConfigured();
 
   // Org branding form state
   const [brandName, setBrandName] = useState(orgBranding?.companyName ?? "");
   const [brandColor, setBrandColor] = useState(orgBranding?.accentColor ?? BRAND.accentColor);
   const [savingBrand, setSavingBrand] = useState(false);
+  const [brandLogo, setBrandLogo] = useState(orgBranding?.logoUrl ?? "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [creatingOrg, setCreatingOrg] = useState(false);
+  const [agencyCodeEdit, setAgencyCodeEdit] = useState(currentOrg?.agencyCode ?? "");
+  const [savingAgencyCode, setSavingAgencyCode] = useState(false);
+  const canSetupOrg = realAuth && !currentOrg && tablesReady;
+
+  // Sync form state when orgBranding loads asynchronously
+  useEffect(() => {
+    if (orgBranding) {
+      if (orgBranding.companyName) setBrandName(orgBranding.companyName);
+      if (orgBranding.logoUrl) setBrandLogo(orgBranding.logoUrl);
+      if (orgBranding.accentColor) setBrandColor(orgBranding.accentColor);
+    }
+  }, [orgBranding]);
+
+  useEffect(() => {
+    if (currentOrg?.agencyCode) setAgencyCodeEdit(currentOrg.agencyCode);
+  }, [currentOrg?.agencyCode]);
 
   const handleSaveBranding = async () => {
-    if (!currentOrg) return;
+    const orgId = currentOrg?.id ?? "local";
     setSavingBrand(true);
-    const { error } = await updateBranding(currentOrg.id, {
+    const { error } = await updateBranding(orgId, {
       companyName: brandName || null,
-      accentColor: brandColor !== BRAND.accentColor ? brandColor : null,
+      logoUrl: brandLogo || null,
+      accentColor: accentColor !== BRAND.accentColor ? accentColor : null,
     });
     setSavingBrand(false);
     if (error) {
       toast.error(error);
     } else {
-      toast.success("Branding updated — reload to see changes");
+      toast.success("Branding saved");
+      refreshBranding();
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2MB");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const { url, error } = await uploadLogo(currentOrg?.id ?? "local", file);
+      if (error) {
+        logger.error("SettingsPage", "logo upload error:", error);
+        toast.error(error);
+      } else if (url) {
+        setBrandLogo(url);
+        toast.success("Logo uploaded — hit Save to apply");
+      }
+    } catch (err) {
+      logger.error("SettingsPage", "logo upload exception:", err);
+      toast.error("Upload failed");
+    }
+    setUploadingLogo(false);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
+
+  const handleCreateOrg = async () => {
+    if (!newOrgName.trim()) return;
+    setCreatingOrg(true);
+    const { error } = await createOrg(newOrgName.trim());
+    setCreatingOrg(false);
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success("Agency created! Branding options are now available.");
+      setNewOrgName("");
     }
   };
 
@@ -186,7 +252,7 @@ export function SettingsPage() {
   };
 
   const resetData = () => {
-    ["daf-adventures-v4", "daf-compliance", "daf-custom-travelers", "daf-toasts", "daf-sound", "daf-compact", "daf-accent"]
+    [STORAGE.TRIPS, STORAGE.COMPLIANCE, STORAGE.CUSTOM_TRAVELERS, STORAGE.TOASTS, STORAGE.SOUND, STORAGE.COMPACT, STORAGE.ACCENT]
       .forEach((k) => localStorage.removeItem(k));
     toast.success("Trip data cleared");
     setTimeout(() => window.location.reload(), 600);
@@ -256,7 +322,7 @@ export function SettingsPage() {
             </div>
           </Section>
 
-          {/* ── Security (only for real Supabase auth users) ── */}
+          {/* ── Security (only for real Firebase auth users) ── */}
           {realAuth && (
             <Section
               icon={Lock}
@@ -288,16 +354,155 @@ export function SettingsPage() {
             </Section>
           )}
 
-          {/* ── Organization Branding (owner/admin only) ── */}
-          {canManageOrg && (
+          {/* ── Set up Agency (real auth, no org yet) ── */}
+          {canSetupOrg && (
             <Section
               icon={Building2}
-              title="Organization"
-              description="Customize how your agency appears to clients on shared trip pages and PDFs."
+              title="Agency Setup"
+              description="Create your agency to unlock white-label branding on shared trips and PDFs."
             >
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={newOrgName}
+                  onChange={e => setNewOrgName(e.target.value)}
+                  placeholder="e.g. Sunset Travel Co."
+                  className="h-9 flex-1 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                />
+                <Button
+                  onClick={handleCreateOrg}
+                  disabled={creatingOrg || !newOrgName.trim()}
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-4 disabled:opacity-40"
+                >
+                  {creatingOrg ? "Creating..." : "Create Agency"}
+                </Button>
+              </div>
+            </Section>
+          )}
+
+          {/* ── Organization Branding (owner/admin only) ── */}
+          {showBrandingSection && (
+            <Section
+              icon={Building2}
+              title="White-Label"
+              description="How clients see your agency on shared trips and PDFs."
+            >
+              {orgLoading && !currentOrg ? (
+                <Row label="Loading" value="Fetching your organization branding..." />
+              ) : !currentOrg ? (
+                <Row label="No Organization" value="Create an agency above to configure white-label branding" />
+              ) : <>
+              {/* Logo */}
+              <Row
+                label="Logo"
+                value={brandLogo ? "Uploaded" : "No logo — first letter will be used"}
+                action={
+                  <div className="flex items-center gap-3">
+                    {brandLogo ? (
+                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] p-0.5" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-black text-white" style={{ background: brandColor }}>
+                        {(brandName || BRAND.name).charAt(0)}
+                      </div>
+                    )}
+                    <label className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-brand hover:opacity-80 transition-opacity">
+                      {uploadingLogo ? "Uploading..." : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {brandLogo && (
+                      <button
+                        onClick={() => setBrandLogo("")}
+                        className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555] hover:text-red-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                }
+              />
+              {/* Agency Code */}
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#141414]">
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
+                      Agency Code
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-[#666]">
+                      Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={agencyCodeEdit}
+                        onChange={e => setAgencyCodeEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                        placeholder={brandName ? brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) : "your-agency-code"}
+                        maxLength={40}
+                        className="h-10 w-52 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                      />
+                      {agencyCodeEdit && agencyCodeEdit === currentOrg?.agencyCode ? (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(agencyCodeEdit);
+                            toast.success("Copied! Share this with your travelers.");
+                          }}
+                          className="h-10 px-4 rounded-xl bg-brand/10 text-[10px] font-black uppercase tracking-wider text-brand hover:bg-brand/20 transition-colors"
+                        >
+                          Copy
+                        </button>
+                      ) : (
+                        <button
+                          disabled={savingAgencyCode || !agencyCodeEdit.trim()}
+                          onClick={async () => {
+                            if (!currentOrg || !agencyCodeEdit.trim()) return;
+                            setSavingAgencyCode(true);
+                            try {
+                              const db = firebaseDb();
+                              const existing = await getDocs(
+                                query(collection(db, "org_branding"), where("agency_code", "==", agencyCodeEdit.trim())),
+                              );
+                              if (!existing.empty && existing.docs[0].id !== currentOrg.id) {
+                                toast.error("That code is already taken");
+                                setSavingAgencyCode(false);
+                                return;
+                              }
+                              // Save to org_branding (org doc has stricter rules)
+                              const { setDoc } = await import("firebase/firestore");
+                              await setDoc(doc(db, "org_branding", currentOrg.id), {
+                                agency_code: agencyCodeEdit.trim(),
+                              }, { merge: true });
+                              toast.success("Agency code saved! Share it with your travelers.");
+                            } catch (err) {
+                              console.error("Agency code save error:", err);
+                              toast.error("Failed to save agency code");
+                            } finally {
+                              setSavingAgencyCode(false);
+                            }
+                          }}
+                          className="h-10 px-4 rounded-xl bg-brand text-[10px] font-black uppercase tracking-wider text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {savingAgencyCode ? "Saving..." : "Save"}
+                        </button>
+                      )}
+                    </div>
+                    {!currentOrg?.agencyCode && (
+                      <p className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold">
+                        Set a code so travelers can connect to your agency
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {/* Company Name */}
               <Row
                 label="Company Name"
-                value="Shown in headers, share cards, and itineraries"
+                value="Replaces platform name on shared pages"
                 action={
                   <input
                     type="text"
@@ -308,43 +513,32 @@ export function SettingsPage() {
                   />
                 }
               />
-              <Row
-                label="Accent Color"
-                value={`Currently ${brandColor}`}
-                action={
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={brandColor}
-                      onChange={e => setBrandColor(e.target.value)}
-                      className="h-9 w-9 rounded-lg border border-slate-200 dark:border-[#1f1f1f] cursor-pointer bg-transparent p-0.5"
-                    />
-                    <button
-                      onClick={() => setBrandColor(BRAND.accentColor)}
-                      className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                }
-              />
-              <div className="flex items-center justify-between bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">
-                    Preview
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-[#888888] mt-1">
-                    Clients will see <span className="font-bold text-slate-900 dark:text-white">{brandName || BRAND.name}</span> · Powered by {BRAND.name}
-                  </p>
+              {/* Preview + Save */}
+              <div className="pt-3 space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Preview</p>
+                <div className="flex items-center gap-2.5">
+                  {brandLogo ? (
+                    <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
+                  ) : (
+                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-black text-white" style={{ background: accentColor }}>
+                      {(brandName || BRAND.name).charAt(0)}
+                    </div>
+                  )}
+                  <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
+                  <span className="text-[9px] text-slate-300 dark:text-[#333]">·</span>
+                  <span className="text-[9px] font-bold text-slate-300 dark:text-[#444]">Powered by {BRAND.name}</span>
                 </div>
-                <Button
-                  onClick={handleSaveBranding}
-                  disabled={savingBrand}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-4 disabled:opacity-40"
-                >
-                  {savingBrand ? "Saving..." : "Save"}
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveBranding}
+                    disabled={savingBrand}
+                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-5 disabled:opacity-40"
+                  >
+                    {savingBrand ? "Saving..." : "Save"}
+                  </Button>
+                </div>
               </div>
+              </>}
             </Section>
           )}
 
@@ -372,31 +566,10 @@ export function SettingsPage() {
               action={<ToggleSwitch checked={compactMode} onChange={setCompactMode} />}
             />
             <Row
-              label="Accent"
-              value={`${activeAccent.label} — applied to active states and CTAs`}
+              label="Accent Color"
+              value="Applied to active states, CTAs, and branding"
               action={
-                <div className="flex flex-wrap items-center justify-end gap-2 max-w-[168px] sm:max-w-none">
-                  {ACCENT_PALETTE.map((p) => {
-                    const selected = p.id === accent;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setAccent(p.id)}
-                        aria-label={p.label}
-                        aria-pressed={selected}
-                        title={p.label}
-                        className="h-7 w-7 rounded-full transition-transform hover:scale-110"
-                        style={{
-                          background: p.hex,
-                          boxShadow: selected
-                            ? `0 0 0 2px rgb(${p.rgb} / 0.35), 0 0 0 4px hsl(var(--card))`
-                            : "none",
-                        }}
-                      />
-                    );
-                  })}
-                </div>
+                <ColorPicker value={accentColor} onChange={setAccentColor} presets={[...ACCENT_PRESETS]} />
               }
             />
           </Section>

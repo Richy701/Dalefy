@@ -6,7 +6,7 @@ export interface EventDocument {
   id: string;
   name: string;
   mimeType: string;
-  url: string;    // data URL for v1 — migrate to Supabase Storage later
+  url: string;    // data URL for v1
   size: number;
   uploadedAt: string;
 }
@@ -71,6 +71,7 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  agencyCode: string;
   createdBy: string;
 }
 

@@ -1,17 +1,11 @@
 import type { User } from "@/types";
+import { initialsFrom } from "@/lib/names";
 
 export interface MatchResult {
   travelerIds: string[];
   travelers: Array<{ id: string; name: string; initials: string }>;
   newTravelers: User[];
   attendees: string;
-}
-
-function initialsFrom(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function normalize(name: string): string {
@@ -101,11 +95,14 @@ export function deriveAttendeesString(
   return rest > 0 ? `${shown.join(", ")} +${rest} more` : shown.join(", ");
 }
 
+/** Strings that look like group/team labels rather than person names. */
+const GROUP_LABEL = /\b(team|agents?|managers?|performers|staff|crew|group|department)\b/i;
+
 export function extractNamesFromAttendeesString(attendees: string): string[] {
   if (!attendees || attendees === "Imported Group") return [];
   const cleaned = attendees.replace(/\s*\+\d+\s*more\s*$/i, "");
   return cleaned
     .split(",")
     .map((n) => n.trim())
-    .filter((n) => n.length > 2);
+    .filter((n) => n.length > 2 && !GROUP_LABEL.test(n));
 }

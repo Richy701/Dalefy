@@ -41,7 +41,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 <Input
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="team@dafadventures.com"
+                  placeholder="team@dalefy.com"
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
                   className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white"
                 />

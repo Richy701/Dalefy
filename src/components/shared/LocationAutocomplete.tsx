@@ -30,7 +30,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className }
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=5&types=place,locality,neighborhood,address,poi`
       );
       const json = await res.json();
-      setSuggestions(json.features?.map((f: any) => ({
+      setSuggestions(json.features?.map((f: { place_name: string; text: string; center: [number, number] }) => ({
         place_name: f.place_name,
         text: f.text,
         center: f.center,

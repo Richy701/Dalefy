@@ -8,6 +8,8 @@ import {
   X, Upload, Loader2, RefreshCw, ChevronRight,
   Clock, Hash, Tag, ArrowRight, Copy, FileStack, Save
 } from "lucide-react";
+import { STORAGE } from "@/config/storageKeys";
+import { EVENT_ICONS } from "@/config/eventStyles";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +26,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
-import { usePreferences, ACCENT_PALETTE } from "@/context/PreferencesContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -33,52 +35,21 @@ import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { searchImages } from "@/services/imageSearch";
 import MapboxMap, { Source, Layer, Marker } from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { resolveCoords } from "@/data/coordinates";
+import { geocode } from "@/services/geocode";
+import { COVER_IMAGES } from "@/data/images";
+import { BrandIllustration } from "@/components/shared/BrandIllustration";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 
 const EVENT_COLORS = {
-  activity: { bg: "bg-brand/10", text: "text-brand", Icon: Compass },
-  hotel:    { bg: "bg-amber-400/10",  text: "text-amber-500",  Icon: Hotel },
-  dining:   { bg: "bg-pink-400/10",   text: "text-pink-500",   Icon: Utensils },
-  flight:   { bg: "bg-blue-400/10",   text: "text-blue-500",   Icon: Plane },
+  activity: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.activity },
+  hotel:    { bg: "bg-amber-400/10",  text: "text-amber-500",  Icon: EVENT_ICONS.hotel },
+  dining:   { bg: "bg-pink-400/10",   text: "text-pink-500",   Icon: EVENT_ICONS.dining },
+  flight:   { bg: "bg-blue-400/10",   text: "text-blue-500",   Icon: EVENT_ICONS.flight },
 };
 
-const IMG = (id: string) => `https://images.unsplash.com/photo-${id}?q=80&w=1200&auto=format&fit=crop`;
-const COVER_IMGS = [
-  { url: IMG("1763878119119-aff0820121fd"), label: "Safari" },
-  { url: IMG("1603477849227-705c424d1d80"), label: "Beach" },
-  { url: IMG("1604223190546-a43e4c7f29d7"), label: "Mountain" },
-  { url: IMG("1677254817050-cb9b29fbb16e"), label: "Japan" },
-  { url: IMG("1680454769871-f58768c6187b"), label: "Italy" },
-  { url: IMG("1643718220983-d6499832d422"), label: "Bali" },
-  { url: IMG("1514939775307-d44e7f10cabd"), label: "City" },
-  { url: IMG("1637576308588-6647bf80944d"), label: "Maldives" },
-  { url: IMG("1669711671489-3f181b312531"), label: "Kyoto" },
-  { url: IMG("1629711129507-d09c820810b1"), label: "Resort" },
-  { url: IMG("1612638945907-1cb1d758f2d3"), label: "Alps" },
-  { url: IMG("1647363377737-8d0ad7c2f494"), label: "Flight" },
-];
 
-// Geocode cache shared with Destinations page pattern
-const dashGeoCache: Record<string, [number, number] | null> = {};
-async function geocodeName(name: string): Promise<[number, number] | null> {
-  if (name in dashGeoCache) return dashGeoCache[name];
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1`
-    );
-    const json = await res.json();
-    const center = json.features?.[0]?.center as [number, number] | undefined;
-    dashGeoCache[name] = center ?? null;
-    return center ?? null;
-  } catch {
-    dashGeoCache[name] = null;
-    return null;
-  }
-}
 
 const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
 
@@ -112,10 +83,15 @@ export function DashboardPage() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
-  const { accent } = usePreferences();
+  const { accentColor } = usePreferences();
   const { canDeleteTrip, isOrgMember } = usePermissions();
-  const accentPreset = ACCENT_PALETTE.find(p => p.id === accent) ?? ACCENT_PALETTE[0];
-  const ACCENT_RGB = accentPreset.rgb.replace(/\s+/g, ", ");
+  const hexToRgbCss = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r}, ${g}, ${b}`;
+  };
+  const ACCENT_RGB = hexToRgbCss(accentColor);
   const stats = useTripStats(trips);
   const navigate = useNavigate();
 
@@ -225,13 +201,10 @@ export function DashboardPage() {
 
   useEffect(() => {
     destNames.forEach(name => {
-      const local = resolveCoords(name);
-      if (local) { setMapCoords(prev => ({ ...prev, [name]: local })); return; }
-      if (!(name in dashGeoCache)) {
-        geocodeName(name).then(c => { if (c) setMapCoords(prev => ({ ...prev, [name]: c })); });
-      } else if (dashGeoCache[name]) {
-        setMapCoords(prev => ({ ...prev, [name]: dashGeoCache[name]! }));
-      }
+      // geocode service returns [lat, lng]; Mapbox markers need [lng, lat]
+      geocode(name).then(c => {
+        if (c) setMapCoords(prev => ({ ...prev, [name]: [c[1], c[0]] }));
+      });
     });
   }, [destNames]);
 
@@ -257,7 +230,7 @@ export function DashboardPage() {
     try {
       const { urls } = await searchImages(query, page, 12);
       if (urls.length) { setCoverResults(urls); return; }
-      const shuffled = [...COVER_IMGS].sort(() => Math.random() - 0.5);
+      const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
       setCoverResults(shuffled.map(i => i.url));
     } finally {
       setIsCoverSearching(false);
@@ -320,7 +293,7 @@ export function DashboardPage() {
   };
 
   const handleSaveAsTemplate = (trip: Trip) => {
-    const templates: Trip[] = JSON.parse(localStorage.getItem("daf-templates") ?? "[]");
+    const templates: Trip[] = JSON.parse(localStorage.getItem(STORAGE.TEMPLATES) ?? "[]");
     const tpl: Trip = {
       ...trip,
       id: `tpl-${Date.now()}`,
@@ -329,7 +302,7 @@ export function DashboardPage() {
       shortCode: undefined,
     };
     templates.push(tpl);
-    localStorage.setItem("daf-templates", JSON.stringify(templates));
+    localStorage.setItem(STORAGE.TEMPLATES, JSON.stringify(templates));
     showToast("Saved as template");
     toast.success("Saved as template");
   };
@@ -364,7 +337,7 @@ export function DashboardPage() {
   };
 
   const templates: Trip[] = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("daf-templates") ?? "[]"); }
+    try { return JSON.parse(localStorage.getItem(STORAGE.TEMPLATES) ?? "[]"); }
     catch { return []; }
   }, []);
 
@@ -411,44 +384,29 @@ export function DashboardPage() {
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {trips.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
-            <img src="/illustrations/illus-riding.svg" alt="" className="w-72 h-72 object-contain dark:drop-shadow-[0_0_48px_rgba(255,255,255,0.18)]" draggable={false} />
-            <div className="text-center space-y-1.5">
-              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No trips yet</p>
-              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create your first trip to get started</p>
+          <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
+            <BrandIllustration src="/illustrations/illus-riding.svg" className="w-72 h-72 object-contain" draggable={false} />
+            <p className="text-sm font-medium text-slate-500 dark:text-[#888] text-center max-w-xs leading-relaxed">
+              Plan your first adventure. Add it manually or import an itinerary.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsNewTripOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
+              >
+                <Plus className="h-3.5 w-3.5" /> New Trip
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-[#aaa] px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" /> Import
+              </button>
             </div>
-            <button
-              onClick={() => setIsNewTripOpen(true)}
-              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              <Plus className="h-3.5 w-3.5" /> New Trip
-            </button>
-            {/* Drag-to-import hint */}
-            <div className="flex items-center gap-3 w-full max-w-[300px] pt-1">
-              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-[#333]">or drag a file</span>
-              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
-            </div>
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="w-full max-w-[300px] rounded-2xl border border-dashed border-slate-200/50 dark:border-transparent overflow-hidden hover:border-brand/60 transition-colors group cursor-pointer"
-            >
-              <div className="flex items-center h-10">
-                <div className="px-3 shrink-0 h-full flex items-center border-r border-dashed border-slate-200/50 dark:border-transparent group-hover:border-brand/40 transition-colors">
-                  <Upload className="h-3 w-3 text-brand" />
-                </div>
-                <div className="flex-1 overflow-hidden relative">
-                  <div className="flex animate-marquee">
-                    {[0, 1].map(i => (
-                      <span key={i} className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#444] px-3">
-                        PDF &nbsp;·&nbsp; DOCX &nbsp;·&nbsp; PPTX &nbsp;·&nbsp; TXT &nbsp;·&nbsp; Extracts flights &amp; hotels &nbsp;·&nbsp;&emsp;
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </button>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#444]">
+              Supports PDF · DOCX · PPTX · TXT
+            </p>
           </div>
         ) : (
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
@@ -504,12 +462,11 @@ export function DashboardPage() {
                 </button>
               )}
             </div>
-            <img
+            <BrandIllustration
               src="/illustrations/illus-together.svg"
-              alt=""
               aria-hidden="true"
               draggable={false}
-              className="hidden sm:block absolute -right-4 -bottom-4 h-48 lg:h-56 w-auto object-contain pointer-events-none select-none opacity-90 dark:drop-shadow-[0_0_40px_rgba(11,210,181,0.15)]"
+              className="hidden sm:block absolute -right-4 -bottom-4 h-48 lg:h-56 w-auto object-contain pointer-events-none select-none opacity-90"
             />
           </div>
 
@@ -583,7 +540,7 @@ export function DashboardPage() {
                   </div>
 
                   {spotlightPlaces.length > 0 ? (
-                    <div className="mt-4 flex-1 flex flex-col gap-3">
+                    <div data-compact-place-list className="mt-4 flex-1 flex flex-col gap-3">
                       {spotlightPlaces.map((ev) => {
                         const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
                         const hasImg = !!ev.image;
@@ -785,7 +742,7 @@ export function DashboardPage() {
                 </div>
                 <div data-compact-map className="relative h-[200px] sm:h-[220px] overflow-hidden rounded-b-3xl">
                   <MapboxMap
-                    key={`${isDark ? "dark" : "light"}-${accent}`}
+                    key={`${isDark ? "dark" : "light"}-${accentColor}`}
                     initialViewState={{ longitude: 15, latitude: 20, zoom: 1.2 }}
                     mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
                     mapboxAccessToken={MAPBOX_TOKEN}
@@ -814,7 +771,7 @@ export function DashboardPage() {
                             0.4, `rgba(${ACCENT_RGB},0.3)`,
                             0.6, `rgba(${ACCENT_RGB},0.5)`,
                             0.8, `rgba(${ACCENT_RGB},0.7)`,
-                            1, accentPreset.hex,
+                            1, accentColor,
                           ],
                         }}
                       />
@@ -825,7 +782,7 @@ export function DashboardPage() {
                           <div style={{
                             position: "absolute", top: "50%", left: "50%",
                             width: 32, height: 32, marginLeft: -16, marginTop: -16, borderRadius: "50%",
-                            border: `1px solid rgba(${accentPreset.rgb},${isDark ? 0.2 : 0.35})`,
+                            border: `1px solid rgba(${ACCENT_RGB},${isDark ? 0.2 : 0.35})`,
                             background: `rgba(${ACCENT_RGB},${isDark ? 0.06 : 0.1})`,
                             animation: `dest-pin-pulse 3s ease-in-out ${i * 0.5}s infinite`,
                             pointerEvents: "none",
@@ -833,11 +790,11 @@ export function DashboardPage() {
                           <div style={{
                             position: "absolute", top: "50%", left: "50%",
                             width: 12, height: 12, marginLeft: -6, marginTop: -6, borderRadius: "50%",
-                            background: accentPreset.hex,
+                            background: accentColor,
                             border: `2px solid ${isDark ? "rgba(17,17,17,0.8)" : "rgba(255,255,255,0.95)"}`,
                             boxShadow: isDark
-                              ? `0 0 8px rgba(${accentPreset.rgb},0.4)`
-                              : `0 0 6px rgba(${accentPreset.rgb},0.3), 0 0 0 2px rgba(${accentPreset.rgb},0.15)`,
+                              ? `0 0 8px rgba(${ACCENT_RGB},0.4)`
+                              : `0 0 6px rgba(${ACCENT_RGB},0.3), 0 0 0 2px rgba(${ACCENT_RGB},0.15)`,
                             zIndex: 2,
                           }} />
                         </div>
@@ -878,7 +835,7 @@ export function DashboardPage() {
                       {/* Status + eyebrow */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
                         <span className="text-[9px] font-bold tracking-[0.22em] text-brand uppercase">
-                          DAF · Spotlight
+                          Dalefy · Spotlight
                         </span>
                         <span className={cn(
                           "px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.12em] uppercase inline-flex items-center gap-1",
@@ -1052,7 +1009,7 @@ export function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
                   <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-20">
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
@@ -1082,7 +1039,7 @@ export function DashboardPage() {
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
+                      <div data-compact-table-content className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
                         <div className="flex items-center gap-2 min-w-0">
                           <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate group-hover:text-brand transition-colors">
                             {trip.name}
@@ -1360,7 +1317,7 @@ export function DashboardPage() {
                         </button>
                       ))
                     ) : (
-                      COVER_IMGS.map(({ url, label }) => (
+                      COVER_IMAGES.map(({ url, label }) => (
                         <button key={url} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
                           className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                           <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />

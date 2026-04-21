@@ -1,26 +1,27 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Moon, Sun, Smartphone, Palette, Bell, Shield, ChevronRight,
   Droplet, Vibrate, Trash2, Pencil, ExternalLink, Info,
-  FileCheck, FileClock, FileText,
+  FileText,
 } from "lucide-react-native";
 import { T, R, S, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
+import { useBrand } from "@/context/BrandContext";
 import { useToast } from "@/context/ToastContext";
-import { useCompliance } from "@/context/ComplianceContext";
 import { useMemo, useState, useCallback } from "react";
 
 export default function ProfileScreen() {
   const { C, isDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
+  const { brand } = useBrand();
   const { trips, clearTrips, reload } = useTrips();
-  const { docs, pendingCount } = useCompliance();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -201,41 +202,15 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── My Documents ── */}
-        <Text style={s.sectionLabel}>
-          My Documents{pendingCount > 0 ? ` (${pendingCount} pending)` : ""}
-        </Text>
+        <Text style={s.sectionLabel}>My Documents</Text>
         <View style={s.card}>
-          {docs.map((doc, i) => {
-            const isSigned = doc.status === "Signed";
-            const isExpired = doc.status === "Expired";
-            const DocIcon = isSigned ? FileCheck : isExpired ? FileText : FileClock;
-            const iconColor = isSigned ? C.green : isExpired ? C.red : C.amber;
-            return (
-              <View key={doc.name}>
-                {i > 0 && <View style={s.divider} />}
-                <Pressable
-                  style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-                  onPress={() => {
-                    haptic.selection();
-                    router.push({ pathname: "/document", params: { name: doc.name } });
-                  }}
-                >
-                  <DocIcon size={18} color={iconColor} strokeWidth={1.5} />
-                  <Text style={s.rowLabel}>{doc.name}</Text>
-                  <View style={[s.docBadge, {
-                    backgroundColor: isSigned ? C.greenDim : isExpired ? C.redDim : C.amberDim,
-                  }]}>
-                    <Text style={[s.docBadgeText, {
-                      color: isSigned ? C.green : isExpired ? C.red : C.amber,
-                    }]}>
-                      {doc.status}
-                    </Text>
-                  </View>
-                  <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
-                </Pressable>
-              </View>
-            );
-          })}
+          <View style={s.docsEmpty}>
+            <FileText size={24} color={C.textTertiary} strokeWidth={1.5} />
+            <Text style={s.docsEmptyTitle}>No documents yet</Text>
+            <Text style={s.docsEmptyText}>
+              Your travel agency will share documents here when they're ready.
+            </Text>
+          </View>
         </View>
 
         {/* ── About ── */}
@@ -271,12 +246,36 @@ export default function ProfileScreen() {
               Clear all trips ({trips.length})
             </Text>
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.dangerBtn, { opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
+            onPress={() => {
+              Alert.alert("Reset App?", "This will clear all data and return to the setup screen.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Reset",
+                  style: "destructive",
+                  onPress: async () => {
+                    haptic.warning();
+                    await AsyncStorage.clear();
+                    router.replace("/welcome");
+                  },
+                },
+              ]);
+            }}
+          >
+            <Trash2 size={15} color="#ef4444" strokeWidth={1.5} />
+            <Text style={s.dangerText}>Reset app</Text>
+          </Pressable>
         </View>
 
         {/* ── Footer ── */}
         <View style={s.footer}>
-          <Logo size={10} color={C.textDim} />
-          <Text style={s.footerText}>DAF Adventures</Text>
+          {brand.logoUrl ? (
+            <Image source={{ uri: brand.logoUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
+          ) : (
+            <Logo size={14} color={C.textDim} />
+          )}
+          <Text style={s.footerText}>Powered by {brand.name}</Text>
         </View>
 
       </ScrollView>
@@ -412,17 +411,24 @@ function makeStyles(C: ThemeColors) {
       borderRadius: 8,
     },
 
-    // ── Document badges ──
-    docBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: R.full,
+    // ── Documents empty ──
+    docsEmpty: {
+      alignItems: "center",
+      paddingVertical: S.xl,
+      paddingHorizontal: S.md,
+      gap: 6,
     },
-    docBadgeText: {
-      fontSize: T.xs,
+    docsEmptyTitle: {
+      fontSize: T.sm,
       fontWeight: T.bold,
-      textTransform: "uppercase",
-      letterSpacing: 0.3,
+      color: C.textSecondary,
+      marginTop: 4,
+    },
+    docsEmptyText: {
+      fontSize: T.xs,
+      color: C.textTertiary,
+      textAlign: "center",
+      lineHeight: 17,
     },
 
     // ── Danger zone ──

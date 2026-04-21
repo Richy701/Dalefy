@@ -17,6 +17,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
+import { useBrand } from "@/context/BrandContext";
 import * as ImagePicker from "expo-image-picker";
 import { File as ExpoFile } from "expo-file-system/next";
 import type { TripMedia, Trip } from "@/shared/types";
@@ -369,6 +370,7 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
 
 export default function MediaScreen() {
   const { C, isDark } = useTheme();
+  const { brand } = useBrand();
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -461,55 +463,76 @@ export default function MediaScreen() {
       >
 
         {/* ── Hero Banner ── */}
-        <View style={[styles.heroBanner, { paddingTop: insets.top + S.xs }]}>
-          {heroTrip?.image && (
-            <Image
-              source={{ uri: heroTrip.image }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-            />
-          )}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
-            style={StyleSheet.absoluteFillObject}
-          />
-
-          {/* Top row */}
-          <View style={styles.heroTopRow}>
-            <View style={styles.brandRow}>
-              <Logo size={10} color={C.teal} />
-              <Text style={styles.brandText}>DAF Adventures</Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-            >
-              <Aperture size={15} color="#000" strokeWidth={2.5} />
-              <Text style={styles.uploadFabText}>Upload</Text>
-            </Pressable>
-          </View>
-
-          {/* Hero content */}
-          <View style={styles.heroContent}>
-            {heroTrip?.destination && (
-              <View style={styles.heroLocRow}>
-                <MapPin size={10} color={C.teal} strokeWidth={2} />
-                <Text style={styles.heroLocText}>{heroTrip.destination.toUpperCase()}</Text>
-              </View>
+        {allItems.length > 0 ? (
+          <View style={[styles.heroBanner, { paddingTop: insets.top + S.xs }]}>
+            {heroTrip?.image && (
+              <Image
+                source={{ uri: heroTrip.image }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
+              />
             )}
-            <Text style={styles.heroTitle}>
-              {allItems.length > 0 ? "Gallery" : "Your Gallery"}
-            </Text>
+            <LinearGradient
+              colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
+              style={StyleSheet.absoluteFillObject}
+            />
 
-            {/* Stat pills */}
-            {allItems.length > 0 && (
+            {/* Top row */}
+            <View style={styles.heroTopRow}>
+              <View style={styles.brandRow}>
+                {brand.logoUrl ? (
+                  <Image source={{ uri: brand.logoUrl }} style={{ width: 22, height: 22, borderRadius: 5 }} />
+                ) : (
+                  <Logo size={18} color={C.teal} />
+                )}
+                <Text style={styles.brandText}>{brand.name}</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              >
+                <Aperture size={15} color="#000" strokeWidth={2.5} />
+                <Text style={styles.uploadFabText}>Upload</Text>
+              </Pressable>
+            </View>
+
+            {/* Hero content */}
+            <View style={styles.heroContent}>
+              {heroTrip?.destination && (
+                <View style={styles.heroLocRow}>
+                  <MapPin size={10} color={C.teal} strokeWidth={2} />
+                  <Text style={styles.heroLocText}>{heroTrip.destination.toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.heroTitle}>Gallery</Text>
+
               <View style={styles.statRow}>
                 <StatPill icon={LucideImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
                 <StatPill icon={Film} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
               </View>
-            )}
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={[styles.emptyHeader, { paddingTop: insets.top + S.xs }]}>
+            <View style={styles.heroTopRow}>
+              <View style={styles.brandRow}>
+                {brand.logoUrl ? (
+                  <Image source={{ uri: brand.logoUrl }} style={{ width: 22, height: 22, borderRadius: 5 }} />
+                ) : (
+                  <Logo size={18} color={C.teal} />
+                )}
+                <Text style={[styles.brandText, { color: C.textPrimary }]}>{brand.name}</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              >
+                <Aperture size={15} color="#000" strokeWidth={2.5} />
+                <Text style={styles.uploadFabText}>Upload</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* ── Filter Chips ── */}
         {(tripsWithMedia.length > 0) && (
@@ -686,16 +709,20 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md,
       paddingBottom: S.lg,
     },
+    emptyHeader: {
+      paddingHorizontal: S.md,
+      paddingBottom: S.sm,
+    },
     heroTopRow: {
       flexDirection: "row", alignItems: "center",
       justifyContent: "space-between",
       marginBottom: S.md,
     },
     brandRow: {
-      flexDirection: "row", alignItems: "center", gap: 5,
+      flexDirection: "row", alignItems: "center", gap: 8,
     },
     brandText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+      fontSize: T.xs, fontWeight: T.bold, color: "#fff",
       letterSpacing: 1.5, textTransform: "uppercase",
     },
     uploadFab: {
