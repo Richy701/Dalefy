@@ -500,7 +500,7 @@ export function LoginPage() {
               <StepIndicator current={1} total={totalSteps} />
 
               <div className="flex justify-center mb-4">
-                <img src="/illustrations/illus-wavy.svg" alt="" className="h-28 sm:h-32 object-contain" />
+                <img src="/illustrations/adventure-map.svg" alt="" className="h-28 sm:h-36 object-contain" />
               </div>
 
               <div className="mb-10 text-center">
@@ -565,7 +565,7 @@ export function LoginPage() {
               <StepIndicator current={2} total={totalSteps} />
 
               <div className="flex justify-center mb-4">
-                <img src="/illustrations/illus-discussion.svg" alt="" className="h-28 sm:h-32 object-contain" />
+                <img src="/illustrations/meeting.svg" alt="" className="h-28 sm:h-36 object-contain" />
               </div>
 
               <div className="mb-8 text-center">
@@ -690,7 +690,7 @@ export function LoginPage() {
               <StepIndicator current={3} total={3} />
 
               <div className="flex justify-center mb-4">
-                <img src="/illustrations/illus-together.svg" alt="" className="h-28 sm:h-32 object-contain" />
+                <img src="/illustrations/sharing-ideas.svg" alt="" className="h-28 sm:h-36 object-contain" />
               </div>
 
               <div className="text-center mb-8">
