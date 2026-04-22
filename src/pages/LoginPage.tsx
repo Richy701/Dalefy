@@ -120,7 +120,7 @@ const inputClass =
 function HeroBackground() {
   const [titleNumber, setTitleNumber] = useState(0);
   const titles = useMemo(
-    () => ["reimagined", "simplified", "connected", "effortless", "seamless"],
+    () => ["sorted", "covered", "handled", "done"],
     []
   );
 
@@ -132,23 +132,14 @@ function HeroBackground() {
   }, [titleNumber, titles]);
 
   const features = [
-    { icon: Globe, label: "Multi-tenant workspaces" },
-    { icon: MapPin, label: "Interactive trip mapping" },
-    { icon: Calendar, label: "Smart itinerary builder" },
-    { icon: Plane, label: "Traveler sync & sharing" },
+    { icon: Globe, label: "Team workspaces" },
+    { icon: MapPin, label: "Route maps" },
+    { icon: Calendar, label: "Day-by-day builder" },
+    { icon: Plane, label: "Share via PIN" },
   ];
 
   return (
     <div className="absolute inset-0 pointer-events-none select-none">
-      {/* Dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.035] dark:opacity-[0.06]"
-        style={{
-          backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-
       {/* Radial glow behind hero text */}
       <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-brand/[0.06] rounded-full blur-[160px]" />
       <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-purple-500/[0.04] rounded-full blur-[120px]" />
@@ -203,13 +194,13 @@ function HeroBackground() {
 
         {/* Subtitle */}
         <motion.p
-          className="text-base lg:text-lg text-slate-500 dark:text-[#777] leading-relaxed max-w-lg mt-6"
+          className="text-base lg:text-lg text-slate-600 dark:text-[#aaa] leading-relaxed max-w-lg mt-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
         >
-          Plan, manage, and share group itineraries with your team
-          and travelers — all from one platform.
+          Build itineraries, map routes, and share them with
+          your travelers. One platform, no back and forth.
         </motion.p>
 
         {/* Feature pills */}
@@ -404,13 +395,6 @@ export function LoginPage() {
       <div className="lg:hidden absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-brand/[0.07] rounded-full blur-[100px]" />
         <div className="absolute bottom-1/3 -right-40 w-[400px] h-[400px] bg-brand/[0.05] rounded-full blur-[100px]" />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
       </div>
 
       {/* Form card — glass overlay on right */}
@@ -444,8 +428,8 @@ export function LoginPage() {
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   Welcome back
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-[#999]">
-                  Sign in to continue managing your trips
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  Sign in to your account
                 </p>
               </div>
 
@@ -506,7 +490,7 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#666] mt-8">
+              <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#999] mt-8">
                 New here?{" "}
                 <button onClick={() => switchMode("sign-up")} className="text-brand hover:underline underline-offset-2 cursor-pointer font-bold">
                   Create an account
@@ -524,7 +508,7 @@ export function LoginPage() {
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   {realAuth ? "Create account" : "Welcome"}
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-[#999]">
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
                   What should we call you?
                 </p>
               </div>
@@ -565,7 +549,7 @@ export function LoginPage() {
                     {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
                   </Button>
 
-                  <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#666] mt-8">
+                  <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#999] mt-8">
                     Already have an account?{" "}
                     <button onClick={() => switchMode("sign-in")} className="text-brand hover:underline underline-offset-2 cursor-pointer font-bold">
                       Sign In
@@ -585,8 +569,8 @@ export function LoginPage() {
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   Hey, {name.trim().split(/\s+/)[0]}
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-[#999]">
-                  {realAuth ? "Set up your account details" : "A few more details"}
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  {realAuth ? "Set up your account" : "A few more details"}
                 </p>
               </div>
 
@@ -710,8 +694,8 @@ export function LoginPage() {
                   <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                     Brand Your Agency
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-[#999]">
-                    How clients see you on shared trips
+                  <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                    This is what travelers see on shared trips
                   </p>
                 </div>
               </div>
@@ -876,7 +860,7 @@ export function LoginPage() {
               <button
                 onClick={handleDemo}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#bbb] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer"
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -891,11 +875,11 @@ export function LoginPage() {
           )}
 
           {/* Footer */}
-          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#555] mt-8">
+          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
             {step === 3
               ? "You can change these anytime in Settings"
               : realAuth
-                ? "Secured with end-to-end encryption"
+                ? ""
                 : "Your profile is stored on this device only"}
           </p>
         </motion.div>
