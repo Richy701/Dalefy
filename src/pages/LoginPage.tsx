@@ -499,9 +499,13 @@ export function LoginPage() {
             <>
               <StepIndicator current={1} total={totalSteps} />
 
-              <div className="mb-10">
+              <div className="flex justify-center mb-4">
+                <img src="/illustrations/illus-wavy.svg" alt="" className="h-28 sm:h-32 object-contain" />
+              </div>
+
+              <div className="mb-10 text-center">
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
-                  {realAuth ? "Create account" : "Welcome"}
+                  {realAuth ? "Let's get started" : "Welcome"}
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-[#bbb]">
                   What should we call you?
@@ -560,7 +564,11 @@ export function LoginPage() {
             <>
               <StepIndicator current={2} total={totalSteps} />
 
-              <div className="mb-8">
+              <div className="flex justify-center mb-4">
+                <img src="/illustrations/illus-discussion.svg" alt="" className="h-28 sm:h-32 object-contain" />
+              </div>
+
+              <div className="mb-8 text-center">
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   Hey, {name.trim().split(/\s+/)[0]}
                 </h2>
@@ -681,18 +689,17 @@ export function LoginPage() {
             <>
               <StepIndicator current={3} total={3} />
 
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
-                  <Paintbrush className="h-6 w-6 text-brand" strokeWidth={2} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                    Brand Your Agency
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-[#bbb]">
-                    This is what travelers see on shared trips
-                  </p>
-                </div>
+              <div className="flex justify-center mb-4">
+                <img src="/illustrations/illus-together.svg" alt="" className="h-28 sm:h-32 object-contain" />
+              </div>
+
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                  Brand Your Agency
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  This is what travelers see on shared trips
+                </p>
               </div>
 
               <div className="space-y-6">
