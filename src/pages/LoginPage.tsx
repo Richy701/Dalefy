@@ -140,9 +140,6 @@ function HeroBackground() {
 
   return (
     <div className="absolute inset-0 pointer-events-none select-none">
-      {/* Radial glow behind hero text */}
-      <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-brand/[0.06] rounded-full blur-[160px]" />
-      <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-purple-500/[0.04] rounded-full blur-[120px]" />
 
       {/* Hero content — pinned left, stops before form card */}
       <div className="absolute inset-y-0 left-0 right-[520px] xl:right-[580px] flex flex-col justify-center px-12 xl:px-20">
@@ -393,8 +390,6 @@ export function LoginPage() {
 
       {/* Mobile hero — compact version */}
       <div className="lg:hidden absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-brand/[0.07] rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/3 -right-40 w-[400px] h-[400px] bg-brand/[0.05] rounded-full blur-[100px]" />
       </div>
 
       {/* Form card — glass overlay on right */}
