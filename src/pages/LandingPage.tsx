@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Menu, MapPin, Plane, Hotel, ChevronLeft, ChevronRight, Calendar, Users } from "lucide-react";
+import { motion } from "motion/react";
+import NumberFlow from "@number-flow/react";
 import { default as MapboxMap, Source, Layer, Marker } from "react-map-gl/mapbox";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/shared/Logo";
@@ -540,6 +542,44 @@ function GlobeSection({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElemen
   );
 }
 
+/* ── Stats counter data ────────────────────────────────────────────────── */
+const STATS = [
+  { label: "Trips Built", value: 500, suffix: "+" },
+  { label: "Countries", value: 12, suffix: "" },
+  { label: "Travelers Served", value: 2400, suffix: "+" },
+] as const;
+
+function StatsCounter({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElement | null>; visible: boolean } }) {
+  const [triggered, setTriggered] = useState(false);
+  useEffect(() => { if (reveal.visible) setTriggered(true); }, [reveal.visible]);
+
+  return (
+    <section ref={reveal.ref} className="py-14 sm:py-20 px-5">
+      <div className={cn(
+        "mx-auto max-w-3xl flex items-center justify-center gap-8 sm:gap-16",
+        revealTransition,
+        reveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
+      )}>
+        {STATS.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={reveal.visible ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.5, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center"
+          >
+            <div className="text-2xl sm:text-4xl font-black text-white tabular-nums leading-none flex items-baseline justify-center">
+              <NumberFlow value={triggered ? stat.value : 0} trend={1} />
+              {stat.suffix && <span className="text-brand">{stat.suffix}</span>}
+            </div>
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-[#666] mt-2">{stat.label}</p>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ── Showcase event cards data ──────────────────────────────────────────── */
 const SHOWCASE_EVENTS = [
   { type: "Stay", title: "The Standard, High Line", location: "Meatpacking District, NYC", time: "05:00", period: "PM", hasImage: true },
@@ -553,6 +593,7 @@ export function LandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const workspaceReveal = useReveal();
+  const statsReveal = useReveal();
   const destIntroReveal = useReveal();
   const mobileReveal = useReveal();
   const globeReveal = useReveal();
@@ -614,26 +655,47 @@ export function LandingPage() {
       {/* ── Hero — Headline ─────────────────────────────────────────── */}
       <section className="relative pt-32 sm:pt-40 pb-8 px-5 overflow-hidden">
         <div className="relative mx-auto max-w-4xl text-center">
-          <p
-            className={cn(fadeUp, "text-[10px] font-bold uppercase tracking-[0.3em] text-brand mb-4")}
-            style={{ animationDelay: "80ms" }}
+          <motion.p
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="text-[10px] font-bold uppercase tracking-[0.3em] text-brand mb-4"
           >
             Itinerary platform for travel professionals
-          </p>
-          <h1
-            className={cn(fadeUp, "text-[clamp(2.5rem,8vw,5.5rem)] font-black uppercase leading-[0.9] tracking-[-0.02em]")}
-            style={{ animationDelay: "160ms" }}
-          >
-            Build trips.{" "}
-            <span className="text-brand">Share instantly.</span>
+          </motion.p>
+          <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-black uppercase leading-[0.9] tracking-[-0.02em]">
+            {["Build", "trips."].map((word, i) => (
+              <motion.span
+                key={word}
+                initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.5, delay: 0.2 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="inline-block mr-[0.25em]"
+              >
+                {word}
+              </motion.span>
+            ))}
+            {["Share", "instantly."].map((word, i) => (
+              <motion.span
+                key={word}
+                initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.5, delay: 0.4 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="inline-block mr-[0.25em] text-brand"
+              >
+                {word}
+              </motion.span>
+            ))}
           </h1>
-          <p
-            className={cn(fadeUp, "mt-6 text-[15px] sm:text-lg text-[#b0b0b0] max-w-md mx-auto leading-relaxed")}
-            style={{ animationDelay: "240ms" }}
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-6 text-[15px] sm:text-lg text-[#b0b0b0] max-w-md mx-auto leading-relaxed"
           >
             Itineraries, route maps, branded exports, and a mobile app
             your travelers will actually open.
-          </p>
+          </motion.p>
         </div>
       </section>
 
@@ -643,7 +705,7 @@ export function LandingPage() {
           className={cn(fadeUp, "relative mx-auto max-w-5xl will-change-transform motion-reduce:!transform-none")}
           style={{ animationDelay: "350ms", transform: heroTilt }}
         >
-          <div className="relative rounded-xl ring-1 ring-white/[0.08] overflow-hidden">
+          <div className="relative rounded-xl ring-1 ring-white/[0.08] overflow-hidden animate-[landing-glow-pulse_4s_ease-in-out_2s_infinite]">
             <img
               src="/hero-dashboard.png"
               alt="Dalefy dashboard showing upcoming trips, countdown timer, and destination map"
@@ -687,6 +749,9 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Stats ──────────────────────────────────────────────────── */}
+      <StatsCounter reveal={statsReveal} />
 
       {/* ── Destinations intro + showcase cards ─────────────────────── */}
       <section ref={destIntroReveal.ref} className="py-20 sm:py-28 px-5">
@@ -740,8 +805,14 @@ export function LandingPage() {
 
             {/* Event cards stack */}
             <div className="flex-1 flex flex-col gap-2.5 min-w-0 justify-center">
-              {SHOWCASE_EVENTS.map((ev) => (
-                <div key={ev.title} className="bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden flex items-stretch">
+              {SHOWCASE_EVENTS.map((ev, evIdx) => (
+                <motion.div
+                  key={ev.title}
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={destIntroReveal.visible ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.5, delay: 0.2 + evIdx * 0.12, ease: [0.16, 1, 0.3, 1] }}
+                  className="bg-[#111] border border-white/[0.06] rounded-xl overflow-hidden flex items-stretch"
+                >
                   <div className="w-[64px] shrink-0 flex items-center justify-center">
                     {ev.hasImage ? (
                       <img src="https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=200&auto=format&fit=crop" alt="The Standard hotel exterior" className="w-full h-full object-cover" />
@@ -763,7 +834,7 @@ export function LandingPage() {
                     <p className="text-base font-black text-white leading-none tabular-nums">{ev.time}</p>
                     <p className="text-[8px] font-bold uppercase text-[#666] mt-0.5">{ev.period}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -796,30 +867,48 @@ export function LandingPage() {
                 <div className="w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] rounded-full bg-brand/[0.06] blur-3xl" />
               </div>
 
-              <div className="relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 60, rotateY: 12 }}
+                animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: 8 } : {}}
+                transition={{ duration: 0.7, delay: 0, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-10"
+                style={{ animation: mobileReveal.visible ? "landing-float 6s ease-in-out 1s infinite" : "none" }}
+              >
                 <PhoneMockup
                   src="/mobile-home.png"
                   alt="Dalefy mobile app — trips home with countdown timer"
                   className="w-[130px] sm:w-[170px]"
-                  style={{ transform: "rotateY(8deg) rotateX(2deg)" }}
+                  style={{ transform: "rotateX(2deg)" }}
                 />
-              </div>
-              <div className="relative z-20 -ml-3 sm:-ml-4 mb-8 sm:mb-12">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 80, rotateY: 0 }}
+                animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: 0 } : {}}
+                transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-20 -ml-3 sm:-ml-4 mb-8 sm:mb-12"
+                style={{ animation: mobileReveal.visible ? "landing-float-alt 6s ease-in-out 1.2s infinite" : "none" }}
+              >
                 <PhoneMockup
                   src="/mobile-trip.png"
                   alt="Dalefy mobile app — Santorini trip detail with organizer info"
                   className="w-[130px] sm:w-[170px]"
-                  style={{ transform: "rotateY(0deg) rotateX(2deg)" }}
+                  style={{ transform: "rotateX(2deg)" }}
                 />
-              </div>
-              <div className="relative z-10 -ml-3 sm:-ml-4">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 60, rotateY: -12 }}
+                animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: -8 } : {}}
+                transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="relative z-10 -ml-3 sm:-ml-4"
+                style={{ animation: mobileReveal.visible ? "landing-float 6s ease-in-out 1.4s infinite" : "none" }}
+              >
                 <PhoneMockup
                   src="/mobile-itinerary.png"
                   alt="Dalefy mobile app — day itinerary with flight and hotel details"
                   className="w-[130px] sm:w-[170px]"
-                  style={{ transform: "rotateY(-8deg) rotateX(2deg)" }}
+                  style={{ transform: "rotateX(2deg)" }}
                 />
-              </div>
+              </motion.div>
             </div>
 
             {/* Copy */}
