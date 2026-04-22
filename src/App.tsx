@@ -11,6 +11,8 @@ import { OrgProvider, useOrg } from "@/context/OrgContext";
 import { BrandProvider } from "@/context/BrandContext";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { STORAGE } from "@/config/storageKeys";
+import { Logo } from "@/components/shared/Logo";
+import { BRAND } from "@/config/brand";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,8 +53,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthLoadingScreen() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center">
-      <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-[#1f1f1f] border-t-brand animate-spin" />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-6">
+      <div className="flex items-center gap-3">
+        <Logo className="h-10 w-10 text-brand" />
+        <span className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+          {BRAND.name}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:0ms]" />
+        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:150ms]" />
+        <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:300ms]" />
+      </div>
+      <p className="text-sm text-slate-500 dark:text-[#888]">Loading your workspace</p>
     </div>
   );
 }
