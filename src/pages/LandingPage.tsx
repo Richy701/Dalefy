@@ -828,8 +828,8 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 60, rotateY: 12 }}
                 animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: 8 } : {}}
                 transition={{ duration: 0.7, delay: 0, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -10, transition: { duration: 0.3 } }}
                 className="relative z-10"
-                style={{ animation: mobileReveal.visible ? "landing-float 6s ease-in-out 1s infinite" : "none" }}
               >
                 <PhoneMockup
                   src="/mobile-home.png"
@@ -842,8 +842,8 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 80, rotateY: 0 }}
                 animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: 0 } : {}}
                 transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -10, transition: { duration: 0.3 } }}
                 className="relative z-20 -ml-3 sm:-ml-4 mb-8 sm:mb-12"
-                style={{ animation: mobileReveal.visible ? "landing-float-alt 6s ease-in-out 1.2s infinite" : "none" }}
               >
                 <PhoneMockup
                   src="/mobile-trip.png"
@@ -856,8 +856,8 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 60, rotateY: -12 }}
                 animate={mobileReveal.visible ? { opacity: 1, y: 0, rotateY: -8 } : {}}
                 transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -10, transition: { duration: 0.3 } }}
                 className="relative z-10 -ml-3 sm:-ml-4"
-                style={{ animation: mobileReveal.visible ? "landing-float 6s ease-in-out 1.4s infinite" : "none" }}
               >
                 <PhoneMockup
                   src="/mobile-itinerary.png"
