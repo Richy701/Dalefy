@@ -500,7 +500,7 @@ export function LoginPage() {
               <StepIndicator current={1} total={totalSteps} />
 
               <div className="flex justify-center mb-4">
-                <img src="/illustrations/adventure-map.svg" alt="" className="h-28 sm:h-36 object-contain" />
+                <img src="/illustrations/traveling.svg" alt="" className="h-28 sm:h-36 object-contain" />
               </div>
 
               <div className="mb-10 text-center">

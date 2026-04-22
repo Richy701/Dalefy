@@ -64,17 +64,14 @@ const inputClass =
 
 function BrandPanel() {
   const features = [
-    { icon: Globe, label: "Multi-tenant workspaces" },
-    { icon: MapPin, label: "Interactive trip mapping" },
-    { icon: Calendar, label: "Smart itinerary builder" },
-    { icon: Plane, label: "Traveler sync & sharing" },
+    { icon: Globe, label: "Team workspaces" },
+    { icon: MapPin, label: "Route maps" },
+    { icon: Calendar, label: "Day-by-day builder" },
+    { icon: Plane, label: "Share via PIN" },
   ];
 
   return (
-    <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-col justify-between bg-gradient-to-br from-brand/[0.08] via-brand/[0.03] to-transparent dark:from-brand/[0.06] dark:via-brand/[0.02] dark:to-transparent border-r border-slate-200/60 dark:border-[#1a1a1a] p-12 xl:p-16 relative overflow-hidden">
-      <div className="absolute -top-32 -right-32 w-[400px] h-[400px] bg-brand/[0.08] rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-[300px] h-[300px] bg-purple-500/[0.04] rounded-full blur-[100px] pointer-events-none" />
-
+    <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-col justify-between bg-slate-100/50 dark:bg-[#0a0a0a] border-r border-slate-200/60 dark:border-[#1a1a1a] p-12 xl:p-16 relative overflow-hidden">
       <div className="relative z-10">
         <div className="flex items-center gap-3.5 mb-16">
           <div className="h-11 w-11 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/20">
@@ -89,20 +86,23 @@ function BrandPanel() {
           Almost there.<br />
           <span className="text-brand">Set up your agency.</span>
         </h2>
-        <p className="text-base text-slate-500 dark:text-[#999] leading-relaxed max-w-sm">
-          Create your workspace and customize how your clients see you.
+        <p className="text-base text-slate-500 dark:text-[#bbb] leading-relaxed max-w-sm">
+          Your brand, your trips, your travelers. All in one place.
         </p>
       </div>
 
-      <div className="relative z-10 space-y-4">
-        {features.map(({ icon: Icon, label }) => (
-          <div key={label} className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/[0.06] border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
-              <Icon className="h-4 w-4 text-brand" strokeWidth={2} />
+      <div className="relative z-10 flex flex-col items-center gap-8">
+        <img src="/illustrations/connected-world.svg" alt="" className="w-full max-w-[320px] object-contain" />
+        <div className="space-y-4 w-full">
+          {features.map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/[0.06] border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
+                <Icon className="h-4 w-4 text-brand" strokeWidth={2} />
+              </div>
+              <span className="text-sm font-semibold text-slate-600 dark:text-[#bbb]">{label}</span>
             </div>
-            <span className="text-sm font-semibold text-slate-600 dark:text-[#bbb]">{label}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -177,10 +177,6 @@ export function CreateOrgPage() {
       <BrandPanel />
 
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none lg:hidden">
-          <div className="absolute top-1/4 -left-40 w-[500px] h-[500px] bg-brand/[0.07] rounded-full blur-[100px]" />
-          <div className="absolute bottom-1/3 -right-40 w-[400px] h-[400px] bg-brand/[0.05] rounded-full blur-[100px]" />
-        </div>
 
         <div className="w-full max-w-[480px] relative z-10">
           {/* Mobile-only logo */}
@@ -191,7 +187,7 @@ export function CreateOrgPage() {
             <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#999]">
               {step === 1 ? "One last step" : "Make it yours"}
             </p>
           </div>
@@ -201,18 +197,17 @@ export function CreateOrgPage() {
           {/* ── STEP 1: Agency Name ────────────────────────────── */}
           {step === 1 && (
             <>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
-                  <Building2 className="h-6 w-6 text-brand" strokeWidth={2} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                    Create Your Agency
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-[#999]">
-                    Set up your travel agency workspace
-                  </p>
-                </div>
+              <div className="flex justify-center mb-4">
+                <img src="/illustrations/navigation.svg" alt="" className="h-28 sm:h-36 object-contain" />
+              </div>
+
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                  Create Your Agency
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  Give your workspace a name
+                </p>
               </div>
 
               {error && (
@@ -266,18 +261,17 @@ export function CreateOrgPage() {
           {/* ── STEP 2: Branding ───────────────────────────────── */}
           {step === 2 && (
             <>
-              <div className="flex items-center gap-4 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
-                  <Paintbrush className="h-6 w-6 text-brand" strokeWidth={2} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                    Brand Your Agency
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-[#999]">
-                    How clients see you on shared trips
-                  </p>
-                </div>
+              <div className="flex justify-center mb-4">
+                <img src="/illustrations/sharing-ideas.svg" alt="" className="h-28 sm:h-36 object-contain" />
+              </div>
+
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                  Brand Your Agency
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  This is what travelers see on shared trips
+                </p>
               </div>
 
               <div className="space-y-6">
@@ -422,7 +416,7 @@ export function CreateOrgPage() {
             </>
           )}
 
-          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#555] mt-8">
+          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
             {step === 1
               ? "Your trips and data will belong to this agency"
               : "You can change these anytime in Settings"}
