@@ -212,7 +212,7 @@ export function WorkspacePage() {
       const { urls, source } = await searchImages(query, page, 9, srcParam);
       if (urls.length) {
         setImageResults(urls);
-        setImageSearchSource(source as "unsplash" | "pexels");
+        setImageSearchSource(source as "google" | "unsplash" | "pexels" | "local");
         return;
       }
       const cat = getEventImageCategory(query, editingEvent?.type || "activity");
@@ -1543,7 +1543,7 @@ export function WorkspacePage() {
                 <div className="relative h-28 sm:h-44 shrink-0 bg-slate-200 dark:bg-[#111] overflow-hidden">
                   {editingEvent?.image ? (
                     <>
-                      <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                       <div className="absolute bottom-2 sm:bottom-3 left-3 right-3">
                         {editingEvent.title && <p className="text-white font-extrabold uppercase text-xs sm:text-base leading-tight drop-shadow-lg line-clamp-1 sm:line-clamp-2">{editingEvent.title}</p>}

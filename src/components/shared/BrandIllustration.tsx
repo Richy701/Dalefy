@@ -54,7 +54,7 @@ export function BrandIllustration({ src, className, draggable, ...rest }: BrandI
       return `<svg${cleaned} style="width:100%;height:100%">`;
     });
 
-  const sanitized = DOMPurify.sanitize(tinted, { USE_PROFILES: { svg: true, svgFilters: true } });
+  const sanitized = DOMPurify.sanitize(tinted, { USE_PROFILES: { svg: true, svgFilters: false } });
 
   return (
     <div

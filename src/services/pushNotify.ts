@@ -1,5 +1,5 @@
 import { collection, getDocs } from "firebase/firestore";
-import { firebaseDb, isFirebaseConfigured } from "./firebase";
+import { firebaseDb, isFirebaseConfigured, firebaseAuth } from "./firebase";
 
 export async function notifyTripUpdate(tripId: string, tripName: string, action: "published" | "updated") {
   if (!isFirebaseConfigured()) return;
@@ -19,10 +19,13 @@ export async function notifyTripUpdate(tripId: string, tripName: string, action:
     ? `"${tripName}" is now live — check your itinerary!`
     : `"${tripName}" has been updated.`;
 
-  // Send via server-side proxy to avoid exposing push tokens
+  // Send via server-side proxy — include Firebase auth token
+  const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+  if (!idToken) return;
+
   fetch("/api/push", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ tokens, title, body, data: { tripId } }),
   }).catch(() => {});
 }

@@ -1,12 +1,13 @@
+import { validateIata, validateDate, requireRapidApi } from "./_validate";
+
 export default async function handler(req: any, res: any) {
   const { from, to, date } = req.query as Record<string, string>;
 
-  if (!from || !to || !date) {
-    return res.status(400).json({ error: "Missing params: from, to, date" });
-  }
+  const err = validateIata(from, "from") || validateIata(to, "to") || validateDate(date, "date");
+  if (err) return res.status(400).json({ error: err });
 
-  const key = process.env.RAPIDAPI_KEY;
-  if (!key) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
+  const key = requireRapidApi(res);
+  if (!key) return;
 
   const headers = {
     "x-rapidapi-key": key,

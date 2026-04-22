@@ -9,7 +9,10 @@ import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent, EventDocument } from "@/shared/types";
 
 function formatDate(d: string): string {
-  const date = new Date(d + "T12:00:00");
+  // Handle both "2026-07-15" and "2026-07-15T10:00:00" formats
+  const raw = d.includes("T") ? d : d + "T12:00:00";
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) return d; // fallback to raw string
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 

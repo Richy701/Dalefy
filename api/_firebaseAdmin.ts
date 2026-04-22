@@ -32,8 +32,8 @@ async function getAuthToken(): Promise<string> {
   );
 
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Firebase Auth sign-in failed: ${resp.status} ${err}`);
+    console.error("Firebase Auth sign-in failed:", resp.status, await resp.text());
+    throw new Error("Authentication failed");
   }
 
   const data = await resp.json();
@@ -92,8 +92,8 @@ export async function updateDocument(
     body: JSON.stringify({ fields }),
   });
   if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Firestore update ${collectionName}/${docId}: ${resp.status} ${text}`);
+    console.error(`Firestore update ${collectionName}/${docId}:`, resp.status, await resp.text());
+    throw new Error("Database update failed");
   }
 }
 

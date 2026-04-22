@@ -1,63 +1,185 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, Platform, RefreshControl,
+  StyleSheet, RefreshControl,
 } from "react-native";
-import { CachedImage } from "@/components/CachedImage";
 import { Illustration } from "@/components/Illustration";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { ArrowRight, Compass, MapPin, Moon, CalendarDays } from "lucide-react-native";
+import {
+  CalendarDays, MapPin, ChevronRight,
+  Plane, Hotel, Compass, Utensils,
+} from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useMemo, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
-import { EventCard, ConfRow } from "@/components/EventCard";
-import type { Trip } from "@/shared/types";
+import { ScalePress } from "@/components/ScalePress";
+import * as Haptics from "expo-haptics";
+import type { Trip, TravelEvent } from "@/shared/types";
 
-function daysUntil(dateStr: string) {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+const LOOKAHEAD_DAYS = 4; // today + 3
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function isSameDay(a: Date, b: Date) {
+  return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
 }
 
 function timeToMinutes(t: string): number {
-  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if (!m) return 720;
   let h = parseInt(m[1]);
   const min = parseInt(m[2]);
-  const pm = m[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
+  if (m[3]) {
+    const pm = m[3].toUpperCase() === "PM";
+    if (pm && h < 12) h += 12;
+    if (!pm && h === 12) h = 0;
+  }
   return h * 60 + min;
 }
 
-function isToday(dateStr: string) {
-  const d = new Date(dateStr + "T12:00:00");
+const EVENT_ICON: Record<string, typeof Plane> = {
+  flight: Plane,
+  hotel: Hotel,
+  dining: Utensils,
+  activity: Compass,
+};
+
+const EVENT_COLOR_KEY: Record<string, string> = {
+  flight: "flight",
+  hotel: "hotel",
+  dining: "dining",
+  activity: "activity",
+};
+
+interface ScheduleEvent {
+  event: TravelEvent;
+  trip: Trip;
+}
+
+interface DayGroup {
+  date: Date;
+  label: string;
+  sublabel: string;
+  events: ScheduleEvent[];
+}
+
+function buildSchedule(trips: Trip[]): DayGroup[] {
   const now = new Date();
-  return (
-    d.getDate()     === now.getDate()  &&
-    d.getMonth()    === now.getMonth() &&
-    d.getFullYear() === now.getFullYear()
-  );
+  const today = startOfDay(now);
+  const days: DayGroup[] = [];
+
+  for (let i = 0; i < LOOKAHEAD_DAYS; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    const label =
+      i === 0 ? "Today" :
+      i === 1 ? "Tomorrow" :
+      d.toLocaleDateString("en-US", { weekday: "long" });
+
+    const sublabel = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+
+    const events: ScheduleEvent[] = [];
+    for (const trip of trips) {
+      // Only include active/upcoming trips
+      const tripEnd = new Date(trip.end + "T23:59:59");
+      if (tripEnd < today) continue;
+
+      for (const ev of trip.events) {
+        if (ev.date === dateStr) {
+          events.push({ event: ev, trip });
+        }
+      }
+    }
+
+    // Sort by time
+    events.sort((a, b) => timeToMinutes(a.event.time) - timeToMinutes(b.event.time));
+
+    days.push({ date: d, label, sublabel, events });
+  }
+
+  return days;
 }
 
-function NoTrip() {
-  const { C } = useTheme();
-  const styles = useMemo(() => makeStyles(C), [C]);
+function EventRow({ item, C, onPress }: {
+  item: ScheduleEvent;
+  C: ThemeColors;
+  onPress: () => void;
+}) {
+  const { event: ev, trip } = item;
+  const Icon = EVENT_ICON[ev.type] ?? Compass;
+  const colorKey = EVENT_COLOR_KEY[ev.type] ?? "teal";
+  const color = (C as Record<string, string>)[colorKey] ?? C.teal;
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.emptyState}>
-        <Illustration name="sitting" width={260} height={160} />
-        <Text style={styles.emptyTitle}>No itinerary yet</Text>
-        <Text style={styles.emptyText}>Add a trip from the home screen with a code or QR, and your day-by-day plan shows up here.</Text>
+    <ScalePress
+      style={[styles.eventRow, { backgroundColor: C.card }]}
+      activeScale={0.98}
+      onPress={() => { Haptics.selectionAsync(); onPress(); }}
+    >
+      {/* Time column */}
+      <View style={styles.timeCol}>
+        <Text style={[styles.timeText, { color: C.textPrimary }]}>
+          {ev.time || "—"}
+        </Text>
+        {ev.endTime && (
+          <Text style={[styles.endTimeText, { color: C.textTertiary }]}>{ev.endTime}</Text>
+        )}
       </View>
-    </SafeAreaView>
+
+      {/* Color bar */}
+      <View style={[styles.colorBar, { backgroundColor: color }]} />
+
+      {/* Content */}
+      <View style={styles.eventContent}>
+        <View style={styles.eventTop}>
+          <View style={[styles.eventIconBox, { backgroundColor: `${color}18` }]}>
+            <Icon size={13} color={color} strokeWidth={1.8} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={1}>
+              {ev.title}
+            </Text>
+            {ev.location && (
+              <View style={styles.locationRow}>
+                <MapPin size={9} color={C.textTertiary} strokeWidth={1.5} />
+                <Text style={[styles.locationText, { color: C.textTertiary }]} numberOfLines={1}>
+                  {ev.location}
+                </Text>
+              </View>
+            )}
+          </View>
+          <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
+        </View>
+
+        {/* Trip badge */}
+        <View style={[styles.tripBadge, { backgroundColor: C.elevated }]}>
+          <Text style={[styles.tripBadgeText, { color: C.textSecondary }]} numberOfLines={1}>
+            {trip.destination || trip.name}
+          </Text>
+        </View>
+      </View>
+    </ScalePress>
   );
 }
 
-export default function ItineraryScreen() {
-  const { C, isDark } = useTheme();
-  const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, reload } = useTrips();
+function EmptyDay({ C }: { C: ThemeColors }) {
+  return (
+    <View style={[styles.emptyDay, { backgroundColor: C.card }]}>
+      <Text style={[styles.emptyDayText, { color: C.textTertiary }]}>Nothing planned</Text>
+    </View>
+  );
+}
+
+export default function ScheduleScreen() {
+  const { C } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { trips, ready, reload } = useTrips();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -66,233 +188,156 @@ export default function ItineraryScreen() {
     setRefreshing(false);
   }, [reload]);
 
-  const activeTrip: Trip | undefined = useMemo(() => {
-    const sorted = [...trips].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-    const active = sorted.find(t => daysUntil(t.start) <= 0 && daysUntil(t.end) >= 0);
-    if (active) return active;
-    const upcoming = sorted.find(t => daysUntil(t.start) > 0);
-    return upcoming ?? sorted[sorted.length - 1];
-  }, [trips]);
+  const schedule = useMemo(() => buildSchedule(trips), [trips]);
+  const hasAnyEvents = schedule.some(d => d.events.length > 0);
 
-  if (!activeTrip) return <NoTrip />;
-
-  const start  = new Date(activeTrip.start);
-  const end    = new Date(activeTrip.end);
-  const nights = Math.ceil((end.getTime() - start.getTime()) / 86400000);
-  const days   = daysUntil(activeTrip.start);
-  const isActive = days <= 0 && daysUntil(activeTrip.end) >= 0;
-  const isPast   = daysUntil(activeTrip.end) < 0;
-
-  const grouped = activeTrip.events.reduce<Record<string, typeof activeTrip.events>>((acc, ev) => {
-    if (!acc[ev.date]) acc[ev.date] = [];
-    acc[ev.date].push(ev);
-    return acc;
-  }, {});
-  // Sort events within each day by time
-  for (const evs of Object.values(grouped)) {
-    evs.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  if (ready && trips.length === 0) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]}>
+        <View style={styles.emptyState}>
+          <Illustration name="sitting" width={260} height={160} />
+          <Text style={[styles.emptyTitle, { color: C.textPrimary }]}>No schedule yet</Text>
+          <Text style={[styles.emptyText, { color: C.textTertiary }]}>
+            Join a trip from the home screen and your upcoming events will appear here.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
-  const tripLabel = isPast ? "PREVIOUS TRIP" : isActive ? "CURRENT TRIP" : `IN ${days} DAYS`;
-
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]} edges={["bottom"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + S.md }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />
+        }
       >
-
-        {/* ── Full-bleed hero ── */}
-        <View style={styles.hero}>
-          <CachedImage uri={activeTrip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
-          <LinearGradient
-            colors={["#00000010", "#00000055", "#000000f0"]}
-            locations={[0, 0.4, 1]}
-            style={StyleSheet.absoluteFillObject}
-          />
-
-          {/* Top row */}
-          <View style={[styles.heroTop, { paddingTop: Platform.OS === "android" ? S.md : 56 }]}>
-            <View style={styles.tripLabel}>
-              <Text style={[styles.tripLabelText, {
-                color: isActive ? C.teal : isPast ? C.textTertiary : C.amber,
-              }]}>{tripLabel}</Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-              onPress={() => router.push(`/trip/${activeTrip.id}`)}
-            >
-              <ArrowRight size={18} color="#ffffffcc" strokeWidth={2} />
-            </Pressable>
-          </View>
-
-          {/* Bottom content */}
-          <View style={styles.heroContent}>
-            {activeTrip.destination && (
-              <View style={styles.destRow}>
-                <MapPin size={9} color={C.teal} strokeWidth={2} />
-                <Text style={styles.heroDest}>{activeTrip.destination.toUpperCase()}</Text>
-              </View>
-            )}
-            <Text style={styles.heroTitle} numberOfLines={2}>{activeTrip.name}</Text>
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <Moon size={11} color="#ffffffaa" strokeWidth={1.8} />
-                <Text style={styles.heroStatText}>{nights} nights</Text>
-              </View>
-              <View style={styles.heroDot} />
-              <View style={styles.heroStat}>
-                <Compass size={11} color="#ffffffaa" strokeWidth={1.8} />
-                <Text style={styles.heroStatText}>{activeTrip.events.length} events</Text>
-              </View>
-              <View style={styles.heroDot} />
-              <Text style={styles.heroStatText}>
-                {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                {" – "}
-                {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              </Text>
-            </View>
-          </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: C.textPrimary }]}>Schedule</Text>
+          <Text style={[styles.headerSub, { color: C.textSecondary }]}>
+            {hasAnyEvents ? "Your next few days" : "No events coming up"}
+          </Text>
         </View>
 
-        {/* ── Day-by-day itinerary ── */}
-        <View style={styles.body}>
-          {(() => {
-            const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-            return entries.map(([date, events], dayIdx) => {
-              const d     = new Date(date + "T12:00:00");
-              const today = isToday(date);
-              const isLast = dayIdx === entries.length - 1;
-
-              return (
-                <View key={date} style={[styles.dayGroup, isLast && { marginBottom: 0 }]}>
-                  {/* Day header */}
-                  <View style={[styles.dayHeader, today && styles.dayHeaderToday]}>
-                    <View style={[styles.dayNumBox, today && styles.dayNumBoxToday]}>
-                      <Text style={[styles.dayNum, today && styles.dayNumToday]}>{dayIdx + 1}</Text>
-                    </View>
-                    <View style={styles.dayInfo}>
-                      <View style={styles.dayTitleRow}>
-                        <Text style={styles.dayName}>
-                          {d.toLocaleDateString("en-US", { weekday: "long" })}
-                        </Text>
-                        {today && (
-                          <View style={styles.todayChip}>
-                            <Text style={styles.todayChipText}>TODAY</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.dayDate}>
-                        {d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                      </Text>
-                    </View>
-                    <View style={styles.dayCountBadge}>
-                      <Text style={styles.dayCountText}>{events.length}</Text>
-                    </View>
+        {/* Day groups */}
+        {schedule.map((day, i) => {
+          const isToday = i === 0;
+          return (
+            <View key={day.label} style={styles.dayGroup}>
+              {/* Day header */}
+              <View style={styles.dayHeader}>
+                <View style={[styles.dayDot, {
+                  backgroundColor: isToday ? C.teal : C.border,
+                }]} />
+                <Text style={[styles.dayLabel, {
+                  color: isToday ? C.teal : C.textPrimary,
+                }]}>
+                  {day.label}
+                </Text>
+                <Text style={[styles.daySublabel, { color: C.textTertiary }]}>
+                  {day.sublabel}
+                </Text>
+                {day.events.length > 0 && (
+                  <View style={[styles.countBadge, {
+                    backgroundColor: isToday ? C.tealDim : C.elevated,
+                  }]}>
+                    <Text style={[styles.countText, {
+                      color: isToday ? C.teal : C.textSecondary,
+                    }]}>{day.events.length}</Text>
                   </View>
+                )}
+              </View>
 
-                  {/* Events */}
-                  {events.map(ev => (
-                    <View key={ev.id} style={styles.eventWrap}>
-                      <EventCard ev={ev} C={C} />
-                      {ev.confNumber && (
-                        <ConfRow confNumber={ev.confNumber} C={C} />
-                      )}
-                    </View>
+              {/* Events or empty */}
+              {day.events.length > 0 ? (
+                <View style={styles.eventsList}>
+                  {day.events.map(item => (
+                    <EventRow
+                      key={`${item.trip.id}-${item.event.id}`}
+                      item={item}
+                      C={C}
+                      onPress={() => router.push(`/trip/${item.trip.id}`)}
+                    />
                   ))}
                 </View>
-              );
-            });
-          })()}
-        </View>
+              ) : (
+                <EmptyDay C={C} />
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function makeStyles(C: ThemeColors) {
-  return StyleSheet.create({
-    safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 90 },
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  scroll: { paddingBottom: 90 },
 
-    // Hero
-    hero: { height: 280, position: "relative" },
-    heroTop: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, position: "absolute", left: 0, right: 0, top: 0,
-    },
-    tripLabel: {
-      flexDirection: "row", alignItems: "center",
-    },
-    tripLabelText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 1.5 },
+  header: { paddingHorizontal: S.md, marginBottom: S.lg },
+  headerTitle: {
+    fontSize: 28, fontFamily: F.black, fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  headerSub: { fontSize: T.sm, fontWeight: "500", marginTop: 4 },
 
-    heroContent: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      padding: S.md, paddingBottom: S.lg,
-    },
-    destRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
-    heroDest: { fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 1.8 },
-    heroTitle: {
-      fontSize: T["3xl"] - 2, fontWeight: T.bold,
-      color: "#ffffff", letterSpacing: -0.3, marginBottom: 6, lineHeight: 34,
-    },
-    heroStats: { flexDirection: "row", alignItems: "center", gap: 6 },
-    heroStat: { flexDirection: "row", alignItems: "center", gap: 4 },
-    heroStatText: { fontSize: T.sm, color: "#ffffffaa", fontWeight: T.medium },
-    heroDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: "#ffffff30" },
+  // Day groups
+  dayGroup: { marginBottom: S.lg },
+  dayHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: S.md, marginBottom: S.sm,
+  },
+  dayDot: { width: 8, height: 8, borderRadius: 4 },
+  dayLabel: { fontSize: T.md, fontWeight: "700" },
+  daySublabel: { fontSize: T.sm, fontWeight: "500", flex: 1 },
+  countBadge: {
+    borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  countText: { fontSize: T.xs, fontWeight: "700" },
 
-    body: { padding: S.md },
+  // Event row
+  eventRow: {
+    flexDirection: "row", alignItems: "center",
+    borderRadius: R.xl, padding: S.sm,
+    marginHorizontal: S.md, marginBottom: S.xs,
+  },
+  timeCol: { width: 52, alignItems: "center" },
+  timeText: { fontSize: T.sm, fontWeight: "700" },
+  endTimeText: { fontSize: 10, fontWeight: "500", marginTop: 1 },
+  colorBar: { width: 3, borderRadius: 2, alignSelf: "stretch", marginHorizontal: S.xs },
+  eventContent: { flex: 1 },
+  eventTop: { flexDirection: "row", alignItems: "center", gap: S.xs },
+  eventIconBox: {
+    width: 30, height: 30, borderRadius: R.md,
+    alignItems: "center", justifyContent: "center",
+  },
+  eventTitle: { fontSize: T.base, fontWeight: "600", letterSpacing: -0.1 },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 },
+  locationText: { fontSize: T.xs, fontWeight: "500", flex: 1 },
+  tripBadge: {
+    alignSelf: "flex-start", borderRadius: R.full,
+    paddingHorizontal: 8, paddingVertical: 2, marginTop: 6, marginLeft: 38,
+  },
+  tripBadgeText: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3 },
 
-    // Day groups
-    dayGroup: { marginBottom: S.xl },
-    dayHeader: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      marginBottom: S.sm, paddingBottom: S.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
-    },
-    dayHeaderToday: { borderBottomColor: `${C.teal}40` },
-    dayNumBox: {
-      width: 38, height: 38, borderRadius: R.md, backgroundColor: C.card,
-      alignItems: "center", justifyContent: "center",
-    },
-    dayNumBoxToday: { backgroundColor: C.tealDim },
-    dayNum: { fontSize: T.lg, fontWeight: T.bold, color: C.textSecondary },
-    dayNumToday: { color: C.teal },
-    dayInfo: { flex: 1 },
-    dayTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    dayName: { fontSize: T.md, fontWeight: T.bold, color: C.textPrimary },
-    dayDate: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, marginTop: 1 },
-    todayChip: {
-      backgroundColor: C.tealDim, borderRadius: R.full,
-      paddingHorizontal: 8, paddingVertical: 2,
-    },
-    todayChipText: { fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 1.5 },
-    dayCountBadge: {
-      backgroundColor: C.elevated, borderRadius: R.sm,
-      paddingHorizontal: 7, paddingVertical: 3,
-    },
-    dayCountText: { fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary },
+  // Empty day
+  emptyDay: {
+    marginHorizontal: S.md, borderRadius: R.lg,
+    paddingVertical: S.md, alignItems: "center",
+  },
+  emptyDayText: { fontSize: T.sm, fontWeight: "500", fontStyle: "italic" },
 
-    // Event cards
-    eventWrap: { marginBottom: S.xs },
-
-    emptyState: {
-      alignItems: "center", paddingTop: 80,
-      paddingHorizontal: S.xl, paddingBottom: S.xl, gap: S.sm,
-    },
-    emptyTitle: { fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
-    emptyText: {
-      fontSize: T.base, color: C.textTertiary,
-      textAlign: "center", lineHeight: 24, maxWidth: 280,
-    },
-    emptyBtn: {
-      marginTop: S.xs, backgroundColor: C.teal,
-      borderRadius: R.full, paddingHorizontal: S.lg, paddingVertical: 11,
-    },
-    emptyBtnText: {
-      fontSize: T.sm, fontWeight: T.bold,
-      color: "#000", letterSpacing: 0.5, textTransform: "uppercase",
-    },
-  });
-}
+  // Empty state
+  emptyState: {
+    alignItems: "center", paddingTop: 100,
+    paddingHorizontal: S.xl, gap: S.sm,
+  },
+  emptyTitle: { fontSize: T.xl, fontWeight: "700", letterSpacing: -0.3 },
+  emptyText: {
+    fontSize: T.base, textAlign: "center", lineHeight: 24, maxWidth: 280,
+  },
+});

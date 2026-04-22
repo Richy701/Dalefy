@@ -247,7 +247,9 @@ function useLiveCountdown(targetDate: string | undefined) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!targetDate) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    // On Android, update less frequently to reduce re-renders
+    const interval = Platform.OS === "android" ? 10000 : 1000;
+    const id = setInterval(() => setNow(Date.now()), interval);
     return () => clearInterval(id);
   }, [targetDate]);
 
@@ -328,7 +330,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const insets = useSafeAreaInsets();
   const [notifOpen, setNotifOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
-  const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [linkValue, setLinkValue] = useState("");
   const [entryMode, setEntryMode] = useState<"pin" | "qr" | "link">("pin");
   const [resolving, setResolving] = useState(false);
@@ -346,7 +348,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
   const closeSheet = () => {
     setCodeOpen(false);
-    setDigits(["", "", "", ""]);
+    setDigits(["", "", "", "", "", ""]);
     setLinkValue("");
     setEntryMode("pin");
     setCodeError(null);
@@ -362,7 +364,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       setTimeout(() => {
         setCodeOpen(false);
         setFoundTrip(null);
-        setDigits(["", "", "", ""]);
+        setDigits(["", "", "", "", "", ""]);
         setLinkValue("");
       }, 300);
     }, 1800);
@@ -376,7 +378,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       const trip = await fetchTripByShortCode(pin);
       if (!trip) {
         setCodeError("No trip found for that PIN");
-        setDigits(["", "", "", ""]);
+        setDigits(["", "", "", "", "", ""]);
         pinRefs.current[0]?.focus();
         return;
       }
@@ -418,15 +420,16 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   const handleDigitChange = (idx: number, val: string) => {
-    const clean = val.replace(/\D/g, "").slice(0, 1);
+    const clean = val.replace(/[^A-Za-z0-9]/g, "").slice(0, 1).toUpperCase();
     const next = [...digits];
     next[idx] = clean;
     setDigits(next);
     if (codeError) setCodeError(null);
 
-    if (clean && idx < 3) {
+    if (clean && idx < 5) {
       pinRefs.current[idx + 1]?.focus();
     }
+    // Auto-submit when all 6 filled
     if (next.every((d) => d.length === 1)) {
       submitPin(next.join(""));
     }
@@ -499,11 +502,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
       <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={closeSheet}>
         <View style={{ flex: 1 }}>
-          <BlurView
-            intensity={Platform.OS === "ios" ? 18 : 30}
-            tint={isDark ? "dark" : "light"}
-            style={StyleSheet.absoluteFillObject}
-          />
+          {Platform.OS === "ios" ? (
+            <BlurView
+              intensity={18}
+              tint={isDark ? "dark" : "light"}
+              style={StyleSheet.absoluteFillObject}
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.5)" }]} />
+          )}
           <Pressable
             style={[StyleSheet.absoluteFillObject, styles.codeBackdrop]}
             onPress={closeSheet}
@@ -546,7 +553,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                       onPress={() => {
                         Haptics.selectionAsync();
                         setCodeError(null);
-                        setDigits(["", "", "", ""]);
+                        setDigits(["", "", "", "", "", ""]);
                         setLinkValue("");
                         setEntryMode(key);
                       }}
@@ -561,7 +568,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               {/* PIN entry */}
               {entryMode === "pin" && (
                 <View style={styles.modeContent}>
-                  <Text style={styles.sheetSub}>Enter the 4-digit code from your organiser.</Text>
+                  <Text style={styles.sheetSub}>Enter the code from your organiser.</Text>
                   <View style={styles.pinRow}>
                     {digits.map((d, i) => (
                       <TextInput
@@ -570,12 +577,13 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                         value={d}
                         onChangeText={(v) => handleDigitChange(i, v)}
                         onKeyPress={(e) => handleDigitKeyPress(i, e.nativeEvent.key)}
-                        keyboardType="number-pad"
+                        keyboardType="default"
+                        autoCapitalize="characters"
                         maxLength={1}
                         autoFocus={i === 0}
                         selectTextOnFocus
                         editable={!resolving}
-                        accessibilityLabel={`Digit ${i + 1} of 4`}
+                        accessibilityLabel={`Character ${i + 1} of 6`}
                         style={[
                           styles.pinCell,
                           d ? styles.pinCellFilled : null,
@@ -1002,9 +1010,9 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
       shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
-    img: { width: 110, alignSelf: "stretch" },
+    img: { width: 110, ...Platform.select({ ios: { alignSelf: "stretch" as const }, android: { height: "100%" as any, minHeight: 110 } }) },
     imgPlaceholder: {
-      width: 110, alignSelf: "stretch",
+      width: 110, ...Platform.select({ ios: { alignSelf: "stretch" as const }, android: { height: "100%" as any, minHeight: 110 } }),
       backgroundColor: `${_color}15`,
       alignItems: "center", justifyContent: "center",
     },

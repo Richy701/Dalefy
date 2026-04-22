@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, TextInput, Pressable, Dimensions, RefreshControl } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TextInput, Pressable, Dimensions, RefreshControl, Platform } from "react-native";
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -310,22 +310,45 @@ export default function DestinationsScreen() {
 
         {/* ── Glassmorphic stats bar ── */}
         <View style={styles.statsBarWrap}>
-          <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.statsBar}>
-            <View style={styles.statsBarInner}>
-              {stats.map((stat, idx) => (
-                <View key={stat.label} style={styles.statItem}>
-                  {idx > 0 && <View style={styles.statDivider} />}
-                  <View style={styles.statBody}>
-                    <View style={styles.statIconWrap}>
-                      <stat.icon size={13} color={C.teal} strokeWidth={2} />
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.statsBar}>
+              <View style={styles.statsBarInner}>
+                {stats.map((stat, idx) => (
+                  <View key={stat.label} style={styles.statItem}>
+                    {idx > 0 && <View style={styles.statDivider} />}
+                    <View style={styles.statBody}>
+                      <View style={styles.statIconWrap}>
+                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
                     </View>
-                    <Text style={styles.statValue}>{stat.value}</Text>
-                    <Text style={styles.statLabel}>{stat.label}</Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
+            </BlurView>
+          ) : (
+            <View style={[styles.statsBar, {
+              backgroundColor: isDark ? "rgba(9,9,11,0.93)" : "rgba(255,255,255,0.93)",
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+            }]}>
+              <View style={styles.statsBarInner}>
+                {stats.map((stat, idx) => (
+                  <View key={stat.label} style={styles.statItem}>
+                    {idx > 0 && <View style={styles.statDivider} />}
+                    <View style={styles.statBody}>
+                      <View style={styles.statIconWrap}>
+                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
             </View>
-          </BlurView>
+          )}
         </View>
 
         {/* ═══════════════════════════════════════════

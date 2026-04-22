@@ -1,12 +1,15 @@
+import { validateQuery, requireRapidApi } from "./_validate";
+
 const RAPID_HOST = "tripadvisor16.p.rapidapi.com";
 
 export default async function handler(req: any, res: any) {
   const { q } = req.query as Record<string, string>;
 
-  if (!q) return res.status(400).json({ error: "Missing param: q" });
+  const err = validateQuery(q);
+  if (err) return res.status(400).json({ error: err });
 
-  const key = process.env.RAPIDAPI_KEY;
-  if (!key) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
+  const key = requireRapidApi(res);
+  if (!key) return;
 
   const headers = {
     "x-rapidapi-key": key,

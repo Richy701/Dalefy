@@ -81,8 +81,8 @@ export async function removeTrip(id: string): Promise<void> {
 }
 
 export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
-  const normalized = code.trim();
-  if (!/^\d{4}$/.test(normalized)) return null;
+  const normalized = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,6}$/.test(normalized)) return null;
 
   const q = query(
     collection(firebaseDb(), TRIPS),
@@ -94,8 +94,11 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   return docToTrip(d.id, d.data());
 }
 
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
 function randomCode(): string {
-  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+  let code = "";
+  for (let i = 0; i < 6; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return code;
 }
 
 export async function generateUniqueShortCode(): Promise<string> {
@@ -141,6 +144,15 @@ function isBase64(url?: string): boolean {
   return !!url && url.startsWith("data:");
 }
 
+function isFirebaseStorageUrl(url?: string): boolean {
+  return !!url && url.includes("firebasestorage.googleapis.com");
+}
+
+/** Returns true for external HTTP URLs that should be re-uploaded to Firebase Storage */
+function isExternalUrl(url?: string): boolean {
+  return !!url && url.startsWith("http") && !isFirebaseStorageUrl(url);
+}
+
 function base64ToBlob(dataUri: string): Blob {
   const [header, b64] = dataUri.split(",");
   const mime = header.match(/:(.*?);/)?.[1] ?? "image/jpeg";
@@ -157,17 +169,40 @@ async function uploadBase64Image(dataUri: string, path: string): Promise<string>
   return getDownloadURL(storageRef);
 }
 
+/** Fetch an external image via proxy and re-upload to Firebase Storage for reliable mobile access */
+async function reuploadExternalImage(url: string, path: string): Promise<string> {
+  // Use the image proxy to avoid CORS issues when fetching from the browser
+  const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status}`);
+  const blob = await res.blob();
+  const storageRef = ref(firebaseStorage(), path);
+  await uploadBytes(storageRef, blob);
+  return getDownloadURL(storageRef);
+}
+
+/** Upload an image (base64 or external URL) to Firebase Storage */
+async function uploadImage(imageUrl: string, storagePath: string): Promise<string> {
+  if (isBase64(imageUrl)) {
+    return uploadBase64Image(imageUrl, storagePath);
+  }
+  if (isExternalUrl(imageUrl)) {
+    return reuploadExternalImage(imageUrl, storagePath);
+  }
+  return imageUrl; // already a Firebase Storage URL
+}
+
 async function uploadTripImages(trip: Trip): Promise<Trip> {
   const clean = { ...trip };
 
-  // Trip cover
-  if (isBase64(clean.image)) {
+  // Trip cover — upload base64 or external URLs to Firebase Storage
+  if (isBase64(clean.image) || isExternalUrl(clean.image)) {
     try {
-      clean.image = await uploadBase64Image(clean.image, `trips/${trip.id}/cover`);
+      clean.image = await uploadImage(clean.image, `trips/${trip.id}/cover`);
       logger.log("uploadTripImages", "uploaded cover for", trip.id);
     } catch (err) {
-      logger.log("uploadTripImages", "cover upload failed, stripping:", err);
-      clean.image = "";
+      logger.log("uploadTripImages", "cover upload failed, keeping original:", err);
+      // Keep original URL as fallback — it works on web even if Android fails
     }
   }
 
@@ -176,14 +211,14 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
     clean.media = clean.media.filter(m => !isBase64(m.url));
   }
 
-  // Events
+  // Events — upload base64 or external image URLs
   clean.events = await Promise.all(clean.events.map(async (ev, i) => {
     const e = { ...ev };
-    if (isBase64(e.image)) {
+    if (isBase64(e.image) || isExternalUrl(e.image)) {
       try {
-        e.image = await uploadBase64Image(e.image, `trips/${trip.id}/events/${e.id || i}`);
+        e.image = await uploadImage(e.image!, `trips/${trip.id}/events/${e.id || i}`);
       } catch {
-        e.image = undefined;
+        // Keep original URL as fallback
       }
     }
     if (e.media?.length) e.media = e.media.filter(m => !isBase64(m.url));

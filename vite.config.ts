@@ -337,6 +337,31 @@ export default defineConfig(({ mode }) => {
             json({ urls: [], source: null })
           },
         },
+        "/api/image-proxy": {
+          target: "http://localhost:3000",
+          changeOrigin: true,
+          bypass: async (req, res) => {
+            const reqUrl = new URL(req.url!, `http://${req.headers.host}`)
+            const imageUrl = reqUrl.searchParams.get("url") ?? ""
+            if (!imageUrl) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Missing param: url" })); return }
+            let parsed: URL
+            try { parsed = new URL(imageUrl) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid URL" })); return }
+            if (parsed.protocol !== "https:") { res.statusCode = 403; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Only HTTPS allowed" })); return }
+            const h = parsed.hostname; if (h === "localhost" || h.startsWith("127.") || h.startsWith("10.") || h.startsWith("192.168.") || h.endsWith(".local")) { res.statusCode = 403; res.end(); return }
+            try {
+              const controller = new AbortController()
+              const timeout = setTimeout(() => controller.abort(), 5000)
+              const resp = await fetch(imageUrl, { signal: controller.signal })
+              clearTimeout(timeout)
+              if (!resp.ok) { res.statusCode = resp.status; res.end(); return }
+              const ct = resp.headers.get("content-type") || "image/jpeg"
+              if (!ct.startsWith("image/")) { res.statusCode = 403; res.end(); return }
+              const buf = Buffer.from(await resp.arrayBuffer())
+              if (buf.length > 5 * 1024 * 1024) { res.statusCode = 413; res.end(); return }
+              res.setHeader("Content-Type", ct); res.setHeader("Cache-Control", "public, max-age=86400"); res.end(buf)
+            } catch { res.statusCode = 502; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Failed to fetch image" })) }
+          },
+        },
         "/api/geocode": {
           target: "http://localhost:3000",
           changeOrigin: true,

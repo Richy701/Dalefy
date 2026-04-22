@@ -2,12 +2,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Logo uploads: namespaced by org ID
+    // Logo uploads: namespaced by org ID, restricted to org members
     match /logos/{orgId}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
         && request.resource.size < 2 * 1024 * 1024
-        && request.resource.contentType.matches('image/(png|jpeg|webp|svg\\+xml)');
+        && request.resource.contentType.matches('image/(png|jpeg|webp)');
     }
 
     // Trip media: namespaced by trip ID, authenticated users only

@@ -1,14 +1,15 @@
+import { validateQuery, validateDate, requireRapidApi } from "./_validate";
+
 const RAPID_HOST = "booking-com15.p.rapidapi.com";
 
 export default async function handler(req: any, res: any) {
   const { q, check_in, check_out, adults = "2" } = req.query as Record<string, string>;
 
-  if (!q || !check_in || !check_out) {
-    return res.status(400).json({ error: "Missing params: q, check_in, check_out" });
-  }
+  const err = validateQuery(q) || validateDate(check_in, "check_in") || validateDate(check_out, "check_out");
+  if (err) return res.status(400).json({ error: err });
 
-  const key = process.env.RAPIDAPI_KEY;
-  if (!key) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
+  const key = requireRapidApi(res);
+  if (!key) return;
 
   const headers = {
     "x-rapidapi-key": key,

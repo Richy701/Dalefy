@@ -80,8 +80,8 @@ export async function fetchTripById(id: string): Promise<Trip | null> {
 }
 
 export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
-  const normalized = code.trim();
-  if (!/^\d{4}$/.test(normalized)) return null;
+  const normalized = code.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,6}$/.test(normalized)) return null;
 
   // The status filter is required by Firestore security rules —
   // unauthenticated reads are only allowed for published trips,

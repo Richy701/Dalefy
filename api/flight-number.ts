@@ -1,12 +1,13 @@
+import { validateFlightNum, validateDate, requireRapidApi } from "./_validate";
+
 export default async function handler(req: any, res: any) {
   const { number, date } = req.query as Record<string, string>;
 
-  if (!number || !date) {
-    return res.status(400).json({ error: "Missing params: number, date" });
-  }
+  const err = validateFlightNum(number) || validateDate(date, "date");
+  if (err) return res.status(400).json({ error: err });
 
-  const key = process.env.RAPIDAPI_KEY;
-  if (!key) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
+  const key = requireRapidApi(res);
+  if (!key) return;
 
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${number}/${date}`;
 

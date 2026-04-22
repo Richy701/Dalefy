@@ -299,11 +299,17 @@ export default function TripScreen() {
           stickyHeaderStyle,
         ]}
       >
-        <BlurView
-          intensity={Platform.OS === "ios" ? 60 : 80}
-          tint={isDark ? "dark" : "light"}
-          style={StyleSheet.absoluteFillObject}
-        />
+        {Platform.OS === "ios" ? (
+          <BlurView
+            intensity={60}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFillObject}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, {
+            backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)",
+          }]} />
+        )}
         <View style={styles.stickyInner}>
           <Pressable
             style={({ pressed }) => [styles.stickyBackBtn, { opacity: pressed ? 0.7 : 1 }]}

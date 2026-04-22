@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
-import { Text, StyleSheet, Pressable } from "react-native";
+import { Text, StyleSheet, Pressable, Platform, View } from "react-native";
 import { BlurView } from "expo-blur";
-import { Luggage, Map, CalendarDays, Camera, CircleUser } from "lucide-react-native";
+import { Home, Map, CalendarDays, Camera, CircleUser } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +11,7 @@ import Animated, {
 import { useEffect } from "react";
 
 const ALL_TABS = [
-  { name: "index",        Icon: Luggage,       label: "Trips",   visible: true  },
+  { name: "index",        Icon: Home,          label: "Home",    visible: true  },
   { name: "destinations", Icon: Map,           label: "World",   visible: true  },
   { name: "itinerary",    Icon: CalendarDays,  label: "Plan",    visible: false },
   { name: "media",        Icon: Camera,        label: "Gallery", visible: true  },
@@ -77,56 +77,68 @@ function BottomTabBar({ state, navigation }: any) {
 
   const activeRouteName = state.routes[state.index]?.name;
 
+  const barStyle = [
+    styles.bar,
+    {
+      paddingBottom: insets.bottom || 4,
+      backgroundColor: isDark ? "rgba(9,9,11,0.65)" : "rgba(255,255,255,0.7)",
+    },
+  ];
+
+  const tabContent = TABS.map((tab) => {
+    const routeIndex = state.routes.findIndex((r: any) => r.name === tab.name);
+    const focused = activeRouteName === tab.name;
+
+    const onPress = () => {
+      const route = state.routes[routeIndex];
+      if (!route) return;
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (!focused && !event.defaultPrevented) {
+        haptic.selection();
+        navigation.navigate(route.name);
+      }
+    };
+
+    return (
+      <Pressable
+        key={tab.name}
+        onPress={onPress}
+        style={styles.tab}
+        accessibilityRole="button"
+        accessibilityLabel={tab.label}
+        accessibilityState={{ selected: focused }}
+      >
+        <AnimatedTab
+          Icon={tab.Icon}
+          focused={focused}
+          teal={C.teal}
+          isDark={isDark}
+          label={tab.label}
+        />
+      </Pressable>
+    );
+  });
+
+  if (Platform.OS === "ios") {
+    return (
+      <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={barStyle}>
+        {tabContent}
+      </BlurView>
+    );
+  }
+
   return (
-    <BlurView
-      intensity={60}
-      tint={isDark ? "dark" : "light"}
-      style={[
-        styles.bar,
-        {
-          paddingBottom: insets.bottom || 4,
-          backgroundColor: isDark ? "rgba(9,9,11,0.65)" : "rgba(255,255,255,0.7)",
-        },
-      ]}
-    >
-      {TABS.map((tab) => {
-        const routeIndex = state.routes.findIndex((r: any) => r.name === tab.name);
-        const focused = activeRouteName === tab.name;
-
-        const onPress = () => {
-          const route = state.routes[routeIndex];
-          if (!route) return;
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!focused && !event.defaultPrevented) {
-            haptic.selection();
-            navigation.navigate(route.name);
-          }
-        };
-
-        return (
-          <Pressable
-            key={tab.name}
-            onPress={onPress}
-            style={styles.tab}
-            accessibilityRole="button"
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: focused }}
-          >
-            <AnimatedTab
-              Icon={tab.Icon}
-              focused={focused}
-              teal={C.teal}
-              isDark={isDark}
-              label={tab.label}
-            />
-          </Pressable>
-        );
-      })}
-    </BlurView>
+    <View style={[barStyle, {
+      backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)",
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+    }]}>
+      {tabContent}
+    </View>
   );
 }
 

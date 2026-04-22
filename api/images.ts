@@ -1,7 +1,10 @@
+import { validateQuery } from "./_validate";
+
 export default async function handler(req: any, res: any) {
   const { q, page = "1", per_page = "9", source = "" } = req.query as Record<string, string>;
 
-  if (!q) return res.status(400).json({ error: "Missing param: q" });
+  const err = validateQuery(q);
+  if (err) return res.status(400).json({ error: err });
 
   const tryGoogle = async () => {
     const key = process.env.RAPIDAPI_KEY;

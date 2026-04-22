@@ -34,7 +34,9 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
   }, [trip?.shortCode]);
 
   useEffect(() => {
-    if (!open || !trip || trip.shortCode) return;
+    if (!open || !trip) return;
+    // Skip if trip already has a 6+ char alphanumeric code
+    if (trip.shortCode && trip.shortCode.length >= 6) return;
     if (attemptedRef.current === trip.id) return;
     attemptedRef.current = trip.id;
     setAllocating(true);
@@ -180,20 +182,21 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 className="flex items-center gap-2 group disabled:cursor-default"
                 aria-label="Copy trip PIN"
               >
-                {[0, 1, 2, 3].map((i) => {
-                  const digit = shortCode?.[i];
-                  const filled = !!digit;
+                {Array.from({ length: shortCode?.length || 6 }).map((_, i) => {
+                  const char = shortCode?.[i];
+                  const filled = !!char;
+                  const isShort = (shortCode?.length ?? 6) <= 4;
                   return (
                     <span
                       key={i}
-                      className="w-12 h-14 rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums text-[32px] leading-none transition-colors"
+                      className={`${isShort ? "w-12 h-14 text-[32px]" : "w-10 h-12 text-[24px]"} rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums leading-none transition-colors`}
                       style={{
                         borderColor: filled ? `${accentColor}50` : "rgba(148,163,184,0.25)",
                         backgroundColor: filled ? `${accentColor}10` : "transparent",
                         color: filled ? accentColor : "rgba(148,163,184,0.4)",
                       }}
                     >
-                      {filled ? digit : allocating ? "·" : "·"}
+                      {filled ? char : allocating ? "·" : "·"}
                     </span>
                   );
                 })}

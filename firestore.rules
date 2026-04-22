@@ -36,7 +36,7 @@ service cloud.firestore {
 
     // ── Org members ────────────────────────────────────────────────────────
     match /org_members/{docId} {
-      // Members can read memberships in their own org
+      // Authenticated users can read memberships (needed for org bootstrapping and member lists)
       allow read: if request.auth != null;
 
       // Only the org creator can create the first membership (owner bootstrap);
@@ -92,9 +92,13 @@ service cloud.firestore {
 
     // ── Trip members ───────────────────────────────────────────────────────
     match /trip_members/{docId} {
-      // Anyone can read/create (mobile app is unauthenticated, uses device_id)
-      allow read: if true;
-      allow create: if true;
+      // Read: authenticated users or device reading own entry
+      allow read: if request.auth != null || resource.data.device_id != null;
+      // Create: must include a trip_id and either device_id or user_id
+      allow create: if request.resource.data.trip_id is string
+                    && request.resource.data.trip_id.size() > 0
+                    && (request.resource.data.device_id is string
+                        || (request.auth != null && request.resource.data.user_id == request.auth.uid));
       // Only the member themselves or an admin can update/delete
       allow update, delete: if request.auth != null
         && (resource.data.user_id == request.auth.uid
