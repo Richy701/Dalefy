@@ -692,7 +692,7 @@ export function LandingPage() {
               Every day, mapped out
             </h2>
             <p className="text-sm text-[#999] leading-relaxed mb-6">
-              Flights, hotels, activities — laid out day by day with a live route map.
+              Flights, hotels, activities, laid out day by day with a live route map.
               Confirmation numbers, room types, terminal info. It all goes in.
             </p>
             <button
@@ -751,7 +751,7 @@ export function LandingPage() {
               <div className="bg-[#111] px-3.5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3 w-3 text-[#666]" />
-                  <span className="text-[10px] font-bold text-[#999]">Mar 17 — Mar 24</span>
+                  <span className="text-[10px] font-bold text-[#999]">Mar 17 - Mar 24</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3 w-3 text-[#666]" />
