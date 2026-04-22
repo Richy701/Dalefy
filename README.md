@@ -5,13 +5,14 @@ Trip planning without the mess. A modern travel management platform for organize
 ## Features
 
 - **Trip Management** -- Create, edit, and organize trips with itineraries, travelers, budgets, and documents
+- **Itinerary Import** -- Paste or upload travel documents and auto-parse them into structured events
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
-- **White-label Branding** -- Agency code system for custom logos, colors, and organization theming
-- **PDF Export** -- Polished PDF itineraries matching the preview layout with static map headers
+- **White-label Branding** -- Organization system with custom logos, colors, and agency theming
+- **PDF Export** -- Polished PDF itineraries with cover images and static map headers
 - **Unified Theming** -- Single brand accent color across all event types, light and dark modes
-- **Live Flight & Hotel Search** -- SerpAPI-powered search integrated into the trip workspace
+- **Push Notifications** -- Trip update alerts for travelers via Expo push notifications
 - **PWA Support** -- Installable as a progressive web app with offline caching
 
 ## Tech Stack
