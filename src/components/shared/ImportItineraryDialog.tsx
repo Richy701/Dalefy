@@ -300,13 +300,65 @@ async function extractContent(file: File): Promise<ExtractionResult> {
   return { text, media: [] };
 }
 
+// ─── IATA airport code → city name (for geocoding flight locations) ────────────
+const IATA_CITIES: Record<string, string> = {
+  // UK
+  LHR: "London", LGW: "London", STN: "London", LTN: "London", MAN: "Manchester",
+  BHX: "Birmingham", EDI: "Edinburgh", GLA: "Glasgow", BRS: "Bristol",
+  // Europe
+  CDG: "Paris", ORY: "Paris", AMS: "Amsterdam", FRA: "Frankfurt", MUC: "Munich",
+  FCO: "Rome", MXP: "Milan", MAD: "Madrid", BCN: "Barcelona", LIS: "Lisbon",
+  ATH: "Athens", IST: "Istanbul", SAW: "Istanbul", AYT: "Antalya", DLM: "Dalaman",
+  ZRH: "Zurich", VIE: "Vienna", CPH: "Copenhagen", OSL: "Oslo", ARN: "Stockholm",
+  HEL: "Helsinki", WAW: "Warsaw", PRG: "Prague", BUD: "Budapest", DUB: "Dublin",
+  // Middle East
+  DXB: "Dubai", DOH: "Doha", AUH: "Abu Dhabi", JED: "Jeddah", RUH: "Riyadh",
+  BAH: "Bahrain", MCT: "Muscat", AMM: "Amman", TLV: "Tel Aviv",
+  // Africa
+  NBO: "Nairobi", MBA: "Mombasa", DAR: "Dar es Salaam", ZNZ: "Zanzibar",
+  JRO: "Kilimanjaro", ADD: "Addis Ababa", JNB: "Johannesburg", CPT: "Cape Town",
+  CAI: "Cairo", CMN: "Casablanca", LOS: "Lagos", ACC: "Accra",
+  // Asia
+  HND: "Tokyo", NRT: "Tokyo", KIX: "Osaka", ICN: "Seoul", PEK: "Beijing",
+  PVG: "Shanghai", HKG: "Hong Kong", SIN: "Singapore", BKK: "Bangkok",
+  KUL: "Kuala Lumpur", DPS: "Bali", CGK: "Jakarta", MNL: "Manila",
+  DEL: "Delhi", BOM: "Mumbai", CMB: "Colombo", MLE: "Maldives",
+  // Americas
+  JFK: "New York", EWR: "New York", LGA: "New York", LAX: "Los Angeles",
+  SFO: "San Francisco", ORD: "Chicago", MIA: "Miami", ATL: "Atlanta",
+  DFW: "Dallas", IAD: "Washington", BOS: "Boston", SEA: "Seattle",
+  YYZ: "Toronto", YVR: "Vancouver", MEX: "Mexico City", GRU: "Sao Paulo",
+  EZE: "Buenos Aires", BOG: "Bogota", LIM: "Lima", SCL: "Santiago",
+  // Oceania
+  SYD: "Sydney", MEL: "Melbourne", AKL: "Auckland", PER: "Perth",
+};
+
+/** Airport / area names that should map to their parent city for geocoding */
+const AIRPORT_CITIES: Record<string, string> = {
+  "Stansted": "London", "Heathrow": "London", "Gatwick": "London", "Luton": "London",
+  "Orly": "Paris", "Charles de Gaulle": "Paris", "Schiphol": "Amsterdam",
+  "Sabiha Gokcen": "Istanbul", "Ataturk": "Istanbul",
+  "Narita": "Tokyo", "Haneda": "Tokyo",
+  "JFK": "New York", "Newark": "New York", "La Guardia": "New York",
+  "O'Hare": "Chicago", "Midway": "Chicago",
+  "Changi": "Singapore", "Suvarnabhumi": "Bangkok",
+  "Kansai": "Osaka", "Incheon": "Seoul",
+};
+
+/** Resolve a location string: try IATA code first, then airport name, else return as-is */
+function resolveFlightCity(raw: string): string {
+  if (/^[A-Z]{3}$/.test(raw)) return IATA_CITIES[raw] ?? raw;
+  return AIRPORT_CITIES[raw] ?? raw;
+}
+
 // ─── Heuristic parser ──────────────────────────────────────────────────────────
 
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const DATE_PATTERNS = [
   // "4th Nov" or "4 th Nov" (PDF extraction often inserts whitespace before the ordinal suffix)
   new RegExp(`(\\d{1,2})\\s*(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{4}))?`, "gi"),
-  new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, "gi"),
+  // "Nov 4" / "November 4th" — require day is NOT followed by more digits (avoids "April 2026" → "April 20")
+  new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?!\\d)(?:,?\\s+(\\d{4}))?`, "gi"),
   /(\d{4})-(\d{2})-(\d{2})/g,
   /(\d{2})\/(\d{2})\/(\d{4})/g,
 ];
@@ -423,6 +475,8 @@ function guessEventType(line: string): EventType {
   if (!isTransferToAirport && /\b(flight|fly|depart\b|arrive\b|airline|airways|boarding|gate\s+\d|xq\d|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
   // Also catch flight numbers like "XQ524", "BA123" even without other keywords
   if (!isTransferToAirport && /\b[A-Z]{2}\d{2,4}\b/i.test(line) && /\b(depart|arrive|airport)\b/.test(l)) return "flight";
+  // Airport transfers/meetups are activities, not hotel events (even if "check-in" appears)
+  if (isTransferToAirport) return "activity";
   if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx|camp|overnight|fullboard|half.?board|all.?inclusive|panafric|marjani|norfolk)\b/.test(l)) return "hotel";
   if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail|bbq|fish\s*market|seafood)\b/.test(l)) return "dining";
   return "activity";
@@ -483,6 +537,8 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       DATE_START.test(raw) ||                   // "4th November", "November 4"
       /^\d{4}\s*[-–]/.test(raw) ||             // ISO date start
       SECTION_HEADER.test(raw) ||
+      /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s/i.test(raw) || // day-of-week headers
+      /^(?:breakfast|lunch|dinner|brunch|meet\b|depart\b|arrive\b|transfer\b|check.?in\b|check.?out\b|access\b|free\s+time)\b/i.test(raw) || // event-starter words
       /^\d{1,2}[.:]\d{2}\s*(?:am|pm)?/i.test(raw) || // starts with time
       /^\d{4}(?:hrs?\b|am\b|pm\b)/i.test(raw);        // starts with military time
     // Merge if clearly a continuation: starts with lowercase, OR previous line
@@ -691,18 +747,35 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       let time = "";
       if (timeMatch) time = parseTime(timeMatch[0]);
 
+      // For flights, truncate after the arrival info — don't include trailing
+      // sentences about transfers, representatives, etc.
+      let titleSource = line;
+      if (type === "flight") {
+        // Keep "Depart X ... Arrive in Y at HH:MM" but drop everything after
+        // the next sentence break following "arrive"
+        const arriveEnd = titleSource.match(/\barrive[sd]?\s+(?:in\s+)?[A-Za-z\s]+(?:at\s+\d{1,2}[.:]\d{2}\s*(?:am|pm)?|\d{4})\s*\.?\s*/i);
+        if (arriveEnd) {
+          const cutAt = (arriveEnd.index ?? 0) + arriveEnd[0].length;
+          // Only truncate if there's a sentence continuation after arrival
+          if (cutAt < titleSource.length - 5) titleSource = titleSource.slice(0, cutAt);
+        }
+      }
+
       // Strip leading "17:30 –" / "10.00:" / "0930 -" / "ETD 1045hrs –" prefixes,
       // then remove any remaining time mentions from the body.
-      const title = line
+      const title = titleSource
         .replace(/^(?:\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?|\d{4}\s*(?:hrs?|am|pm)?|(?:etd|eta)\s+\d{4}(?:\s*hrs?)?)\s*[-–—:.]\s*/i, "")
         .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?\b/gi, "")
         .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, "")
         .replace(/\b\d{4}\s*(?:hrs?|am|pm)\b/gi, "")
         .replace(/\b(?:etd|eta|pickup)\s+\d{4}\b/gi, "")
-        // Clean orphan prepositions left after time removal: "at .", "at on", "at ,"
-        .replace(/\b(at|by|from)\s*[.,]?\s*(?=\s|$|on\b)/gi, "")
+        // Clean orphan prepositions left after time removal: "at .", "at on", "at for"
+        // Only strip when followed by punctuation, another preposition, or end-of-string — not place names
+        .replace(/\b(at|by|from)\s*[.,–—-]\s*(?=\s|$)/gi, "")
+        .replace(/\b(at|by|from)\s+(?=on\b|for\b|$)/gi, "")
         // Strip "for Name, Name, Name and Name" participant lists from titles
-        .replace(/\bfor\s+(?:[A-Z][a-z]+(?:\s*[,&]\s*|\s+and\s+))*[A-Z][a-z]+\.?\s*/g, "")
+        // Require at least 2 names (comma/&/and separated) to avoid eating "for Check-in" etc.
+        .replace(/\bfor\s+[A-Z][a-z]+(?:\s*[,&]\s*[A-Z][a-z]+|\s+and\s+[A-Z][a-z]+)+\.?\s*/g, "")
         // Strip trailing "Free" / "Free of charge" cost indicators
         .replace(/\bfree\s*(?:of\s+charge)?\s*$/i, "")
         .replace(/^[\s\-–—:·.,]+/, "")
@@ -711,8 +784,32 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         .trim()
         .slice(0, 100) || "Event";
 
-      const locMatch = line.match(/(?:\bat\b|@|,)\s+([A-Z][^,\n]{3,40})/);
-      const location = locMatch ? locMatch[1].trim() : "";
+      // Flight-specific location: extract "ORIGIN to DESTINATION" from depart/arrive patterns
+      let location = "";
+      if (type === "flight") {
+        // "Depart STN ... Arrive in Antalya" or "Depart AYT ... Arrive in Stansted"
+        // Note: use non-i regexes for city captures to avoid matching prepositions like "at", "on"
+        const rawOrigin = line.match(/\b[Dd]epart\w*\s+([A-Z]{3})\b/)?.[1]
+          ?? line.match(/\b[Ff]rom\s+([A-Z]{3})\b/)?.[1]
+          ?? line.match(/\b[Dd]epart\w*\s+(?:from\s+)?([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)?)/)?.[1];
+        const rawDest = line.match(/\b[Aa]rrive[sd]?\s+(?:in\s+)?([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)?)/)?.[1]
+          ?? line.match(/\bto\s+([A-Z]{3})\b/)?.[1]
+          ?? line.match(/\b([A-Z]{3})\s*(?:→|->|–)\s*([A-Z]{3})\b/)?.[2];
+        // Resolve IATA codes and airport names to city names for better geocoding
+        const origin = rawOrigin ? resolveFlightCity(rawOrigin) : undefined;
+        const dest = rawDest ? resolveFlightCity(rawDest) : undefined;
+        if (origin && dest) {
+          location = `${origin} to ${dest}`;
+        } else if (origin) {
+          location = origin;
+        } else if (dest) {
+          location = dest;
+        }
+      }
+      if (!location) {
+        const locMatch = line.match(/(?:\bat\b|@|,)\s+([A-Z][^,\n]{3,40})/);
+        location = locMatch ? locMatch[1].trim() : "";
+      }
 
       if (title.length > 2) {
         events.push({

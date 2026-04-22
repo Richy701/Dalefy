@@ -1,4 +1,5 @@
 import { Illustration } from "@/components/Illustration";
+import { CachedImage } from "@/components/CachedImage";
 import {
   View, Text, ScrollView, Image, StyleSheet, Dimensions,
   Pressable, Alert, Platform, RefreshControl, Modal,
@@ -165,7 +166,7 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
               })}
               onPress={() => { Haptics.selectionAsync(); onPick(t.id); }}
             >
-              <Image source={{ uri: t.image }} style={{
+              <CachedImage uri={t.image} style={{
                 width: 48, height: 48, borderRadius: R.md,
               }} />
               <View style={{ flex: 1 }}>
@@ -320,7 +321,7 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
       }}
     >
       {item.type === "image" ? (
-        <Image source={{ uri: item.url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+        <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} />
       ) : (
         <View style={{ width: "100%", height: "100%", backgroundColor: `${C.teal}12`, alignItems: "center", justifyContent: "center" }}>
           <View style={{
@@ -467,11 +468,7 @@ export default function MediaScreen() {
         {allItems.length > 0 ? (
           <View style={[styles.heroBanner, { paddingTop: insets.top + S.xs }]}>
             {heroTrip?.image && (
-              <Image
-                source={{ uri: heroTrip.image }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-              />
+              <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
             )}
             <LinearGradient
               colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
@@ -616,7 +613,7 @@ export default function MediaScreen() {
                 <View style={styles.tripSection}>
                   {/* Trip section header */}
                   <View style={styles.tripHeader}>
-                    <Image source={{ uri: trip.image }} style={styles.tripThumb} />
+                    <CachedImage uri={trip.image} style={styles.tripThumb} />
                     <View style={styles.tripInfo}>
                       {trip.destination && (
                         <Text style={styles.tripDest}>{trip.destination.toUpperCase()}</Text>

@@ -6,9 +6,10 @@ import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Moon, Sun, Smartphone, Palette, Bell, Shield, ChevronRight,
   Droplet, Vibrate, Trash2, Pencil, ExternalLink, Info,
-  FileText,
+  FileText, Download,
 } from "lucide-react-native";
 import { T, R, S, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
+import { INITIAL_TRIPS } from "@/shared/trips";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTrips } from "@/context/TripsContext";
@@ -22,7 +23,7 @@ export default function ProfileScreen() {
   const { C, isDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
   const { brand } = useBrand();
-  const { trips, clearTrips, reload } = useTrips();
+  const { trips, clearTrips, addTrip, reload } = useTrips();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -248,6 +249,26 @@ export default function ProfileScreen() {
         {/* ── Danger zone ── */}
         <View style={s.dangerSection}>
           <Pressable
+            style={({ pressed }) => [s.demoBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => {
+              haptic.selection();
+              // Clear org branding so demo screenshots show default Dalefy brand
+              setPref("orgId", "");
+              setPref("orgSlug", "");
+              let added = 0;
+              for (const trip of INITIAL_TRIPS) {
+                if (!trips.some(t => t.id === trip.id)) {
+                  addTrip(trip);
+                  added++;
+                }
+              }
+              toast(added > 0 ? `${added} demo trips loaded` : "Demo trips already loaded");
+            }}
+          >
+            <Download size={15} color={C.teal} strokeWidth={1.5} />
+            <Text style={s.demoBtnText}>Load demo trips</Text>
+          </Pressable>
+          <Pressable
             style={({ pressed }) => [s.dangerBtn, { opacity: pressed ? 0.7 : 1 }]}
             onPress={handleClearTrips}
             disabled={trips.length === 0}
@@ -450,6 +471,18 @@ function makeStyles(C: ThemeColors) {
     dangerSection: {
       marginTop: S.xl,
       alignItems: "center",
+    },
+    demoBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: S.md,
+      paddingVertical: S.sm,
+    },
+    demoBtnText: {
+      fontSize: T.sm,
+      fontWeight: T.medium,
+      color: C.teal,
     },
     dangerBtn: {
       flexDirection: "row",

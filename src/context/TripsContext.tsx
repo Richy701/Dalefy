@@ -83,7 +83,19 @@ function syncToCloud(prev: Trip[], next: Trip[]) {
     const old = prev.find(t => t.id === trip.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
       logger.log("syncToCloud", "upserting trip:", trip.id, trip.name, "events:", trip.events.length);
-      upsertTrip(trip).catch(err => logger.error("syncToCloud", "upsert failed:", err));
+      upsertTrip(trip).then((cleaned) => {
+        // Write download URLs back to localStorage so images survive refresh
+        if (JSON.stringify(cleaned) !== JSON.stringify(trip)) {
+          try {
+            const stored: Trip[] = JSON.parse(localStorage.getItem(STORAGE.TRIPS) || "[]");
+            const idx = stored.findIndex(t => t.id === cleaned.id);
+            if (idx >= 0) { stored[idx] = { ...stored[idx], image: cleaned.image, events: cleaned.events }; }
+            else { stored.push(cleaned); }
+            localStorage.setItem(STORAGE.TRIPS, JSON.stringify(stored));
+            logger.log("syncToCloud", "wrote download URLs back to localStorage for", cleaned.id);
+          } catch { /* quota exceeded — cloud has the URLs, will load on next fetch */ }
+        }
+      }).catch(err => logger.error("syncToCloud", "upsert failed:", err));
     }
   }
 

@@ -46,11 +46,17 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
   // Initial fetch
   fetchTrips().then(onChange).catch(() => {});
 
-  // Listen for changes on the trips collection
-  const q = query(collection(firebaseDb(), TRIPS), orderBy("start", "desc"));
+  // Listen only to published trips (unauthenticated reads require status filter)
+  const q = query(
+    collection(firebaseDb(), TRIPS),
+    where("status", "==", "Published"),
+    orderBy("start", "desc"),
+  );
   return onSnapshot(q, () => {
     // Re-fetch with device filter when any trip changes
     fetchTrips().then(onChange).catch(() => {});
+  }, () => {
+    // Silently ignore permission errors on the listener
   });
 }
 
@@ -63,23 +69,39 @@ export async function removeTrip(id: string): Promise<void> {
 }
 
 export async function fetchTripById(id: string): Promise<Trip | null> {
-  const snap = await getDoc(doc(firebaseDb(), TRIPS, id));
-  if (!snap.exists()) return null;
-  return docToTrip(snap.id, snap.data());
+  try {
+    const snap = await getDoc(doc(firebaseDb(), TRIPS, id));
+    if (!snap.exists()) return null;
+    return docToTrip(snap.id, snap.data());
+  } catch {
+    // getDoc can fail on security rules for unpublished trips
+    return null;
+  }
 }
 
 export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   const normalized = code.trim();
   if (!/^\d{4}$/.test(normalized)) return null;
 
-  const q = query(
-    collection(firebaseDb(), TRIPS),
-    where("short_code", "==", normalized),
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return docToTrip(d.id, d.data());
+  // The status filter is required by Firestore security rules —
+  // unauthenticated reads are only allowed for published trips,
+  // and Firestore rejects queries that could return non-published docs.
+  for (const status of ["Published", "published"]) {
+    try {
+      const q = query(
+        collection(firebaseDb(), TRIPS),
+        where("short_code", "==", normalized),
+        where("status", "==", status),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return docToTrip(snap.docs[0].id, snap.docs[0].data());
+      }
+    } catch (err) {
+      console.warn(`[fetchTripByShortCode] query failed for status="${status}":`, err);
+    }
+  }
+  return null;
 }
 
 // ── Trip Members ────────────────────────────────────────────────────────────

@@ -40,7 +40,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
     setAllocating(true);
     generateUniqueShortCode()
       .then((code) => {
-        updateTrip(trip.id, { shortCode: code });
+        updateTrip(trip.id, { shortCode: code, status: "Published" });
         setShortCode(code);
       })
       .catch((err) => {

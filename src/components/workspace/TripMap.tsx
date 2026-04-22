@@ -44,6 +44,7 @@ function buildArc(from: [number, number], to: [number, number], segments = 50): 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 interface TripMapProps { theme: Theme; trip: Trip; }
+interface MapPointEvent { title: string; day: number; role: "depart" | "arrive" | "stop"; otherCity?: string }
 interface MapPoint {
   coords: [number, number];
   label: string;
@@ -51,6 +52,7 @@ interface MapPoint {
   order: number;
   title: string;
   day: number;
+  events: MapPointEvent[];
 }
 
 // Marching-ants dash sequences (MapLibre animate technique)
@@ -100,11 +102,16 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
   const [points, setPoints] = useState<MapPoint[]>([]);
 
+  // Per-flight arc pairs: origin→destination resolved independently
+  type FlightArc = { from: [number, number]; to: [number, number]; fromLabel: string; toLabel: string };
+  const [flightArcs, setFlightArcs] = useState<FlightArc[]>([]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const seen = new Set<string>();
       const result: MapPoint[] = [];
+      const arcs: FlightArc[] = [];
       let order = 0;
       const sortedEvents = [...trip.events]
         .filter((e) => e.type === "flight")
@@ -121,39 +128,40 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         return n > 0 ? n : 1;
       };
 
+      const addPoint = (coords: [number, number], label: string, event: TravelEvent, day: number, role: "depart" | "arrive" | "stop" = "stop", otherCity?: string) => {
+        const key = `${coords[0].toFixed(2)},${coords[1].toFixed(2)}`;
+        const existing = result.find(p => `${p.coords[0].toFixed(2)},${p.coords[1].toFixed(2)}` === key);
+        if (existing) {
+          existing.events.push({ title: event.title, day, role, otherCity });
+        } else {
+          seen.add(key);
+          result.push({ coords, label, type: event.type, order: order++, title: event.title, day, events: [{ title: event.title, day, role, otherCity }] });
+        }
+      };
+
       for (const event of sortedEvents) {
         const day = dayOf(event.date);
-        const codeMatch = event.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/);
-        if (codeMatch) {
-          for (const code of [codeMatch[1], codeMatch[2]]) {
-            const c = await resolve(code);
-            if (c) {
-              const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: code, type: event.type, order: order++, title: event.title, day }); }
-            }
+        // "STN to AYT" or "London to Antalya"
+        const pairMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/);
+        if (pairMatch) {
+          const fromCoords = await resolve(pairMatch[1].trim());
+          const toCoords = await resolve(pairMatch[2].trim());
+          if (fromCoords) addPoint(fromCoords, pairMatch[1].trim(), event, day, "depart", pairMatch[2].trim());
+          if (toCoords) addPoint(toCoords, pairMatch[2].trim(), event, day, "arrive", pairMatch[1].trim());
+          if (fromCoords && toCoords) {
+            arcs.push({ from: fromCoords, to: toCoords, fromLabel: pairMatch[1].trim(), toLabel: pairMatch[2].trim() });
           }
           continue;
         }
-        const toMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/);
-        if (toMatch) {
-          for (const loc of [toMatch[1], toMatch[2]]) {
-            const c = await resolve(loc.trim());
-            if (c) {
-              const key = `${c[0].toFixed(2)},${c[1].toFixed(2)}`;
-              if (!seen.has(key)) { seen.add(key); result.push({ coords: c, label: loc.trim(), type: event.type, order: order++, title: event.title, day }); }
-            }
-          }
-          continue;
-        }
+        // Single location
         const coords = await resolve(event.location);
         if (!coords) continue;
-        const key = `${coords[0].toFixed(2)},${coords[1].toFixed(2)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const label = event.location.split(",")[0].trim();
-        result.push({ coords, label, type: event.type, order: order++, title: event.title, day });
+        addPoint(coords, event.location.split(",")[0].trim(), event, day);
       }
-      if (!cancelled) setPoints(result);
+      if (!cancelled) {
+        setPoints(result);
+        setFlightArcs(arcs);
+      }
     })();
     return () => { cancelled = true; };
   }, [trip.events]);
@@ -165,24 +173,21 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
   const planeRafRef = useRef<number>(0);
 
-  // Build arcs by connecting consecutive resolved points
+  // Build one arc per flight route
   useEffect(() => {
-    if (points.length < 2) {
+    if (flightArcs.length === 0) {
       setArcGeoJSON({ type: "FeatureCollection", features: [] });
       return;
     }
-    const features: ArcFeature[] = [];
-    for (let i = 0; i < points.length - 1; i++) {
-      features.push({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: buildArc(points[i].coords, points[i + 1].coords).map(p => [p[1], p[0]]) },
-        properties: {},
-      });
-    }
+    const features: ArcFeature[] = flightArcs.map(({ from, to }) => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: buildArc(from, to).map(p => [p[1], p[0]]) },
+      properties: {},
+    }));
     setArcGeoJSON({ type: "FeatureCollection", features });
-  }, [points]);
+  }, [flightArcs]);
 
-  // Animate a single plane sequentially across all arcs
+  // Animate a single plane cycling through all arcs
   useEffect(() => {
     if (arcGeoJSON.features.length === 0) return;
     const arcs = arcGeoJSON.features.map(f => f.geometry.coordinates);
@@ -420,10 +425,16 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                       textTransform: "uppercase", letterSpacing: "-0.02em",
                       color: isDark ? "#fff" : "#111", lineHeight: 1.2,
                     }}>{pt.label}</div>
-                    <div style={{
-                      fontSize: 10, color: isDark ? "#888" : "#94a3b8",
-                      letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 3,
-                    }}>{pt.title.length > 28 ? pt.title.slice(0, 26) + "…" : pt.title}</div>
+                    {pt.events.map((ev, i) => (
+                      <div key={i} style={{
+                        fontSize: 10, color: isDark ? "#888" : "#94a3b8",
+                        letterSpacing: "0.1em", textTransform: "uppercase", marginTop: i === 0 ? 3 : 1,
+                      }}>
+                        {ev.role === "depart" && ev.otherCity ? `Day ${ev.day} · Depart → ${ev.otherCity}` :
+                         ev.role === "arrive" && ev.otherCity ? `Day ${ev.day} · Arrive ← ${ev.otherCity}` :
+                         `Day ${ev.day}`}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

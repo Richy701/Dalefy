@@ -101,8 +101,8 @@ function AppStack() {
 
   useEffect(() => {
     if (!ready) return;
-    // Send to welcome if no name OR no agency connected
-    if ((!prefs.name || !prefs.orgId) && pathname !== "/welcome") {
+    // Send to welcome if no name set
+    if (!prefs.name && pathname !== "/welcome") {
       router.replace("/welcome");
     }
   }, [ready, prefs.name, prefs.orgId, pathname, router]);

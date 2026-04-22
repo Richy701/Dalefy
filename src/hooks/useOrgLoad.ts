@@ -144,8 +144,8 @@ export function useOrgLoad() {
         created_at: new Date().toISOString(),
       });
 
-      // Create membership
-      const memberId = crypto.randomUUID();
+      // Create membership — ID must be ${uid}_${orgId} to match isOrgAdmin rule
+      const memberId = `${user.id}_${orgId}`;
       await setDoc(doc(db, "org_members", memberId), {
         organization_id: orgId,
         user_id: user.id,

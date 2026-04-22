@@ -49,6 +49,7 @@ import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { usePermissions } from "@/hooks/usePermissions";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
+import { upsertTrip } from "@/services/firebaseTrips";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { BRAND } from "@/config/brand";
@@ -316,9 +317,14 @@ export function WorkspacePage() {
   }
 
   const handlePublish = async () => {
+    if (publishing) return;
     setPublishing(true);
     await new Promise(r => setTimeout(r, 1500));
+    const published = { ...trip, status: "Published" as const };
     updateTrip(trip.id, { status: "Published" });
+    // Explicitly sync to Firestore — the cloud sync only covers trips already
+    // in the cloud cache; local-only trips would otherwise never get pushed.
+    try { await upsertTrip(published); } catch { /* cloud sync will retry */ }
     setPublishing(false);
     showToast("Trip published successfully");
     toast.success("Trip published successfully");
@@ -844,10 +850,8 @@ export function WorkspacePage() {
 
           {/* Mobile overflow menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+            <DropdownMenuTrigger aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
                 <MoreVertical className="h-4 w-4" />
-              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
               <DropdownMenuItem onClick={() => setShowMap(!showMap)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">

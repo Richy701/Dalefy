@@ -2,8 +2,9 @@ import {
   collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged } from "firebase/auth";
-import { firebaseDb, firebaseAuth } from "./firebase";
+import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
 import type { Trip, TravelEvent } from "@/types";
 import { logger } from "@/lib/logger";
 
@@ -59,19 +60,20 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
   return () => { innerUnsub?.(); };
 }
 
-export async function upsertTrip(trip: Trip): Promise<void> {
+export async function upsertTrip(trip: Trip): Promise<Trip> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
-  // Strip base64 data before writing — Firestore has a 1MB doc limit.
-  // Base64 images are preserved in localStorage; only URLs survive cloud sync.
-  const cleanTrip = stripBase64(trip);
+  // Upload base64 images to Firebase Storage, replace with download URLs.
+  // Firestore has a 1MB doc limit — base64 images easily exceed that.
+  const cleanTrip = await uploadTripImages(trip);
 
   const data = tripToDoc(cleanTrip);
   if (userId) data.user_id = userId;
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name);
   await setDoc(doc(firebaseDb(), TRIPS, trip.id), data, { merge: true });
+  return cleanTrip;
 }
 
 export async function removeTrip(id: string): Promise<void> {
@@ -131,41 +133,80 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
   }
 }
 
-// ── Base64 stripping ──────────────────────────────────────────────────────
-// Firestore docs must be < 1MB. Base64 images easily exceed that.
-// We strip them before cloud write; localStorage keeps the full data.
+// ── Image upload ──────────────────────────────────────────────────────────
+// Firestore docs must be < 1MB. Base64 images are uploaded to Firebase
+// Storage and replaced with download URLs before writing to Firestore.
 
 function isBase64(url?: string): boolean {
   return !!url && url.startsWith("data:");
 }
 
-function stripBase64(trip: Trip): Trip {
+function base64ToBlob(dataUri: string): Blob {
+  const [header, b64] = dataUri.split(",");
+  const mime = header.match(/:(.*?);/)?.[1] ?? "image/jpeg";
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function uploadBase64Image(dataUri: string, path: string): Promise<string> {
+  const blob = base64ToBlob(dataUri);
+  const storageRef = ref(firebaseStorage(), path);
+  await uploadBytes(storageRef, blob);
+  return getDownloadURL(storageRef);
+}
+
+async function uploadTripImages(trip: Trip): Promise<Trip> {
   const clean = { ...trip };
 
   // Trip cover
-  if (isBase64(clean.image)) clean.image = "";
+  if (isBase64(clean.image)) {
+    try {
+      clean.image = await uploadBase64Image(clean.image, `trips/${trip.id}/cover`);
+      logger.log("uploadTripImages", "uploaded cover for", trip.id);
+    } catch (err) {
+      logger.log("uploadTripImages", "cover upload failed, stripping:", err);
+      clean.image = "";
+    }
+  }
 
-  // Trip-level media
+  // Trip-level media — strip base64 (media uploads not supported yet)
   if (clean.media?.length) {
     clean.media = clean.media.filter(m => !isBase64(m.url));
   }
 
   // Events
-  clean.events = clean.events.map(ev => {
+  clean.events = await Promise.all(clean.events.map(async (ev, i) => {
     const e = { ...ev };
-    if (isBase64(e.image)) e.image = undefined;
+    if (isBase64(e.image)) {
+      try {
+        e.image = await uploadBase64Image(e.image, `trips/${trip.id}/events/${e.id || i}`);
+      } catch {
+        e.image = undefined;
+      }
+    }
     if (e.media?.length) e.media = e.media.filter(m => !isBase64(m.url));
     if (e.documents?.length) e.documents = e.documents.filter(d => !isBase64(d.url));
     return e;
-  });
+  }));
 
   return clean;
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────────────
 
+/** Replace undefined with null — Firestore rejects undefined values */
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    result[k] = v === undefined ? null : v;
+  }
+  return result;
+}
+
 function tripToDoc(trip: Trip): Record<string, unknown> {
-  return {
+  return stripUndefined({
     name: trip.name,
     attendees: trip.attendees ?? "",
     destination: trip.destination ?? null,
@@ -176,8 +217,8 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     start: trip.start,
     end_date: trip.end,
     status: trip.status,
-    image: trip.image,
-    events: trip.events,
+    image: trip.image ?? "",
+    events: (trip.events ?? []).map(e => JSON.parse(JSON.stringify(e))),
     media: trip.media ?? null,
     short_code: trip.shortCode ?? null,
     organization_id: trip.organizationId ?? null,
@@ -185,7 +226,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     travelers: trip.travelers ?? null,
     organizer: trip.organizer ?? null,
     info: trip.info ?? null,
-  };
+  });
 }
 
 function docToTrip(id: string, data: Record<string, unknown>): Trip {

@@ -1,9 +1,23 @@
+import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
   content: [
     "./index.html",
     "./src/**/*.{ts,tsx,js,jsx}",
+    "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
+  ],
+  safelist: [
+    // Tremor constructs these class names dynamically at runtime — Tailwind
+    // can't find them during its content scan so we safelist the colors we use.
+    ...["slate","teal","amber","sky","rose","emerald","red"].flatMap(c => [
+      `fill-${c}-500`, `dark:fill-${c}-500`,
+      `stroke-${c}-500`, `dark:stroke-${c}-500`,
+      `bg-${c}-500`, `dark:bg-${c}-500`,
+      `text-${c}-500`, `dark:text-${c}-500`,
+      `hover:bg-${c}-500`, `dark:hover:bg-${c}-500`,
+    ]),
   ],
   theme: {
     extend: {
@@ -15,6 +29,58 @@ export default {
       },
       colors: {
         brand: "rgb(var(--brand-rgb) / <alpha-value>)",
+        // Tremor chart tokens — light mode
+        tremor: {
+          brand: {
+            faint: "#f0fdfa",
+            muted: "#ccfbf1",
+            subtle: "#5eead4",
+            DEFAULT: "#0bd2b5",
+            emphasis: "#0d9488",
+            inverted: "#ffffff",
+          },
+          background: {
+            muted: "#f8fafc",
+            subtle: "#f1f5f9",
+            DEFAULT: "#ffffff",
+            emphasis: "#e2e8f0",
+          },
+          border: { DEFAULT: "#e2e8f0" },
+          ring: { DEFAULT: "#e2e8f0" },
+          content: {
+            subtle: "#94a3b8",
+            DEFAULT: "#64748b",
+            emphasis: "#1e293b",
+            strong: "#0f172a",
+            inverted: "#ffffff",
+          },
+        },
+        // Tremor chart tokens — dark mode
+        "dark-tremor": {
+          brand: {
+            faint: "#050505",
+            muted: "#0a0a0a",
+            subtle: "#0bd2b5",
+            DEFAULT: "#0bd2b5",
+            emphasis: "#0bd2b5",
+            inverted: "#050505",
+          },
+          background: {
+            muted: "#0a0a0a",
+            subtle: "#111111",
+            DEFAULT: "#111111",
+            emphasis: "#1f1f1f",
+          },
+          border: { DEFAULT: "#1f1f1f" },
+          ring: { DEFAULT: "#1f1f1f" },
+          content: {
+            subtle: "#555555",
+            DEFAULT: "#888888",
+            emphasis: "#ffffff",
+            strong: "#ffffff",
+            inverted: "#050505",
+          },
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -75,5 +141,17 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Tremor needs fill-* and stroke-* utilities for SVG chart elements
+    function({ matchUtilities, theme }) {
+      matchUtilities(
+        { "fill": (value) => ({ fill: value }) },
+        { values: flattenColorPalette(theme("colors")), type: "color" }
+      );
+      matchUtilities(
+        { "stroke": (value) => ({ stroke: value }) },
+        { values: flattenColorPalette(theme("colors")), type: "color" }
+      );
+    },
+  ],
 }

@@ -277,13 +277,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSignIn = useCallback(async (email: string, password: string): Promise<string | null> => {
     if (!useFirebase) return "Firebase not configured";
 
-    // Clear stale data from previous user/demo session
-    clearUserData();
-
     const { user: signedInUser, error } = await authSignIn(email, password);
     if (error) return error;
     if (signedInUser) {
-      setUser(signedInUser);
+      // Only clear data when switching to a different user (not re-logging in as same user)
+      const prevAuth = localStorage.getItem(STORAGE.AUTH);
+      const prevId = prevAuth ? JSON.parse(prevAuth)?.id : null;
+      if (prevId && prevId !== signedInUser.id) {
+        clearUserData();
+      }
+      loggedSetUser(setUser, signedInUser, "signIn");
       localStorage.setItem(STORAGE.AUTH, JSON.stringify(signedInUser));
     }
     return null;
@@ -294,12 +297,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleGoogleSignIn = useCallback(async (): Promise<{ error: string | null; isNewUser: boolean }> => {
     if (!useFirebase) return { error: "Firebase not configured", isNewUser: false };
 
-    clearUserData();
-
     const { user: googleUser, error } = await authSignInWithGoogle();
     if (error) return { error, isNewUser: false };
     if (googleUser) {
-      setUser(googleUser);
+      // Only clear data when switching to a different user
+      const prevAuth = localStorage.getItem(STORAGE.AUTH);
+      const prevId = prevAuth ? JSON.parse(prevAuth)?.id : null;
+      if (prevId && prevId !== googleUser.id) {
+        clearUserData();
+      }
+      loggedSetUser(setUser, googleUser, "googleSignIn");
       localStorage.setItem(STORAGE.AUTH, JSON.stringify(googleUser));
       // If the profile was just created, it's a new user
       const isNewUser = !!(googleUser as User & { _isNew?: boolean })._isNew;

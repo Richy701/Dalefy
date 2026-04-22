@@ -1,7 +1,8 @@
 import {
-  View, Text, ScrollView, Image, Pressable,
+  View, Text, ScrollView, Pressable,
   StyleSheet, Platform, RefreshControl,
 } from "react-native";
+import { CachedImage } from "@/components/CachedImage";
 import { Illustration } from "@/components/Illustration";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -104,7 +105,7 @@ export default function ItineraryScreen() {
 
         {/* ── Full-bleed hero ── */}
         <View style={styles.hero}>
-          <Image source={{ uri: activeTrip.image }} style={StyleSheet.absoluteFillObject} />
+          <CachedImage uri={activeTrip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
           <LinearGradient
             colors={["#00000010", "#00000055", "#000000f0"]}
             locations={[0, 0.4, 1]}

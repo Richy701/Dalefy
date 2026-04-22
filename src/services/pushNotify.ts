@@ -4,7 +4,12 @@ import { firebaseDb, isFirebaseConfigured } from "./firebase";
 export async function notifyTripUpdate(tripId: string, tripName: string, action: "published" | "updated") {
   if (!isFirebaseConfigured()) return;
 
-  const snap = await getDocs(collection(firebaseDb(), "push_tokens"));
+  let snap;
+  try {
+    snap = await getDocs(collection(firebaseDb(), "push_tokens"));
+  } catch {
+    return; // push_tokens not accessible — skip silently
+  }
   const tokens = snap.docs.map(d => d.data().token as string).filter(Boolean);
 
   if (!tokens.length) return;

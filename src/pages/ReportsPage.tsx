@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { Plane, Hotel, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download, TrendingUp, MapPin, Zap } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from "recharts";
+import { DonutChart, BarChart as TremorBarChart } from "@tremor/react";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
-import { useTheme } from "@/context/ThemeContext";
 import { BRAND } from "@/config/brand";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
@@ -19,18 +18,6 @@ import type { ComplianceDoc } from "@/types";
 
 type Tab = "operations" | "compliance";
 
-function BarTooltip({ active, payload, label, color = "#0bd2b5", bg = "#111", borderColor = "#2a2a2a" }: { active?: boolean; payload?: { value: number }[]; label?: string; color?: string; bg?: string; borderColor?: string }) {
-  if (!active || !payload?.length) return null;
-  const count = payload[0].value;
-  return (
-    <div style={{ background: bg, border: `1px solid ${borderColor}`, borderRadius: 12, padding: "10px 14px", minWidth: 130 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 20, fontWeight: 900, color, fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
-        {count} <span style={{ fontSize: 11, fontWeight: 700, color: "#888", letterSpacing: "0.1em" }}>{count === 1 ? "TRIP" : "TRIPS"}</span>
-      </p>
-    </div>
-  );
-}
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
@@ -54,7 +41,6 @@ export function ReportsPage() {
   const { accentColor } = usePreferences();
   const brandHex = accentColor;
   const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: brandHex, "In Progress": "#f59e0b" };
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
@@ -94,13 +80,6 @@ export function ReportsPage() {
     URL.revokeObjectURL(url);
     toast.success("CSV exported successfully");
   }, [trips]);
-
-  const isDark = theme === "dark";
-  const chartColors = {
-    text: isDark ? "#888888" : "#64748b",
-    grid: isDark ? "#1f1f1f" : "#e2e8f0",
-    bg: isDark ? "#111111" : "#ffffff",
-  };
 
   // Compliance data (merged with localStorage, same as TravelersPage)
   const complianceData = useMemo(() => {
@@ -264,22 +243,16 @@ export function ReportsPage() {
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                   {/* Donut chart */}
                   <div className="h-56 w-56 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                      <PieChart>
-                        <Pie data={pipelineData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}>
-                          {pipelineData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                          <Label
-                            content={() => (
-                              <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
-                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.05em" }}>{stats.pipeline.total}</tspan>
-                                <tspan x="50%" dy="20" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>TRIPS</tspan>
-                              </text>
-                            )}
-                          />
-                        </Pie>
-                        <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ background: chartColors.bg, border: `1px solid ${chartColors.grid}`, borderRadius: 12, fontSize: 11, fontWeight: 700 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <DonutChart
+                      data={pipelineData}
+                      category="value"
+                      index="name"
+                      colors={["slate", "teal", "amber"]}
+                      label={`${stats.pipeline.total} Trips`}
+                      showLabel
+                      showAnimation
+                      className="h-56 w-56"
+                    />
                   </div>
                   {/* Status breakdown bars */}
                   <div className="flex-1 w-full space-y-5">
@@ -324,25 +297,19 @@ export function ReportsPage() {
                   {stats.typeDistribution.length > 0 ? (
                     <div className="flex flex-col items-center gap-6">
                       <div className="h-52 w-52">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                          <PieChart>
-                            <Pie data={stats.typeDistribution} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" stroke="none" cornerRadius={6}>
-                              {stats.typeDistribution.map((d, i) => {
-                                const tc: Record<string, string> = { Flight: "#38bdf8", Hotel: "#fbbf24", Activity: brandHex, Dining: "#fb7185" };
-                                return <Cell key={i} fill={tc[d.name] || "#64748b"} />;
-                              })}
-                              <Label
-                                content={() => (
-                                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
-                                    <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.05em" }}>{stats.totalEvents}</tspan>
-                                    <tspan x="50%" dy="18" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>EVENTS</tspan>
-                                  </text>
-                                )}
-                              />
-                            </Pie>
-                            <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ background: chartColors.bg, border: `1px solid ${chartColors.grid}`, borderRadius: 12, fontSize: 11, fontWeight: 700 }} />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <DonutChart
+                          data={stats.typeDistribution}
+                          category="value"
+                          index="name"
+                          colors={stats.typeDistribution.map(d => {
+                            const tc: Record<string, string> = { Flight: "sky", Hotel: "amber", Activity: "teal", Dining: "rose" };
+                            return tc[d.name] || "slate";
+                          })}
+                          label={`${stats.totalEvents} Events`}
+                          showLabel
+                          showAnimation
+                          className="h-52 w-52"
+                        />
                       </div>
                       <div className="w-full grid grid-cols-2 gap-3">
                         {stats.typeDistribution.map((t) => {
@@ -392,15 +359,18 @@ export function ReportsPage() {
                     </div>
                   ) : (
                     <div className="flex-1 min-h-[200px]">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                        <BarChart data={stats.tripsByMonth} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="2 6" stroke={chartColors.grid} vertical={false} strokeOpacity={0.4} />
-                          <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: chartColors.text, fontSize: 10, fontWeight: 700 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                          <Tooltip cursor={{ fill: "transparent" }} content={<BarTooltip color={brandHex} bg={chartColors.bg} borderColor={chartColors.grid} />} />
-                          <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} background={{ fill: "transparent" }} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                      <TremorBarChart
+                        data={stats.tripsByMonth}
+                        index="month"
+                        categories={["count"]}
+                        colors={["teal"]}
+                        showAnimation
+                        showGridLines={false}
+                        showLegend={false}
+                        className="h-full"
+                        yAxisWidth={32}
+                        allowDecimals={false}
+                      />
                     </div>
                   )}
                 </div>
@@ -595,33 +565,27 @@ export function ReportsPage() {
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                   {/* Donut chart */}
                   <div className="h-56 w-56 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: "Signed", value: complianceData.signed, color: "#34d399" },
-                            { name: "Pending", value: complianceData.pending, color: "#fbbf24" },
-                            { name: "Expired", value: complianceData.expired, color: "#f87171" },
-                          ].filter(d => d.value > 0)}
-                          cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={4} dataKey="value" stroke="none" cornerRadius={6}
-                        >
-                          {[
-                            { name: "Signed", value: complianceData.signed, color: "#34d399" },
-                            { name: "Pending", value: complianceData.pending, color: "#fbbf24" },
-                            { name: "Expired", value: complianceData.expired, color: "#f87171" },
-                          ].filter(d => d.value > 0).map((d, i) => <Cell key={i} fill={d.color} />)}
-                          <Label
-                            content={() => (
-                              <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central">
-                                <tspan x="50%" dy="-6" className="fill-slate-900 dark:fill-white" style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.05em" }}>{complianceData.rate}%</tspan>
-                                <tspan x="50%" dy="20" className="fill-slate-400 dark:fill-[#555]" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>UP TO DATE</tspan>
-                              </text>
-                            )}
-                          />
-                        </Pie>
-                        <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ background: chartColors.bg, border: `1px solid ${chartColors.grid}`, borderRadius: 12, fontSize: 11, fontWeight: 700 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <DonutChart
+                      data={[
+                        { name: "Signed", value: complianceData.signed },
+                        { name: "Pending", value: complianceData.pending },
+                        { name: "Expired", value: complianceData.expired },
+                      ].filter(d => d.value > 0)}
+                      category="value"
+                      index="name"
+                      colors={[
+                        { name: "Signed", value: complianceData.signed },
+                        { name: "Pending", value: complianceData.pending },
+                        { name: "Expired", value: complianceData.expired },
+                      ].filter(d => d.value > 0).map(d => {
+                        const cm: Record<string, string> = { Signed: "emerald", Pending: "amber", Expired: "red" };
+                        return cm[d.name] || "slate";
+                      })}
+                      label={`${complianceData.rate}% Up to Date`}
+                      showLabel
+                      showAnimation
+                      className="h-56 w-56"
+                    />
                   </div>
                   {/* Status breakdown bars */}
                   <div className="flex-1 w-full space-y-5">

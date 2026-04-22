@@ -1,11 +1,12 @@
 import {
-  View, Text, ScrollView, Image, Pressable,
+  View, Text, ScrollView, Pressable, Image,
   StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform,
 } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
   Easing, runOnJS, interpolate,
 } from "react-native-reanimated";
+import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/components/Skeleton";
@@ -101,7 +102,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
       }, cardStyle]}>
         {/* Trip image */}
         <View style={{ height: 160, overflow: "hidden" }}>
-          <Image source={{ uri: trip.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          <CachedImage uri={trip.image} style={{ width: "100%", height: "100%" }} />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.7)"]}
             style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80 }}
@@ -380,8 +381,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         return;
       }
       revealAndNavigate(trip);
-    } catch {
-      setCodeError("Couldn't look up PIN. Try again.");
+    } catch (err: any) {
+      setCodeError(err?.message || "Couldn't look up PIN. Try again.");
     } finally {
       setResolving(false);
     }
@@ -882,7 +883,7 @@ function UpcomingCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${days <= 0 ? "departing today" : `${days} days away`}`}
     >
-      <Image source={{ uri: trip.image }} style={styles.thumb} accessible={false} />
+      <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{trip.name}</Text>
         <View style={styles.meta}>
@@ -959,7 +960,7 @@ function SpotlightEventCard({ ev }: { ev: TravelEvent }) {
     <View style={styles.card}>
       {/* Left image */}
       {ev.image ? (
-        <Image source={{ uri: ev.image }} style={styles.img} />
+        <CachedImage uri={ev.image} style={styles.img} />
       ) : (
         <View style={styles.imgPlaceholder}>
           <Icon size={22} color={color} strokeWidth={1.5} style={{ opacity: 0.5 }} />
@@ -1050,7 +1051,7 @@ function TripRow({ trip, onPress }: { trip: Trip; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
-      <Image source={{ uri: trip.image }} style={styles.rowThumb} accessible={false} />
+      <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
       <View style={styles.rowBody}>
         {trip.destination ? (
           <Text style={styles.rowDest}>{trip.destination.toUpperCase()}</Text>

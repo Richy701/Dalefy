@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Text, StyleSheet, Pressable } from "react-native";
 import { BlurView } from "expo-blur";
-import { Compass, Globe, CalendarDays, Images, User } from "lucide-react-native";
+import { Luggage, Map, CalendarDays, Camera, CircleUser } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,11 +11,11 @@ import Animated, {
 import { useEffect } from "react";
 
 const ALL_TABS = [
-  { name: "index",        Icon: Compass,      label: "Trips",   visible: true  },
-  { name: "destinations", Icon: Globe,         label: "World",   visible: true  },
+  { name: "index",        Icon: Luggage,       label: "Trips",   visible: true  },
+  { name: "destinations", Icon: Map,           label: "World",   visible: true  },
   { name: "itinerary",    Icon: CalendarDays,  label: "Plan",    visible: false },
-  { name: "media",        Icon: Images,        label: "Gallery", visible: true  },
-  { name: "profile",      Icon: User,          label: "Me",      visible: true  },
+  { name: "media",        Icon: Camera,        label: "Gallery", visible: true  },
+  { name: "profile",      Icon: CircleUser,    label: "Me",      visible: true  },
 ] as const;
 
 const TABS = ALL_TABS.filter(t => t.visible);
