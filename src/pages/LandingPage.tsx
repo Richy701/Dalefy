@@ -460,16 +460,16 @@ function PhoneMockup({ src, alt, className, style }: { src: string; alt: string;
     <div className={cn("relative", className)} style={style}>
       {/* Outer device shell */}
       <div
-        className="relative rounded-[2.8rem] p-[3px]"
+        className="relative rounded-[1.6rem] p-[3px]"
         style={{
           background: "linear-gradient(145deg, #333 0%, #1a1a1a 50%, #2a2a2a 100%)",
           boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)",
         }}
       >
         {/* Inner bezel */}
-        <div className="relative rounded-[2.6rem] bg-[#0a0a0a] p-[2px] overflow-hidden">
+        <div className="relative rounded-[1.4rem] bg-[#0a0a0a] p-[2px] overflow-hidden">
           {/* Screen */}
-          <div className="relative rounded-[2.5rem] overflow-hidden bg-black">
+          <div className="relative rounded-[1.3rem] overflow-hidden bg-black">
             <img src={src} alt={alt} className="w-full h-auto block" loading="lazy" />
           </div>
         </div>
