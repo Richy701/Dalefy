@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Menu, MapPin, Plane, Hotel, ChevronLeft, ChevronRight, Calendar, Users } from "lucide-react";
 import { motion } from "motion/react";
-import NumberFlow from "@number-flow/react";
 import { default as MapboxMap, Source, Layer, Marker } from "react-map-gl/mapbox";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/shared/Logo";
@@ -542,44 +541,6 @@ function GlobeSection({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElemen
   );
 }
 
-/* ── Stats counter data ────────────────────────────────────────────────── */
-const STATS = [
-  { label: "Trips Built", value: 500, suffix: "+" },
-  { label: "Countries", value: 12, suffix: "" },
-  { label: "Travelers Served", value: 2400, suffix: "+" },
-] as const;
-
-function StatsCounter({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElement | null>; visible: boolean } }) {
-  const [triggered, setTriggered] = useState(false);
-  useEffect(() => { if (reveal.visible) setTriggered(true); }, [reveal.visible]);
-
-  return (
-    <section ref={reveal.ref} className="py-14 sm:py-20 px-5">
-      <div className={cn(
-        "mx-auto max-w-3xl flex items-center justify-center gap-8 sm:gap-16",
-        revealTransition,
-        reveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
-      )}>
-        {STATS.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={reveal.visible ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.5, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="text-center"
-          >
-            <div className="text-2xl sm:text-4xl font-black text-white tabular-nums leading-none flex items-baseline justify-center">
-              <NumberFlow value={triggered ? stat.value : 0} trend={1} />
-              {stat.suffix && <span className="text-brand">{stat.suffix}</span>}
-            </div>
-            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-[#666] mt-2">{stat.label}</p>
-          </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /* ── Showcase event cards data ──────────────────────────────────────────── */
 const SHOWCASE_EVENTS = [
   { type: "Stay", title: "The Standard, High Line", location: "Meatpacking District, NYC", time: "05:00", period: "PM", hasImage: true },
@@ -593,7 +554,6 @@ export function LandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const workspaceReveal = useReveal();
-  const statsReveal = useReveal();
   const destIntroReveal = useReveal();
   const mobileReveal = useReveal();
   const globeReveal = useReveal();
@@ -705,7 +665,7 @@ export function LandingPage() {
           className={cn(fadeUp, "relative mx-auto max-w-5xl will-change-transform motion-reduce:!transform-none")}
           style={{ animationDelay: "350ms", transform: heroTilt }}
         >
-          <div className="relative rounded-xl ring-1 ring-white/[0.08] overflow-hidden animate-[landing-glow-pulse_4s_ease-in-out_2s_infinite]">
+          <div className="relative rounded-xl ring-1 ring-white/[0.08] overflow-hidden">
             <img
               src="/hero-dashboard.png"
               alt="Dalefy dashboard showing upcoming trips, countdown timer, and destination map"
@@ -749,9 +709,6 @@ export function LandingPage() {
           </div>
         </div>
       </section>
-
-      {/* ── Stats ──────────────────────────────────────────────────── */}
-      <StatsCounter reveal={statsReveal} />
 
       {/* ── Destinations intro + showcase cards ─────────────────────── */}
       <section ref={destIntroReveal.ref} className="py-20 sm:py-28 px-5">
