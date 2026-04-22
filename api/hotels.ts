@@ -1,3 +1,5 @@
+const RAPID_HOST = "booking-com15.p.rapidapi.com";
+
 export default async function handler(req: any, res: any) {
   const { q, check_in, check_out, adults = "2" } = req.query as Record<string, string>;
 
@@ -5,37 +7,67 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Missing params: q, check_in, check_out" });
   }
 
-  const key = process.env.SERPAPI_KEY;
-  if (!key) return res.status(500).json({ error: "SERPAPI_KEY not configured" });
+  const key = process.env.RAPIDAPI_KEY;
+  if (!key) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
 
-  const params = new URLSearchParams({
-    engine: "google_hotels",
-    q,
-    check_in_date: check_in,
-    check_out_date: check_out,
-    adults,
-    currency: "USD",
-    api_key: key,
-  });
+  const headers = {
+    "x-rapidapi-key": key,
+    "x-rapidapi-host": RAPID_HOST,
+  };
 
   try {
-    const resp = await fetch(`https://serpapi.com/search?${params}`);
-    const data = await resp.json();
+    // Step 1: resolve destination ID
+    const destResp = await fetch(
+      `https://${RAPID_HOST}/api/v1/hotels/searchDestination?query=${encodeURIComponent(q)}`,
+      { headers }
+    );
+    const destData = await destResp.json();
+    const dest = destData.data?.[0];
+    if (!dest) return res.json({ hotels: [] });
 
-    const hotels = (data.properties ?? []).slice(0, 8).map((h: any) => ({
-      name: h.name ?? "",
-      rating: h.overall_rating ?? 0,
-      reviews: h.reviews ?? 0,
-      pricePerNight: h.rate_per_night?.lowest ?? "",
-      image: h.images?.[0]?.thumbnail ?? "",
-      checkin: h.check_in_time ?? "",
-      checkout: h.check_out_time ?? "",
-      amenities: (h.amenities ?? []).slice(0, 4) as string[],
-      stars: h.hotel_class ?? "",
-    }));
+    // Step 2: search hotels
+    const params = new URLSearchParams({
+      dest_id: dest.dest_id,
+      search_type: dest.search_type ?? "city",
+      arrival_date: check_in,
+      departure_date: check_out,
+      adults,
+      room_qty: "1",
+      currency_code: "USD",
+    });
+
+    const hotelResp = await fetch(
+      `https://${RAPID_HOST}/api/v1/hotels/searchHotels?${params}`,
+      { headers }
+    );
+    const hotelData = await hotelResp.json();
+
+    const hotels = (hotelData.data?.hotels ?? []).slice(0, 8).map((h: any) => {
+      const p = h.property ?? {};
+      const price = p.priceBreakdown?.grossPrice?.value;
+      const nights = daysBetween(check_in, check_out) || 1;
+      const perNight = price ? Math.round(price / nights) : 0;
+
+      return {
+        name: p.name ?? "",
+        rating: p.reviewScore ?? 0,
+        reviews: p.reviewCount ?? 0,
+        pricePerNight: perNight > 0 ? `$${perNight}` : "",
+        image: p.photoUrls?.[0] ?? "",
+        checkin: p.checkin?.fromTime ?? "",
+        checkout: p.checkout?.untilTime ?? "",
+        amenities: [] as string[],
+        stars: p.propertyClass ? `${p.propertyClass}-star` : "",
+      };
+    });
 
     res.json({ hotels });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch from SerpApi" });
+    res.status(500).json({ error: "Failed to fetch from Booking.com" });
   }
+}
+
+function daysBetween(a: string, b: string): number {
+  const ms = new Date(b).getTime() - new Date(a).getTime();
+  return Math.max(1, Math.round(ms / 86400000));
 }

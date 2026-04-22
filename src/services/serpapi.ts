@@ -11,6 +11,8 @@ export interface FlightResult {
   price: number;
   stops: number;
   logo: string;
+  status?: string;
+  terminal?: string;
 }
 
 export interface HotelResult {
@@ -36,6 +38,58 @@ export async function searchFlights(
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   return data.flights ?? [];
+}
+
+export async function lookupFlight(
+  flightNum: string,
+  date: string
+): Promise<FlightResult[]> {
+  const params = new URLSearchParams({ number: flightNum.replace(/\s+/g, ""), date });
+  const res = await fetch(`/api/flight-number?${params}`);
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.flights ?? [];
+}
+
+export interface ActivityResult {
+  name: string;
+  rating: number;
+  reviews: number;
+  image: string;
+  address: string;
+  type: string;
+  openStatus: string;
+}
+
+export interface DiningResult {
+  name: string;
+  rating: number;
+  reviews: number;
+  image: string;
+  address: string;
+  priceTag: string;
+  cuisines: string[];
+  openStatus: string;
+}
+
+export async function searchActivities(
+  q: string
+): Promise<ActivityResult[]> {
+  const params = new URLSearchParams({ q });
+  const res = await fetch(`/api/activities?${params}`);
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.activities ?? [];
+}
+
+export async function searchDining(
+  q: string
+): Promise<DiningResult[]> {
+  const params = new URLSearchParams({ q });
+  const res = await fetch(`/api/dining?${params}`);
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.restaurants ?? [];
 }
 
 export async function searchHotels(

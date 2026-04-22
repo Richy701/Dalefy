@@ -44,6 +44,8 @@ import { ItineraryPreviewDialog, ItineraryPreviewContent } from "@/components/sh
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { FlightSearch } from "@/components/workspace/FlightSearch";
 import { HotelSearch } from "@/components/workspace/HotelSearch";
+import { ActivitySearch } from "@/components/workspace/ActivitySearch";
+import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -108,6 +110,7 @@ export function WorkspacePage() {
   const [imageSearchSource, setImageSearchSource] = useState<"google" | "unsplash" | "pexels" | "local" | null>(null);
   const [imagePage, setImagePage] = useState(1);
   const [imageLastQuery, setImageLastQuery] = useState("");
+  const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
   const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
   const allTravelers = useMemo(() => {
@@ -198,13 +201,15 @@ export function WorkspacePage() {
     toast.success("Events reordered");
   }, [trip, updateTrip]);
 
-  const runImageSearch = async (query: string, page = 1) => {
+  const runImageSearch = async (query: string, page = 1, sourceOverride?: "auto" | "google" | "unsplash" | "pexels") => {
     if (!query.trim()) return;
     setIsSearchingImages(true);
     setImageLastQuery(query);
     setImagePage(page);
     try {
-      const { urls, source } = await searchImages(query, page, 9);
+      const src = sourceOverride ?? preferredImageSource;
+      const srcParam = src === "auto" ? undefined : src;
+      const { urls, source } = await searchImages(query, page, 9, srcParam);
       if (urls.length) {
         setImageResults(urls);
         setImageSearchSource(source as "unsplash" | "pexels");
@@ -237,39 +242,17 @@ export function WorkspacePage() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [trip?.events, viewAsId]);
 
-  // Auto-search + generate image when title changes (must run before any early return)
+  // Generate placeholder image when title changes (no API calls)
   useEffect(() => {
     if (!editingEvent || !isEditPanelOpen) return;
-    const { title, type, location } = editingEvent;
+    const { title, type } = editingEvent;
     if (title.length < 3) return;
     if (imageIsAuto) {
       const img = generateEventImage(title, type, imageSeed);
       setEditingEvent(prev => prev ? { ...prev, image: img } : null);
     }
-    const candidates = buildImageQueryCandidates({ title, location, type });
-    const t = setTimeout(async () => {
-      setIsSearchingImages(true);
-      setImagePage(1);
-      try {
-        const { urls, source, matchedQuery } = await searchImagesProgressive(candidates, 9);
-        if (urls.length) {
-          setImageResults(urls);
-          setImageSearchSource(source as "unsplash" | "pexels");
-          setImageLastQuery(matchedQuery || candidates[0]);
-          return;
-        }
-        const cat = getEventImageCategory(title, type);
-        const bank = IMAGE_BANK[cat] ?? IMAGE_BANK.activity;
-        setImageResults([...bank, ...IMAGE_BANK.activity].slice(0, 9));
-        setImageSearchSource("local");
-        setImageLastQuery(candidates[0]);
-      } finally {
-        setIsSearchingImages(false);
-      }
-    }, 900);
-    return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingEvent?.title, editingEvent?.type, editingEvent?.location, imageSeed, imageIsAuto, isEditPanelOpen]);
+  }, [editingEvent?.title, editingEvent?.type, imageSeed, imageIsAuto, isEditPanelOpen]);
 
   /** Build a Mapbox Static Images URL with route pins for the trip */
   const buildStaticMapUrl = useCallback(async (): Promise<string | null> => {
@@ -338,6 +321,7 @@ export function WorkspacePage() {
     setImageIsAuto(true);
     setImageSearch("");
     setImageResults([]);
+    setImageSearchSource(null);
     setEditingEvent({
       id: Date.now().toString(),
       type,
@@ -355,9 +339,9 @@ export function WorkspacePage() {
     setImageIsAuto(!event.image);
     setImageSearch("");
     setImageResults([]);
+    setImageSearchSource(null);
     setEditingEvent({ ...event });
     setIsEditPanelOpen(true);
-    if (event.title) setTimeout(() => runImageSearch(event.title), 100);
   };
 
   const handleSaveEvent = (e: React.FormEvent) => {
@@ -606,7 +590,8 @@ export function WorkspacePage() {
     setTripImageLastQuery(query);
     setTripImagePage(page);
     try {
-      const { urls } = await searchImages(query, page, 12);
+      const srcParam = preferredImageSource === "auto" ? undefined : preferredImageSource;
+      const { urls } = await searchImages(query, page, 12, srcParam);
       if (urls.length) { setTripImageResults(urls); return; }
       const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
       setTripImageResults(shuffled.map(i => i.url));
@@ -1373,6 +1358,20 @@ export function WorkspacePage() {
                   />
                 )}
 
+                {/* Live search — activity */}
+                {editingEvent?.type === "activity" && (
+                  <ActivitySearch
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                  />
+                )}
+
+                {/* Live search — dining */}
+                {editingEvent?.type === "dining" && (
+                  <DiningSearch
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                  />
+                )}
+
                 <div className="p-4 sm:p-7 space-y-5">
                   {/* Title — large underline style */}
                   <div className="space-y-1">
@@ -1525,6 +1524,14 @@ export function WorkspacePage() {
                       </button>
                     )}
                   </div>
+                  <div className="flex items-center gap-1 mt-2">
+                    {(["auto", "google", "unsplash", "pexels"] as const).map(s => (
+                      <button key={s} type="button" onClick={() => { setPreferredImageSource(s); if (imageLastQuery) runImageSearch(imageLastQuery, 1, s); }}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-slate-400 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#999]"}`}>
+                        {s === "auto" ? "Auto" : s === "google" ? "Google" : s === "unsplash" ? "Unsplash" : "Pexels"}
+                      </button>
+                    ))}
+                  </div>
                   {imageIsAuto && (
                     <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
                       <Wand2 className="h-3 w-3 text-brand" /> Auto-matching from title
@@ -1571,7 +1578,7 @@ export function WorkspacePage() {
                           <button key={i} type="button"
                             onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: url } : null); setImageIsAuto(false); }}
                             className={`relative h-[72px] rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-transparent hover:border-brand/50"}`}>
-                            <img src={url} alt={`Image option ${i + 1}${imageSearch ? ` for ${imageSearch}` : ""}`} className="w-full h-full object-cover" loading="lazy" />
+                            <img src={url} alt={`Image option ${i + 1}${imageSearch ? ` for ${imageSearch}` : ""}`} className="w-full h-full object-cover" loading="lazy" onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
                           </button>
                         ))}
                       </div>

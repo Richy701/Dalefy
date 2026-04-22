@@ -141,8 +141,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
       for (const event of sortedEvents) {
         const day = dayOf(event.date);
-        // "STN to AYT" or "London to Antalya"
-        const pairMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/);
+        // "STN to AYT" or "London to Antalya" — also fallback to title "STN → AYT"
+        const pairMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/)
+          ?? (event.type === "flight" && event.title ? event.title.match(/^(.+?)\s*[→➔]\s*(.+)$/) : null);
         if (pairMatch) {
           const fromCoords = await resolve(pairMatch[1].trim());
           const toCoords = await resolve(pairMatch[2].trim());

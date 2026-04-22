@@ -16,7 +16,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
   const [query, setQuery] = useState("");
   const [checkin, setCheckin] = useState(defaultCheckin ?? "");
   const [checkout, setCheckout] = useState(defaultCheckout ?? "");
-  const [adults, setAdults] = useState(2);
+
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<HotelResult[]>([]);
   const [error, setError] = useState("");
@@ -28,7 +28,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
     setError("");
     setResults([]);
     try {
-      const hotels = await searchHotels(query, checkin, checkout, adults);
+      const hotels = await searchHotels(query, checkin, checkout);
       setResults(hotels);
       if (hotels.length === 0) setError("No hotels found — try a different location.");
     } catch {
@@ -44,7 +44,6 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
       title: h.name,
       location: query,
       supplier: h.name,
-      price: h.pricePerNight ? `${h.pricePerNight}/night` : "",
       checkin: h.checkin,
       checkout: h.checkout,
       image: h.image || undefined,
@@ -92,10 +91,6 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
               </PopoverContent>
             </Popover>
           </div>
-          <div className="sm:w-14">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Pax</label>
-            <input type="number" value={adults} onChange={e => setAdults(Number(e.target.value))} min={1} max={99} inputMode="numeric" className={inputCls} />
-          </div>
           <button
             type="button"
             onClick={search}
@@ -124,7 +119,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
               }`}
             >
               {h.image ? (
-                <img src={h.image} alt={h.name} className="h-10 w-14 object-cover rounded-lg shrink-0" />
+                <img src={h.image} alt={h.name} className="h-10 w-14 object-cover rounded-lg shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="h-10 w-14 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
                   <Hotel className="h-4 w-4 text-brand" />

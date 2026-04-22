@@ -16,6 +16,7 @@ try {
       const allowed =
         category === "reminder" ? prefs.tripReminders :
         category === "update"   ? prefs.itineraryUpdates :
+        category === "flight_status" ? prefs.itineraryUpdates :
         (prefs.tripReminders || prefs.itineraryUpdates);
 
       return {
