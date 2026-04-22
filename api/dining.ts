@@ -1,4 +1,4 @@
-import { validateQuery, requireRapidApi } from "./_validate";
+import { validateQuery, requireRapidApi } from "./_validate.js";
 
 const RAPID_HOST = "tripadvisor16.p.rapidapi.com";
 

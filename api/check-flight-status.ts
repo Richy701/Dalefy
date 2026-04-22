@@ -1,4 +1,4 @@
-import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin";
+import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on today's flights,

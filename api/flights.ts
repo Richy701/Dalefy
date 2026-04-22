@@ -1,4 +1,4 @@
-import { validateIata, validateDate, requireRapidApi } from "./_validate";
+import { validateIata, validateDate, requireRapidApi } from "./_validate.js";
 
 export default async function handler(req: any, res: any) {
   const { from, to, date } = req.query as Record<string, string>;

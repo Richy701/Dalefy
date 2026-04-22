@@ -1,4 +1,4 @@
-import { validateQuery } from "./_validate";
+import { validateQuery } from "./_validate.js";
 
 export default async function handler(req: any, res: any) {
   const { q, page = "1", per_page = "9", source = "" } = req.query as Record<string, string>;
