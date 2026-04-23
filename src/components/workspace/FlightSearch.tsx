@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plane, ArrowRight, CheckCircle2, Calendar as CalendarIcon, Hash, Route } from "lucide-react";
+import { Loader2, Plane, ArrowRight, CircleCheck, Calendar as CalendarIcon, Hash, Route } from "lucide-react";
 import { searchFlights, lookupFlight, type FlightResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -191,7 +191,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                 {f.price > 0 && <p className="text-sm font-black text-slate-900 dark:text-white">${f.price}</p>}
-                {selected === f.flightNum && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                {selected === f.flightNum && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

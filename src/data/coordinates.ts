@@ -82,6 +82,25 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "Lauterbrunnen": [46.5934, 7.9087],
   "Schilthorn Summit, 2,970m": [46.5587, 7.8356],
 
+  // Turkey
+  "AYT": [36.8987, 30.8005],
+  "IST": [41.2753, 28.7519],
+  "SAW": [40.8986, 29.3092],
+  "Antalya": [36.8969, 30.7133],
+  "Antalya, Turkey": [36.8969, 30.7133],
+  "Belek, Antalya": [36.8593, 31.0561],
+  "Belek": [36.8593, 31.0561],
+  "Regnum Carya, Belek": [36.8530, 31.0680],
+  "Regnum Carya": [36.8530, 31.0680],
+  "Lotus Hotel, Belek": [36.8550, 31.0600],
+  "Kaleici, Antalya": [36.8841, 30.7056],
+  "Lara Beach, Antalya": [36.8560, 30.7580],
+  "Side, Antalya": [36.7676, 31.3886],
+  "Kemer, Antalya": [36.5977, 30.5563],
+  "Istanbul": [41.0082, 28.9784],
+  "Cappadocia": [38.6431, 34.8289],
+  "Pamukkale": [37.9204, 29.1187],
+
   // New York
   "Meatpacking District, NYC": [40.7397, -74.0077],
   "Chelsea, Manhattan": [40.7465, -74.0014],
@@ -103,10 +122,18 @@ export function resolveCoords(location: string): [number, number] | null {
     return LOCATION_COORDS[codeMatch[1]] || LOCATION_COORDS[codeMatch[2]] || null;
   }
 
-  // Try partial match
+  // Case-insensitive exact match
   const lower = location.toLowerCase();
   for (const [key, coords] of Object.entries(LOCATION_COORDS)) {
-    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) {
+    if (key.toLowerCase() === lower) return coords;
+  }
+
+  // Partial match — only match if the location contains a full key or vice versa,
+  // but skip short keys (3 chars or fewer like airport codes) to avoid false matches
+  for (const [key, coords] of Object.entries(LOCATION_COORDS)) {
+    if (key.length <= 3) continue;
+    const keyLower = key.toLowerCase();
+    if (lower.includes(keyLower) || keyLower.includes(lower)) {
       return coords;
     }
   }

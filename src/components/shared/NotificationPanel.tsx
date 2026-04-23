@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCircle2, Info, AlertTriangle } from "lucide-react";
+import { Bell, Check, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/context/NotificationContext";
@@ -6,8 +6,8 @@ import type { Notification } from "@/types";
 
 const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: string; bg: string }> = {
   info: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
-  success: { icon: CheckCircle2, color: "text-brand", bg: "bg-brand/10" },
-  warning: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
+  success: { icon: CircleCheck, color: "text-brand", bg: "bg-brand/10" },
+  warning: { icon: TriangleAlert, color: "text-amber-400", bg: "bg-amber-500/10" },
 };
 
 export function NotificationPanel() {

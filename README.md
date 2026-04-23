@@ -5,7 +5,7 @@ Trip planning without the mess. A modern travel management platform for organize
 ## Features
 
 - **Trip Management** -- Create, edit, and organize trips with itineraries, travelers, budgets, and documents
-- **Itinerary Import** -- Paste or upload travel documents and auto-parse them into structured events
+- **AI-Powered Itinerary Import** -- Upload travel documents (PDF, Word, PowerPoint, text) and parse them with Claude Haiku 4.5 into structured events with polished descriptions, internal agent notes, traveler extraction, and info sections. Falls back to offline heuristic parser when AI is unavailable
 - **Live Search** -- Search flights (AeroDataBox), hotels (Booking.com), restaurants (TripAdvisor), and activities (Local Business Data) directly in the workspace
 - **Flight Status Notifications** -- Automated cron checks flight status every 30 minutes and pushes updates (delays, gate changes, cancellations) to travelers
 - **Image Search** -- Multi-source image search (Google, Unsplash, Pexels) with provider picker
@@ -23,6 +23,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS
 - **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12)
 - **Backend:** Firebase Auth, Firestore, Firebase Storage
+- **AI:** Anthropic Claude Haiku 4.5 (itinerary parsing)
 - **APIs:** RapidAPI (AeroDataBox, Booking.com, TripAdvisor16, Local Business Data, Real-Time Image Search), Unsplash, Pexels
 - **Maps:** Mapbox GL JS via react-map-gl
 - **Charts:** Recharts
@@ -63,6 +64,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/dining` | — | Restaurant search by location |
 | `/api/images` | — | Image search with source selection (Google, Unsplash, Pexels) |
 | `/api/image-proxy` | — | SSRF-protected image proxy (HTTPS only, private IPs blocked, 5MB limit) |
+| `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Haiku 4.5 — extracts events, travelers, info sections |
 | `/api/push` | Bearer | Push notifications — requires CRON_SECRET or Firebase auth token |
 | `/api/check-flight-status` | Bearer | Cron (every 30 min): checks flight status and pushes updates to travelers |
 
@@ -101,6 +103,9 @@ RAPIDAPI_KEY=
 UNSPLASH_ACCESS_KEY=
 PEXELS_API_KEY=
 
+# AI itinerary parsing (Claude Haiku 4.5)
+ANTHROPIC_API_KEY=
+
 # Flight status cron
 CRON_EMAIL=
 CRON_PASSWORD=
@@ -113,7 +118,7 @@ Without Firebase credentials, the app runs in demo mode with localStorage-only d
 
 Hosted on [Vercel](https://dalefy.vercel.app). Push to `main` to trigger a production deployment.
 
-The flight status cron runs every 30 minutes via Vercel Cron Jobs.
+The flight status cron runs daily via Vercel Cron Jobs. AI itinerary parsing requires an `ANTHROPIC_API_KEY` — without it, the import falls back to the offline heuristic parser.
 
 ```bash
 # Manual deploy

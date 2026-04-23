@@ -1,193 +1,42 @@
-import { Tabs } from "expo-router";
-import { Text, StyleSheet, Pressable, Platform, View } from "react-native";
-import { BlurView } from "expo-blur";
-import { Home, Map, CalendarDays, Camera, CircleUser } from "lucide-react-native";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
+import type { SFSymbol } from "sf-symbols-typescript";
+import type { AndroidSymbol } from "expo-symbols";
 import { useTheme } from "@/context/ThemeContext";
-import { useHaptic } from "@/hooks/useHaptic";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, Easing,
-} from "react-native-reanimated";
-import { useEffect } from "react";
 
-const ALL_TABS = [
-  { name: "index",        Icon: Home,          label: "Home",    visible: true  },
-  { name: "destinations", Icon: Map,           label: "World",   visible: true  },
-  { name: "itinerary",    Icon: CalendarDays,  label: "Plan",    visible: false },
-  { name: "media",        Icon: Camera,        label: "Gallery", visible: true  },
-  { name: "profile",      Icon: CircleUser,    label: "Me",      visible: true  },
-] as const;
-
-const TABS = ALL_TABS.filter(t => t.visible);
-
-const EASE = { duration: 250, easing: Easing.out(Easing.cubic) };
-
-function AnimatedTab({ Icon, focused, teal, isDark, label }: {
-  Icon: React.ComponentType<any>; focused: boolean; teal: string;
-  isDark: boolean; label: string;
-}) {
-  const lift = useSharedValue(focused ? -3 : 0);
-  const opacity = useSharedValue(focused ? 1 : 0.45);
-
-  useEffect(() => {
-    lift.value = withTiming(focused ? -3 : 0, EASE);
-    opacity.value = withTiming(focused ? 1 : 0.45, EASE);
-  }, [focused]);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: lift.value }],
-    opacity: opacity.value,
-  }));
-
-  const labelStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: lift.value }],
-  }));
-
-  const color = focused ? teal : (isDark ? "rgba(170,170,180,1)" : "rgba(80,80,90,1)");
-
-  return (
-    <>
-      <Animated.View style={iconStyle}>
-        <Icon
-          size={21}
-          color={color}
-          fill={focused ? `${teal}30` : "transparent"}
-          strokeWidth={focused ? 2.2 : 1.5}
-        />
-      </Animated.View>
-      <Animated.Text
-        style={[
-          styles.label,
-          { color, fontWeight: focused ? "700" : "500" },
-          labelStyle,
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Animated.Text>
-    </>
-  );
-}
-
-function BottomTabBar({ state, navigation }: any) {
-  const { C, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
-  const haptic = useHaptic();
-
-  const activeRouteName = state.routes[state.index]?.name;
-
-  const barStyle = [
-    styles.bar,
-    {
-      paddingBottom: insets.bottom || 4,
-      backgroundColor: isDark ? "rgba(9,9,11,0.65)" : "rgba(255,255,255,0.7)",
-    },
-  ];
-
-  const tabContent = TABS.map((tab) => {
-    const routeIndex = state.routes.findIndex((r: any) => r.name === tab.name);
-    const focused = activeRouteName === tab.name;
-
-    const onPress = () => {
-      const route = state.routes[routeIndex];
-      if (!route) return;
-      const event = navigation.emit({
-        type: "tabPress",
-        target: route.key,
-        canPreventDefault: true,
-      });
-      if (!focused && !event.defaultPrevented) {
-        haptic.selection();
-        navigation.navigate(route.name);
-      }
-    };
-
-    return (
-      <Pressable
-        key={tab.name}
-        onPress={onPress}
-        style={styles.tab}
-        accessibilityRole="button"
-        accessibilityLabel={tab.label}
-        accessibilityState={{ selected: focused }}
-      >
-        <AnimatedTab
-          Icon={tab.Icon}
-          focused={focused}
-          teal={C.teal}
-          isDark={isDark}
-          label={tab.label}
-        />
-      </Pressable>
-    );
-  });
-
-  if (Platform.OS === "ios") {
-    return (
-      <BlurView intensity={60} tint={isDark ? "dark" : "light"} style={barStyle}>
-        {tabContent}
-      </BlurView>
-    );
-  }
-
-  return (
-    <View style={[barStyle, {
-      backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)",
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-    }]}>
-      {tabContent}
-    </View>
-  );
-}
+const TABS: {
+  name: string;
+  label: string;
+  sf: SFSymbol;
+  md: AndroidSymbol;
+  hidden?: boolean;
+}[] = [
+  { name: "index",        label: "Home",    sf: "house.fill",           md: "home"          },
+  { name: "destinations", label: "World",   sf: "map.fill",             md: "public"        },
+  { name: "itinerary",    label: "Plan",    sf: "calendar",             md: "event",         hidden: true },
+  { name: "media",        label: "Gallery", sf: "camera.fill",          md: "photo_camera"  },
+  { name: "profile",      label: "Me",      sf: "person.crop.circle",   md: "person"        },
+];
 
 export default function TabLayout() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarHideOnKeyboard: true,
-        sceneStyle: { backgroundColor: C.bg },
+    <NativeTabs
+      tintColor={C.teal}
+      iconColor={{
+        default: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)",
+        selected: C.teal,
       }}
-      tabBar={(props) => <BottomTabBar {...props} />}
+      labelStyle={{
+        default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)" },
+        selected: { color: C.teal },
+      }}
     >
-      {ALL_TABS.map(({ name, label, visible }) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{
-            tabBarLabel: label,
-            tabBarAccessibilityLabel: label,
-            href: visible ? undefined : null,
-          }}
-        />
+      {TABS.map(({ name, label, sf, md, hidden }) => (
+        <NativeTabs.Trigger key={name} name={name} hidden={hidden}>
+          <NativeTabs.Trigger.Icon sf={sf} md={md} />
+          <NativeTabs.Trigger.Label>{label}</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
       ))}
-    </Tabs>
+    </NativeTabs>
   );
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    paddingTop: 6,
-  },
-
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 42,
-    gap: 3,
-  },
-
-  label: {
-    fontSize: 9,
-    letterSpacing: 0.3,
-  },
-});

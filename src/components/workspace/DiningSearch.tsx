@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Utensils, Flame, CheckCircle2 } from "lucide-react";
+import { Loader2, Utensils, Flame, CircleCheck } from "lucide-react";
 import { searchDining, type DiningResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 
@@ -101,7 +101,7 @@ export function DiningSearch({ onSelect }: Props) {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                {selected === r.name && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                {selected === r.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

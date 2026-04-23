@@ -2,19 +2,22 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Plane, Hotel, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, BarChart3, FileCheck, AlertTriangle, CircleAlert, CheckCircle2, Clock4, Download, TrendingUp, MapPin, Zap } from "lucide-react";
-import { DonutChart, BarChart as TremorBarChart } from "@tremor/react";
+import { Plane, Hotel, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, ChartColumn, FileCheck, TriangleAlert, CircleAlert, CircleCheck, Clock4, Download, TrendingUp, MapPin, Zap } from "lucide-react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
+import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
+import { AIRLINE_COLORS } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
-import type { ComplianceDoc } from "@/types";
+import type { ComplianceDoc, User } from "@/types";
 
 type Tab = "operations" | "compliance";
 
@@ -38,6 +41,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 
 export function ReportsPage() {
   const { trips } = useTrips();
+  const { user } = useAuth();
   const { accentColor } = usePreferences();
   const brandHex = accentColor;
   const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: brandHex, "In Progress": "#f59e0b" };
@@ -45,6 +49,8 @@ export function ReportsPage() {
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
   const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
+  const [customTravelers] = useLocalStorage<User[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
 
   const handleExportCsv = useCallback(() => {
     const rows = trips.map(t => {
@@ -83,7 +89,8 @@ export function ReportsPage() {
 
   // Compliance data (merged with localStorage, same as TravelersPage)
   const complianceData = useMemo(() => {
-    const travelers = MOCK_USERS.map(u => ({
+    const baseUsers = isDemoUser ? MOCK_USERS : [];
+    const travelers = [...baseUsers, ...customTravelers].map(u => ({
       ...u,
       compliance: complianceOverrides[u.id] || u.compliance || [],
     }));
@@ -126,7 +133,7 @@ export function ReportsPage() {
     recentActivity.sort((a, b) => b.date.localeCompare(a.date));
 
     return { travelers, signed, pending, expired, total, rate, byDocType, recentActivity: recentActivity.slice(0, 6) };
-  }, [complianceOverrides]);
+  }, [complianceOverrides, customTravelers, isDemoUser]);
 
   // Pipeline chart data
   const pipelineData = [
@@ -243,16 +250,15 @@ export function ReportsPage() {
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                   {/* Donut chart */}
                   <div className="h-56 w-56 shrink-0">
-                    <DonutChart
-                      data={pipelineData}
-                      category="value"
-                      index="name"
-                      colors={["slate", "teal", "amber"]}
-                      label={`${stats.pipeline.total} Trips`}
-                      showLabel
-                      showAnimation
-                      className="h-56 w-56"
-                    />
+                    <ChartContainer config={{ draft: { label: "Draft", color: "#64748b" }, published: { label: "Published", color: brandHex }, inProgress: { label: "In Progress", color: "#f59e0b" } } satisfies ChartConfig} className="h-56 w-56 aspect-square">
+                      <PieChart>
+                        <Pie data={pipelineData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} strokeWidth={0} animationDuration={700}>
+                          {pipelineData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
+                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-sm font-black">{stats.pipeline.total} Trips</text>
+                      </PieChart>
+                    </ChartContainer>
                   </div>
                   {/* Status breakdown bars */}
                   <div className="flex-1 w-full space-y-5">
@@ -297,19 +303,18 @@ export function ReportsPage() {
                   {stats.typeDistribution.length > 0 ? (
                     <div className="flex flex-col items-center gap-6">
                       <div className="h-52 w-52">
-                        <DonutChart
-                          data={stats.typeDistribution}
-                          category="value"
-                          index="name"
-                          colors={stats.typeDistribution.map(d => {
-                            const tc: Record<string, string> = { Flight: "sky", Hotel: "amber", Activity: "teal", Dining: "rose" };
-                            return tc[d.name] || "slate";
-                          })}
-                          label={`${stats.totalEvents} Events`}
-                          showLabel
-                          showAnimation
-                          className="h-52 w-52"
-                        />
+                        <ChartContainer config={{ Flight: { label: "Flight", color: "#38bdf8" }, Hotel: { label: "Hotel", color: "#fbbf24" }, Activity: { label: "Activity", color: brandHex }, Dining: { label: "Dining", color: "#fb7185" } } satisfies ChartConfig} className="h-52 w-52 aspect-square">
+                          <PieChart>
+                            <Pie data={stats.typeDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={80} strokeWidth={0} animationDuration={700}>
+                              {stats.typeDistribution.map((d) => {
+                                const tc: Record<string, string> = { Flight: "#38bdf8", Hotel: "#fbbf24", Activity: brandHex, Dining: "#fb7185" };
+                                return <Cell key={d.name} fill={tc[d.name] || "#64748b"} />;
+                              })}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
+                            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-xs font-black">{stats.totalEvents} Events</text>
+                          </PieChart>
+                        </ChartContainer>
                       </div>
                       <div className="w-full grid grid-cols-2 gap-3">
                         {stats.typeDistribution.map((t) => {
@@ -320,7 +325,7 @@ export function ReportsPage() {
                             Activity: { hex: brandHex,  icon: <MapPin className="h-3 w-3" /> },
                             Dining:   { hex: "#fb7185", icon: <Clock className="h-3 w-3" /> },
                           };
-                          const c = cfg[t.name] || { hex: "#64748b", icon: <BarChart3 className="h-3 w-3" /> };
+                          const c = cfg[t.name] || { hex: "#64748b", icon: <ChartColumn className="h-3 w-3" /> };
                           return (
                             <div key={t.name} className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
                               <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${c.hex}18`, color: c.hex }}>
@@ -336,7 +341,7 @@ export function ReportsPage() {
                   ) : (
                     <div className="h-52 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
                       <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                        <BarChart3 className="h-5 w-5 text-brand opacity-60" />
+                        <ChartColumn className="h-5 w-5 text-brand opacity-60" />
                       </div>
                       <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No events yet</p>
                     </div>
@@ -352,25 +357,21 @@ export function ReportsPage() {
                   {stats.tripsByMonth.length === 0 ? (
                     <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
                       <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                        <BarChart3 className="h-5 w-5 text-brand opacity-60" />
+                        <ChartColumn className="h-5 w-5 text-brand opacity-60" />
                       </div>
                       <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
                       <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
                     </div>
                   ) : (
                     <div className="flex-1 min-h-[200px]">
-                      <TremorBarChart
-                        data={stats.tripsByMonth}
-                        index="month"
-                        categories={["count"]}
-                        colors={["teal"]}
-                        showAnimation
-                        showGridLines={false}
-                        showLegend={false}
-                        className="h-full"
-                        yAxisWidth={32}
-                        allowDecimals={false}
-                      />
+                      <ChartContainer config={{ count: { label: "Trips", color: brandHex } } satisfies ChartConfig} className="h-full w-full">
+                        <BarChart data={stats.tripsByMonth} barCategoryGap="20%">
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
+                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700 }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} animationDuration={700} />
+                        </BarChart>
+                      </ChartContainer>
                     </div>
                   )}
                 </div>
@@ -396,11 +397,11 @@ export function ReportsPage() {
                         const logoUrl = a.iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.iata}.png` : "";
                         return (
                           <div key={a.name} className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-white dark:bg-white border border-transparent dark:border-transparent flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="h-8 w-8 rounded-lg border border-transparent flex items-center justify-center shrink-0 overflow-hidden" style={{ background: AIRLINE_COLORS[a.iata] || "#1a1a1a" }}>
                               {logoUrl ? (
                                 <img src={logoUrl} alt={a.name} className="h-5 w-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
                               ) : null}
-                              <span className={`fallback text-[9px] font-black text-brand uppercase ${logoUrl ? "hidden" : ""}`}>{a.iata || a.name.slice(0, 2)}</span>
+                              <span className={`fallback text-[9px] font-black text-white uppercase ${logoUrl ? "hidden" : ""}`}>{a.iata || a.name.slice(0, 2)}</span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-1">
@@ -429,7 +430,7 @@ export function ReportsPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
-                      <BarChart3 className="h-4 w-4" />
+                      <ChartColumn className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Itineraries</h3>
@@ -454,7 +455,7 @@ export function ReportsPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
-                        <BarChart3 className="h-5 w-5 text-brand/30" />
+                        <ChartColumn className="h-5 w-5 text-brand/30" />
                       </div>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No trips yet</p>
                     </div>
@@ -552,8 +553,8 @@ export function ReportsPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<ShieldCheck className="h-5 w-5" />} /></div>
                 <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub="All done" icon={<FileCheck className="h-5 w-5" />} accent="text-emerald-400" /></div>
-                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<AlertTriangle className="h-5 w-5" />} accent="text-amber-500" /></div>
-                <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={MOCK_USERS.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>
+                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<TriangleAlert className="h-5 w-5" />} accent="text-amber-500" /></div>
+                <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={complianceData.travelers.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>
               </div>
 
               {/* Overall Compliance — full-width hero with donut + breakdown bars */}
@@ -565,32 +566,30 @@ export function ReportsPage() {
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
                   {/* Donut chart */}
                   <div className="h-56 w-56 shrink-0">
-                    <DonutChart
-                      data={[
-                        { name: "Signed", value: complianceData.signed },
-                        { name: "Pending", value: complianceData.pending },
-                        { name: "Expired", value: complianceData.expired },
-                      ].filter(d => d.value > 0)}
-                      category="value"
-                      index="name"
-                      colors={[
-                        { name: "Signed", value: complianceData.signed },
-                        { name: "Pending", value: complianceData.pending },
-                        { name: "Expired", value: complianceData.expired },
-                      ].filter(d => d.value > 0).map(d => {
-                        const cm: Record<string, string> = { Signed: "emerald", Pending: "amber", Expired: "red" };
-                        return cm[d.name] || "slate";
-                      })}
-                      label={`${complianceData.rate}% Up to Date`}
-                      showLabel
-                      showAnimation
-                      className="h-56 w-56"
-                    />
+                    {(() => {
+                      const compDonutData = [
+                        { name: "Signed", value: complianceData.signed, color: "#34d399" },
+                        { name: "Pending", value: complianceData.pending, color: "#fbbf24" },
+                        { name: "Expired", value: complianceData.expired, color: "#f87171" },
+                      ].filter(d => d.value > 0);
+                      return (
+                        <ChartContainer config={{ Signed: { label: "Signed", color: "#34d399" }, Pending: { label: "Pending", color: "#fbbf24" }, Expired: { label: "Expired", color: "#f87171" } } satisfies ChartConfig} className="h-56 w-56 aspect-square">
+                          <PieChart>
+                            <Pie data={compDonutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} strokeWidth={0} animationDuration={700}>
+                              {compDonutData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
+                            <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-sm font-black">{complianceData.rate}%</text>
+                            <text x="50%" y="56%" textAnchor="middle" dominantBaseline="central" className="fill-slate-500 dark:fill-[#888] text-[10px] font-bold">Up to Date</text>
+                          </PieChart>
+                        </ChartContainer>
+                      );
+                    })()}
                   </div>
                   {/* Status breakdown bars */}
                   <div className="flex-1 w-full space-y-5">
                     {[
-                      { name: "Signed", value: complianceData.signed, color: "#34d399", icon: <CheckCircle2 className="h-4 w-4" />, desc: "Signed & done" },
+                      { name: "Signed", value: complianceData.signed, color: "#34d399", icon: <CircleCheck className="h-4 w-4" />, desc: "Signed & done" },
                       { name: "Pending", value: complianceData.pending, color: "#fbbf24", icon: <Clock4 className="h-4 w-4" />, desc: "Needs signing" },
                       { name: "Expired", value: complianceData.expired, color: "#f87171", icon: <CircleAlert className="h-4 w-4" />, desc: "Needs renewal" },
                     ].map(s => {
@@ -679,7 +678,7 @@ export function ReportsPage() {
                     {complianceData.recentActivity.map((a, i) => (
                       <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
                         <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CircleCheck className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</div>
@@ -698,7 +697,7 @@ export function ReportsPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                      <AlertTriangle className="h-4 w-4" />
+                      <TriangleAlert className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
@@ -764,7 +763,7 @@ export function ReportsPage() {
                       {complianceData.travelers.map(t => {
                         const docNames = ["Passport", "Travel Insurance", "Behavioural Agreement", "Code of Conduct Review", "Risk Assessment"];
                         const statusIcons: Record<string, React.ReactNode> = {
-                          Signed: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
+                          Signed: <CircleCheck className="h-4 w-4 text-emerald-400" />,
                           Pending: <Clock4 className="h-4 w-4 text-amber-400" />,
                           Expired: <CircleAlert className="h-4 w-4 text-red-400" />,
                           "Not Required": <div className="h-4 w-4 rounded-full bg-slate-200 dark:bg-[#1f1f1f]" />,
@@ -809,7 +808,7 @@ export function ReportsPage() {
                 </div>
                 <div className="flex items-center gap-6 mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
                   {[
-                    { l: "Signed", icon: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> },
+                    { l: "Signed", icon: <CircleCheck className="h-3.5 w-3.5 text-emerald-400" /> },
                     { l: "Pending", icon: <Clock4 className="h-3.5 w-3.5 text-amber-400" /> },
                     { l: "Expired", icon: <CircleAlert className="h-3.5 w-3.5 text-red-400" /> },
                     { l: "N/A", icon: <div className="h-3.5 w-3.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f]" /> },

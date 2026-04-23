@@ -1,7 +1,9 @@
 import {
   View, Text, ScrollView, Pressable, Image,
-  StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform,
+  StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform, Share,
 } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
   Easing, runOnJS, interpolate,
@@ -13,8 +15,11 @@ import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/comp
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+
+const HAS_LIQUID_GLASS = isLiquidGlassAvailable();
+import { useRouter, Link } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
@@ -502,7 +507,13 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
       <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={closeSheet}>
         <View style={{ flex: 1 }}>
-          {Platform.OS === "ios" ? (
+          {Platform.OS === "ios" && HAS_LIQUID_GLASS ? (
+            <GlassView
+              glassEffectStyle="clear"
+              colorScheme={isDark ? "dark" : "light"}
+              style={StyleSheet.absoluteFillObject}
+            />
+          ) : Platform.OS === "ios" ? (
             <BlurView
               intensity={18}
               tint={isDark ? "dark" : "light"}
@@ -520,7 +531,14 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             style={styles.codeCenter}
             pointerEvents="box-none"
           >
-            <Pressable style={styles.codeSheet} onPress={() => {}}>
+            <Pressable style={[styles.codeSheet, { paddingBottom: insets.bottom + S.md }]} onPress={() => {}}>
+              {Platform.OS === "ios" && HAS_LIQUID_GLASS && (
+                <GlassView
+                  glassEffectStyle="regular"
+                  colorScheme={isDark ? "dark" : "light"}
+                  style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"] }]}
+                />
+              )}
               <View style={styles.sheetGrabber} />
 
               {/* Header row */}
@@ -757,10 +775,11 @@ function makeGreetingStyles(C: ThemeColors) {
       flex: 1, justifyContent: "flex-end",
     },
     codeSheet: {
-      backgroundColor: C.card,
+      backgroundColor: HAS_LIQUID_GLASS ? "transparent" : C.card,
       borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
       paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.xl,
       gap: S.xs,
+      overflow: "hidden" as const,
     },
     sheetGrabber: {
       alignSelf: "center",
@@ -878,20 +897,31 @@ function makeGreetingStyles(C: ThemeColors) {
 }
 
 // ── Upcoming Card (compact horizontal, matches web) ───────────────────────────
-function UpcomingCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+function UpcomingCard({ trip }: { trip: Trip }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeUpcomingCardStyles(C), [C]);
   const days  = daysUntil(trip.start);
   const start = new Date(trip.start);
 
   return (
+    <ContextMenu
+      actions={[
+        { title: "Share Trip", systemIcon: "square.and.arrow.up" },
+      ]}
+      onPress={() => {
+        Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
+      }}
+    >
+    <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       style={styles.card}
-      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${days <= 0 ? "departing today" : `${days} days away`}`}
     >
-      <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
+      <Link.AppleZoom>
+        <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
+      </Link.AppleZoom>
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{trip.name}</Text>
         <View style={styles.meta}>
@@ -920,6 +950,8 @@ function UpcomingCard({ trip, onPress }: { trip: Trip; onPress: () => void }) {
       </View>
       <ArrowUpRight size={14} color={C.textTertiary} strokeWidth={1.5} />
     </ScalePress>
+    </Link>
+    </ContextMenu>
   );
 }
 
@@ -1043,23 +1075,60 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
 }
 
 // ── Trip Row (All Trips list) ──────────────────────────────────────────────────
-function TripRow({ trip, onPress }: { trip: Trip; onPress: () => void }) {
+function TripRow({ trip }: { trip: Trip }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
+  const swipeRef = useRef<Swipeable>(null);
   const start   = new Date(trip.start);
   const end     = new Date(trip.end);
   const days    = daysUntil(trip.start);
   const isPast  = daysUntil(trip.end) < 0;
   const isActive = days <= 0 && !isPast;
 
+  const renderRightActions = useCallback(() => (
+    <View style={{ flexDirection: "row" }}>
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
+          swipeRef.current?.close();
+        }}
+        style={{
+          backgroundColor: C.teal,
+          justifyContent: "center",
+          alignItems: "center",
+          width: 72,
+        }}
+      >
+        <Share2 size={18} color="#000" strokeWidth={2} />
+        <Text style={{ color: "#000", fontSize: 11, fontWeight: "700", marginTop: 4 }}>Share</Text>
+      </Pressable>
+    </View>
+  ), [C, trip]);
+
   return (
+    <Swipeable ref={swipeRef} renderRightActions={renderRightActions} overshootRight={false}>
+    <ContextMenu
+      actions={[
+        { title: "Share Trip", systemIcon: "square.and.arrow.up" },
+        { title: "Copy Link", systemIcon: "link" },
+      ]}
+      onPress={(e) => {
+        if (e.nativeEvent.index === 0) {
+          Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
+        }
+      }}
+    >
+    <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       style={styles.row}
-      onPress={() => { Haptics.selectionAsync(); onPress(); }}
+      onPress={() => { Haptics.selectionAsync(); }}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
-      <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
+      <Link.AppleZoom>
+        <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
+      </Link.AppleZoom>
       <View style={styles.rowBody}>
         {trip.destination ? (
           <Text style={styles.rowDest}>{trip.destination.toUpperCase()}</Text>
@@ -1093,6 +1162,9 @@ function TripRow({ trip, onPress }: { trip: Trip; onPress: () => void }) {
       )}
       <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} style={{ marginLeft: 2 }} />
     </ScalePress>
+    </Link>
+    </ContextMenu>
+    </Swipeable>
   );
 }
 
@@ -1160,7 +1232,7 @@ export default function HomeScreen() {
     [sorted, upcomingIds, search]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -1216,10 +1288,7 @@ export default function HomeScreen() {
             <View style={styles.upcomingList}>
               {upcomingCards.map((trip, i) => (
                 <FadeIn key={trip.id} delay={80 + i * 100}>
-                  <UpcomingCard
-                    trip={trip}
-                    onPress={() => router.push(`/trip/${trip.id}`)}
-                  />
+                  <UpcomingCard trip={trip} />
                 </FadeIn>
               ))}
             </View>
@@ -1288,7 +1357,7 @@ export default function HomeScreen() {
               <View style={styles.listCard}>
                 {allTrips.map((trip, i) => (
                   <View key={trip.id}>
-                    <TripRow trip={trip} onPress={() => router.push(`/trip/${trip.id}`)} />
+                    <TripRow trip={trip} />
                     {i < allTrips.length - 1 && <View style={styles.rowDivider} />}
                   </View>
                 ))}
@@ -1317,7 +1386,7 @@ export default function HomeScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 90 },
+    scroll: { paddingBottom: 140 },
 
     section: { marginTop: S.xl },
 

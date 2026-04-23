@@ -206,7 +206,7 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]} edges={["bottom"]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]} edges={[]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + S.md }]}

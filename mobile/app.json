@@ -1,12 +1,16 @@
 {
   "expo": {
-    "name": "DAF Adventures",
+    "name": "Dalefy",
     "slug": "daf-adventures",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#09090b",
+    "plugins": [
+      ["expo-system-ui", { "backgroundColor": "#09090b" }],
+      "expo-quick-actions"
+    ],
     "scheme": "dafadventures",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,15 +19,45 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dafadventures.app"
+      "bundleIdentifier": "com.dafadventures.app",
+      "backgroundColor": "#09090b"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.dafadventures.app"
+      "package": "com.dafadventures.app",
+      "backgroundColor": "#09090b",
+      "navigationBarColor": "#09090b",
+      "navigationBarStyle": "light-content",
+      "statusBarColor": "#00000000",
+      "statusBarStyle": "light-content",
+      "statusBarTranslucent": true
     },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "com.dafadventures.app.widgets",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.dafadventures.app"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "4bffc7b2-6f5d-481c-8712-44e8d9107dbb"
+      }
+    },
+    "owner": "richmond701"
   }
 }

@@ -2,8 +2,9 @@ import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
   View, Text, ScrollView, Image, StyleSheet, Dimensions,
-  Pressable, Alert, Platform, RefreshControl, Modal,
+  Pressable, Alert, Platform, RefreshControl, Modal, Share,
 } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
@@ -309,6 +310,17 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
     : GRID_ITEM_SIZE;
 
   return (
+    <ContextMenu
+      actions={[
+        { title: "View", systemIcon: "eye" },
+        { title: "Share", systemIcon: "square.and.arrow.up" },
+        { title: "Delete", systemIcon: "trash", destructive: true },
+      ]}
+      onPress={(e) => {
+        if (e.nativeEvent.index === 0) onPress();
+        else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
+      }}
+    >
     <ScalePress
       activeScale={0.96}
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
@@ -365,6 +377,7 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
         </View>
       )}
     </ScalePress>
+    </ContextMenu>
   );
 }
 
@@ -456,7 +469,7 @@ export default function MediaScreen() {
   }, [trips, updateTrip, toast]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}

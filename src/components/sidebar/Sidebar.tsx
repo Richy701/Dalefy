@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Users, Globe, PieChart, Images,
+  LayoutDashboard, Users, Globe, ChartPie, Images,
   LogOut, ArrowUpRight, Plus, Upload, FileDown,
   Plane, Clock, CalendarDays, Map,
 } from "lucide-react";
@@ -32,7 +32,7 @@ const NAV_ITEMS = [
   { icon: Users,           label: "Travelers",   path: "/travelers" },
   { icon: Globe,           label: "Destinations", path: "/destinations" },
   { icon: Images,          label: "Media",        path: "/media" },
-  { icon: PieChart,        label: "Reports",      path: "/reports" },
+  { icon: ChartPie,        label: "Reports",      path: "/reports" },
 ];
 
 function UserFooter({ onSignOut }: { onSignOut: () => void }) {

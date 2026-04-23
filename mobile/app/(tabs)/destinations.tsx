@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, StyleSheet, TextInput, Pressable, Dimensions, RefreshControl, Platform } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TextInput, Pressable, Dimensions, RefreshControl, Platform, Share } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -6,7 +7,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Search, Globe, MapPin, Navigation, Plane } from "lucide-react-native";
+
+const HAS_LIQUID_GLASS = isLiquidGlassAvailable();
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect } from "react";
@@ -181,7 +185,7 @@ export default function DestinationsScreen() {
   const cardW = (SCREEN_W - S.md * 2 - S.sm) / 2;
 
   return (
-    <View style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -189,6 +193,7 @@ export default function DestinationsScreen() {
         automaticallyAdjustContentInsets={false}
         contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
         scrollIndicatorInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
@@ -310,7 +315,24 @@ export default function DestinationsScreen() {
 
         {/* ── Glassmorphic stats bar ── */}
         <View style={styles.statsBarWrap}>
-          {Platform.OS === "ios" ? (
+          {Platform.OS === "ios" && HAS_LIQUID_GLASS ? (
+            <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={styles.statsBar}>
+              <View style={styles.statsBarInner}>
+                {stats.map((stat, idx) => (
+                  <View key={stat.label} style={styles.statItem}>
+                    {idx > 0 && <View style={styles.statDivider} />}
+                    <View style={styles.statBody}>
+                      <View style={styles.statIconWrap}>
+                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </GlassView>
+          ) : Platform.OS === "ios" ? (
             <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.statsBar}>
               <View style={styles.statsBarInner}>
                 {stats.map((stat, idx) => (
@@ -410,8 +432,18 @@ export default function DestinationsScreen() {
               {filtered.map((dest, i) => {
                 const isHero = i === 0;
                 return (
-                  <ScalePress
+                  <ContextMenu
                     key={dest.name}
+                    actions={[
+                      { title: "Open Trip", systemIcon: "arrow.right" },
+                      { title: "Share", systemIcon: "square.and.arrow.up" },
+                    ]}
+                    onPress={(e) => {
+                      if (e.nativeEvent.index === 0) dest.tripIds[0] && router.push(`/trip/${dest.tripIds[0]}`);
+                      else if (e.nativeEvent.index === 1) Share.share({ message: `Check out ${dest.name}` });
+                    }}
+                  >
+                  <ScalePress
                     style={[styles.card, isHero ? styles.cardHero : { width: cardW }]}
                     activeScale={0.97}
                     onPress={() => {
@@ -446,13 +478,14 @@ export default function DestinationsScreen() {
                       </View>
                     </View>
                   </ScalePress>
+                  </ContextMenu>
                 );
               })}
             </View>
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

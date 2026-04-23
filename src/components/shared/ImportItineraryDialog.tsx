@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, ChevronRight, X, Plane, Hotel, Compass, Utensils } from "lucide-react";
+import { Upload, FileText, Loader2, CircleCheck, CircleAlert, ChevronRight, X, Plane, Hotel, Compass, Utensils } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTrips } from "@/context/TripsContext";
@@ -356,9 +356,10 @@ function resolveFlightCity(raw: string): string {
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 const DATE_PATTERNS = [
   // "4th Nov" or "4 th Nov" (PDF extraction often inserts whitespace before the ordinal suffix)
-  new RegExp(`(\\d{1,2})\\s*(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{4}))?`, "gi"),
+  // Supports both 4-digit and 2-digit years: "26 Apr 26", "26 Apr 2026"
+  new RegExp(`(\\d{1,2})\\s*(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{2,4}))?`, "gi"),
   // "Nov 4" / "November 4th" — require day is NOT followed by more digits (avoids "April 2026" → "April 20")
-  new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?!\\d)(?:,?\\s+(\\d{4}))?`, "gi"),
+  new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?!\\d)(?:,?\\s+(\\d{2,4}))?`, "gi"),
   /(\d{4})-(\d{2})-(\d{2})/g,
   /(\d{2})\/(\d{2})\/(\d{4})/g,
 ];
@@ -381,16 +382,19 @@ function parseDate(str: string, fallbackYear?: number): string | null {
     jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
     jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
   };
-  const m1 = str.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s+(\w{3})\w*(?:\s+(\d{4}))?/i);
+  const m1 = str.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\s+(\w{3})\w*(?:\s+(\d{2,4}))?/i);
   if (m1) {
     const mon = months[m1[2].toLowerCase().slice(0, 3)];
-    const year = m1[3] ?? fallbackYear?.toString();
+    let year = m1[3] ?? fallbackYear?.toString();
+    // Expand 2-digit year: "26" → "2026"
+    if (year && year.length === 2) year = `20${year}`;
     if (mon && year) return `${year}-${mon}-${m1[1].padStart(2, "0")}`;
   }
-  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})\s*(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?/i);
+  const m2 = str.match(/(\w{3})\w*\s+(\d{1,2})\s*(?:st|nd|rd|th)?(?:,?\s+(\d{2,4}))?/i);
   if (m2) {
     const mon = months[m2[1].toLowerCase().slice(0, 3)];
-    const year = m2[3] ?? fallbackYear?.toString();
+    let year = m2[3] ?? fallbackYear?.toString();
+    if (year && year.length === 2) year = `20${year}`;
     if (mon && year) return `${year}-${mon}-${m2[2].padStart(2, "0")}`;
   }
   return null;
@@ -492,6 +496,8 @@ interface ParsedEvent {
   time: string;
   title: string;
   location: string;
+  description?: string;
+  notes?: string;
 }
 
 interface ParsedOrganizer {
@@ -561,8 +567,10 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Trip name: first meaningful line that looks like a title (short, not starting
   // with a common event sentence opener). If nothing fits, build from destinations.
   const SENTENCE_OPENER = /^(meet |arrive |depart|breakfast|lunch|dinner|overnight|following|wake |after |single |twin |double |emergency|rooming|accommodation|notes?|james |pollmans|leopard|kenya|tanzania|\d+\s+passengers?)/i;
+  // Skip booking metadata lines — "Proposal to:", "Booking Code:", "Printed Date:", etc.
+  const BOOKING_META = /^(proposal\s+to|booking\s+code|printed\s+date|invoice|quotation|ref(?:erence)?[:\s#]|passenger\s+detail|flight\s+detail|guide\s+contact|travel\s+itinerary|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|subject|note\b|price\s+in)/i;
   let nameLine = lines.find(l =>
-    l.length > 5 && l.length < 80 && !/^\d/.test(l) && !SENTENCE_OPENER.test(l)
+    l.length > 5 && l.length < 80 && !/^\d/.test(l) && !SENTENCE_OPENER.test(l) && !BOOKING_META.test(l) && !/\|/.test(l)
   ) ?? "";
   if (!nameLine) {
     // Build from destination keywords found in the text
@@ -579,6 +587,8 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   let paxCount = 0;
   const parsedTravelerNames: string[] = [];
   const attendeesIdx = lines.findIndex(l => /^attendees?:?\s*$/i.test(l));
+  // "Passenger Detail" section: "Ms Kizemaria Henry (Group Leader)", "Mr James Jones"
+  const passengerIdx = lines.findIndex(l => /^passenger\s+details?\s*$/i.test(l));
   // Rooming list format: "Single David Whittaker", "Twin Jamie Foskin & Adam Fransham"
   const roomingIdx = lines.findIndex(l => /^rooming\s+list\s*$/i.test(l));
   if (attendeesIdx >= 0) {
@@ -588,6 +598,21 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       if (SECTION_BREAK.test(l) || /:\s*$/.test(l)) break;
       const name = l.replace(/\(.*?\)/g, "").trim();
       if (name.length > 2 && name.length < 60 && /^[A-Z]/.test(name)) parsedTravelerNames.push(name);
+    }
+    if (parsedTravelerNames.length > 0) {
+      paxCount = parsedTravelerNames.length;
+      attendees = parsedTravelerNames.slice(0, 6).join(", ") + (parsedTravelerNames.length > 6 ? ` +${parsedTravelerNames.length - 6} more` : "");
+    }
+  } else if (passengerIdx >= 0) {
+    // Lines like "Ms Kizemaria Henry (Group Leader)", "Mr James Jones (Group Leader)"
+    const TITLE_RE = /^(?:mr|mrs|ms|miss|dr|prof)\.?\s+/i;
+    const SECTION_BREAK = /^(flight\s+detail|guide\s+contact|travel\s+itinerary|accommodation|notes?|important)/i;
+    for (let i = passengerIdx + 1; i < lines.length; i++) {
+      const l = lines[i].trim();
+      if (!l || SECTION_BREAK.test(l)) break;
+      if (!TITLE_RE.test(l)) continue; // only lines starting with Mr/Ms/Mrs/Dr etc.
+      const name = l.replace(TITLE_RE, "").replace(/\(.*?\)/g, "").replace(/,.*$/, "").trim();
+      if (name.length > 2 && name.length < 60) parsedTravelerNames.push(name);
     }
     if (parsedTravelerNames.length > 0) {
       paxCount = parsedTravelerNames.length;
@@ -644,6 +669,32 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     }
   }
 
+  // Dateless flight strings: "VS208 LHRICN 13:25 10:30" — carrier+number, 6-char IATA pair, two times
+  // These appear in "Flight Details" sections without dates; assign start/end dates from context.
+  const DATELESS_FLIGHT_RE = /\b([A-Z]{2})\s*(\d{2,4})\s+([A-Z]{3})([A-Z]{3})\s+(\d{1,2}[.:]\d{2})\s+(\d{1,2}[.:]\d{2})/g;
+  {
+    let m: RegExpExecArray | null;
+    DATELESS_FLIGHT_RE.lastIndex = 0;
+    const seenFlights = new Set(gdsEvents.map(e => e.title));
+    while ((m = DATELESS_FLIGHT_RE.exec(text)) !== null) {
+      const [, carrier, num, orig, dest, depRaw] = m;
+      const time = parseTime(depRaw);
+      const origCity = resolveFlightCity(orig);
+      const destCity = resolveFlightCity(dest);
+      const title = `${carrier}${num} — ${origCity} to ${destCity}`;
+      if (seenFlights.has(title)) continue; // deduplicate repeated mentions
+      seenFlights.add(title);
+      gdsEvents.push({
+        id: `imp-gds-${Date.now()}-${gdsEvents.length}`,
+        type: "flight",
+        date: "__DEFER__", // will be assigned after dates are collected
+        time,
+        title,
+        location: `${origCity} → ${destCity}`,
+      });
+    }
+  }
+
   // Collect all dates (with fallback year for year-less matches)
   const allDates: string[] = [];
   for (const line of lines) {
@@ -656,10 +707,19 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       }
     }
   }
-  for (const ev of gdsEvents) allDates.push(ev.date);
+  for (const ev of gdsEvents) { if (ev.date !== "__DEFER__") allDates.push(ev.date); }
   const uniqueDates = [...new Set(allDates)].sort();
   const start = uniqueDates[0] ?? new Date().toISOString().split("T")[0];
   const end = uniqueDates[uniqueDates.length - 1] ?? start;
+
+  // Assign deferred flight dates: first deferred → start date, last → end date
+  const deferredFlights = gdsEvents.filter(ev => ev.date === "__DEFER__");
+  if (deferredFlights.length > 0) {
+    deferredFlights[0].date = start;
+    if (deferredFlights.length > 1) deferredFlights[deferredFlights.length - 1].date = end;
+    // Fill any middle ones sequentially
+    for (let i = 1; i < deferredFlights.length - 1; i++) deferredFlights[i].date = start;
+  }
 
   // Destination: prefer "flight to X" and "arrive in X" over "transfer to [hotel]"
   // Run regex against the merged lines (no stray newlines) rather than raw text.
@@ -672,9 +732,14 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Validate: not a month, not a hotel, not a person name
   const isValidDest = (s: string) =>
     !MONTH_NAMES.test(s) && !HOTEL_NAMES.test(s) && !PERSON_NAMES.test(s.split(/\s+/)[0]);
-  // Try "flight to" / "arrive in" first (higher confidence destination)
-  const flightTo = mergedText.match(/\b(?:flight\s+to|arrive[sd]?\s+in|arriving\s+in|arrival\s+in)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})/);
-  if (flightTo && isValidDest(flightTo[1])) destination = flightTo[1];
+  // Try "flight to" / "arrive in" / "head to" first (higher confidence destination)
+  const flightTo = mergedText.match(/\b(?:flight\s+to|arrive[sd]?\s+in|arriving\s+in|arrival\s+in|head\s+to)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})/);
+  if (flightTo && isValidDest(flightTo[1])) destination = flightTo[1].replace(/\s+City$/i, "");
+  // "Day N: ... <City> Arrival/Departure" — e.g. "Day 1: 26 Apr 26 (Sun) Seoul Arrival"
+  if (!destination) {
+    const dayHeaderDest = mergedText.match(/\bDay\s+\d+\s*:.*?\)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})\s+(?:Arrival|Departure)/);
+    if (dayHeaderDest && isValidDest(dayHeaderDest[1])) destination = dayHeaderDest[1];
+  }
   // Fall back to "transfer to" (may be a hotel, filter those out)
   if (!destination) {
     const transferTo = mergedText.match(/\b(?:transfer\s+to)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})/);
@@ -696,10 +761,23 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   const events: ParsedEvent[] = [];
   let currentDate = start;
   const DAY_SECTION = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d/i;
-  const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|additional activities|notes?|rooming\s+list|emergency\s+contact|single\s+[A-Z]|twin\s+[A-Z]|double\s+[A-Z])/i;
+  // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" — extract date from "Day N:" headers
+  const DAY_N_HEADER = /^day\s+\d+\s*:\s*/i;
+  const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|passenger\s+details?|additional activities|notes?|rooming\s+list|emergency\s+contact|single\s+[A-Z]|twin\s+[A-Z]|double\s+[A-Z]|flight\s+details?|guide\s+contact|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|visa\s+info)/i;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    let line = lines[i];
+
+    // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" — extract date, then strip prefix
+    if (DAY_N_HEADER.test(line)) {
+      const stripped = line.replace(DAY_N_HEADER, "");
+      for (const pat of DATE_PATTERNS) {
+        pat.lastIndex = 0;
+        const m = stripped.match(pat)?.[0];
+        if (m) { const d = parseDate(m, fallbackYear); if (d) currentDate = d; }
+      }
+      continue; // Day headers are section dividers, not events
+    }
 
     // Update running date from day headers like "Tuesday 21st April:"
     for (const pat of DATE_PATTERNS) {
@@ -710,9 +788,11 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 
     if (DAY_SECTION.test(line) || SKIP_SECTION.test(line)) continue;
 
-    // Skip lines already captured as GDS flight strings.
+    // Skip lines already captured as GDS or dateless flight strings.
     GDS_FLIGHT_RE.lastIndex = 0;
     if (GDS_FLIGHT_RE.test(line)) continue;
+    DATELESS_FLIGHT_RE.lastIndex = 0;
+    if (DATELESS_FLIGHT_RE.test(line)) continue;
 
     // Detect time: HH:MM / HH.MM (optional am/pm/md), bare "1pm"/"9am",
     // 4-digit military ("0930", "1015hrs", "1545pm"),
@@ -829,8 +909,8 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Pull out named sections like Accommodation, Additional Activities, Notes,
   // Emergency Contact, Important Information etc. as info cards.
   const info: ParsedInfo[] = [];
-  const INFO_SECTION_RE = /^(accommodation|additional\s+activit|important\s+info|emergency\s+contact|notes?\b|special\s+requirements?|what\s+to\s+(?:bring|pack)|inclusions?|exclusions?|travel\s+(?:insurance|tips)|visa\s+(?:info|requirements?)|health\s+(?:info|requirements?)|luggage|baggage|dress\s+code|weather|currency|tips?\s+&?\s*gratuities?)/i;
-  const DAY_HEADER_RE = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d/i;
+  const INFO_SECTION_RE = /^(accommodation|additional\s+activit|important\s+info|emergency\s+contact|notes?\b|special\s+requirements?|what\s+to\s+(?:bring|pack)|inclusions?|exclusions?|travel\s+(?:insurance|tips)|visa\s+(?:info|requirements?)|health\s+(?:info|requirements?)|luggage|baggage|dress\s+code|weather|currency|tips?\s+&?\s*gratuities?|our\s+services)/i;
+  const DAY_HEADER_RE = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d|^day\s+\d+\s*:/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -888,6 +968,57 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   return { name: nameLine.slice(0, 80), attendees, paxCount, parsedTravelerNames, start, end, destination, events: allEvents, extractedMedia, organizer, info };
 }
 
+// ─── AI-powered parser (Claude Haiku 4.5) ────────────────────────────────────
+
+async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = []): Promise<ParsedTrip> {
+  const resp = await fetch("/api/parse-itinerary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!resp.ok) throw new Error(`AI parse failed: ${resp.status}`);
+  const data = await resp.json();
+
+  // Map AI response to ParsedTrip shape
+  const travelers: string[] = (data.travelers ?? []).map((t: any) => t.name);
+  const events: ParsedEvent[] = (data.events ?? []).map((ev: any, i: number) => ({
+    id: `imp-ai-${Date.now()}-${i}`,
+    type: ev.type as EventType,
+    date: ev.date ?? "",
+    time: ev.time ?? "TBD",
+    title: (ev.title ?? "Event").slice(0, 100),
+    location: ev.location ?? "",
+    description: ev.description ?? "",
+    notes: ev.notes ?? "",
+  }));
+
+  const organizer: ParsedOrganizer | undefined = data.organizer?.name
+    ? { name: data.organizer.name, company: data.organizer.company, email: data.organizer.email, phone: data.organizer.phone }
+    : undefined;
+
+  const info: ParsedInfo[] = (data.info ?? []).map((i: any) => ({
+    title: i.title ?? "",
+    body: i.body ?? "",
+  }));
+
+  return {
+    name: (data.name ?? "Imported Trip").slice(0, 80),
+    attendees: travelers.length > 0
+      ? travelers.slice(0, 6).join(", ") + (travelers.length > 6 ? ` +${travelers.length - 6} more` : "")
+      : "Imported Group",
+    paxCount: travelers.length,
+    parsedTravelerNames: travelers,
+    start: data.start ?? "",
+    end: data.end ?? data.start ?? "",
+    destination: data.destination ?? "",
+    events,
+    extractedMedia,
+    organizer,
+    info,
+  };
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 type Step = "upload" | "extracting" | "review" | "importing";
@@ -927,9 +1058,23 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     onOpenChange(v);
   };
 
-  const processText = (text: string, media: ExtractedMedia[] = []) => {
+  const [parserUsed, setParserUsed] = useState<"ai" | "heuristic" | null>(null);
+
+  const processText = async (text: string, media: ExtractedMedia[] = []) => {
     setRawText(text);
-    const result = parseItinerary(text, media);
+    let result: ParsedTrip;
+
+    // Try AI parser first, fall back to heuristic
+    try {
+      result = await parseItineraryAI(text, media);
+      setParserUsed("ai");
+      logger.log("Import", "AI parsed:", result.events.length, "events,", result.parsedTravelerNames.length, "travelers");
+    } catch (aiErr) {
+      logger.log("Import", "AI parser unavailable, using heuristic:", aiErr);
+      result = parseItinerary(text, media);
+      setParserUsed("heuristic");
+    }
+
     logger.log("Import", "parsed info:", result.info.length, result.info.map(i => i.title), "organizer:", result.organizer);
     setParsed(result);
     setEditInfo(result.info.map(i => ({ ...i })));
@@ -942,7 +1087,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     try {
       const { text, media } = await extractContent(file);
       if (!text.trim()) throw new Error("No readable text found in this file.");
-      processText(text, media);
+      await processText(text, media);
     } catch (e: any) {
       setError(e.message ?? "Could not read this file.");
       setStep("upload");
@@ -1096,7 +1241,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           <DialogDescription className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em]">
             {step === "upload" && "PDF · Word · PowerPoint · Text"}
             {step === "extracting" && "Reading document..."}
-            {step === "review" && `${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found — review before importing`}
+            {step === "review" && <>
+              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found — review before importing`}
+              {parserUsed && (
+                <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"}`}>
+                  {parserUsed === "ai" ? "✦ AI" : "⚙ Offline"}
+                </span>
+              )}
+            </>}
             {step === "importing" && "Matching images to events..."}
           </DialogDescription>
         </DialogHeader>
@@ -1135,7 +1287,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
             {error && (
               <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                <CircleAlert className="h-4 w-4 text-red-400 shrink-0" />
                 <p className="text-xs font-bold text-red-400">{error}</p>
               </div>
             )}
@@ -1154,7 +1306,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 value={rawText}
               />
               <Button
-                onClick={() => { if (rawText.trim()) processText(rawText); }}
+                onClick={async () => { if (rawText.trim()) await processText(rawText); }}
                 disabled={!rawText.trim()}
                 className="w-full h-12 rounded-2xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
               >
@@ -1313,7 +1465,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                <AlertCircle className="h-5 w-5 text-amber-400" />
+                <CircleAlert className="h-5 w-5 text-amber-400" />
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
                 <p className="text-[10px] text-slate-500 dark:text-[#888888] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
               </div>
@@ -1353,7 +1505,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 onClick={handleImport}
                 className="flex-1 rounded-2xl h-12 font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider gap-2"
               >
-                <CheckCircle2 className="h-4 w-4" /> {isReimport ? "Update" : "Import"} {parsed.events.length} Events{parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
+                <CircleCheck className="h-4 w-4" /> {isReimport ? "Update" : "Import"} {parsed.events.length} Events{parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
               </Button>
             </div>
           </div>

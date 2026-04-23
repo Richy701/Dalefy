@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Compass, Star, CheckCircle2 } from "lucide-react";
+import { Loader2, Compass, Star, CircleCheck } from "lucide-react";
 import { searchActivities, type ActivityResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 
@@ -100,7 +100,7 @@ export function ActivitySearch({ onSelect }: Props) {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                {selected === a.name && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                {selected === a.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

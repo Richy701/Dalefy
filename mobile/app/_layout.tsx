@@ -1,10 +1,21 @@
 import React, { useEffect, useCallback } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
+import * as SystemUI from "expo-system-ui";
+import * as NavigationBar from "expo-navigation-bar";
+
+// Set native root view to dark once — prevents white flash during tab transitions
+SystemUI.setBackgroundColorAsync("#09090b");
+
+// Android: transparent nav bar so content extends edge-to-edge
+if (Platform.OS === "android") {
+  NavigationBar.setBackgroundColorAsync("#09090b");
+  NavigationBar.setButtonStyleAsync("light");
+}
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
@@ -15,7 +26,10 @@ import { BrandProvider } from "@/context/BrandContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
+import * as QuickActions from "expo-quick-actions";
+import { useQuickActionRouting } from "expo-quick-actions/router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useWidgetSync } from "@/hooks/useWidgetSync";
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
@@ -68,6 +82,27 @@ function AppStack() {
   useEffect(() => {
     registerForPushNotifications();
   }, []);
+
+  // Android: sync nav bar color with theme
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      NavigationBar.setBackgroundColorAsync(C.bg);
+      NavigationBar.setButtonStyleAsync(isDark ? "light" : "dark");
+    }
+  }, [isDark, C.bg]);
+
+  // Quick actions — long-press app icon shortcuts
+  useQuickActionRouting();
+  useEffect(() => {
+    QuickActions.setItems([
+      { id: "join", title: "Join a Trip", icon: Platform.select({ ios: "symbol:qrcode", android: "shortcut_join" }) ?? undefined, params: { href: "/" } },
+      { id: "gallery", title: "Gallery", icon: Platform.select({ ios: "symbol:camera.fill", android: "shortcut_gallery" }) ?? undefined, params: { href: "/media" } },
+      { id: "profile", title: "My Profile", icon: Platform.select({ ios: "symbol:person.crop.circle", android: "shortcut_profile" }) ?? undefined, params: { href: "/profile" } },
+    ]);
+  }, []);
+
+  // Keep the iOS home screen widget in sync with trip data
+  useWidgetSync();
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();

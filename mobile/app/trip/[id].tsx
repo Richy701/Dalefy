@@ -1,13 +1,13 @@
 import {
   View, Text, Pressable, Image,
-  StyleSheet, Platform
+  StyleSheet, Platform, Linking
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, Link } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, Map, ChevronDown, Check,
+  ArrowLeft, Compass, MapPin, Users, Moon, Map,
   FileText,
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
@@ -15,14 +15,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { useCompliance } from "@/context/ComplianceContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
-import { buildArc, interpolateArc } from "@/shared/mapUtils";
-import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -47,8 +45,8 @@ try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch { /* native module not available — map will be hidden */ }
 
-const DARK_STYLE  = "mapbox://styles/mapbox/dark-v11";
-const LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+const DARK_STYLE  = "mapbox://styles/mapbox/navigation-night-v1";
+const LIGHT_STYLE = "mapbox://styles/mapbox/navigation-day-v1";
 
 function timeToMinutes(t: string): number {
   const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -141,119 +139,43 @@ export default function TripScreen() {
     opacity: 1,
   }));
   const [mapReady, setMapReady] = useState(false);
-  const [viewAsId, setViewAsId] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
-  // Reset layers when theme swaps styleURL — new style has no layers yet.
-  useEffect(() => { setMapReady(false); }, [isDark]);
 
-  // Resolve event locations to map coordinates
-  const eventCoords = useMemo(() => {
-    if (!trip) return [];
-    return trip.events
-      .filter(ev => ev.location)
-      .map(ev => ({ id: ev.id, type: ev.type, coords: resolveCoords(ev.location) }))
-      .filter(item => item.coords !== null) as Array<{
-        id: string; type: string; coords: [number, number];
-      }>;
-  }, [trip]);
+  // Resolve trip destination to map coordinate
+  const destCoords = useMemo((): [number, number] | null => {
+    if (!trip?.destination) return null;
+    return resolveCoords(trip.destination);
+  }, [trip?.destination]);
 
+  // [lng, lat] for Mapbox
   const mapCenter = useMemo((): [number, number] | null => {
-    if (eventCoords.length === 0) return null;
-    // resolveCoords returns [lat, lng], Mapbox needs [lng, lat]
-    const avgLat = eventCoords.reduce((s, c) => s + c.coords[0], 0) / eventCoords.length;
-    const avgLng = eventCoords.reduce((s, c) => s + c.coords[1], 0) / eventCoords.length;
-    return [avgLng, avgLat];
-  }, [eventCoords]);
+    if (!destCoords) return null;
+    return [destCoords[1], destCoords[0]];
+  }, [destCoords]);
 
-  const mapZoom = useMemo(() => {
-    if (eventCoords.length <= 1) return 8;
-    const lats = eventCoords.map(c => c.coords[0]);
-    const lngs = eventCoords.map(c => c.coords[1]);
-    const spread = Math.max(
-      Math.max(...lats) - Math.min(...lats),
-      Math.max(...lngs) - Math.min(...lngs),
-    );
-    if (spread < 0.5) return 11;
-    if (spread < 2)   return 9;
-    if (spread < 8)   return 7;
-    if (spread < 20)  return 5;
-    return 3;
-  }, [eventCoords]);
-
-  const geojson: GeoJSON.FeatureCollection = useMemo(() => ({
+  const pinGeoJSON: GeoJSON.FeatureCollection = useMemo(() => ({
     type: "FeatureCollection",
-    features: eventCoords.map(item => ({
+    features: destCoords ? [{
       type: "Feature" as const,
-      properties: { type: item.type },
+      properties: {},
       geometry: {
         type: "Point" as const,
-        // coords is [lat, lng], convert to [lng, lat] for Mapbox
-        coordinates: [item.coords[1], item.coords[0]],
+        coordinates: [destCoords[1], destCoords[0]],
       },
-    })),
-  }), [eventCoords]);
+    }] : [],
+  }), [destCoords]);
 
-  // Flight arc lines — great-circle arcs for "X to Y" flight locations
-  const [arcGeoJSON, setArcGeoJSON] = useState<GeoJSON.FeatureCollection>({
-    type: "FeatureCollection", features: [],
-  });
-  const [planeGeoJSON, setPlaneGeoJSON] = useState<GeoJSON.FeatureCollection>({
-    type: "FeatureCollection", features: [],
-  });
-  const planeTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  useEffect(() => {
-    if (!trip) return;
-    let cancelled = false;
-    (async () => {
-      const flights = trip.events.filter(e => e.type === "flight");
-      const features: GeoJSON.Feature[] = [];
-      for (const fe of flights) {
-        const match = fe.location.match(/^(.+?)\s+to\s+(.+)$/);
-        if (!match) continue;
-        const from = resolveCoords(match[1].trim()) ?? (await geocode(match[1].trim()));
-        const to = resolveCoords(match[2].trim()) ?? (await geocode(match[2].trim()));
-        if (!from || !to) continue;
-        // buildArc returns [lat,lng][], convert to [lng,lat][] for Mapbox
-        const arcCoords = buildArc(from, to).map(p => [p[1], p[0]]);
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: arcCoords },
-          properties: {},
-        });
-      }
-      if (!cancelled) setArcGeoJSON({ type: "FeatureCollection", features });
-    })();
-    return () => { cancelled = true; };
-  }, [trip?.events]);
-
-  // Animate planes along flight arcs
-  useEffect(() => {
-    if (arcGeoJSON.features.length === 0) {
-      setPlaneGeoJSON({ type: "FeatureCollection", features: [] });
-      return;
-    }
-    const arcs = arcGeoJSON.features.map(f => (f.geometry as any).coordinates as number[][]);
-    const DURATION = 6000;
-    const start = Date.now();
-
-    planeTimerRef.current = setInterval(() => {
-      const t = ((Date.now() - start) % DURATION) / DURATION;
-      const features: GeoJSON.Feature[] = arcs.map((arc, i) => {
-        const pos = interpolateArc(arc, t);
-        return {
-          type: "Feature",
-          properties: { bearing: pos.bearing, idx: i },
-          geometry: { type: "Point", coordinates: [pos.lng, pos.lat] },
-        };
-      });
-      setPlaneGeoJSON({ type: "FeatureCollection", features });
-    }, 80);
-
-    return () => clearInterval(planeTimerRef.current);
-  }, [arcGeoJSON]);
+  const openInMaps = useCallback(() => {
+    if (!mapCenter) return;
+    const [lng, lat] = mapCenter;
+    const label = encodeURIComponent(trip?.destination || trip?.name || "Destination");
+    const url = Platform.select({
+      ios: `maps:?ll=${lat},${lng}&q=${label}`,
+      default: `geo:${lat},${lng}?q=${lat},${lng}(${label})`,
+    });
+    Linking.openURL(url);
+  }, [mapCenter, trip]);
 
   if (!trip) {
     return (
@@ -272,14 +194,7 @@ export default function TripScreen() {
   const end    = new Date(trip.end);
   const nights = Math.ceil((end.getTime() - start.getTime()) / 86400000);
 
-  const hasTravelers = (trip.travelers?.length ?? 0) > 0;
-  const viewAsTraveler = viewAsId ? trip.travelers?.find(t => t.id === viewAsId) ?? null : null;
-
-  const filteredEvents = viewAsId
-    ? trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId))
-    : trip.events;
-
-  const grouped = filteredEvents.reduce<Record<string, typeof trip.events>>((acc, ev) => {
+  const grouped = trip.events.reduce<Record<string, typeof trip.events>>((acc, ev) => {
     if (!acc[ev.date]) acc[ev.date] = [];
     acc[ev.date].push(ev);
     return acc;
@@ -301,7 +216,7 @@ export default function TripScreen() {
       >
         {Platform.OS === "ios" ? (
           <BlurView
-            intensity={60}
+            intensity={95}
             tint={isDark ? "dark" : "light"}
             style={StyleSheet.absoluteFillObject}
           />
@@ -333,10 +248,12 @@ export default function TripScreen() {
         scrollEventThrottle={16}
       >
 
-        {/* ── Hero banner — parallax ── */}
+        {/* ── Hero banner — parallax + Apple Zoom target ── */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFillObject, heroImageStyle]}>
-            <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+            <Link.AppleZoomTarget>
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+            </Link.AppleZoomTarget>
           </Animated.View>
           <LinearGradient
             colors={["#00000008", "#00000040", "#000000e8"]}
@@ -453,13 +370,16 @@ export default function TripScreen() {
 
         {/* ── Map (only when native module is linked) ── */}
         {mapCenter && MapboxGL && (
-          <View style={styles.mapSection}>
+          <Pressable style={styles.mapSection} onPress={openInMaps}>
             <View style={styles.sectionHeader}>
               <Map size={13} color={C.teal} strokeWidth={1.8} />
-              <Text style={styles.sectionEyebrow}>ROUTE MAP</Text>
+              <Text style={styles.sectionEyebrow}>LOCATION</Text>
+              <View style={{ flex: 1 }} />
+              <Text style={[styles.sectionEyebrow, { color: C.teal }]}>Open in Maps ›</Text>
             </View>
             <View style={styles.mapWrap}>
               <MapboxGL.MapView
+                key={isDark ? "dark" : "light"}
                 style={StyleSheet.absoluteFillObject}
                 styleURL={isDark ? DARK_STYLE : LIGHT_STYLE}
                 projection="mercator"
@@ -470,151 +390,41 @@ export default function TripScreen() {
                 logoEnabled={false}
                 attributionEnabled={false}
                 compassEnabled={false}
+                scaleBarEnabled={false}
                 onDidFinishLoadingStyle={handleMapLoaded}
               >
                 <MapboxGL.Camera
-                  zoomLevel={mapZoom}
+                  zoomLevel={3}
                   centerCoordinate={mapCenter}
+                  pitch={0}
+                  heading={0}
                   animationDuration={0}
                 />
                 {mapReady && (
-                  <>
-                    {/* Flight arc lines */}
-                    <MapboxGL.ShapeSource id="trip-arcs" shape={arcGeoJSON}>
-                      <MapboxGL.LineLayer
-                        id="arc-glow"
-                        style={{
-                          lineColor: C.teal,
-                          lineWidth: 6,
-                          lineOpacity: 0.08,
-                          lineCap: "round",
-                        }}
-                      />
-                      <MapboxGL.LineLayer
-                        id="arc-line"
-                        style={{
-                          lineColor: C.teal,
-                          lineWidth: 1.5,
-                          lineOpacity: 0.6,
-                          lineCap: "round",
-                          lineDasharray: [2, 4],
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    {/* Animated planes along arcs */}
-                    <MapboxGL.ShapeSource id="trip-planes" shape={planeGeoJSON}>
-                      <MapboxGL.SymbolLayer
-                        id="trip-plane-icons"
-                        style={{
-                          iconImage: "airport",
-                          iconSize: 0.7,
-                          iconColor: C.teal,
-                          iconRotate: ["get", "bearing"],
-                          iconRotationAlignment: "map",
-                          iconAllowOverlap: true,
-                          iconIgnorePlacement: true,
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    {/* Location rings */}
-                    <MapboxGL.ShapeSource id="trip-rings" shape={geojson}>
-                      <MapboxGL.CircleLayer
-                        id="trip-ring-layer"
-                        style={{
-                          circleRadius: 13,
-                          circleColor: "transparent",
-                          circleStrokeWidth: 1.5,
-                          circleStrokeColor: C.teal,
-                          circleStrokeOpacity: 0.45,
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                    <MapboxGL.ShapeSource id="trip-dots" shape={geojson}>
-                      <MapboxGL.CircleLayer
-                        id="trip-dot-layer"
-                        style={{
-                          circleRadius: 5,
-                          circleColor: C.teal,
-                          circleStrokeWidth: 2,
-                          circleStrokeColor: isDark ? "#060608" : "#ffffff",
-                        }}
-                      />
-                    </MapboxGL.ShapeSource>
-                  </>
+                  <MapboxGL.ShapeSource id="trip-pin" shape={pinGeoJSON}>
+                    <MapboxGL.CircleLayer
+                      id="trip-pin-glow"
+                      style={{
+                        circleRadius: 18,
+                        circleColor: C.teal,
+                        circleOpacity: 0.08,
+                      }}
+                    />
+                    <MapboxGL.CircleLayer
+                      id="trip-pin-dot"
+                      style={{
+                        circleRadius: 4,
+                        circleColor: C.teal,
+                        circleOpacity: 0.7,
+                      }}
+                    />
+                  </MapboxGL.ShapeSource>
                 )}
               </MapboxGL.MapView>
-              <LinearGradient
-                colors={["transparent", C.bg]}
-                locations={[0.65, 1]}
-                style={styles.mapFade}
-              />
             </View>
-          </View>
+          </Pressable>
         )}
 
-        {/* ── View As picker ── */}
-        {hasTravelers && (
-          <View style={styles.viewAsWrap}>
-            <Pressable
-              style={[styles.viewAsBtn, viewAsId ? styles.viewAsBtnActive : null]}
-              onPress={() => setPickerOpen(!pickerOpen)}
-            >
-              <View style={[styles.viewAsAvatar, viewAsId ? styles.viewAsAvatarActive : null]}>
-                {viewAsTraveler
-                  ? <Text style={styles.viewAsAvatarText}>{viewAsTraveler.initials}</Text>
-                  : <Users size={13} color={C.textSecondary} strokeWidth={2} />
-                }
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.viewAsLabel}>
-                  {viewAsId ? "VIEWING AS" : "VIEW AS"}
-                </Text>
-                <Text style={[styles.viewAsName, { color: viewAsId ? C.teal : C.textPrimary }]} numberOfLines={1}>
-                  {viewAsTraveler ? viewAsTraveler.name : "Everyone"}
-                </Text>
-              </View>
-              <ChevronDown
-                size={14} color={C.textTertiary} strokeWidth={2}
-                style={{ transform: [{ rotate: pickerOpen ? "180deg" : "0deg" }] }}
-              />
-            </Pressable>
-
-            {pickerOpen && (
-              <View style={styles.viewAsDropdown}>
-                <Pressable
-                  style={[styles.viewAsOption, !viewAsId && styles.viewAsOptionActive]}
-                  onPress={() => { setViewAsId(null); setPickerOpen(false); }}
-                >
-                  <View style={styles.viewAsOptionDot}>
-                    <Text style={[styles.viewAsOptionDotText, { color: C.textSecondary }]}>ALL</Text>
-                  </View>
-                  <Text style={styles.viewAsOptionName}>Everyone</Text>
-                  {!viewAsId && <Check size={12} color={C.teal} strokeWidth={2.5} />}
-                </Pressable>
-                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginHorizontal: 10 }} />
-                {trip.travelers!.map(t => (
-                  <Pressable
-                    key={t.id}
-                    style={[styles.viewAsOption, viewAsId === t.id && styles.viewAsOptionActive]}
-                    onPress={() => { setViewAsId(t.id); setPickerOpen(false); }}
-                  >
-                    <View style={[styles.viewAsOptionDot, { backgroundColor: `${C.teal}15` }]}>
-                      <Text style={[styles.viewAsOptionDotText, { color: C.teal }]}>{t.initials}</Text>
-                    </View>
-                    <Text style={styles.viewAsOptionName}>{t.name}</Text>
-                    {viewAsId === t.id && <Check size={12} color={C.teal} strokeWidth={2.5} />}
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {viewAsTraveler && (
-              <Text style={styles.viewAsSubtext}>
-                Showing {filteredEvents.length} of {trip.events.length} events
-              </Text>
-            )}
-          </View>
-        )}
 
         {/* ── Itinerary ── */}
         <View style={styles.section}>
@@ -651,7 +461,7 @@ export default function TripScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 60 },
+    scroll: { paddingBottom: 100 },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
@@ -679,7 +489,7 @@ function makeStyles(C: ThemeColors) {
     hero: { height: HERO_H, position: "relative", overflow: "hidden" },
     backCircle: {
       width: 36, height: 36, borderRadius: R.full,
-      backgroundColor: C.elevated, alignItems: "center", justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center",
     },
 
     heroTopRow: {
@@ -790,52 +600,5 @@ function makeStyles(C: ThemeColors) {
     section: { paddingBottom: S.md },
     dayRows: { paddingHorizontal: S.md },
 
-    // View As picker
-    viewAsWrap: { paddingHorizontal: S.md, paddingTop: S.sm },
-    viewAsBtn: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      padding: 10, borderRadius: R.lg,
-      backgroundColor: C.elevated,
-    },
-    viewAsBtnActive: {
-      backgroundColor: `${C.teal}10`,
-    },
-    viewAsAvatar: {
-      width: 32, height: 32, borderRadius: R.sm,
-      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
-    },
-    viewAsAvatarActive: { backgroundColor: `${C.teal}20` },
-    viewAsAvatarText: {
-      fontSize: 9, fontWeight: T.bold as any, color: C.teal,
-      textTransform: "uppercase", letterSpacing: 0.3,
-    },
-    viewAsLabel: {
-      fontSize: 10, fontWeight: T.bold as any, color: C.textTertiary,
-      letterSpacing: 1.2, textTransform: "uppercase",
-    },
-    viewAsName: { fontSize: T.sm, fontWeight: T.bold as any, marginTop: 1 },
-    viewAsDropdown: {
-      marginTop: 4, borderRadius: R.lg, overflow: "hidden",
-      backgroundColor: C.elevated,
-    },
-    viewAsOption: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      paddingVertical: 12, paddingHorizontal: 10, minHeight: 44,
-    },
-    viewAsOptionActive: { backgroundColor: `${C.teal}08` },
-    viewAsOptionDot: {
-      width: 26, height: 26, borderRadius: R.sm,
-      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
-    },
-    viewAsOptionDotText: {
-      fontSize: 10, fontWeight: T.bold as any, textTransform: "uppercase" as const, letterSpacing: 0.2,
-    },
-    viewAsOptionName: {
-      flex: 1, fontSize: T.xs, fontWeight: T.bold as any, color: C.textSecondary,
-    },
-    viewAsSubtext: {
-      fontSize: 10, fontWeight: T.bold as any, color: `${C.teal}80`,
-      letterSpacing: 0.6, textTransform: "uppercase", marginTop: 4,
-    },
   });
 }

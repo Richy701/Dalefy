@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileCheck, FileClock, FileX, Loader2, CheckCircle2, ShieldCheck, ArrowRight, Info } from "lucide-react";
+import { FileCheck, FileClock, FileX, Loader2, CircleCheck, ShieldCheck, ArrowRight, Info } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

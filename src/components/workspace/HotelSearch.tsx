@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Hotel, Flame, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, Hotel, Flame, CircleCheck, Calendar as CalendarIcon } from "lucide-react";
 import { searchHotels, type HotelResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -144,7 +144,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                     <p className="text-[9px] text-slate-500 dark:text-slate-400">/night</p>
                   </>
                 )}
-                {selected === h.name && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
+                {selected === h.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

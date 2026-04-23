@@ -10,7 +10,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileWarning, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, BarChart3, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check } from "lucide-react";
+import { Search, UserPlus, FileCheck, FileExclamationPoint, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, ChartColumn, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -34,7 +34,7 @@ const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: st
   Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileCheck, bar: "bg-brand" },
   Pending: { color: "text-brand", bg: "bg-brand/10", icon: FileClock, bar: "bg-brand" },
   Expired: { color: "text-brand", bg: "bg-brand/10", icon: FileX, bar: "bg-brand" },
-  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileWarning, bar: "bg-slate-300 dark:bg-[#333]" },
+  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileExclamationPoint, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -678,7 +678,7 @@ export function TravelersPage() {
                   { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <ShieldCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldAlert className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <BarChart3 className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartColumn className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                 ].map(card => (
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
                     <div className="p-5 flex flex-col">

@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image } from "react-native";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -76,7 +77,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={[]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
@@ -115,27 +116,18 @@ export default function ProfileScreen() {
           <View style={s.row}>
             <Palette size={18} color={C.textSecondary} strokeWidth={1.5} />
             <Text style={s.rowLabel}>Theme</Text>
-            <View style={s.themeToggle}>
-              {([
-                { key: "light" as const, icon: Sun, label: "Light" },
-                { key: "dark" as const, icon: Moon, label: "Dark" },
-                { key: "system" as const, icon: Smartphone, label: "Auto" },
-              ]).map(({ key, icon: Ic, label }) => {
-                const active = mode === key;
-                return (
-                  <Pressable
-                    key={key}
-                    style={[s.themeBtn, active && s.themeBtnActive]}
-                    onPress={() => { if (!active) { haptic.selection(); setMode(key); } }}
-                    accessibilityRole="radio"
-                    accessibilityLabel={`${label} theme`}
-                    accessibilityState={{ checked: active }}
-                  >
-                    <Ic size={14} color={active ? C.teal : C.textTertiary} strokeWidth={1.8} />
-                  </Pressable>
-                );
-              })}
-            </View>
+            <SegmentedControl
+              values={["Light", "Dark", "Auto"]}
+              selectedIndex={mode === "light" ? 0 : mode === "dark" ? 1 : 2}
+              onChange={(e) => {
+                const idx = e.nativeEvent.selectedSegmentIndex;
+                const val = (["light", "dark", "system"] as const)[idx];
+                haptic.selection();
+                setMode(val);
+              }}
+              style={{ width: 180 }}
+              appearance={isDark ? "dark" : "light"}
+            />
           </View>
 
           <View style={s.divider} />

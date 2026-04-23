@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Plane, Hotel, Compass, Utensils, MapPin, Clock, MoreVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
+import { Plane, Hotel, Compass, Utensils, MapPin, Clock, EllipsisVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -73,7 +73,7 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
         <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#888888] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
-          <MoreVertical className="h-3.5 w-3.5" />
+          <EllipsisVertical className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
           <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">

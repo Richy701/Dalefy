@@ -202,7 +202,7 @@ function makeStyles(C: ThemeColors) {
 
     // Body
     body: { flex: 1 },
-    bodyContent: { padding: S.lg, paddingBottom: 40 },
+    bodyContent: { padding: S.lg, paddingBottom: 100 },
 
     docTitle: {
       fontSize: T["2xl"],

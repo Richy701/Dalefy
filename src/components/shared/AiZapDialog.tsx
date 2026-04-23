@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, BarChart3, Lightbulb, Sparkles, FileText, Loader2 } from "lucide-react";
+import { Zap, ChartColumn, Lightbulb, Sparkles, FileText, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useNotifications } from "@/context/NotificationContext";
 
@@ -23,7 +23,7 @@ interface AiZapDialogProps {
 const AI_ACTIONS = [
   { id: "optimize", label: "Tighten the Schedule", description: "Cut travel gaps and make the itinerary flow better", icon: Sparkles },
   { id: "suggest", label: "Suggest Things to Do", description: "Find activities and experiences at each stop", icon: Lightbulb },
-  { id: "budget", label: "Estimate the Cost", description: "Get a rough cost breakdown per person for this trip", icon: BarChart3 },
+  { id: "budget", label: "Estimate the Cost", description: "Get a rough cost breakdown per person for this trip", icon: ChartColumn },
   { id: "summary", label: "Write a Trip Summary", description: "Create a short overview you can share with the group", icon: FileText },
 ];
 

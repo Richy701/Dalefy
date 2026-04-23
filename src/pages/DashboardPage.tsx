@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
-  MoreVertical, LayoutGrid, List, ExternalLink, Users,
+  EllipsisVertical, LayoutGrid, List, ExternalLink, Users,
   MapPin, DollarSign, Briefcase, Hotel, Utensils, Compass, Globe,
   X, Upload, Loader2, RefreshCw, ChevronRight,
   Clock, Hash, Tag, ArrowRight, Copy, FileStack, Save
@@ -985,7 +985,7 @@ export function DashboardPage() {
                         <div className="absolute -top-14 right-4 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                              <EllipsisVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
@@ -1077,7 +1077,7 @@ export function DashboardPage() {
                         <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-400 dark:text-[#555] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors flex items-center justify-center cursor-pointer">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                              <EllipsisVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
