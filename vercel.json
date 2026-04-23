@@ -16,7 +16,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(self)" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://api.mapbox.com https://*.mapbox.com https://api.unsplash.com https://images.unsplash.com https://api.pexels.com https://*.rapidapi.com https://exp.host; frame-src 'none'; object-src 'none'; base-uri 'self';" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://apis.google.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://api.mapbox.com https://*.mapbox.com https://api.unsplash.com https://images.unsplash.com https://api.pexels.com https://*.rapidapi.com https://exp.host https://*.anthropic.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self';" },
         { "key": "X-Permitted-Cross-Domain-Policies", "value": "none" }
       ]
     }
