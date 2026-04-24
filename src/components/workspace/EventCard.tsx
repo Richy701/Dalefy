@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Plane, Hotel, Compass, Utensils, MapPin, Clock, EllipsisVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
+import { Plane, Hotel, Compass, Utensils, Car, MapPin, Clock, EllipsisVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -296,7 +296,8 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
 // ─── Activity / Dining Card ───────────────────────────────────────────────────
 function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isDining = event.type === "dining";
-  const Icon = isDining ? Utensils : Compass;
+  const isTransfer = event.type === "transfer";
+  const Icon = isTransfer ? Car : isDining ? Utensils : Compass;
 
   // Sparse: no notes, no endTime, no location → collapse to compact row.
   const isSparse = !event.notes && !event.endTime && !event.location;
@@ -304,7 +305,7 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
     return (
       <CompactCard
         event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople}
-        Icon={Icon} label={isDining ? "Dining" : "Activity"}
+        Icon={Icon} label={isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
       />
     );
   }
@@ -331,7 +332,7 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Icon className="h-3 w-3 shrink-0 text-brand" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
-                  {isDining ? "Dining" : "Activity"}
+                  {isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
                 </span>
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand">{event.title}</h4>

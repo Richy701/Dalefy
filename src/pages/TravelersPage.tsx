@@ -45,7 +45,7 @@ const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string 
 
 export function TravelersPage() {
   const { trips } = useTrips();
-  const { showToast, addNotification } = useNotifications();
+  const { showToast } = useNotifications();
   const { accentColor } = usePreferences();
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
@@ -288,8 +288,7 @@ export function TravelersPage() {
     setDrawerForm({ name: "", email: "", role: "", status: "Active" });
     setInviteOpen(false);
     showToast(`${newUser.name} added to team`);
-    addNotification({ message: "Traveler added", detail: newUser.name, time: "Just now", type: "success" });
-  }, [drawerForm, setCustomTravelers, showToast, addNotification]);
+  }, [drawerForm, setCustomTravelers, showToast]);
 
   const openDocSheet = useCallback((userId: string, userName: string, doc: ComplianceDoc) => {
     setSheetUserId(userId);
@@ -309,8 +308,7 @@ export function TravelersPage() {
 
     setComplianceOverrides(prev => ({ ...prev, [userId]: updatedDocs }));
     showToast("Document signed successfully");
-    addNotification({ message: "Document signed", detail: `${docName} — ${user.name}`, time: "Just now", type: "success" });
-  }, [sheetUserId, travelers, setComplianceOverrides, showToast, addNotification]);
+  }, [sheetUserId, travelers, setComplianceOverrides, showToast]);
 
   const handleUploadDocument = useCallback(() => {
     if (!uploadDocName.trim() || !uploadFile || uploadAssignees.length === 0) return;
@@ -327,12 +325,11 @@ export function TravelersPage() {
       return next;
     });
     showToast(`"${docName}" assigned to ${uploadAssignees.length} ${uploadAssignees.length === 1 ? "person" : "people"}`);
-    addNotification({ message: "Document uploaded", detail: `${docName} — ${uploadAssignees.length} assignees`, time: "Just now", type: "success" });
     setUploadOpen(false);
     setUploadDocName("");
     setUploadFile(null);
     setUploadAssignees([]);
-  }, [uploadDocName, uploadFile, uploadAssignees, travelers, setComplianceOverrides, showToast, addNotification]);
+  }, [uploadDocName, uploadFile, uploadAssignees, travelers, setComplianceOverrides, showToast]);
 
   const handleSendReminder = useCallback(async (userId: string, userName: string, docName: string) => {
     const key = `${userId}-${docName}`;
@@ -340,8 +337,7 @@ export function TravelersPage() {
     await new Promise(r => setTimeout(r, 800));
     setSendingReminder(null);
     showToast(`Reminder sent to ${userName}`);
-    addNotification({ message: "Reminder sent", detail: `${docName} — ${userName}`, time: "Just now", type: "info" });
-  }, [showToast, addNotification]);
+  }, [showToast]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">

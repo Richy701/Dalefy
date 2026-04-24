@@ -61,6 +61,7 @@ export function ReportsPage() {
       const hotels = t.events.filter(e => e.type === "hotel").length;
       const activities = t.events.filter(e => e.type === "activity").length;
       const dining = t.events.filter(e => e.type === "dining").length;
+      const transfers = t.events.filter(e => e.type === "transfer").length;
       return {
         "Trip Name": t.name,
         "Destination": t.destination || "",
@@ -73,6 +74,7 @@ export function ReportsPage() {
         "Hotels": hotels,
         "Activities": activities,
         "Dining": dining,
+        "Transfers": transfers,
         "Traveler Count": t.paxCount || t.attendees || "",
       };
     });

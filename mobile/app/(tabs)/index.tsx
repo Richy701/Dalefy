@@ -57,7 +57,8 @@ const EVENT_TAGS: Record<string, string[]> = {
   activity: ["Experience", "Adventure", "Culture"],
   hotel:    ["Luxury", "Stay", "Comfort"],
   dining:   ["Food", "Local Cuisine", "Dining"],
-  flight:   ["Transfer", "Flight", "Transit"],
+  flight:   ["Flight", "Aviation", "Transit"],
+  transfer: ["Transfer", "Transport", "Pickup"],
 };
 
 // ── Trip Found Reveal ────────────────────────────────────────────────────────
@@ -327,7 +328,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   isActive: boolean;
   onPress: (t: Trip) => void;
 }) {
-  const { C, isDark, toggle } = useTheme();
+  const { C, isDark } = useTheme();
   const { brand } = useBrand();
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
@@ -450,7 +451,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   return (
-    <View style={[styles.outer, { paddingTop: 600 + insets.top + S.md, marginTop: -600 }]}>
+    <View style={[styles.outer, { paddingTop: insets.top + S.xs, marginTop: -insets.top }]}>
       <LinearGradient
         colors={[`${C.teal}18`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -471,25 +472,20 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         </View>
         <View style={styles.headerActions}>
           <Pressable
-            onPress={toggle}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
-            accessibilityLabel="Toggle theme"
-          >
-            {isDark ? <Sun size={16} color={C.textSecondary} strokeWidth={2} /> : <Moon size={16} color={C.textSecondary} strokeWidth={2} />}
-          </Pressable>
-          <Pressable
             onPress={() => setCodeOpen(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
+            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
             accessibilityLabel="Enter trip code"
+            hitSlop={6}
           >
-            <Plus size={16} color={C.textSecondary} strokeWidth={2} />
+            <Plus size={22} color={C.teal} strokeWidth={1.8} />
           </Pressable>
           <Pressable
             onPress={() => setNotifOpen(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: isDark ? C.elevated : "#f1f5f9" }]}
+            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
             accessibilityLabel="Notifications"
+            hitSlop={6}
           >
-            <Bell size={16} color={C.textSecondary} strokeWidth={2} />
+            <Bell size={21} color={C.textSecondary} strokeWidth={1.8} />
             {unreadCount > 0 && <View style={styles.unreadDot} />}
           </Pressable>
         </View>
@@ -505,40 +501,17 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       </Text>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
-      <Modal visible={codeOpen} transparent animationType="slide" onRequestClose={closeSheet}>
-        <View style={{ flex: 1 }}>
-          {Platform.OS === "ios" && HAS_LIQUID_GLASS ? (
-            <GlassView
-              glassEffectStyle="clear"
-              colorScheme={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFillObject}
-            />
-          ) : Platform.OS === "ios" ? (
-            <BlurView
-              intensity={18}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFillObject}
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.5)" }]} />
-          )}
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, styles.codeBackdrop]}
-            onPress={closeSheet}
-          />
+      <Modal
+        visible={codeOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeSheet}
+      >
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={styles.codeCenter}
-            pointerEvents="box-none"
+            style={{ flex: 1, backgroundColor: C.card }}
           >
-            <Pressable style={[styles.codeSheet, { paddingBottom: insets.bottom + S.md }]} onPress={() => {}}>
-              {Platform.OS === "ios" && HAS_LIQUID_GLASS && (
-                <GlassView
-                  glassEffectStyle="regular"
-                  colorScheme={isDark ? "dark" : "light"}
-                  style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"] }]}
-                />
-              )}
+            <View style={[styles.codeSheet, { paddingBottom: insets.bottom + S.md, flex: 1 }]}>
               <View style={styles.sheetGrabber} />
 
               {/* Header row */}
@@ -651,6 +624,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     style={[styles.codeInput, { width: "100%" }]}
                     onSubmitEditing={submitLink}
                     returnKeyType="go"
+                    clearButtonMode="while-editing"
                   />
                   {codeError ? <Text style={styles.codeErrorText}>{codeError}</Text> : null}
                   <Pressable
@@ -673,9 +647,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               )}
               </>
               )}
-            </Pressable>
+            </View>
           </KeyboardAvoidingView>
-        </View>
       </Modal>
 
       {nextTrip ? (
@@ -729,19 +702,18 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 function makeGreetingStyles(C: ThemeColors) {
   return StyleSheet.create({
     outer: {
-      marginBottom: S.md,
+      marginBottom: S.sm,
       backgroundColor: C.card,
-      borderBottomLeftRadius: R["2xl"], borderBottomRightRadius: R["2xl"],
       overflow: "hidden",
-      paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.lg,
+      paddingHorizontal: S.md, paddingBottom: S.sm,
     },
     illustrationWrap: {
-      position: "absolute", right: -10, bottom: -6,
-      opacity: 0.55,
+      position: "absolute", right: -10, bottom: 0,
+      opacity: 0.45,
     },
     topBar: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      marginBottom: S.md, zIndex: 2,
+      marginBottom: S.xs, zIndex: 2,
     },
     brandRow: {
       flexDirection: "row", alignItems: "center", gap: 8,
@@ -753,19 +725,19 @@ function makeGreetingStyles(C: ThemeColors) {
     greeting: {
       fontFamily: F.black, fontWeight: T.black,
       color: C.textPrimary, letterSpacing: -0.5,
-      marginBottom: S.md,
+      marginBottom: S.xs,
     },
     headerActions: {
-      flexDirection: "row", alignItems: "center", gap: 8,
+      flexDirection: "row", alignItems: "center", gap: 4,
     },
     headerBtn: {
-      width: 44, height: 44, borderRadius: 22,
+      width: 36, height: 36, borderRadius: 18,
       alignItems: "center", justifyContent: "center",
     },
     unreadDot: {
-      position: "absolute", top: 8, right: 8,
-      width: 7, height: 7, borderRadius: 4,
-      backgroundColor: C.teal,
+      position: "absolute", top: 4, right: 4,
+      width: 8, height: 8, borderRadius: 4,
+      backgroundColor: "#ff3b30",
       borderWidth: 1.5, borderColor: C.card,
     },
     codeBackdrop: {
@@ -876,13 +848,13 @@ function makeGreetingStyles(C: ThemeColors) {
     countdownWrap: { alignSelf: "flex-start" },
     countdownEyebrow: {
       fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
-      letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6,
+      letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4,
     },
     countdownNumber: {
-      fontSize: 56, fontFamily: F.black, fontWeight: T.black, color: C.textPrimary,
-      letterSpacing: -2, lineHeight: 56,
+      fontSize: 48, fontFamily: F.black, fontWeight: T.black, color: C.textPrimary,
+      letterSpacing: -2, lineHeight: 48,
     },
-    countdownMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
+    countdownMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
     countdownDest: {
       fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
       letterSpacing: 1.5, maxWidth: 220,
@@ -1145,8 +1117,7 @@ function TripRow({ trip }: { trip: Trip }) {
       </View>
       {!isPast && days > 0 ? (
         <View style={styles.daysBadge}>
-          <Text style={styles.daysBadgeNum}>{days}</Text>
-          <Text style={styles.daysBadgeLbl}>DAYS</Text>
+          <Text style={styles.daysBadgeNum}>{days}d</Text>
         </View>
       ) : isPast ? (
         <View style={styles.pastChip}>
@@ -1261,6 +1232,8 @@ export default function HomeScreen() {
               placeholderTextColor={C.textTertiary}
               value={search}
               onChangeText={setSearch}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
             />
           </View>
         )}
@@ -1473,12 +1446,11 @@ function makeStyles(C: ThemeColors) {
     statusRowText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.8, textTransform: "uppercase" },
 
     daysBadge: {
-      alignItems: "center", backgroundColor: C.tealDim,
-      paddingHorizontal: 8, paddingVertical: 5, borderRadius: R.sm,
-      minWidth: 38,
+      alignItems: "center", justifyContent: "center",
+      backgroundColor: C.tealDim,
+      paddingHorizontal: 10, paddingVertical: 6, borderRadius: R.full,
     },
-    daysBadgeNum: { fontSize: T.lg, fontWeight: T.bold, color: C.teal, letterSpacing: -0.3 },
-    daysBadgeLbl: { fontSize: T.xs, fontWeight: T.bold, color: `${C.teal}99`, letterSpacing: 0.8 },
+    daysBadgeNum: { fontSize: T.sm, fontWeight: "700", color: C.teal },
 
     pastChip: {
       backgroundColor: C.elevated, paddingHorizontal: 8, paddingVertical: 4,

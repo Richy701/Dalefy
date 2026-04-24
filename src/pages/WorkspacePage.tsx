@@ -12,7 +12,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, EllipsisVertical
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Car, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, EllipsisVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -354,12 +354,6 @@ export function WorkspacePage() {
     setEditingEvent(null);
     showToast("Event saved");
     toast.success("Event saved");
-    addNotification({
-      message: `Event ${action}`,
-      detail: `${editingEvent.title || "Untitled"} · ${trip.name}`,
-      time: "Just now",
-      type: "success",
-    });
   };
 
   const handleDeleteEvent = (eventId: string) => {
@@ -367,12 +361,6 @@ export function WorkspacePage() {
     deleteEvent(trip.id, eventId);
     showToast("Event deleted");
     toast.success("Event deleted");
-    addNotification({
-      message: "Event deleted",
-      detail: `${removed?.title ?? "Event"} · ${trip.name}`,
-      time: "Just now",
-      type: "success",
-    });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -657,12 +645,6 @@ export function WorkspacePage() {
     updateTrip(trip.id, cleaned);
     setEditTripOpen(false);
     toast.success("Trip updated");
-    addNotification({
-      message: "Trip updated",
-      detail: editingTrip.name ?? trip.name,
-      time: "Just now",
-      type: "success",
-    });
   };
 
   const handleDeleteTrip = () => {
@@ -1326,12 +1308,13 @@ export function WorkspacePage() {
               {/* Left: core event fields */}
               <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1f1f1f]">
                 {/* Category tabs */}
-                <div className="grid grid-cols-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+                <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-[#1f1f1f]">
                   {([
                     { id: "flight", label: "Flight", icon: Plane },
                     { id: "hotel", label: "Hotel", icon: Hotel },
                     { id: "activity", label: "Activity", icon: Compass },
                     { id: "dining", label: "Dining", icon: Utensils },
+                    { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
                       className={`flex flex-col items-center justify-center py-4 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
@@ -1409,7 +1392,7 @@ export function WorkspacePage() {
                   </div>
 
                   {/* End Time + Duration for activity/dining */}
-                  {(editingEvent?.type === "activity" || editingEvent?.type === "dining") && (
+                  {(editingEvent?.type === "activity" || editingEvent?.type === "dining" || editingEvent?.type === "transfer") && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Time</label>
@@ -1573,7 +1556,7 @@ export function WorkspacePage() {
                     </div>
                   ) : imageResults.length > 0 ? (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {imageResults.map((url, i) => (
                           <button key={i} type="button"
                             onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: url } : null); setImageIsAuto(false); }}
@@ -1634,7 +1617,7 @@ export function WorkspacePage() {
                     <input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaUpload} />
                   </div>
                   {(editingEvent?.media?.length ?? 0) > 0 ? (
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                       {editingEvent!.media!.map((m, i) => (
                         <div key={i} className="relative group">
                           {m.type === "image" ? (
@@ -1877,9 +1860,9 @@ export function WorkspacePage() {
                     </>
                   )}
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                   {isTripImageSearching ? (
-                    <div className="col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                    <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
                       <Loader2 className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                     </div>

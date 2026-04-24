@@ -13,7 +13,7 @@ export interface EventDocument {
 
 export interface TravelEvent {
   id: string;
-  type: "flight" | "hotel" | "activity" | "dining";
+  type: "flight" | "hotel" | "activity" | "dining" | "transfer";
   date: string;
   time: string;
   endTime?: string;

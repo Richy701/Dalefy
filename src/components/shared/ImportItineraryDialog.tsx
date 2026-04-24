@@ -474,15 +474,18 @@ function timeToMinutes(t: string): number {
 
 function guessEventType(line: string): EventType {
   const l = line.toLowerCase();
-  // "transfer to airport" / "meet at lobby for airport" = activity, not flight
-  const isTransferToAirport = /\b(transfer|meet|pickup|pick.?up|collect|lobby)\b/.test(l) && /\bairport\b/.test(l);
+  // "transfer to airport" / "meet at lobby for airport" = transfer, not flight
+  const isTransfer = /\b(transfer|meet|pickup|pick.?up|collect|lobby|driver|shuttle|coach)\b/.test(l);
+  const isTransferToAirport = isTransfer && /\bairport\b/.test(l);
   if (!isTransferToAirport && /\b(flight|fly|depart\b|arrive\b|airline|airways|boarding|gate\s+\d|xq\d|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
   // Also catch flight numbers like "XQ524", "BA123" even without other keywords
   if (!isTransferToAirport && /\b[A-Z]{2}\d{2,4}\b/i.test(line) && /\b(depart|arrive|airport)\b/.test(l)) return "flight";
-  // Airport transfers/meetups are activities, not hotel events (even if "check-in" appears)
-  if (isTransferToAirport) return "activity";
+  // Airport transfers/meetups are transfers
+  if (isTransferToAirport) return "transfer";
   if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx|camp|overnight|fullboard|half.?board|all.?inclusive|panafric|marjani|norfolk)\b/.test(l)) return "hotel";
   if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail|bbq|fish\s*market|seafood)\b/.test(l)) return "dining";
+  // General transfers (not to airport)
+  if (isTransfer && /\b(to|from|between)\b/.test(l)) return "transfer";
   return "activity";
 }
 

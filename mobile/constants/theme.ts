@@ -29,6 +29,7 @@ export const darkColors = {
   hotel: "#0bd2b5",
   activity: "#0bd2b5",
   dining: "#0bd2b5",
+  transfer: "#0bd2b5",
 };
 
 export const lightColors = {
@@ -61,6 +62,7 @@ export const lightColors = {
   hotel: "#0ab8a0",
   activity: "#0ab8a0",
   dining: "#0ab8a0",
+  transfer: "#0ab8a0",
 };
 
 // Backward compat — screens not yet migrated to useTheme() will always get dark
@@ -170,5 +172,6 @@ export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
     hotel: hex,
     activity: hex,
     dining: hex,
+    transfer: hex,
   };
 }

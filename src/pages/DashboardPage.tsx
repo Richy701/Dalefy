@@ -47,6 +47,7 @@ const EVENT_COLORS = {
   hotel:    { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.hotel },
   dining:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.dining },
   flight:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.flight },
+  transfer: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.transfer },
 };
 
 
@@ -368,7 +369,7 @@ export function DashboardPage() {
 
       <PageHeader
         left={
-          <div className="max-w-[160px] sm:max-w-xs w-full relative group flex items-center">
+          <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
             <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
@@ -542,9 +543,10 @@ export function DashboardPage() {
                         const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
                         const hasImg = !!ev.image;
                         const typeLabel =
-                          ev.type === "flight"   ? "Flight"
-                          : ev.type === "hotel"  ? "Stay"
-                          : ev.type === "dining" ? "Dining"
+                          ev.type === "flight"    ? "Flight"
+                          : ev.type === "hotel"   ? "Stay"
+                          : ev.type === "dining"  ? "Dining"
+                          : ev.type === "transfer" ? "Transfer"
                           : "Activity";
                         const eventDate = ev.date ? new Date(ev.date + "T12:00:00") : null;
                         const weekdayLabel = eventDate
@@ -1184,7 +1186,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Destination + Pax */}
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
                     <input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa"
@@ -1300,9 +1302,9 @@ export function DashboardPage() {
                     )}
                   </div>
                   {/* Thumbnail grid */}
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {isCoverSearching ? (
-                      <div className="col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
                         <Loader2 className="h-4 w-4 animate-spin text-brand" />
                         <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                       </div>

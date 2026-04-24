@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
-import { Plane, Hotel, Compass, Utensils, MapPin } from "lucide-react";
+import { Plane, Hotel, Compass, Utensils, Car, MapPin } from "lucide-react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
@@ -15,6 +15,7 @@ const TYPE_ICONS = {
   hotel:    Hotel,
   activity: Compass,
   dining:   Utensils,
+  transfer: Car,
 } as const;
 
 /** Great-circle arc between two lat/lng points */

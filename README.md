@@ -6,7 +6,7 @@ Trip planning without the mess. A modern travel management platform for organize
 
 - **Trip Management** -- Create, edit, and organize trips with itineraries, travelers, budgets, and documents
 - **AI-Powered Itinerary Import** -- Upload travel documents (PDF, Word, PowerPoint, text) and parse them with Claude Haiku 4.5 into structured events with polished descriptions, internal agent notes, traveler extraction, and info sections. Falls back to offline heuristic parser when AI is unavailable
-- **Live Search** -- Search flights (AeroDataBox), hotels (Booking.com), restaurants (TripAdvisor), and activities (Local Business Data) directly in the workspace
+- **Live Search** -- Search flights (AeroDataBox), hotels (Booking.com), restaurants (Local Business Data), and activities (Local Business Data) directly in the workspace
 - **Flight Status Notifications** -- Automated cron checks flight status every 30 minutes and pushes updates (delays, gate changes, cancellations) to travelers
 - **Image Search** -- Multi-source image search (Google, Unsplash, Pexels) with provider picker
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
@@ -24,7 +24,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12)
 - **Backend:** Firebase Auth, Firestore, Firebase Storage
 - **AI:** Anthropic Claude Haiku 4.5 (itinerary parsing)
-- **APIs:** RapidAPI (AeroDataBox, Booking.com, TripAdvisor16, Local Business Data, Real-Time Image Search), Unsplash, Pexels
+- **APIs:** RapidAPI (AeroDataBox, Booking.com, Local Business Data), Unsplash, Pexels
 - **Maps:** Mapbox GL JS via react-map-gl
 - **Charts:** Recharts
 - **Routing:** react-router-dom v7 (HashRouter)

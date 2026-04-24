@@ -21,7 +21,7 @@ interface Destination {
   eventCount: number;
   nextVisit: string;
   image: string;
-  types: { flights: number; hotels: number; activities: number; dining: number };
+  types: { flights: number; hotels: number; activities: number; dining: number; transfers: number };
 }
 
 // Cache geocoded coordinates in memory so we don't re-fetch on every render
@@ -95,7 +95,7 @@ export function DestinationsPage() {
         map.set(destName, {
           name: destName, region: "International", tripCount: 0, tripNames: [], tripIds: [],
           eventCount: 0, nextVisit: trip.start, image: trip.image,
-          types: { flights: 0, hotels: 0, activities: 0, dining: 0 },
+          types: { flights: 0, hotels: 0, activities: 0, dining: 0, transfers: 0 },
         });
       }
       const dest = map.get(destName)!;
@@ -121,6 +121,7 @@ export function DestinationsPage() {
         else if (e.type === "hotel") dest.types.hotels++;
         else if (e.type === "activity") dest.types.activities++;
         else if (e.type === "dining") dest.types.dining++;
+        else if (e.type === "transfer") dest.types.transfers++;
       });
     });
     return [...map.values()].sort((a, b) => b.eventCount - a.eventCount);
@@ -260,7 +261,7 @@ export function DestinationsPage() {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
         left={destinations.length > 0 ? (
-          <div className="max-w-[160px] sm:max-w-md w-full relative group">
+          <div className="max-w-full sm:max-w-md w-full relative group">
             <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input

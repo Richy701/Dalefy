@@ -1,4 +1,4 @@
-import { Plane, Hotel, Compass, Utensils } from "lucide-react";
+import { Plane, Hotel, Compass, Utensils, Car } from "lucide-react";
 import type { TravelEvent } from "@/types";
 
 function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
@@ -20,6 +20,7 @@ export function DockBar({ onAddEvent }: { onAddEvent: (type: TravelEvent["type"]
         <DockButton icon={<Hotel className="h-4 w-4" />} label="Hotel" onClick={() => onAddEvent("hotel")} />
         <DockButton icon={<Compass className="h-4 w-4" />} label="Activity" onClick={() => onAddEvent("activity")} />
         <DockButton icon={<Utensils className="h-4 w-4" />} label="Dining" onClick={() => onAddEvent("dining")} />
+        <DockButton icon={<Car className="h-4 w-4" />} label="Transfer" onClick={() => onAddEvent("transfer")} />
       </div>
     </div>
   );

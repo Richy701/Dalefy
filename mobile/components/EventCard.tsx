@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import * as Clipboard from "expo-clipboard";
 import {
-  Plane, Hotel, Compass, Utensils,
+  Plane, Hotel, Compass, Utensils, Car,
   MapPin, ArrowRight, Hash, FileText,
 } from "lucide-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
@@ -182,9 +182,10 @@ function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
 // ── Activity / Dining Card ───────────────────────────────────────────────────
 function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
   const isDining = ev.type === "dining";
-  const color = isDining ? C.dining : C.activity;
-  const Icon = isDining ? Utensils : Compass;
-  const label = isDining ? "Dining" : "Activity";
+  const isTransfer = ev.type === "transfer";
+  const color = isDining ? C.dining : isTransfer ? (C as any).transfer ?? C.activity : C.activity;
+  const Icon = isTransfer ? Car : isDining ? Utensils : Compass;
+  const label = isTransfer ? "Transfer" : isDining ? "Dining" : "Activity";
 
   return (
     <View style={[cs.card, { backgroundColor: C.card, overflow: "hidden" }]}>

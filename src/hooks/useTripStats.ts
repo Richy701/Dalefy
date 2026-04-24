@@ -24,7 +24,7 @@ export function useTripStats(trips: Trip[]) {
     const isSentence = (s: string) => s.length > 40 || /\.\s|followed by|transfer|arrival|depart/i.test(s);
     const destinations = new Set<string>();
     allEvents.forEach(e => {
-      if ((e.type === "hotel" || e.type === "activity") && e.location && !isSentence(e.location)) {
+      if ((e.type === "hotel" || e.type === "activity" || e.type === "transfer") && e.location && !isSentence(e.location)) {
         destinations.add(e.location);
       }
     });
@@ -36,6 +36,7 @@ export function useTripStats(trips: Trip[]) {
       hotels: t.events.filter(e => e.type === "hotel").length,
       activities: t.events.filter(e => e.type === "activity").length,
       dining: t.events.filter(e => e.type === "dining").length,
+      transfers: t.events.filter(e => e.type === "transfer").length,
       total: t.events.length,
     }));
 

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useMemo } from "react";
-import { Plane, Hotel, Compass, Utensils, ChevronRight } from "lucide-react-native";
+import { Plane, Hotel, Compass, Utensils, Car, ChevronRight } from "lucide-react-native";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { TravelEvent } from "@/shared/types";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -11,6 +11,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
   hotel: Hotel,
   activity: Compass,
   dining: Utensils,
+  transfer: Car,
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -18,6 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
   hotel: "HOTEL",
   activity: "ACTIVITY",
   dining: "DINING",
+  transfer: "TRANSFER",
 };
 
 function timeToMinutes(t: string): number {
@@ -99,18 +101,15 @@ export function DaySummaryRow({
               ) : null}
             </View>
 
-            {/* Event type pills */}
+            {/* Event type icons */}
             <View style={s.pillsRow}>
               {Object.entries(typeCounts).map(([type, count]) => {
                 const color = (C as any)[type] ?? C.teal;
                 const Icon = TYPE_ICONS[type] ?? Compass;
-                const label = TYPE_LABELS[type] ?? type.toUpperCase();
                 return (
-                  <View key={type} style={[s.pill, { backgroundColor: `${color}18`, borderColor: `${color}30` }]}>
-                    <Icon size={9} color={color} strokeWidth={2} />
-                    <Text style={[s.pillText, { color }]}>
-                      {count > 1 ? `${count} ${label}S` : label}
-                    </Text>
+                  <View key={type} style={[s.pill, { backgroundColor: `${color}15` }]}>
+                    <Icon size={11} color={color} strokeWidth={1.8} />
+                    {count > 1 && <Text style={[s.pillText, { color }]}>{count}</Text>}
                   </View>
                 );
               })}
@@ -210,14 +209,13 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       gap: 3,
-      paddingHorizontal: 6,
-      paddingVertical: 2.5,
+      paddingHorizontal: 7,
+      paddingVertical: 4,
       borderRadius: R.full,
     },
     pillText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: T.bold,
-      letterSpacing: 0.6,
     },
 
     // First event preview

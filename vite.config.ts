@@ -87,7 +87,7 @@ Return a JSON object with this exact schema:
   ],
   "events": [
     {
-      "type": "flight | hotel | dining | activity",
+      "type": "flight | hotel | dining | activity | transfer",
       "date": "YYYY-MM-DD",
       "time": "H:MM AM/PM or TBD",
       "title": "Short event title (under 100 chars)",
@@ -109,14 +109,14 @@ Return a JSON object with this exact schema:
 
 CRITICAL — Extract EVERY distinct event. Be thorough. A typical 4-day itinerary should have 15-25+ events. NEVER skip these event types:
 - Each flight (type: "flight") with carrier + number in title, e.g. "VS208 — London to Seoul"
-- Airport transfers and pickups (type: "activity") — ALWAYS include these, e.g. "Airport pickup & transfer to Seoul"
+- Airport transfers and pickups (type: "transfer") — ALWAYS include these, e.g. "Airport pickup & transfer to Seoul"
 - Hotel check-in and check-out as separate events (type: "hotel") — include hotel name
 - Overnight stays (type: "hotel") — if the doc says "Overnight in Seoul", create an event for it
 - EVERY meal — breakfast, lunch, dinner, each as its own event (type: "dining") with restaurant name
 - EVERY tour, visit, sightseeing stop as separate events (type: "activity")
 - BUT group sub-stops within ONE guided tour into ONE event (e.g. DMZ Tour with multiple stops → one event, stops in location field)
 - Market visits, shopping, exploration (type: "activity")
-- ALL transfers between locations (type: "activity") — e.g. "Transfer to Suwon", "Transfer back to hotel", "Transfer to airport"
+- ALL transfers between locations (type: "transfer") — e.g. "Transfer to Suwon", "Transfer back to hotel", "Transfer to airport"
 - Free time / rest periods if mentioned
 
 There are TWO text fields per event. Do NOT just copy raw text from the document — rewrite into polished, friendly copy that reads well. But NEVER lose any information.

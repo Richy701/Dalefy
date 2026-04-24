@@ -3,43 +3,46 @@ import ContextMenu from "@/components/ContextMenu";
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { Search, Globe, MapPin, Navigation, Plane } from "lucide-react-native";
 
-const HAS_LIQUID_GLASS = isLiquidGlassAvailable();
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { Search, Globe, MapPin, Navigation, Plane, Hotel, Compass, Utensils, Car, CalendarDays } from "lucide-react-native";
+
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 
 let MapboxGL: any = null;
 try {
   MapboxGL = require("@rnmapbox/maps").default;
-} catch { /* native module not available — map will be hidden */ }
-
-const DARK_STYLE  = "mapbox://styles/mapbox/dark-v11";
-const LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+} catch { /* native module not available */ }
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN!;
 
-const geocodeCache: Record<string, [number, number] | null> = {};
+type GeoResult = { coords: [number, number]; country: string } | null;
+const geocodeCache: Record<string, GeoResult> = {};
 
-async function geocodeDestination(name: string): Promise<[number, number] | null> {
+async function geocodeDestination(name: string): Promise<GeoResult> {
   if (name in geocodeCache) return geocodeCache[name];
   try {
     const res = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1`
     );
     const json = await res.json();
-    const center = json.features?.[0]?.center as [number, number] | undefined;
-    geocodeCache[name] = center ?? null;
-    return center ?? null;
+    const feature = json.features?.[0];
+    const center = feature?.center as [number, number] | undefined;
+    if (!center) { geocodeCache[name] = null; return null; }
+    const country = feature?.context?.find((c: { id: string }) => c.id.startsWith("country"))?.text
+      ?? feature?.place_name?.split(",").pop()?.trim()
+      ?? "International";
+    const result = { coords: center, country };
+    geocodeCache[name] = result;
+    return result;
   } catch {
     geocodeCache[name] = null;
     return null;
@@ -47,14 +50,25 @@ async function geocodeDestination(name: string): Promise<[number, number] | null
 }
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const MAP_HEIGHT = 320;
 
 type Destination = {
   name: string; region: string; tripCount: number;
   image: string; eventCount: number; coords?: [number, number];
   nextVisit: string; tripIds: string[];
-  types: { flights: number; hotels: number; activities: number; dining: number };
+  types: { flights: number; hotels: number; activities: number; dining: number; transfers: number };
 };
+
+const SHORT_NAMES: Record<string, string> = {
+  "United Arab Emirates": "UAE",
+  "United Kingdom": "UK",
+  "United States": "USA",
+  "Dominican Republic": "Dom. Rep.",
+  "South Korea": "S. Korea",
+  "New Zealand": "NZ",
+  "Czech Republic": "Czechia",
+  "Saudi Arabia": "S. Arabia",
+};
+function shortName(name: string) { return SHORT_NAMES[name] ?? name; }
 
 function plural(n: number, word: string) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -73,11 +87,7 @@ export default function DestinationsScreen() {
     await reload();
     setRefreshing(false);
   }, [reload]);
-  const handleMapLoaded = useCallback(() => setMapReady(true), []);
   const insets = useSafeAreaInsets();
-
-  useEffect(() => { setMapReady(false); }, [isDark]);
-
   const router = useRouter();
 
   const destinations = useMemo(() => {
@@ -89,7 +99,7 @@ export default function DestinationsScreen() {
           name, region: "International", tripCount: 0, tripIds: [],
           image: trip.image, eventCount: 0,
           nextVisit: trip.start,
-          types: { flights: 0, hotels: 0, activities: 0, dining: 0 },
+          types: { flights: 0, hotels: 0, activities: 0, dining: 0, transfers: 0 },
         });
       }
       const d = map.get(name)!;
@@ -102,47 +112,60 @@ export default function DestinationsScreen() {
         else if (e.type === "hotel") d.types.hotels++;
         else if (e.type === "activity") d.types.activities++;
         else if (e.type === "dining") d.types.dining++;
+        else if (e.type === "transfer") d.types.transfers++;
       });
     });
     return [...map.values()].sort((a, b) => b.eventCount - a.eventCount);
   }, [trips]);
 
-  const [geoCoords, setGeoCoords] = useState<Record<string, [number, number]>>({});
+  const [geoData, setGeoData] = useState<Record<string, { coords: [number, number]; country: string }>>({});
 
   useEffect(() => {
     destinations.forEach(d => {
       if (d.name in geocodeCache) {
         const cached = geocodeCache[d.name];
-        if (cached) setGeoCoords(prev => ({ ...prev, [d.name]: cached }));
+        if (cached) setGeoData(prev => ({ ...prev, [d.name]: cached }));
       } else {
-        geocodeDestination(d.name).then(coords => {
-          if (coords) setGeoCoords(prev => ({ ...prev, [d.name]: coords }));
+        geocodeDestination(d.name).then(result => {
+          if (result) setGeoData(prev => ({ ...prev, [d.name]: result }));
         });
       }
     });
   }, [destinations]);
 
-  const regionCount = new Set(destinations.map(d => d.region)).size;
-  const totalEvents = destinations.reduce((s, d) => s + d.eventCount, 0);
+  // Enrich destinations with resolved country
+  const enriched = useMemo(() =>
+    destinations.map(d => ({
+      ...d,
+      region: geoData[d.name]?.country ?? "International",
+    })),
+    [destinations, geoData]
+  );
+
+  const regionCount = new Set(enriched.map(d => d.region)).size;
+  const totalEvents = enriched.reduce((s, d) => s + d.eventCount, 0);
 
   const regionList = useMemo(() => {
-    const set = new Set(destinations.map(d => d.region));
+    const set = new Set(enriched.map(d => d.region));
     return ["all", ...Array.from(set).sort()];
-  }, [destinations]);
+  }, [enriched]);
 
-  const filtered = useMemo(() =>
-    destinations.filter(d => {
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return enriched.filter(d => {
       if (regionFilter !== "all" && d.region !== regionFilter) return false;
-      if (search && !d.name.toLowerCase().includes(search.toLowerCase()) &&
-          !d.region.toLowerCase().includes(search.toLowerCase())) return false;
+      if (q && !d.name.toLowerCase().includes(q) &&
+          !d.region.toLowerCase().includes(q) &&
+          !trips.some(t => d.tripIds.includes(t.id) && t.name.toLowerCase().includes(q))) return false;
       return true;
-    }), [destinations, regionFilter, search]);
+    });
+  }, [enriched, regionFilter, search, trips]);
 
   const pinsWithCoords = useMemo(() =>
-    destinations
-      .map(d => ({ ...d, coords: geoCoords[d.name] as [number, number] | undefined }))
+    enriched
+      .map(d => ({ ...d, coords: geoData[d.name]?.coords as [number, number] | undefined }))
       .filter((d): d is typeof d & { coords: [number, number] } => !!d.coords),
-    [destinations, geoCoords]
+    [enriched, geoData]
   );
 
   const geojson: GeoJSON.FeatureCollection = useMemo(() => ({
@@ -154,59 +177,53 @@ export default function DestinationsScreen() {
     })),
   }), [pinsWithCoords]);
 
-  const heatmapGeoJSON: GeoJSON.FeatureCollection = useMemo(() => ({
-    type: "FeatureCollection",
-    features: pinsWithCoords.map(d => ({
-      type: "Feature" as const,
-      properties: { weight: Math.min(d.tripCount / 3, 1) },
-      geometry: { type: "Point" as const, coordinates: d.coords },
-    })),
-  }), [pinsWithCoords]);
-
+  useEffect(() => { setMapReady(false); }, [isDark]);
 
   if (destinations.length === 0) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={{ flex: 1, backgroundColor: C.card }}>
+        <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
+          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+          <Text style={styles.screenTitle}>Destinations</Text>
+        </View>
         <View style={styles.empty}>
           <Illustration name="movement" width={260} height={160} />
           <Text style={styles.emptyTitle}>Your map awaits</Text>
           <Text style={styles.emptyText}>Add a trip to start dropping pins — each destination you unlock shows up here.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const stats = [
-    { label: "Places", value: destinations.length, icon: MapPin },
+    { label: "Places", value: enriched.length, icon: MapPin },
     { label: "Regions", value: regionCount, icon: Globe },
     { label: "Events", value: totalEvents, icon: Navigation },
   ];
 
-  const cardW = (SCREEN_W - S.md * 2 - S.sm) / 2;
-
   return (
-    <SafeAreaView style={styles.safe} edges={[]}>
+    <View style={{ flex: 1, backgroundColor: C.card }}>
+      {/* ── Sticky blur header ── */}
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
+        <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        <Text style={styles.screenTitle}>Destinations</Text>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 40 }]}
         contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        scrollIndicatorInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
-        {/* ═══════════════════════════════════════════
-            MAP HERO — immersive full-bleed with
-            glassmorphic stat bar overlaid at bottom
-           ═══════════════════════════════════════════ */}
-        <View style={styles.mapWrap}>
-          {MapboxGL ? (
+        {/* ── Map card ── */}
+        {MapboxGL && (
+          <View style={styles.mapCard}>
             <MapboxGL.MapView
+              key={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFillObject}
-              styleURL={isDark ? DARK_STYLE : LIGHT_STYLE}
-              projection="mercator"
+              styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
               scrollEnabled={false}
               zoomEnabled={false}
               pitchEnabled={false}
@@ -215,162 +232,79 @@ export default function DestinationsScreen() {
               attributionEnabled={false}
               compassEnabled={false}
               scaleBarEnabled={false}
-              onDidFinishLoadingStyle={handleMapLoaded}
+              onDidFinishLoadingStyle={() => setMapReady(true)}
             >
               <MapboxGL.Camera
-                zoomLevel={0.8}
-                centerCoordinate={[10, 20]}
+                defaultSettings={{
+                  zoomLevel: 0.5,
+                  centerCoordinate: [10, 20],
+                }}
+                bounds={pinsWithCoords.length > 1 ? {
+                  ne: [
+                    Math.max(...pinsWithCoords.map(p => p.coords[0])) + 15,
+                    Math.max(...pinsWithCoords.map(p => p.coords[1])) + 10,
+                  ],
+                  sw: [
+                    Math.min(...pinsWithCoords.map(p => p.coords[0])) - 15,
+                    Math.min(...pinsWithCoords.map(p => p.coords[1])) - 10,
+                  ],
+                  paddingLeft: 20, paddingRight: 20, paddingTop: 20, paddingBottom: 20,
+                } : undefined}
+                zoomLevel={pinsWithCoords.length <= 1 ? 1.5 : undefined}
+                centerCoordinate={pinsWithCoords.length === 1 ? pinsWithCoords[0].coords : undefined}
                 animationDuration={0}
               />
               {mapReady && (
                 <>
-                  <MapboxGL.ShapeSource id="dest-heatmap" shape={heatmapGeoJSON}>
-                    <MapboxGL.HeatmapLayer
-                      id="heatmap"
-                      style={{
-                        heatmapWeight: ["get", "weight"],
-                        heatmapIntensity: 0.8,
-                        heatmapRadius: 50,
-                        heatmapOpacity: 0.6,
-                        heatmapColor: [
-                          "interpolate", ["linear"], ["heatmap-density"],
-                          0, "rgba(0,0,0,0)",
-                          0.2, "rgba(11,210,181,0.15)",
-                          0.4, "rgba(11,210,181,0.3)",
-                          0.6, "rgba(11,210,181,0.5)",
-                          0.8, "rgba(11,210,181,0.7)",
-                          1, C.teal,
-                        ],
-                      }}
-                    />
-                  </MapboxGL.ShapeSource>
-                  {/* Outer glow ring */}
                   <MapboxGL.ShapeSource id="dest-glow" shape={geojson}>
                     <MapboxGL.CircleLayer
                       id="glow"
                       style={{
-                        circleRadius: 20,
+                        circleRadius: 16,
                         circleColor: C.teal,
-                        circleOpacity: 0.08,
-                        circleBlur: 1,
+                        circleOpacity: 0.1,
+                        circleBlur: 0.8,
                       }}
                     />
                   </MapboxGL.ShapeSource>
-                  {/* Ring */}
-                  <MapboxGL.ShapeSource id="dest-rings" shape={geojson}>
-                    <MapboxGL.CircleLayer
-                      id="rings"
-                      style={{
-                        circleRadius: 12,
-                        circleColor: "transparent",
-                        circleStrokeWidth: 1.5,
-                        circleStrokeColor: C.teal,
-                        circleStrokeOpacity: 0.5,
-                      }}
-                    />
-                  </MapboxGL.ShapeSource>
-                  {/* Center dot */}
-                  <MapboxGL.ShapeSource id="dest-dots" shape={geojson}>
+                  <MapboxGL.ShapeSource
+                    id="dest-dots"
+                    shape={geojson}
+                    hitbox={{ width: 30, height: 30 }}
+                    onPress={(e: any) => {
+                      const name = e.features?.[0]?.properties?.name;
+                      if (!name) return;
+                      const dest = enriched.find(d => d.name === name);
+                      if (dest?.tripIds[0]) {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push(`/trip/${dest.tripIds[0]}`);
+                      }
+                    }}
+                  >
                     <MapboxGL.CircleLayer
                       id="dots"
                       style={{
-                        circleRadius: 5,
+                        circleRadius: 4.5,
                         circleColor: C.teal,
-                        circleStrokeWidth: 2,
-                        circleStrokeColor: isDark ? "#131316" : "#ffffff",
+                        circleStrokeWidth: 1.5,
+                        circleStrokeColor: isDark ? "#1a1a1e" : "#ffffff",
                       }}
                     />
                   </MapboxGL.ShapeSource>
                 </>
               )}
             </MapboxGL.MapView>
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, styles.mapFallback]} />
-          )}
-
-          {/* Top vignette for status bar legibility */}
-          <LinearGradient
-            colors={[isDark ? "rgba(9,9,11,0.7)" : "rgba(247,248,251,0.6)", "transparent"]}
-            locations={[0, 1]}
-            style={styles.mapFadeTop}
-            pointerEvents="none"
-          />
-          {/* Bottom fade into bg */}
-          <LinearGradient
-            colors={["transparent", C.bg]}
-            locations={[0.5, 1]}
-            style={styles.mapFadeBottom}
-            pointerEvents="none"
-          />
-
-          {/* Title */}
-          <View style={[styles.mapTitleWrap, { top: insets.top + 6 }]} pointerEvents="none">
-            <Text style={styles.mapTitleText}>Destinations</Text>
-            <Text style={styles.mapSubText}>
-              {plural(destinations.length, "place")} · {plural(regionCount, "region")}
-            </Text>
           </View>
+        )}
 
-        </View>
-
-        {/* ── Glassmorphic stats bar ── */}
-        <View style={styles.statsBarWrap}>
-          {Platform.OS === "ios" && HAS_LIQUID_GLASS ? (
-            <GlassView glassEffectStyle="regular" colorScheme={isDark ? "dark" : "light"} style={styles.statsBar}>
-              <View style={styles.statsBarInner}>
-                {stats.map((stat, idx) => (
-                  <View key={stat.label} style={styles.statItem}>
-                    {idx > 0 && <View style={styles.statDivider} />}
-                    <View style={styles.statBody}>
-                      <View style={styles.statIconWrap}>
-                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
-                      </View>
-                      <Text style={styles.statValue}>{stat.value}</Text>
-                      <Text style={styles.statLabel}>{stat.label}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </GlassView>
-          ) : Platform.OS === "ios" ? (
-            <BlurView intensity={isDark ? 40 : 60} tint={isDark ? "dark" : "light"} style={styles.statsBar}>
-              <View style={styles.statsBarInner}>
-                {stats.map((stat, idx) => (
-                  <View key={stat.label} style={styles.statItem}>
-                    {idx > 0 && <View style={styles.statDivider} />}
-                    <View style={styles.statBody}>
-                      <View style={styles.statIconWrap}>
-                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
-                      </View>
-                      <Text style={styles.statValue}>{stat.value}</Text>
-                      <Text style={styles.statLabel}>{stat.label}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </BlurView>
-          ) : (
-            <View style={[styles.statsBar, {
-              backgroundColor: isDark ? "rgba(9,9,11,0.93)" : "rgba(255,255,255,0.93)",
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-            }]}>
-              <View style={styles.statsBarInner}>
-                {stats.map((stat, idx) => (
-                  <View key={stat.label} style={styles.statItem}>
-                    {idx > 0 && <View style={styles.statDivider} />}
-                    <View style={styles.statBody}>
-                      <View style={styles.statIconWrap}>
-                        <stat.icon size={13} color={C.teal} strokeWidth={2} />
-                      </View>
-                      <Text style={styles.statValue}>{stat.value}</Text>
-                      <Text style={styles.statLabel}>{stat.label}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
+        {/* ── Stats row ── */}
+        <View style={styles.statsRow}>
+          {stats.map((stat, idx) => (
+            <View key={stat.label} style={styles.statChip}>
+              <Text style={styles.statChipValue}>{stat.value}</Text>
+              <Text style={styles.statChipLabel}>{stat.label}</Text>
             </View>
-          )}
+          ))}
         </View>
 
         {/* ═══════════════════════════════════════════
@@ -378,7 +312,7 @@ export default function DestinationsScreen() {
            ═══════════════════════════════════════════ */}
         <View style={styles.searchSection}>
           <View style={styles.searchWrap}>
-            <Search size={16} color={C.textTertiary} strokeWidth={1.5} />
+            <Search size={15} color={C.textTertiary} strokeWidth={1.5} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search destinations..."
@@ -386,38 +320,28 @@ export default function DestinationsScreen() {
               value={search}
               onChangeText={setSearch}
               autoCapitalize="none"
+              clearButtonMode="while-editing"
+              returnKeyType="search"
               accessibilityLabel="Search destinations"
               accessibilityHint="Filter destinations by name or region"
             />
           </View>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {regionList.map(r => {
-            const active = regionFilter === r;
-            return (
-              <Pressable
-                key={r}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setRegionFilter(r);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Filter by ${r === "all" ? "all regions" : r}`}
-                accessibilityState={{ selected: active }}
-              >
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>
-                  {r === "all" ? "All" : r}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.segmentWrap}>
+          <SegmentedControl
+            values={regionList.map(r => r === "all" ? "All" : shortName(r))}
+            selectedIndex={regionList.indexOf(regionFilter)}
+            onChange={(e) => {
+              const idx = e.nativeEvent.selectedSegmentIndex;
+              Haptics.selectionAsync();
+              setRegionFilter(regionList[idx]);
+            }}
+            appearance={isDark ? "dark" : "light"}
+            activeFontStyle={{ fontWeight: "600", color: "#fff" }}
+            tintColor={C.teal}
+          />
+        </View>
 
         {/* ═══════════════════════════════════════════
             DESTINATION CARDS
@@ -430,21 +354,21 @@ export default function DestinationsScreen() {
           <View style={styles.gridSection}>
             <View style={styles.cardsGrid}>
               {filtered.map((dest, i) => {
-                const isHero = i === 0;
                 return (
                   <ContextMenu
                     key={dest.name}
+                    style={{ width: "100%" }}
                     actions={[
                       { title: "Open Trip", systemIcon: "arrow.right" },
                       { title: "Share", systemIcon: "square.and.arrow.up" },
                     ]}
-                    onPress={(e) => {
+                    onPress={(e: any) => {
                       if (e.nativeEvent.index === 0) dest.tripIds[0] && router.push(`/trip/${dest.tripIds[0]}`);
                       else if (e.nativeEvent.index === 1) Share.share({ message: `Check out ${dest.name}` });
                     }}
                   >
                   <ScalePress
-                    style={[styles.card, isHero ? styles.cardHero : { width: cardW }]}
+                    style={styles.card}
                     activeScale={0.97}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -456,10 +380,10 @@ export default function DestinationsScreen() {
                     <CachedImage uri={dest.image} style={StyleSheet.absoluteFillObject} />
                     <LinearGradient
                       colors={["transparent", "rgba(0,0,0,0.85)"]}
-                      locations={[isHero ? 0.35 : 0.25, 1]}
+                      locations={[0.3, 1]}
                       style={StyleSheet.absoluteFillObject}
                     />
-                    {/* Trip count pill */}
+                    {/* Top pills */}
                     <View style={styles.cardTopRow}>
                       <View style={[styles.cardPill, { backgroundColor: C.teal }]}>
                         <Plane size={10} color="#000" strokeWidth={2.5} />
@@ -467,15 +391,59 @@ export default function DestinationsScreen() {
                           {plural(dest.tripCount, "trip")}
                         </Text>
                       </View>
+                      {dest.region !== "International" && (
+                        <View style={styles.regionPill}>
+                          <Text style={styles.regionPillText}>{dest.region}</Text>
+                        </View>
+                      )}
                     </View>
                     {/* Bottom content */}
                     <View style={styles.cardBottom}>
-                      <Text style={[styles.cardName, isHero && styles.cardNameHero]} numberOfLines={2}>
+                      <Text style={styles.cardName} numberOfLines={2}>
                         {dest.name}
                       </Text>
-                      <View style={styles.cardMeta}>
-                        <Text style={styles.cardMetaText}>{plural(dest.eventCount, "event")}</Text>
+                      {/* Event type breakdown */}
+                      <View style={styles.cardTypes}>
+                        {dest.types.flights > 0 && (
+                          <View style={styles.typeBadge}>
+                            <Plane size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Text style={styles.typeBadgeText}>{dest.types.flights}</Text>
+                          </View>
+                        )}
+                        {dest.types.hotels > 0 && (
+                          <View style={styles.typeBadge}>
+                            <Hotel size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Text style={styles.typeBadgeText}>{dest.types.hotels}</Text>
+                          </View>
+                        )}
+                        {dest.types.activities > 0 && (
+                          <View style={styles.typeBadge}>
+                            <Compass size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Text style={styles.typeBadgeText}>{dest.types.activities}</Text>
+                          </View>
+                        )}
+                        {dest.types.dining > 0 && (
+                          <View style={styles.typeBadge}>
+                            <Utensils size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Text style={styles.typeBadgeText}>{dest.types.dining}</Text>
+                          </View>
+                        )}
+                        {dest.types.transfers > 0 && (
+                          <View style={styles.typeBadge}>
+                            <Car size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Text style={styles.typeBadgeText}>{dest.types.transfers}</Text>
+                          </View>
+                        )}
                       </View>
+                      {/* Next visit */}
+                      {new Date(dest.nextVisit) > new Date() && (
+                        <View style={styles.cardMeta}>
+                          <CalendarDays size={10} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+                          <Text style={styles.cardMetaText}>
+                            {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </ScalePress>
                   </ContextMenu>
@@ -485,7 +453,7 @@ export default function DestinationsScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -495,85 +463,56 @@ export default function DestinationsScreen() {
 
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg },
+    safe: { flex: 1, backgroundColor: C.card },
     scroll: { paddingBottom: 120 },
-
-    // ─── Map hero ───
-    mapWrap: {
-      height: MAP_HEIGHT,
-      width: "100%",
+    stickyHeader: {
+      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
       overflow: "hidden",
     },
-    mapFallback: { backgroundColor: C.card },
-    mapFadeTop: {
-      position: "absolute", top: 0, left: 0, right: 0,
-      height: 90, zIndex: 2,
+    screenTitle: {
+      fontSize: 22, fontWeight: "700",
+      color: C.teal, paddingHorizontal: S.md,
+      paddingVertical: 10,
     },
-    mapFadeBottom: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      height: 120,
+
+    // ─── Header ───
+    headerWrap: {
+      paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm,
     },
-    mapTitleWrap: {
-      position: "absolute", left: S.lg, right: S.lg, zIndex: 3,
-    },
-    mapTitleText: {
+    headerTitle: {
       fontSize: T["3xl"], fontWeight: T.black, letterSpacing: -0.5,
-      color: "#fff",
-      textShadowColor: "rgba(0,0,0,0.7)",
-      textShadowOffset: { width: 0, height: 2 },
-      textShadowRadius: 8,
+      color: C.textPrimary,
     },
-    mapSubText: {
-      fontSize: T.sm, fontWeight: T.semibold, letterSpacing: 0.2,
-      color: "rgba(255,255,255,0.65)", marginTop: 3,
-      textShadowColor: "rgba(0,0,0,0.6)",
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
+    headerSub: {
+      fontSize: T.sm, fontWeight: T.semibold,
+      color: C.textSecondary, marginTop: 3,
+    },
+    mapCard: {
+      height: 220,
+      overflow: "hidden",
+      backgroundColor: C.card,
     },
 
-    // ─── Glassmorphic stats ───
-    statsBarWrap: {
-      paddingHorizontal: S.md, marginTop: -S.xl, zIndex: 4,
+    // ─── Stats chips ───
+    statsRow: {
+      flexDirection: "row", gap: 8,
+      paddingHorizontal: S.md, marginTop: S.sm,
     },
-    statsBar: {
-      borderRadius: R.xl,
-      overflow: "hidden",
+    statChip: {
+      flexDirection: "row", alignItems: "center", gap: 5,
+      backgroundColor: C.card,
+      borderRadius: R.full,
+      paddingHorizontal: 12, paddingVertical: 7,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+      borderColor: C.borderLight,
     },
-    statsBarInner: {
-      flexDirection: "row",
-      paddingVertical: 12,
-      paddingHorizontal: 4,
-      backgroundColor: isDark ? "rgba(19,19,22,0.55)" : "rgba(255,255,255,0.55)",
-    },
-    statItem: {
-      flex: 1, flexDirection: "row", alignItems: "center",
-    },
-    statDivider: {
-      width: StyleSheet.hairlineWidth,
-      height: 28,
-      backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)",
-    },
-    statBody: {
-      flex: 1, alignItems: "center", gap: 2,
-    },
-    statIconWrap: {
-      width: 26, height: 26, borderRadius: 13,
-      alignItems: "center", justifyContent: "center",
-      backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-      marginBottom: 2,
-    },
-    statValue: {
-      fontSize: T.lg, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary,
-      letterSpacing: -0.3,
+    statChipValue: {
+      fontSize: T.sm, fontWeight: T.bold, color: C.teal,
       fontVariant: ["tabular-nums"],
     },
-    statLabel: {
-      fontSize: 10, fontWeight: T.semibold,
-      color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
-      letterSpacing: 0.5,
-      textTransform: "uppercase",
+    statChipLabel: {
+      fontSize: T.xs, fontWeight: T.semibold, color: C.textSecondary,
+      textTransform: "uppercase", letterSpacing: 0.5,
     },
 
     // ─── Search ───
@@ -593,49 +532,42 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
 
     // ─── Filters ───
-    filterRow: {
-      paddingHorizontal: S.md, paddingVertical: S.sm, gap: 8,
+    segmentWrap: {
+      paddingHorizontal: S.md, marginBottom: S.sm,
     },
-    filterChip: {
-      paddingHorizontal: 16, minHeight: 36, justifyContent: "center",
-      borderRadius: R.full,
-      backgroundColor: C.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.borderLight,
-    },
-    filterChipActive: {
-      backgroundColor: C.teal,
-      borderColor: C.teal,
-    },
-    filterText: {
-      fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary,
-    },
-    filterTextActive: { color: "#000" },
 
     // ─── Card grid ───
     gridSection: {
       paddingHorizontal: S.md,
     },
     cardsGrid: {
-      flexDirection: "row", flexWrap: "wrap", gap: S.sm,
+      gap: S.sm,
     },
     card: {
-      height: 180, borderRadius: R["2xl"],
+      width: "100%", height: 200, borderRadius: R["2xl"],
       overflow: "hidden", backgroundColor: C.card,
-    },
-    cardHero: {
-      width: "100%", height: 220,
     },
     cardTopRow: {
       position: "absolute", top: 0, left: 0, right: 0,
       padding: S.sm, zIndex: 2,
+      flexDirection: "row", alignItems: "center", gap: 6,
     },
     cardPill: {
-      alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4,
+      flexDirection: "row", alignItems: "center", gap: 4,
       borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
     },
     cardPillText: {
       fontSize: T.xs, fontWeight: T.bold, color: "#000",
+    },
+    regionPill: {
+      backgroundColor: "rgba(0,0,0,0.5)",
+      borderRadius: R.full, paddingHorizontal: 8, paddingVertical: 4,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "rgba(255,255,255,0.15)",
+    },
+    regionPillText: {
+      fontSize: 10, fontWeight: T.bold, color: "#fff",
+      letterSpacing: 0.5, textTransform: "uppercase",
     },
     cardBottom: {
       position: "absolute", bottom: 0, left: 0, right: 0,
@@ -645,14 +577,24 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       fontSize: T.md, fontWeight: T.bold,
       color: "#fff", letterSpacing: -0.2, marginBottom: 4,
     },
-    cardNameHero: {
-      fontSize: T["2xl"], letterSpacing: -0.4,
+    cardTypes: {
+      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6,
+      flexWrap: "wrap",
+    },
+    typeBadge: {
+      flexDirection: "row", alignItems: "center", gap: 3,
+      backgroundColor: "rgba(255,255,255,0.12)",
+      borderRadius: R.full, paddingHorizontal: 7, paddingVertical: 3,
+    },
+    typeBadgeText: {
+      fontSize: 10, fontWeight: T.bold, color: "rgba(255,255,255,0.7)",
+      fontVariant: ["tabular-nums"],
     },
     cardMeta: {
-      flexDirection: "row", alignItems: "center", gap: 6,
+      flexDirection: "row", alignItems: "center", gap: 5,
     },
     cardMetaText: {
-      fontSize: T.xs, fontWeight: T.medium, color: "rgba(255,255,255,0.65)",
+      fontSize: T.xs, fontWeight: T.medium, color: "rgba(255,255,255,0.55)",
     },
 
     // ─── Empty states ───

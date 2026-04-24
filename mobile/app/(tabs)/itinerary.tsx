@@ -1,13 +1,14 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl,
+  StyleSheet, RefreshControl, Share,
 } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
 import { Illustration } from "@/components/Illustration";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   CalendarDays, MapPin, ChevronRight,
-  Plane, Hotel, Compass, Utensils,
+  Plane, Hotel, Compass, Utensils, Car,
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useMemo, useState, useCallback } from "react";
@@ -46,6 +47,7 @@ const EVENT_ICON: Record<string, typeof Plane> = {
   hotel: Hotel,
   dining: Utensils,
   activity: Compass,
+  transfer: Car,
 };
 
 const EVENT_COLOR_KEY: Record<string, string> = {
@@ -53,6 +55,7 @@ const EVENT_COLOR_KEY: Record<string, string> = {
   hotel: "hotel",
   dining: "dining",
   activity: "activity",
+  transfer: "transfer",
 };
 
 interface ScheduleEvent {
@@ -255,12 +258,23 @@ export default function ScheduleScreen() {
               {day.events.length > 0 ? (
                 <View style={styles.eventsList}>
                   {day.events.map(item => (
-                    <EventRow
+                    <ContextMenu
                       key={`${item.trip.id}-${item.event.id}`}
-                      item={item}
-                      C={C}
-                      onPress={() => router.push(`/trip/${item.trip.id}`)}
-                    />
+                      actions={[
+                        { title: "Open Trip", systemIcon: "arrow.right" },
+                        { title: "Share", systemIcon: "square.and.arrow.up" },
+                      ]}
+                      onPress={(e: any) => {
+                        if (e.nativeEvent.index === 0) router.push(`/trip/${item.trip.id}`);
+                        else if (e.nativeEvent.index === 1) Share.share({ message: `${item.event.title} — ${item.trip.name}` });
+                      }}
+                    >
+                      <EventRow
+                        item={item}
+                        C={C}
+                        onPress={() => router.push(`/trip/${item.trip.id}`)}
+                      />
+                    </ContextMenu>
                   ))}
                 </View>
               ) : (
