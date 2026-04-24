@@ -129,7 +129,7 @@ export default function DayDetailScreen() {
         <View style={styles.eventsSection}>
           {dayEvents.map((ev) => (
             <View key={ev.id}>
-              <EventCard ev={ev} C={C} />
+              <EventCard ev={ev} C={C} tripId={tripId} />
               {ev.documents && ev.documents.length > 0 && (
                 <DocsRow documents={ev.documents} C={C} />
               )}

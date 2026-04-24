@@ -957,8 +957,9 @@ function makeUpcomingCardStyles(C: ThemeColors) {
 }
 
 // ── Spotlight Event Card ───────────────────────────────────────────────────────
-function SpotlightEventCard({ ev }: { ev: TravelEvent }) {
+function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
   const { C } = useTheme();
+  const router = useRouter();
   const color = (C as Record<string, string>)[ev.type] ?? C.teal;
   const tags  = (EVENT_TAGS[ev.type] ?? []).slice(0, 3);
   const Icon  = ev.type === "hotel" ? Hotel
@@ -968,8 +969,12 @@ function SpotlightEventCard({ ev }: { ev: TravelEvent }) {
 
   const styles = useMemo(() => makeSpotlightCardStyles(C, color), [C, color]);
 
+  const handlePress = () => {
+    if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
+  };
+
   return (
-    <View style={styles.card}>
+    <Pressable onPress={handlePress} style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}>
       {/* Left image */}
       {ev.image ? (
         <CachedImage uri={ev.image} style={styles.img} />
@@ -1001,7 +1006,7 @@ function SpotlightEventCard({ ev }: { ev: TravelEvent }) {
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1299,7 +1304,7 @@ export default function HomeScreen() {
               <View style={styles.spotList}>
                 {spotlightPlaces.map((ev, i) => (
                   <FadeIn key={ev.id} delay={280 + i * 100}>
-                    <SpotlightEventCard ev={ev} />
+                    <SpotlightEventCard ev={ev} tripId={spotlightTrip.id} />
                   </FadeIn>
                 ))}
               </View>

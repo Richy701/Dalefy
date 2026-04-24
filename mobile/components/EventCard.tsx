@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
+import { useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import {
   Plane, Hotel, Compass, Utensils, Car,
@@ -17,7 +18,8 @@ function formatDate(d: string): string {
 }
 
 // ── Flight Card ──────────────────────────────────────────────────────────────
-function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
+function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+  const router = useRouter();
   const routeMatch = ev.title?.match(/^(.+?)\s*[→➜>]\s*(.+)$/);
   const from = routeMatch?.[1]?.trim() ?? ev.location ?? ev.title;
   const to = routeMatch?.[2]?.trim() ?? "";
@@ -34,8 +36,15 @@ function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
     ev.duration && { label: "Duration", value: ev.duration },
   ].filter(Boolean) as Array<{ label: string; value: string }>;
 
+  const handlePress = () => {
+    if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
+  };
+
   return (
-    <View style={[cs.card, { backgroundColor: C.card }]}>
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [cs.card, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
+    >
       {/* Header */}
       <View style={cs.header}>
         <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
@@ -105,14 +114,22 @@ function FlightCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
           )}
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
 // ── Hotel Card ───────────────────────────────────────────────────────────────
-function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
+function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+  const router = useRouter();
+  const handlePress = () => {
+    if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
+  };
+
   return (
-    <View style={[cs.card, { backgroundColor: C.card, overflow: "hidden" }]}>
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
+    >
       {ev.image && (
         <CachedImage uri={ev.image} style={cs.imageBanner} />
       )}
@@ -175,20 +192,28 @@ function HotelCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 // ── Activity / Dining Card ───────────────────────────────────────────────────
-function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
+function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
   const isDining = ev.type === "dining";
   const isTransfer = ev.type === "transfer";
   const color = isDining ? C.dining : isTransfer ? (C as any).transfer ?? C.activity : C.activity;
   const Icon = isTransfer ? Car : isDining ? Utensils : Compass;
   const label = isTransfer ? "Transfer" : isDining ? "Dining" : "Activity";
 
+  const router = useRouter();
+  const handlePress = () => {
+    if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
+  };
+
   return (
-    <View style={[cs.card, { backgroundColor: C.card, overflow: "hidden" }]}>
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
+    >
       {ev.image && (
         <CachedImage uri={ev.image} style={cs.imageBanner} />
       )}
@@ -243,7 +268,7 @@ function ActivityCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -348,8 +373,8 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
   );
 }
 
-export function EventCard({ ev, C }: { ev: TravelEvent; C: ThemeColors }) {
-  if (ev.type === "flight") return <FlightCard ev={ev} C={C} />;
-  if (ev.type === "hotel")  return <HotelCard  ev={ev} C={C} />;
-  return <ActivityCard ev={ev} C={C} />;
+export function EventCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+  if (ev.type === "flight") return <FlightCard ev={ev} C={C} tripId={tripId} />;
+  if (ev.type === "hotel")  return <HotelCard  ev={ev} C={C} tripId={tripId} />;
+  return <ActivityCard ev={ev} C={C} tripId={tripId} />;
 }
