@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import { Appearance } from "react-native";
+import * as SystemUI from "expo-system-ui";
 import { darkColors, lightColors, applyAccent, applyAccentHex, type ThemeColors } from "@/constants/theme";
 import { usePreferences, type ThemeMode } from "./PreferencesContext";
 import { useBrand } from "./BrandContext";
@@ -31,6 +32,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     Appearance.getColorScheme() === "light" ? "light" : "dark"
   );
 
+  // Sync native appearance on mount if user has a preference
+  useEffect(() => {
+    if (mode !== "system") {
+      Appearance.setColorScheme(mode);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
       setDeviceScheme(colorScheme === "light" ? "light" : "dark");
@@ -52,6 +60,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [isDark, prefs.accent, brand.accentColor]);
 
   const setMode = useCallback((m: ThemeMode) => {
+    Appearance.setColorScheme(m === "system" ? null : m);
+    const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
+    SystemUI.setBackgroundColorAsync(willBeDark ? "#131316" : "#ffffff");
     setPref("themeMode", m);
   }, [setPref]);
 

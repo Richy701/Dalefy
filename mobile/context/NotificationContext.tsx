@@ -10,6 +10,7 @@ interface NotificationContextType {
   addNotification: (n: Omit<Notification, "id" | "read">) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  removeNotification: (id: string) => void;
   clearAll: () => void;
 }
 
@@ -19,6 +20,7 @@ const NotificationContext = createContext<NotificationContextType>({
   addNotification: () => {},
   markRead: () => {},
   markAllRead: () => {},
+  removeNotification: () => {},
   clearAll: () => {},
 });
 
@@ -62,13 +64,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => {
+      const next = prev.filter(n => n.id !== id);
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const clearAll = useCallback(() => {
     persist([]);
   }, []);
 
   const value = useMemo(
-    () => ({ notifications, unreadCount, addNotification, markRead, markAllRead, clearAll }),
-    [notifications, unreadCount, addNotification, markRead, markAllRead, clearAll]
+    () => ({ notifications, unreadCount, addNotification, markRead, markAllRead, removeNotification, clearAll }),
+    [notifications, unreadCount, addNotification, markRead, markAllRead, removeNotification, clearAll]
   );
 
   return (

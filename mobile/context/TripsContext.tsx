@@ -43,21 +43,24 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const { data: remoteTrips, isSuccess, isError } = useQuery<Trip[]>({
     queryKey: ["trips"],
     queryFn: fetchTrips,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 2,
     retry: 2,
   });
 
-  // Persist remote data to AsyncStorage when it arrives
+  // Sync remote data → local cache when it arrives
   useEffect(() => {
-    if (remoteTrips && remoteTrips.length > 0) {
-      save(remoteTrips);
+    if (remoteTrips) {
+      setLocalCache(remoteTrips);
+      if (remoteTrips.length > 0) save(remoteTrips);
     }
   }, [remoteTrips]);
 
-  // Firestore realtime subscription — invalidates the query cache on changes
+  // Firestore realtime subscription — push fresh data straight into the query cache
   useEffect(() => {
-    const unsub = subscribeToTrips(() => {
-      qc.invalidateQueries({ queryKey: ["trips"] });
+    const unsub = subscribeToTrips((freshTrips) => {
+      qc.setQueryData<Trip[]>(["trips"], freshTrips);
+      setLocalCache(freshTrips);
+      if (freshTrips.length > 0) save(freshTrips);
     });
     return () => unsub();
   }, [qc]);
@@ -67,28 +70,34 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const ready = isSuccess || isError || localCache !== null;
 
   const addTrip = useCallback((trip: Trip) => {
-    qc.setQueryData<Trip[]>(["trips"], (prev = []) => {
+    const update = (prev: Trip[]) => {
       if (prev.some(t => t.id === trip.id)) return prev;
       const next = [trip, ...prev];
       save(next);
       return next;
-    });
+    };
+    qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
+    setLocalCache(prev => update(prev ?? []));
   }, [qc]);
 
   const deleteTrip = useCallback((id: string) => {
-    qc.setQueryData<Trip[]>(["trips"], (prev = []) => {
+    const update = (prev: Trip[]) => {
       const next = prev.filter(t => t.id !== id);
       save(next);
       return next;
-    });
+    };
+    qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
+    setLocalCache(prev => update(prev ?? []));
   }, [qc]);
 
   const updateTrip = useCallback((trip: Trip) => {
-    qc.setQueryData<Trip[]>(["trips"], (prev = []) => {
+    const update = (prev: Trip[]) => {
       const next = prev.map(t => t.id === trip.id ? trip : t);
       save(next);
       return next;
-    });
+    };
+    qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
+    setLocalCache(prev => update(prev ?? []));
     // Persist to Firestore
     upsertTripRemote(trip).catch(err =>
       console.warn("[TripsContext] updateTrip upsert failed:", err)
@@ -97,6 +106,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
 
   const clearTrips = useCallback(async () => {
     qc.setQueryData<Trip[]>(["trips"], []);
+    setLocalCache([]);
     await AsyncStorage.removeItem(CACHE_KEY);
   }, [qc]);
 

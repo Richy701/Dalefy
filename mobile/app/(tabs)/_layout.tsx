@@ -30,6 +30,11 @@ export default function TabLayout() {
         default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)" },
         selected: { color: C.teal },
       }}
+      sceneContainerStyle={{ backgroundColor: C.card }}
+      screenOptions={{
+        contentStyle: { backgroundColor: C.card },
+        headerShown: false,
+      }}
     >
       {TABS.map(({ name, label, sf, md, hidden }) => (
         <NativeTabs.Trigger key={name} name={name} hidden={hidden}>

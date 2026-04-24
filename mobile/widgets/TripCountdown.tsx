@@ -1,11 +1,11 @@
-import { Text, VStack, HStack, Spacer } from "@expo/ui/swift-ui";
+import { Text, VStack, HStack, Spacer, Image } from "@expo/ui/swift-ui";
 import {
   font,
   foregroundStyle,
   padding,
   frame,
-  cornerRadius,
   background,
+  shapes,
 } from "@expo/ui/swift-ui/modifiers";
 import { createWidget, type WidgetEnvironment } from "expo-widgets";
 
@@ -24,14 +24,25 @@ function TripCountdownWidget(
 
   const isDark = environment.colorScheme === "dark";
   const teal = "#0bd2b5";
+  const bg = isDark ? "#131316" : "#ffffff";
+  const cardBg = isDark ? "#1c1c1e" : "#f2f2f7";
+  const textPrimary = isDark ? "#ffffff" : "#000000";
+  const textSecondary = isDark ? "#8e8e93" : "#6e6e73";
   const isSmall = environment.widgetFamily === "systemSmall";
 
-  const daysLabel =
+  const daysText =
     props.daysLeft === 0
-      ? "TODAY"
+      ? "Today"
       : props.daysLeft === 1
-        ? "TOMORROW"
-        : `${props.daysLeft} DAYS`;
+        ? "Tomorrow"
+        : `${props.daysLeft}d`;
+
+  const statusLabel =
+    props.daysLeft === 0
+      ? "IN PROGRESS"
+      : props.daysLeft <= 7
+        ? "COMING UP"
+        : "UPCOMING";
 
   if (isSmall) {
     return (
@@ -39,38 +50,50 @@ function TripCountdownWidget(
         modifiers={[
           padding({ all: 14 }),
           frame({ maxWidth: Infinity, maxHeight: Infinity }),
+          background(bg),
         ]}
       >
-        <Text
-          modifiers={[
-            font({ size: 10, weight: "bold" }),
-            foregroundStyle(teal),
-          ]}
-        >
-          NEXT TRIP
-        </Text>
+        {/* Status label */}
+        <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+          <Image systemName="airplane" size={10} color={teal} />
+          <Text
+            modifiers={[
+              font({ size: 9, weight: "bold" }),
+              foregroundStyle(teal),
+            ]}
+          >
+            {statusLabel}
+          </Text>
+          <Spacer />
+        </HStack>
+
         <Spacer />
+
+        {/* Big number */}
         <Text
           modifiers={[
-            font({ size: 36, weight: "black", design: "rounded" }),
-            foregroundStyle(isDark ? "#ffffff" : "#0d0f14"),
+            font({ size: 42, weight: "black", design: "rounded" }),
+            foregroundStyle(props.daysLeft === 0 ? teal : textPrimary),
           ]}
         >
           {String(props.daysLeft)}
         </Text>
         <Text
           modifiers={[
-            font({ size: 10, weight: "bold" }),
-            foregroundStyle(isDark ? "#9a9a9a" : "#4b5263"),
+            font({ size: 10, weight: "semibold" }),
+            foregroundStyle(textSecondary),
           ]}
         >
-          {daysLabel}
+          {props.daysLeft === 0 ? "days" : props.daysLeft === 1 ? "day left" : "days left"}
         </Text>
+
         <Spacer />
+
+        {/* Destination */}
         <Text
           modifiers={[
-            font({ size: 11, weight: "semibold" }),
-            foregroundStyle(isDark ? "#EDEDEF" : "#0d0f14"),
+            font({ size: 12, weight: "semibold" }),
+            foregroundStyle(textPrimary),
           ]}
         >
           {props.destination || props.tripName}
@@ -79,68 +102,101 @@ function TripCountdownWidget(
     );
   }
 
-  // systemMedium
+  // ── systemMedium ──
   return (
     <HStack
       modifiers={[
-        padding({ all: 14 }),
+        padding({ all: 16 }),
         frame({ maxWidth: Infinity, maxHeight: Infinity }),
+        background(bg),
       ]}
     >
-      <VStack>
+      {/* Left: countdown */}
+      <VStack
+        modifiers={[
+          frame({ width: 80 }),
+        ]}
+      >
+        <Image systemName="airplane" size={12} color={teal} />
+        <Spacer />
         <Text
           modifiers={[
-            font({ size: 10, weight: "bold" }),
-            foregroundStyle(teal),
-          ]}
-        >
-          COUNTDOWN
-        </Text>
-        <Text
-          modifiers={[
-            font({ size: 44, weight: "black", design: "rounded" }),
-            foregroundStyle(isDark ? "#ffffff" : "#0d0f14"),
+            font({ size: 48, weight: "black", design: "rounded" }),
+            foregroundStyle(props.daysLeft === 0 ? teal : textPrimary),
           ]}
         >
           {String(props.daysLeft)}
         </Text>
         <Text
           modifiers={[
-            font({ size: 10, weight: "bold" }),
-            foregroundStyle(isDark ? "#9a9a9a" : "#4b5263"),
+            font({ size: 11, weight: "semibold" }),
+            foregroundStyle(textSecondary),
           ]}
         >
-          {daysLabel}
+          {props.daysLeft === 0 ? "days" : props.daysLeft === 1 ? "day left" : "days left"}
         </Text>
       </VStack>
+
       <Spacer />
+
+      {/* Right: trip info */}
       <VStack>
+        {/* Status pill */}
+        <HStack
+          modifiers={[
+            padding({ horizontal: 8, vertical: 4 }),
+            background(isDark ? "#0bd2b518" : "#0bd2b515", shapes.capsule()),
+          ]}
+        >
+          <Text
+            modifiers={[
+              font({ size: 9, weight: "bold" }),
+              foregroundStyle(teal),
+            ]}
+          >
+            {statusLabel}
+          </Text>
+        </HStack>
+
         <Spacer />
+
+        {/* Trip name */}
         <Text
           modifiers={[
-            font({ size: 14, weight: "bold" }),
-            foregroundStyle(isDark ? "#EDEDEF" : "#0d0f14"),
+            font({ size: 15, weight: "bold" }),
+            foregroundStyle(textPrimary),
           ]}
         >
           {props.tripName}
         </Text>
-        <Text
-          modifiers={[
-            font({ size: 11, weight: "medium" }),
-            foregroundStyle(teal),
-          ]}
-        >
-          {props.destination}
-        </Text>
-        <Text
-          modifiers={[
-            font({ size: 10, weight: "medium" }),
-            foregroundStyle(isDark ? "#8a8a8a" : "#606878"),
-          ]}
-        >
-          {props.startDate}
-        </Text>
-        <Spacer />
+
+        {/* Destination */}
+        {props.destination ? (
+          <HStack>
+            <Image systemName="mappin" size={10} color={teal} />
+            <Text
+              modifiers={[
+                font({ size: 12, weight: "medium" }),
+                foregroundStyle(teal),
+              ]}
+            >
+              {props.destination}
+            </Text>
+          </HStack>
+        ) : null}
+
+        {/* Date */}
+        <HStack>
+          <Image systemName="calendar" size={10} color={textSecondary} />
+          <Text
+            modifiers={[
+              font({ size: 11, weight: "medium" }),
+              foregroundStyle(textSecondary),
+            ]}
+          >
+            {props.startDate}
+          </Text>
+        </HStack>
       </VStack>
     </HStack>
   );

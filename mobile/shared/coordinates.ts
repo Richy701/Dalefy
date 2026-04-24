@@ -101,6 +101,29 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "Cappadocia": [38.6431, 34.8289],
   "Pamukkale": [37.9204, 29.1187],
 
+  // South Korea
+  "ICN": [37.4602, 126.4407],
+  "GMP": [37.5585, 126.7906],
+  "Seoul": [37.5665, 126.9780],
+  "Seoul, South Korea": [37.5665, 126.9780],
+  "Incheon": [37.4563, 126.7052],
+  "Gangnam, Seoul": [37.4979, 127.0276],
+  "Myeongdong, Seoul": [37.5636, 126.9869],
+  "Bukchon, Seoul": [37.5826, 126.9831],
+  "Itaewon, Seoul": [37.5345, 126.9946],
+  "Hongdae, Seoul": [37.5563, 126.9237],
+  "Busan": [35.1796, 129.0756],
+  "Jeju": [33.4996, 126.5312],
+
+  // Japan
+  "NRT": [35.7647, 140.3864],
+  "HND": [35.5494, 139.7798],
+  "KIX": [34.4320, 135.2304],
+  "Tokyo": [35.6762, 139.6503],
+  "Tokyo, Japan": [35.6762, 139.6503],
+  "Osaka": [34.6937, 135.5023],
+  "Kyoto": [35.0116, 135.7681],
+
   // New York
   "Meatpacking District, NYC": [40.7397, -74.0077],
   "Chelsea, Manhattan": [40.7465, -74.0014],

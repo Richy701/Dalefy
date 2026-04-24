@@ -1,22 +1,21 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, Platform, LayoutAnimation,
+  StyleSheet, Platform, LayoutAnimation, Share,
 } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, ChevronDown } from "lucide-react-native";
+import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { ChevronDown } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function InfoScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trips } = useTrips();
   const router = useRouter();
-  const { C } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -50,50 +49,62 @@ export default function InfoScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable
-            style={({ pressed }) => [styles.backCircle, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={safeBack}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <ArrowLeft size={15} color={C.textPrimary} strokeWidth={2} />
-          </Pressable>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>{trip.name}</Text>
-          </View>
-        </View>
+      <Stack.Screen options={{
+        headerShown: true,
+        title: "Information",
+        headerBackTitle: " ",
+        headerBackButtonDisplayMode: "minimal",
+        headerTransparent: true,
+        headerBlurEffect: isDark ? "dark" : "light",
+        headerTintColor: C.teal,
+        headerTitleStyle: { color: C.teal, fontWeight: "700" },
+        headerShadowVisible: false,
+      }} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
 
         {/* Accordion sections */}
         <View style={styles.content}>
           {infoItems.map((item, idx) => {
             const isOpen = expandedId === item.id;
             return (
-              <View key={item.id} style={[styles.section, idx === 0 && styles.sectionFirst]}>
-                <Pressable
-                  onPress={() => toggle(item.id)}
-                  style={({ pressed }) => [styles.sectionHeader, { opacity: pressed ? 0.7 : 1 }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.title || "Untitled"}
-                  accessibilityState={{ expanded: isOpen }}
-                  accessibilityHint={isOpen ? "Double tap to collapse" : "Double tap to expand"}
-                >
-                  <Text style={[styles.sectionTitle, isOpen && { color: C.teal }]}>
-                    {item.title || "Untitled"}
-                  </Text>
-                  <View style={[styles.chevronWrap, isOpen && styles.chevronOpen]}>
-                    <ChevronDown size={16} color={isOpen ? C.teal : C.textTertiary} strokeWidth={2} />
-                  </View>
-                </Pressable>
+              <ContextMenu
+                key={item.id}
+                actions={[
+                  { title: "Share", systemIcon: "square.and.arrow.up" },
+                  { title: "Copy Text", systemIcon: "doc.on.doc" },
+                ]}
+                onPress={(e: any) => {
+                  const text = `${item.title}\n\n${item.body ?? ""}`;
+                  if (e.nativeEvent.index === 0) Share.share({ message: text });
+                  else if (e.nativeEvent.index === 1) {
+                    import("expo-clipboard").then(Clipboard => Clipboard.setStringAsync(text)).catch(() => {});
+                  }
+                }}
+              >
+                <View style={[styles.section, idx === 0 && styles.sectionFirst]}>
+                  <Pressable
+                    onPress={() => toggle(item.id)}
+                    style={({ pressed }) => [styles.sectionHeader, { opacity: pressed ? 0.7 : 1 }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.title || "Untitled"}
+                    accessibilityState={{ expanded: isOpen }}
+                    accessibilityHint={isOpen ? "Double tap to collapse" : "Double tap to expand"}
+                  >
+                    <Text style={[styles.sectionTitle, isOpen && { color: C.teal }]}>
+                      {item.title || "Untitled"}
+                    </Text>
+                    <View style={[styles.chevronWrap, isOpen && styles.chevronOpen]}>
+                      <ChevronDown size={16} color={isOpen ? C.teal : C.textTertiary} strokeWidth={2} />
+                    </View>
+                  </Pressable>
 
-                {isOpen && item.body ? (
-                  <View style={styles.sectionBody}>
-                    <Text style={styles.bodyText}>{item.body}</Text>
-                  </View>
-                ) : null}
-              </View>
+                  {isOpen && item.body ? (
+                    <View style={styles.sectionBody}>
+                      <Text style={styles.bodyText} selectable>{item.body}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </ContextMenu>
             );
           })}
         </View>
@@ -110,29 +121,6 @@ function makeStyles(C: ThemeColors) {
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
     backBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
-
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: S.sm,
-      paddingHorizontal: S.md,
-      paddingBottom: S.md,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-    },
-    backCircle: {
-      width: 44, height: 44, borderRadius: R.full,
-      backgroundColor: C.elevated,
-      alignItems: "center", justifyContent: "center",
-    },
-    headerText: { flex: 1 },
-    headerTitle: {
-      fontSize: T.sm,
-      fontWeight: T.bold,
-      color: C.textTertiary,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
 
     content: {
       marginTop: S.sm,

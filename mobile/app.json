@@ -6,29 +6,29 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#09090b",
     "plugins": [
-      ["expo-system-ui", { "backgroundColor": "#09090b" }],
       "expo-quick-actions"
     ],
     "scheme": "dafadventures",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#09090b"
+      "backgroundColor": "#131316"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dafadventures.app",
-      "backgroundColor": "#09090b"
+      "infoPlist": {
+        "NSSupportsLiveActivities": true
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#09090b"
+        "backgroundColor": "#131316"
       },
       "package": "com.dafadventures.app",
-      "backgroundColor": "#09090b",
+      "backgroundColor": "#131316",
       "navigationBarColor": "#09090b",
       "navigationBarStyle": "light-content",
       "statusBarColor": "#00000000",

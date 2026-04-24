@@ -1,18 +1,17 @@
 import {
   View, Text, Pressable, Image,
-  StyleSheet, Platform, Linking
+  StyleSheet, Platform, Linking, Share,
 } from "react-native";
+import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter, Link } from "expo-router";
+import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, Map,
-  FileText,
+  ChevronLeft, Compass, MapPin, Users, Moon, Map,
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useCompliance } from "@/context/ComplianceContext";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
 import { Logo } from "@/components/Logo";
@@ -65,7 +64,7 @@ export default function TripScreen() {
   const router = useRouter();
   const { C, isDark } = useTheme();
   const { brand } = useBrand();
-  const { pendingCount } = useCompliance();
+
 
   const insets = useSafeAreaInsets();
   const safeBack = useCallback(() => {
@@ -205,6 +204,15 @@ export default function TripScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
+      <Stack.Screen options={{
+        headerShown: true,
+        headerTransparent: true,
+        title: "",
+        headerBackTitle: " ",
+        headerBackButtonDisplayMode: "minimal",
+        headerTintColor: C.teal,
+        headerShadowVisible: false,
+      }} />
 
       {/* ── Sticky compact header — fades in as hero collapses ── */}
       <Animated.View
@@ -226,14 +234,7 @@ export default function TripScreen() {
           }]} />
         )}
         <View style={styles.stickyInner}>
-          <Pressable
-            style={({ pressed }) => [styles.stickyBackBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={safeBack}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <ArrowLeft size={15} color={C.textPrimary} strokeWidth={2} />
-          </Pressable>
+          <View style={{ width: 44 }} />
           <Text style={[styles.stickyTitle, { color: C.textPrimary }]} numberOfLines={1}>
             {trip.name}
           </Text>
@@ -266,25 +267,6 @@ export default function TripScreen() {
             style={StyleSheet.absoluteFillObject}
           />
 
-          {/* Top row: back + event/days count */}
-          <View style={[styles.heroTopRow, { top: insets.top + 8 }]}>
-            <Animated.View style={backBtnStyle}>
-              <Pressable
-                style={({ pressed }) => [styles.backCircle, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={safeBack}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <ArrowLeft size={15} color="#fff" strokeWidth={2} />
-              </Pressable>
-            </Animated.View>
-            <View style={{ flex: 1 }} />
-            <View style={styles.countPill}>
-              <Text style={styles.countPillText}>{trip.events.length} events</Text>
-              <Text style={styles.countPillDot}>·</Text>
-              <Text style={styles.countPillText}>{Object.keys(grouped).length} days</Text>
-            </View>
-          </View>
 
           {/* Bottom: eyebrow + title + frosted glass chips — fades on scroll */}
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
@@ -303,12 +285,12 @@ export default function TripScreen() {
                 const parsedPax = parseInt(trip.paxCount || "", 10);
                 let label: string | null = null;
                 if (!isNaN(parsedPax) && parsedPax > 0) {
-                  label = `${parsedPax} ATTENDEES`;
+                  label = `${parsedPax} attendees`;
                 } else if (trip.attendees) {
                   const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
                   const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
                   const total = listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
-                  label = total > 0 ? `${total} ATTENDEES` : trip.attendees;
+                  label = total > 0 ? `${total} attendees` : trip.attendees;
                 }
                 return label ? (
                   <View style={styles.chip}>
@@ -347,29 +329,19 @@ export default function TripScreen() {
           />
         )}
 
-        {/* ── Compliance badge ── */}
-        {pendingCount > 0 && (
-          <Pressable
-            style={({ pressed }) => [styles.complianceBadge, { opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => router.push("/(tabs)/profile")}
-          >
-            <View style={[styles.complianceIcon, { backgroundColor: C.amberDim }]}>
-              <FileText size={14} color={C.amber} strokeWidth={1.5} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.complianceTitle}>Documents pending</Text>
-              <Text style={styles.complianceSub}>
-                {pendingCount} doc{pendingCount === 1 ? "" : "s"} require{pendingCount === 1 ? "s" : ""} your signature
-              </Text>
-            </View>
-            <View style={[styles.complianceCount, { backgroundColor: C.amberDim }]}>
-              <Text style={[styles.complianceCountText, { color: C.amber }]}>{pendingCount}</Text>
-            </View>
-          </Pressable>
-        )}
 
         {/* ── Map (only when native module is linked) ── */}
         {mapCenter && MapboxGL && (
+          <ContextMenu
+            actions={[
+              { title: "Open in Maps", systemIcon: "map" },
+              { title: "Copy Address", systemIcon: "doc.on.doc" },
+            ]}
+            onPress={(e: any) => {
+              if (e.nativeEvent.index === 0) openInMaps();
+              else if (e.nativeEvent.index === 1) Share.share({ message: trip.destination || trip.name });
+            }}
+          >
           <Pressable style={styles.mapSection} onPress={openInMaps}>
             <View style={styles.sectionHeader}>
               <Map size={13} color={C.teal} strokeWidth={1.8} />
@@ -423,6 +395,7 @@ export default function TripScreen() {
               </MapboxGL.MapView>
             </View>
           </Pressable>
+          </ContextMenu>
         )}
 
 
@@ -438,17 +411,31 @@ export default function TripScreen() {
               const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
               const todayStr = new Date().toISOString().split("T")[0];
               return sortedDays.map(([date, events], dayIdx) => (
-                <DaySummaryRow
+                <ContextMenu
                   key={date}
-                  dayIndex={dayIdx + 1}
-                  date={date}
-                  events={events}
-                  C={C}
-                  isToday={date === todayStr}
-                  isFirst={dayIdx === 0}
-                  isLast={dayIdx === sortedDays.length - 1}
-                  onPress={() => router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } })}
-                />
+                  actions={[
+                    { title: "View Day", systemIcon: "calendar" },
+                    { title: "Share Day", systemIcon: "square.and.arrow.up" },
+                  ]}
+                  onPress={(e: any) => {
+                    if (e.nativeEvent.index === 0) router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } });
+                    else if (e.nativeEvent.index === 1) {
+                      const dayLabel = new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+                      Share.share({ message: `${trip.name} — ${dayLabel}: ${events.map(e => e.title).join(", ")}` });
+                    }
+                  }}
+                >
+                  <DaySummaryRow
+                    dayIndex={dayIdx + 1}
+                    date={date}
+                    events={events}
+                    C={C}
+                    isToday={date === todayStr}
+                    isFirst={dayIdx === 0}
+                    isLast={dayIdx === sortedDays.length - 1}
+                    onPress={() => router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } })}
+                  />
+                </ContextMenu>
               ));
             })()}
           </View>
@@ -461,7 +448,7 @@ export default function TripScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: { paddingBottom: 40 },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
@@ -488,8 +475,8 @@ function makeStyles(C: ThemeColors) {
     // Hero — parallax
     hero: { height: HERO_H, position: "relative", overflow: "hidden" },
     backCircle: {
-      width: 36, height: 36, borderRadius: R.full,
-      backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center",
+      width: 44, height: 44,
+      alignItems: "center", justifyContent: "center",
     },
 
     heroTopRow: {
@@ -524,14 +511,13 @@ function makeStyles(C: ThemeColors) {
     // Frosted glass chips — matches web's bg-white/10 backdrop-blur chips
     chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     chip: {
-      flexDirection: "row", alignItems: "center", gap: 5,
-      backgroundColor: "rgba(255,255,255,0.12)",
+      flexDirection: "row", alignItems: "center", gap: 4,
+      backgroundColor: "rgba(255,255,255,0.10)",
       borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.12)",
     },
     chipText: {
-      fontSize: 10, fontWeight: T.bold,
-      color: "rgba(255,255,255,0.9)", letterSpacing: 0.5, textTransform: "uppercase",
+      fontSize: 11, fontWeight: "500",
+      color: "rgba(255,255,255,0.85)", letterSpacing: 0.1,
     },
 
     // Map

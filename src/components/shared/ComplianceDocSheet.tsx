@@ -41,7 +41,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[400px] sm:w-[480px] p-0 bg-white dark:bg-[#080808] border-l border-slate-200 dark:border-[#1a1a1a] shadow-2xl" showCloseButton>
+      <SheetContent side="right" className="w-[calc(100vw-2rem)] max-w-[400px] sm:max-w-[480px] sm:w-[480px] p-0 bg-white dark:bg-[#080808] border-l border-slate-200 dark:border-[#1a1a1a] shadow-2xl" showCloseButton>
         <div className="flex flex-col h-full">
           {/* Refined Header */}
           <div className="p-10 pb-8 bg-slate-50/50 dark:bg-[#0c0c0c] border-b border-slate-200 dark:border-[#1a1a1a]">

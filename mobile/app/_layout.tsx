@@ -1,15 +1,17 @@
 import React, { useEffect, useCallback } from "react";
-import { Platform, View } from "react-native";
+import { Appearance, Platform, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
 import * as NavigationBar from "expo-navigation-bar";
 
-// Set native root view to dark once — prevents white flash during tab transitions
-SystemUI.setBackgroundColorAsync("#09090b");
+// Set native root background immediately based on system appearance — before React mounts
+const systemIsDark = Appearance.getColorScheme() === "dark";
+SystemUI.setBackgroundColorAsync(systemIsDark ? "#131316" : "#ffffff");
 
 // Android: transparent nav bar so content extends edge-to-edge
 if (Platform.OS === "android") {
@@ -30,6 +32,8 @@ import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
+import { useFlightAlerts } from "@/hooks/useFlightAlerts";
+import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
@@ -83,6 +87,11 @@ function AppStack() {
     registerForPushNotifications();
   }, []);
 
+  // Sync native root background with theme (status bar area)
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(isDark ? "#131316" : "#ffffff");
+  }, [isDark]);
+
   // Android: sync nav bar color with theme
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -103,6 +112,12 @@ function AppStack() {
 
   // Keep the iOS home screen widget in sync with trip data
   useWidgetSync();
+
+  // Watch flight events for status changes (gate, delay, boarding, landed, cancelled)
+  useFlightAlerts();
+
+  // Start/update/end iOS Live Activities for today's flights
+  useFlightLiveActivity();
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
@@ -149,18 +164,20 @@ function AppStack() {
   }, [ready]);
 
   if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+    return <View style={{ flex: 1, backgroundColor: C.card }} />;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1, backgroundColor: C.card }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <ErrorBoundary>
         <Stack
           screenOptions={{
             headerShown: false,
+            headerBackTitle: " ",
+            headerBackButtonDisplayMode: "minimal",
             animation: "slide_from_right",
-            contentStyle: { backgroundColor: C.bg },
+            contentStyle: { backgroundColor: C.card },
           }}
         />
       </ErrorBoundary>
@@ -170,6 +187,7 @@ function AppStack() {
 
 export default function RootLayout() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <PreferencesProvider>
@@ -189,5 +207,6 @@ export default function RootLayout() {
         </PreferencesProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

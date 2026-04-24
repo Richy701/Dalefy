@@ -2,16 +2,15 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  ArrowLeft, Plane, Hotel, Compass, Utensils, Calendar,
+  Plane, Hotel, Compass, Utensils, Calendar,
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
 import { EventCard, DocsRow } from "@/components/EventCard";
 import { useMemo, useCallback } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -34,8 +33,7 @@ export default function DayDetailScreen() {
   const { tripId, date } = useLocalSearchParams<{ tripId: string; date: string }>();
   const { trips } = useTrips();
   const router = useRouter();
-  const { C } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -76,21 +74,19 @@ export default function DayDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.7 : 1 }]}
-          onPress={safeBack}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <ArrowLeft size={18} color={C.textPrimary} strokeWidth={2} />
-        </Pressable>
-        <View style={{ flex: 1 }} />
-        <View style={styles.backBtn} />
-      </View>
+      <Stack.Screen options={{
+        headerShown: true,
+        title: `Day ${dayIndex}`,
+        headerBackTitle: " ",
+        headerBackButtonDisplayMode: "minimal",
+        headerTransparent: true,
+        headerBlurEffect: isDark ? "dark" : "light",
+        headerTintColor: C.teal,
+        headerTitleStyle: { color: C.teal, fontWeight: "700" },
+        headerShadowVisible: false,
+      }} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
         {/* Day title section */}
         <View style={styles.titleSection}>
           <Text style={styles.dayLabel}>DAY {dayIndex}</Text>
@@ -153,17 +149,6 @@ function makeStyles(C: ThemeColors) {
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
     errorBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
 
-    // Header
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: S.sm,
-      paddingBottom: S.xs,
-    },
-    backBtn: {
-      width: 44, height: 44, borderRadius: 22,
-      alignItems: "center", justifyContent: "center",
-    },
 
     // Title section
     titleSection: {

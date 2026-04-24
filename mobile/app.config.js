@@ -18,6 +18,11 @@ module.exports = ({ config }) => ({
             supportedFamilies: ["systemSmall", "systemMedium"],
           },
         ],
+        liveActivities: [
+          {
+            name: "FlightTracker",
+          },
+        ],
       },
     ],
     [

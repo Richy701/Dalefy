@@ -1,7 +1,6 @@
-import { View } from "react-native";
+import React from "react";
+import ContextMenuView from "react-native-context-menu-view";
 
-// Always use passthrough — native context menus only work in dev builds, not Expo Go.
-// The real module will be enabled once we have a native build.
 export default function ContextMenu(props: any) {
-  return <View>{props.children}</View>;
+  return <ContextMenuView {...props} />;
 }

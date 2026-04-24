@@ -3,19 +3,19 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useCompliance } from "@/context/ComplianceContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { COMPLIANCE_DOC_CONTENT } from "@/shared/compliance-docs";
 import {
-  ArrowLeft, FileCheck, FileClock, FileX, ShieldCheck, Info,
+  FileCheck, FileClock, FileX, ShieldCheck, Info,
 } from "lucide-react-native";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 
 export default function DocumentScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const { docs, signDoc } = useCompliance();
   const router = useRouter();
   const haptic = useHaptic();
@@ -52,29 +52,30 @@ export default function DocumentScreen() {
   const statusBg = isSigned ? C.greenDim : doc.status === "Expired" ? C.redDim : C.amberDim;
 
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
-      {/* Header */}
-      <View style={s.header}>
-        <Pressable
-          onPress={() => { haptic.selection(); router.back(); }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={s.backBtn}
-        >
-          <ArrowLeft size={20} color={C.textPrimary} strokeWidth={1.5} />
-        </Pressable>
-        <View style={s.headerCenter}>
-          <Text style={s.headerTitle} numberOfLines={1}>{doc.name}</Text>
-        </View>
-        <View style={[s.statusPill, { backgroundColor: statusBg }]}>
-          <StatusIcon size={12} color={statusColor} strokeWidth={2} />
-          <Text style={[s.statusText, { color: statusColor }]}>{doc.status}</Text>
-        </View>
-      </View>
+    <SafeAreaView style={s.safe} edges={[]}>
+      <Stack.Screen options={{
+        headerShown: true,
+        title: doc.name,
+        headerBackTitle: " ",
+        headerBackButtonDisplayMode: "minimal",
+        headerTransparent: true,
+        headerBlurEffect: isDark ? "dark" : "light",
+        headerTintColor: C.teal,
+        headerTitleStyle: { color: C.teal, fontWeight: "700", fontSize: 16 },
+        headerShadowVisible: false,
+        headerRight: () => (
+          <View style={[s.statusPill, { backgroundColor: statusBg }]}>
+            <StatusIcon size={12} color={statusColor} strokeWidth={2} />
+            <Text style={[s.statusText, { color: statusColor }]}>{doc.status}</Text>
+          </View>
+        ),
+      }} />
 
       <ScrollView
         style={s.body}
         contentContainerStyle={s.bodyContent}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         {/* Title block */}
         <Text style={s.docTitle}>{content.title}</Text>
@@ -161,30 +162,6 @@ function makeStyles(C: ThemeColors) {
     safe: { flex: 1, backgroundColor: C.bg },
     emptyText: { color: C.textTertiary, textAlign: "center", marginTop: 60, fontSize: T.base },
 
-    // Header
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: S.md,
-      paddingVertical: S.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
-      gap: S.sm,
-    },
-    backBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: R.full,
-      backgroundColor: C.elevated,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerCenter: { flex: 1 },
-    headerTitle: {
-      fontSize: T.md,
-      fontWeight: T.bold,
-      color: C.textPrimary,
-    },
     statusPill: {
       flexDirection: "row",
       alignItems: "center",

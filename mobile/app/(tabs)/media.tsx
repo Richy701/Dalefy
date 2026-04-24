@@ -2,15 +2,16 @@ import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
   View, Text, ScrollView, Image, StyleSheet, Dimensions,
-  Pressable, Alert, Platform, RefreshControl, Modal, Share,
+  Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Images, Play, Plus, Upload, Camera, X, Trash2,
   Image as LucideImage, Film, MapPin, ChevronRight, Aperture,
 } from "lucide-react-native";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
@@ -19,8 +20,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
-import { Logo } from "@/components/Logo";
-import { useBrand } from "@/context/BrandContext";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import * as ImagePicker from "expo-image-picker";
 import { File as ExpoFile } from "expo-file-system/next";
 import type { TripMedia, Trip } from "@/shared/types";
@@ -385,7 +385,6 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
 
 export default function MediaScreen() {
   const { C, isDark } = useTheme();
-  const { brand } = useBrand();
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -448,7 +447,15 @@ export default function MediaScreen() {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPickerOpen(true);
+    if (Platform.OS === "ios") {
+      const options = [...trips.map(t => t.destination || t.name), "Cancel"];
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: options.length - 1, title: "Upload to Trip" },
+        (idx) => { if (idx < trips.length) handleUploadToTrip(trips[idx].id); },
+      );
+    } else {
+      setPickerOpen(true);
+    }
   }, [trips, handleUploadToTrip]);
 
   const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
@@ -469,7 +476,13 @@ export default function MediaScreen() {
   }, [trips, updateTrip, toast]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={[]}>
+    <View style={{ flex: 1, backgroundColor: C.card }}>
+      {/* ── Sticky blur header ── */}
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
+        <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        <Text style={styles.screenTitle}>Gallery</Text>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -490,14 +503,7 @@ export default function MediaScreen() {
 
             {/* Top row */}
             <View style={styles.heroTopRow}>
-              <View style={styles.brandRow}>
-                {brand.logoUrl ? (
-                  <Image source={{ uri: brand.logoUrl }} style={{ width: 22, height: 22, borderRadius: 5 }} />
-                ) : (
-                  <Logo size={18} color={C.teal} />
-                )}
-                <Text style={styles.brandText}>{brand.name}</Text>
-              </View>
+              <View />
               <Pressable
                 style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
@@ -523,27 +529,7 @@ export default function MediaScreen() {
               </View>
             </View>
           </View>
-        ) : (
-          <View style={[styles.emptyHeader, { paddingTop: insets.top + S.xs }]}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.brandRow}>
-                {brand.logoUrl ? (
-                  <Image source={{ uri: brand.logoUrl }} style={{ width: 22, height: 22, borderRadius: 5 }} />
-                ) : (
-                  <Logo size={18} color={C.teal} />
-                )}
-                <Text style={[styles.brandText, { color: C.textPrimary }]}>{brand.name}</Text>
-              </View>
-              <Pressable
-                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-              >
-                <Aperture size={15} color="#000" strokeWidth={2.5} />
-                <Text style={styles.uploadFabText}>Upload</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
+        ) : null}
 
         {/* ── Filter Chips ── */}
         {(tripsWithMedia.length > 0) && (
@@ -575,42 +561,35 @@ export default function MediaScreen() {
             )}
 
             {/* Media type toggle */}
-            <View style={styles.typeToggle}>
-              {([
-                { key: "all" as const, label: "All", Icon: Images },
-                { key: "image" as const, label: "Photos", Icon: LucideImage },
-                { key: "video" as const, label: "Videos", Icon: Film },
-              ]).map(({ key, label, Icon }) => {
-                const active = mediaFilter === key;
-                return (
-                  <Pressable
-                    key={key}
-                    style={[styles.typeBtn, active && styles.typeBtnActive]}
-                    onPress={() => { Haptics.selectionAsync(); setMediaFilter(key); }}
-                  >
-                    <Icon size={13} color={active ? "#000" : C.textTertiary} strokeWidth={2} />
-                    <Text style={[styles.typeBtnText, active && styles.typeBtnTextActive]}>{label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <SegmentedControl
+              values={["All", "Photos", "Videos"]}
+              selectedIndex={mediaFilter === "all" ? 0 : mediaFilter === "image" ? 1 : 2}
+              onChange={(e) => {
+                const idx = e.nativeEvent.selectedSegmentIndex;
+                const val = (["all", "image", "video"] as const)[idx];
+                Haptics.selectionAsync();
+                setMediaFilter(val);
+              }}
+              style={{ marginHorizontal: S.md }}
+              appearance={isDark ? "dark" : "light"}
+            />
           </View>
         )}
 
         {/* ── Content ── */}
         {tripsWithMedia.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Illustration name="wavy" width={240} height={150} />
-            <Text style={styles.emptyTitle}>Your memories begin here</Text>
+            <Illustration name="wavy" width={220} height={140} />
+            <Text style={styles.emptyTitle}>Your memories{"\n"}begin here</Text>
             <Text style={styles.emptyText}>
-              Capture photos and videos from every trip — they'll land here, organised by destination.
+              Photos and videos from your trips will appear here, organised by destination.
             </Text>
             <Pressable
-              style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
-              onPress={handleUploadNew}
+              style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1, marginTop: S.sm }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
             >
-              <Upload size={15} color={C.teal} strokeWidth={2} />
-              <Text style={styles.emptyBtnText}>Upload your first memory</Text>
+              <Aperture size={15} color="#000" strokeWidth={2.5} />
+              <Text style={styles.uploadFabText}>Upload</Text>
             </Pressable>
           </View>
         ) : (
@@ -702,7 +681,7 @@ export default function MediaScreen() {
         onDelete={() => viewerItem && handleDelete(viewerItem)}
         C={C}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -711,7 +690,16 @@ export default function MediaScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: { paddingBottom: 100, flexGrow: 1 },
+    stickyHeader: {
+      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+      overflow: "hidden",
+    },
+    screenTitle: {
+      fontSize: 22, fontWeight: "700",
+      color: C.teal, paddingHorizontal: S.md,
+      paddingVertical: 10,
+    },
 
     // ── Hero Banner ──
     heroBanner: {
@@ -801,24 +789,24 @@ function makeStyles(C: ThemeColors) {
 
     // ── Empty ──
     emptyWrap: {
-      alignItems: "center", paddingTop: 60, paddingBottom: S.xl,
+      flex: 1, alignItems: "center", justifyContent: "center",
       paddingHorizontal: S.xl, gap: S.sm,
     },
     emptyTitle: {
-      fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: -0.3, textAlign: "center",
+      fontSize: T["2xl"], fontWeight: T.black, color: C.textPrimary,
+      letterSpacing: -0.5, textAlign: "center",
     },
     emptyText: {
-      fontSize: T.base, color: C.textTertiary,
-      textAlign: "center", lineHeight: 24, maxWidth: 280,
+      fontSize: T.sm, color: C.textTertiary,
+      textAlign: "center", lineHeight: 22, maxWidth: 260,
     },
     emptyBtn: {
       flexDirection: "row", alignItems: "center", gap: 8,
-      marginTop: S.sm, borderRadius: R.full,
-      paddingHorizontal: S.md, paddingVertical: 10,
-      backgroundColor: C.tealDim,
+      marginTop: S.xs, borderRadius: R.full,
+      paddingHorizontal: S.lg, paddingVertical: 14,
+      backgroundColor: C.teal,
     },
-    emptyBtnText: { fontSize: T.base, fontWeight: T.semibold, color: C.teal },
+    emptyBtnText: { fontSize: T.base, fontWeight: T.bold, color: "#000" },
 
     // ── Gallery ──
     galleryWrap: {

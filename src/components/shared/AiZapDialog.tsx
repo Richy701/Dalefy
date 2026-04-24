@@ -47,7 +47,7 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) setResults({}); onOpenChange(o); }}>
-      <SheetContent className="w-[400px] sm:w-[480px] p-0 border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-2xl">
+      <SheetContent className="w-[calc(100vw-2rem)] max-w-[400px] sm:max-w-[480px] sm:w-[480px] p-0 border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-2xl">
         <SheetHeader className="p-6 border-b border-slate-200 dark:border-[#1f1f1f] text-left">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/20">

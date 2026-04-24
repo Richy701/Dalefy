@@ -1,12 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, Modal,
+  View, Text, ScrollView, Pressable, StyleSheet, Modal, Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X, Bell, CheckCheck, Trash2 } from "lucide-react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import ContextMenu from "@/components/ContextMenu";
+import { Bell, CheckCheck, Trash2, Plane, AlertTriangle, CircleCheck } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { useHaptic } from "@/hooks/useHaptic";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 
 interface Props {
   visible: boolean;
@@ -15,8 +18,9 @@ interface Props {
 
 export function NotificationSheet({ visible, onClose }: Props) {
   const { C, isDark } = useTheme();
-  const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearAll } = useNotifications();
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const haptic = useHaptic();
 
   return (
     <Modal
@@ -26,79 +30,82 @@ export function NotificationSheet({ visible, onClose }: Props) {
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        {/* Native drag indicator */}
+        <View style={styles.dragBar} />
+
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Bell size={16} color={C.teal} strokeWidth={2} />
-            <Text style={styles.headerTitle}>NOTIFICATIONS</Text>
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.headerRight}>
+          {/* Left actions */}
+          <View style={styles.headerSide}>
             {unreadCount > 0 && (
               <Pressable
-                onPress={markAllRead}
-                style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.6 : 1 }]}
+                onPress={() => { haptic.light(); markAllRead(); }}
+                style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mark all as read"
               >
-                <CheckCheck size={14} color={C.teal} strokeWidth={2} />
+                <CheckCheck size={16} color={C.teal} strokeWidth={2} />
               </Pressable>
             )}
             {notifications.length > 0 && (
               <Pressable
-                onPress={clearAll}
-                style={({ pressed }) => [styles.headerAction, { opacity: pressed ? 0.6 : 1 }]}
+                onPress={() => { haptic.light(); clearAll(); }}
+                style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
                 accessibilityRole="button"
-                accessibilityLabel="Clear all notifications"
+                accessibilityLabel="Clear all"
               >
-                <Trash2 size={14} color={C.textTertiary} strokeWidth={2} />
+                <Trash2 size={16} color={C.textTertiary} strokeWidth={2} />
               </Pressable>
             )}
+          </View>
+
+          {/* Centered title */}
+          <Text style={styles.headerTitle}>Notifications</Text>
+
+          {/* Done button */}
+          <View style={[styles.headerSide, { justifyContent: "flex-end" }]}>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, paddingVertical: 4, paddingLeft: 8 })}
               accessibilityRole="button"
-              accessibilityLabel="Close notifications"
+              accessibilityLabel="Close"
             >
-              <X size={18} color={C.textSecondary} strokeWidth={2} />
+              <Text style={styles.doneText}>Done</Text>
             </Pressable>
           </View>
         </View>
+
+        {/* Count subtitle */}
+        {notifications.length > 0 && (
+          <View style={styles.countRow}>
+            <Text style={styles.countText}>
+              {unreadCount > 0 ? `${unreadCount} unread` : "All read"}
+            </Text>
+          </View>
+        )}
 
         {/* List */}
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {notifications.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <Bell size={40} color={C.border} strokeWidth={1.2} />
-              <Text style={styles.emptyTitle}>All quiet for now</Text>
+              <View style={styles.emptyIcon}>
+                <Bell size={32} color={C.textDim} strokeWidth={1.2} />
+              </View>
+              <Text style={styles.emptyTitle}>No Notifications</Text>
               <Text style={styles.emptyDesc}>
-                Trip updates, itinerary changes, and alerts will land here.
+                Trip updates and alerts will appear here.
               </Text>
             </View>
           ) : (
             notifications.map(n => (
-              <Pressable
+              <NotificationRow
                 key={n.id}
-                onPress={() => markRead(n.id)}
-                style={({ pressed }) => [
-                  styles.item,
-                  !n.read && styles.itemUnread,
-                  { opacity: pressed ? 0.8 : 1 },
-                ]}
-              >
-                <View style={styles.itemRow}>
-                  {!n.read && <View style={styles.dot} />}
-                  <View style={[styles.itemContent, n.read && { marginLeft: 14 }]}>
-                    <Text style={styles.itemMessage}>{n.message}</Text>
-                    <Text style={styles.itemDetail} numberOfLines={2}>{n.detail}</Text>
-                  </View>
-                  <Text style={styles.itemTime}>{n.time}</Text>
-                </View>
-              </Pressable>
+                notification={n}
+                C={C}
+                styles={styles}
+                onMarkRead={() => { haptic.light(); markRead(n.id); }}
+                onRemove={() => { haptic.medium(); removeNotification(n.id); }}
+              />
             ))
           )}
         </ScrollView>
@@ -107,71 +114,264 @@ export function NotificationSheet({ visible, onClose }: Props) {
   );
 }
 
+/* ── Swipeable notification row ── */
+
+interface RowProps {
+  notification: { id: string; message: string; detail: string; time: string; read: boolean; type: string };
+  C: ThemeColors;
+  styles: ReturnType<typeof makeStyles>;
+  onMarkRead: () => void;
+  onRemove: () => void;
+}
+
+function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: RowProps) {
+  const swipeRef = useRef<Swipeable>(null);
+
+  const renderRightActions = useCallback((_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [0, 80],
+      extrapolate: "clamp",
+    });
+
+    return (
+      <Animated.View style={[styles.swipeActions, { transform: [{ translateX }] }]}>
+        {!n.read && (
+          <Pressable
+            style={[styles.swipeBtn, { backgroundColor: C.teal }]}
+            onPress={() => { swipeRef.current?.close(); onMarkRead(); }}
+          >
+            <CheckCheck size={16} color="#000" strokeWidth={2} />
+          </Pressable>
+        )}
+        <Pressable
+          style={[styles.swipeBtn, { backgroundColor: C.red }]}
+          onPress={() => { swipeRef.current?.close(); onRemove(); }}
+        >
+          <Trash2 size={16} color="#fff" strokeWidth={2} />
+        </Pressable>
+      </Animated.View>
+    );
+  }, [n.read, C, styles, onMarkRead, onRemove]);
+
+  const contextActions = [
+    ...(!n.read ? [{ title: "Mark as Read", systemIcon: "checkmark.circle" }] : []),
+    { title: "Delete", systemIcon: "trash", destructive: true },
+  ];
+
+  const handleContextAction = useCallback((e: any) => {
+    const action = e.nativeEvent.name;
+    if (action === "Mark as Read") onMarkRead();
+    if (action === "Delete") onRemove();
+  }, [onMarkRead, onRemove]);
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={2}
+    >
+      <ContextMenu
+        actions={contextActions}
+        onPress={handleContextAction}
+        previewBackgroundColor="transparent"
+      >
+        <Pressable
+          onPress={!n.read ? onMarkRead : undefined}
+          style={({ pressed }) => [
+            styles.item,
+            !n.read && styles.itemUnread,
+            { opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <View style={styles.itemRow}>
+            <View style={[styles.typeIcon, {
+              backgroundColor: n.type === "warning" ? `${C.amber}15`
+                : n.type === "success" ? `${C.green}15`
+                : `${C.teal}15`,
+            }]}>
+              {n.type === "warning" ? (
+                <AlertTriangle size={14} color={C.amber} strokeWidth={2} />
+              ) : n.type === "success" ? (
+                <CircleCheck size={14} color={C.green} strokeWidth={2} />
+              ) : (
+                <Plane size={14} color={C.teal} strokeWidth={2} />
+              )}
+              {!n.read && <View style={styles.dot} />}
+            </View>
+            <View style={styles.itemContent}>
+              <Text style={[styles.itemMessage, n.read && styles.itemMessageRead]}>{n.message}</Text>
+              <Text style={styles.itemDetail} numberOfLines={2}>{n.detail}</Text>
+            </View>
+            <Text style={styles.itemTime}>{n.time}</Text>
+          </View>
+        </Pressable>
+      </ContextMenu>
+    </Swipeable>
+  );
+}
+
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
 
+    // Native drag indicator
+    dragBar: {
+      width: 36,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: C.border,
+      alignSelf: "center",
+      marginTop: 8,
+      marginBottom: 4,
+    },
+
+    // Header
     header: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, paddingVertical: S.sm,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: S.md,
+      paddingVertical: S.xs,
     },
-    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+    headerSide: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      minWidth: 44,
+    },
     headerTitle: {
-      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: 1.5, textTransform: "uppercase",
+      fontSize: 18,
+      fontWeight: "700",
+      color: C.teal,
+      letterSpacing: -0.2,
+      textAlign: "center",
+      flex: 1,
     },
-    badge: {
-      backgroundColor: C.teal, borderRadius: R.full,
-      paddingHorizontal: 7, paddingVertical: 2,
+    headerBtn: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 20,
     },
-    badgeText: { fontSize: 10, fontWeight: T.bold, color: "#000" },
-    headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-    headerAction: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-    closeBtn: {
-      width: 44, height: 44, borderRadius: 22,
-      backgroundColor: isDark ? C.elevated : "#f1f5f9",
-      alignItems: "center", justifyContent: "center",
+    doneText: {
+      fontSize: T.base,
+      fontWeight: "600",
+      color: C.teal,
     },
 
-    list: { padding: S.sm, paddingBottom: 40 },
+    // Count subtitle
+    countRow: {
+      paddingHorizontal: S.md,
+      paddingBottom: S.sm,
+    },
+    countText: {
+      fontSize: T.xs,
+      fontWeight: "500",
+      color: C.textTertiary,
+    },
 
+    // List
+    list: { paddingHorizontal: S.xs, paddingBottom: 40 },
+
+    // Notification item
     item: {
-      paddingHorizontal: S.sm, paddingVertical: S.sm,
-      borderRadius: R.lg, marginBottom: 4,
+      paddingHorizontal: S.sm,
+      paddingVertical: 14,
+      borderRadius: R.lg,
+      backgroundColor: C.bg,
     },
     itemUnread: {
       backgroundColor: `${C.teal}08`,
     },
-    itemRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+    itemRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    typeIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     dot: {
-      width: 8, height: 8, borderRadius: 4,
-      backgroundColor: C.teal, marginTop: 4,
+      position: "absolute",
+      top: 0,
+      right: 0,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: C.teal,
     },
     itemContent: { flex: 1, minWidth: 0 },
     itemMessage: {
-      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
-      marginBottom: 2,
+      fontSize: T.sm,
+      fontWeight: "600",
+      color: C.textPrimary,
+      marginBottom: 3,
+    },
+    itemMessageRead: {
+      fontWeight: "400",
+      color: C.textSecondary,
     },
     itemDetail: {
-      fontSize: T.xs, color: C.textTertiary, lineHeight: 16,
+      fontSize: T.xs,
+      color: C.textTertiary,
+      lineHeight: 17,
     },
     itemTime: {
-      fontSize: 10, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 0.8, textTransform: "uppercase",
+      fontSize: 10,
+      fontWeight: "600",
+      color: C.textTertiary,
+      marginTop: 2,
     },
 
+    // Swipe actions
+    swipeActions: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    swipeBtn: {
+      width: 52,
+      height: "100%" as any,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: R.lg,
+      marginLeft: 4,
+    },
+
+    // Empty state
     emptyWrap: {
-      alignItems: "center", justifyContent: "center",
-      paddingTop: 80, gap: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: 100,
+      gap: 12,
+    },
+    emptyIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: C.elevated,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 4,
     },
     emptyTitle: {
-      fontSize: T.lg, fontWeight: T.bold, color: C.textSecondary,
+      fontSize: T.lg,
+      fontWeight: "700",
+      color: C.textSecondary,
       letterSpacing: -0.3,
     },
     emptyDesc: {
-      fontSize: T.sm, color: C.textTertiary, textAlign: "center",
+      fontSize: T.sm,
+      color: C.textTertiary,
+      textAlign: "center",
       maxWidth: 240,
+      lineHeight: 20,
     },
   });
 }

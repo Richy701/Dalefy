@@ -263,6 +263,7 @@ export default function WelcomeScreen() {
                 returnKeyType="go"
                 onSubmitEditing={validateAgency}
                 maxLength={60}
+                clearButtonMode="while-editing"
                 style={styles.input}
               />
               {agencyError ? (
@@ -391,6 +392,7 @@ export default function WelcomeScreen() {
               returnKeyType="done"
               onSubmitEditing={submit}
               maxLength={40}
+              clearButtonMode="while-editing"
               style={styles.input}
             />
           </Animated.View>
