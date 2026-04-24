@@ -1,6 +1,6 @@
 import { validateQuery, requireRapidApi } from "./_validate.js";
 
-const RAPID_HOST = "tripadvisor16.p.rapidapi.com";
+const RAPID_HOST = "local-business-data.p.rapidapi.com";
 
 export default async function handler(req: any, res: any) {
   const { q } = req.query as Record<string, string>;
@@ -11,37 +11,29 @@ export default async function handler(req: any, res: any) {
   const key = requireRapidApi(res);
   if (!key) return;
 
-  const headers = {
-    "x-rapidapi-key": key,
-    "x-rapidapi-host": RAPID_HOST,
-  };
-
   try {
-    // Step 1: resolve location ID
-    const locResp = await fetch(
-      `https://${RAPID_HOST}/api/v1/restaurant/searchLocation?query=${encodeURIComponent(q)}`,
-      { headers }
-    );
-    const locData = await locResp.json();
-    const loc = locData.data?.[0];
-    if (!loc) return res.json({ restaurants: [] });
+    const params = new URLSearchParams({
+      query: `restaurants in ${q}`,
+      limit: "8",
+    });
 
-    // Step 2: search restaurants
-    const resp = await fetch(
-      `https://${RAPID_HOST}/api/v1/restaurant/searchRestaurants?locationId=${loc.locationId}`,
-      { headers }
-    );
+    const resp = await fetch(`https://${RAPID_HOST}/search?${params}`, {
+      headers: {
+        "x-rapidapi-key": key,
+        "x-rapidapi-host": RAPID_HOST,
+      },
+    });
     const data = await resp.json();
 
-    const restaurants = (data.data?.data ?? []).slice(0, 8).map((r: any) => ({
+    const restaurants = (data.data ?? []).slice(0, 8).map((r: any) => ({
       name: r.name ?? "",
-      rating: r.averageRating ?? 0,
-      reviews: r.userReviewCount ?? 0,
-      image: r.heroImgUrl ?? "",
-      address: r.parentGeoName ?? "",
-      priceTag: r.priceTag ?? "",
-      cuisines: (r.establishmentTypeAndCuisineTags ?? []).slice(0, 3),
-      openStatus: r.currentOpenStatusText ?? "",
+      rating: r.rating ?? 0,
+      reviews: r.review_count ?? 0,
+      image: r.photos_sample?.[0]?.photo_url_large ?? "",
+      address: r.full_address ?? "",
+      priceTag: r.price_level ?? "",
+      cuisines: r.type ? [r.type] : [],
+      openStatus: r.opening_status ?? "",
     }));
 
     res.json({ restaurants });

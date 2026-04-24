@@ -291,34 +291,29 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             const check_out = url.searchParams.get("check_out") ?? ""
             const adults = url.searchParams.get("adults") ?? "2"
             const key = env.RAPIDAPI_KEY
-            const RAPID_HOST = "booking-com15.p.rapidapi.com"
+            const RAPID_HOST = "booking-com.p.rapidapi.com"
             const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST }
             if (!key || !q || !check_in || !check_out) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
             try {
               // Step 1: resolve destination
-              const destResp = await fetch(`https://${RAPID_HOST}/api/v1/hotels/searchDestination?query=${encodeURIComponent(q)}`, { headers: hdrs })
-              const destData = await destResp.json()
-              const dest = destData.data?.[0]
+              const locResp = await fetch(`https://${RAPID_HOST}/v1/hotels/locations?name=${encodeURIComponent(q)}&locale=en-gb`, { headers: hdrs })
+              const locData = await locResp.json()
+              const dest = Array.isArray(locData) ? locData[0] : null
               if (!dest) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
               // Step 2: search hotels
-              const params = new URLSearchParams({ dest_id: dest.dest_id, search_type: dest.search_type ?? "city", arrival_date: check_in, departure_date: check_out, adults, room_qty: "1", currency_code: "USD" })
-              const hotelResp = await fetch(`https://${RAPID_HOST}/api/v1/hotels/searchHotels?${params}`, { headers: hdrs })
+              const params = new URLSearchParams({ dest_id: dest.dest_id, dest_type: dest.dest_type ?? "city", checkin_date: check_in, checkout_date: check_out, adults_number: adults, room_number: "1", units: "metric", filter_by_currency: "USD", order_by: "popularity", locale: "en-gb" })
+              const hotelResp = await fetch(`https://${RAPID_HOST}/v1/hotels/search?${params}`, { headers: hdrs })
               const hotelData = await hotelResp.json()
-              const nights = Math.max(1, Math.round((new Date(check_out).getTime() - new Date(check_in).getTime()) / 86400000))
-              const hotels = (hotelData.data?.hotels ?? []).slice(0, 8).map((h: any) => {
-                const p = h.property ?? {}
-                const price = p.priceBreakdown?.grossPrice?.value
-                const perNight = price ? Math.round(price / nights) : 0
+              const hotels = (hotelData.result ?? []).slice(0, 8).map((h: any) => {
                 return {
-                  name: p.name ?? "",
-                  rating: p.reviewScore ?? 0,
-                  reviews: p.reviewCount ?? 0,
-                  pricePerNight: perNight > 0 ? `$${perNight}` : "",
-                  image: p.photoUrls?.[0] ?? "",
-                  checkin: p.checkin?.fromTime ?? "",
-                  checkout: p.checkout?.untilTime ?? "",
+                  name: h.hotel_name ?? "",
+                  rating: h.review_score ?? 0,
+                  reviews: h.review_nr ?? 0,
+                  image: h.max_photo_url ?? "",
+                  checkin: h.checkin?.from ?? "",
+                  checkout: h.checkout?.until ?? "",
                   amenities: [],
-                  stars: p.propertyClass ? `${p.propertyClass}-star` : "",
+                  stars: h.class ? `${h.class}-star` : "",
                 }
               })
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels }))
@@ -364,25 +359,22 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             const url = new URL(req.url!, `http://${req.headers.host}`)
             const q = url.searchParams.get("q") ?? ""
             const key = env.RAPIDAPI_KEY
-            const HOST = "tripadvisor16.p.rapidapi.com"
+            const HOST = "local-business-data.p.rapidapi.com"
             if (!key || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] })); return }
             try {
               const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": HOST }
-              const locResp = await fetch(`https://${HOST}/api/v1/restaurant/searchLocation?query=${encodeURIComponent(q)}`, { headers: hdrs })
-              const locData = await locResp.json()
-              const loc = locData.data?.[0]
-              if (!loc) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] })); return }
-              const resp = await fetch(`https://${HOST}/api/v1/restaurant/searchRestaurants?locationId=${loc.locationId}`, { headers: hdrs })
+              const params = new URLSearchParams({ query: `restaurants in ${q}`, limit: "8" })
+              const resp = await fetch(`https://${HOST}/search?${params}`, { headers: hdrs })
               const data = await resp.json()
-              const restaurants = (data.data?.data ?? []).slice(0, 8).map((r: any) => ({
+              const restaurants = (data.data ?? []).slice(0, 8).map((r: any) => ({
                 name: r.name ?? "",
-                rating: r.averageRating ?? 0,
-                reviews: r.userReviewCount ?? 0,
-                image: r.heroImgUrl ?? "",
-                address: r.parentGeoName ?? "",
-                priceTag: r.priceTag ?? "",
-                cuisines: (r.establishmentTypeAndCuisineTags ?? []).slice(0, 3),
-                openStatus: r.currentOpenStatusText ?? "",
+                rating: r.rating ?? 0,
+                reviews: r.review_count ?? 0,
+                image: r.photos_sample?.[0]?.photo_url_large ?? "",
+                address: r.full_address ?? "",
+                priceTag: r.price_level ?? "",
+                cuisines: r.type ? [r.type] : [],
+                openStatus: r.opening_status ?? "",
               }))
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants }))
             } catch {
