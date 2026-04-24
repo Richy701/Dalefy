@@ -203,20 +203,20 @@ function FlightTrackerActivity(
     <Image systemName="airplane" size={11} color={teal} />
   );
 
-  // ── Expanded: leading — city/code + time, kept tight ──
+  // ── Expanded: leading — airport code + time ──
   const expandedLeading = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+    <VStack modifiers={[frame({ maxHeight: 44 })]}>
       <Text
         modifiers={[
-          font({ size: 18, weight: "black", design: "rounded" }),
+          font({ size: 20, weight: "black", design: "rounded" }),
           foregroundStyle(textPrimary),
         ]}
       >
-        {props.from}
+        {props.from || "---"}
       </Text>
       <Text
         modifiers={[
-          font({ size: 10, weight: "medium" }),
+          font({ size: 9, weight: "semibold" }),
           foregroundStyle(textSecondary),
         ]}
       >
@@ -225,20 +225,20 @@ function FlightTrackerActivity(
     </VStack>
   );
 
-  // ── Expanded: trailing ──
+  // ── Expanded: trailing — airport code + time ──
   const expandedTrailing = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+    <VStack modifiers={[frame({ maxHeight: 44 })]}>
       <Text
         modifiers={[
-          font({ size: 18, weight: "black", design: "rounded" }),
+          font({ size: 20, weight: "black", design: "rounded" }),
           foregroundStyle(textPrimary),
         ]}
       >
-        {props.to}
+        {props.to || "---"}
       </Text>
       <Text
         modifiers={[
-          font({ size: 10, weight: "medium" }),
+          font({ size: 9, weight: "semibold" }),
           foregroundStyle(textSecondary),
         ]}
       >
@@ -247,10 +247,10 @@ function FlightTrackerActivity(
     </VStack>
   );
 
-  // ── Expanded: center — just the icon + flight number ──
+  // ── Expanded: center — icon + flight number ──
   const expandedCenter = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
-      <Image systemName="airplane" size={11} color={teal} />
+    <VStack modifiers={[frame({ maxHeight: 44 })]}>
+      <Image systemName="airplane" size={12} color={teal} />
       <Text
         modifiers={[
           font({ size: 8, weight: "bold" }),

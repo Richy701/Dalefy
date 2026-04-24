@@ -43,14 +43,29 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
   let from = "";
   let to = "";
 
-  // Parse "X to Y" from location (e.g. "MAN to DOH", "London Gatwick to Antalya")
-  const locRoute = ev.location?.match(/^(.+?)\s+to\s+(.+)$/i);
-  if (locRoute) {
-    from = locRoute[1].trim();
-    to = locRoute[2].trim();
-  } else if (ev.location) {
-    from = ev.location.trim();
+  // 1. Try to parse route from title — handles →, ➜, >, —, -, "to"
+  //    e.g. "AYT → STN", "MAN — DOH", "LHR to JFK", "VS209 — Seoul to London (Heathrow)"
+  const separators = /\s*(?:→|➜|>|—|-|to)\s+/i;
+  const titleParts = ev.title?.split(separators);
+  if (titleParts && titleParts.length >= 2) {
+    from = titleParts[0].trim();
+    to = titleParts[titleParts.length - 1].trim();
   }
+
+  // 2. Fall back to location
+  if (!from || !to) {
+    const locParts = ev.location?.split(separators);
+    if (locParts && locParts.length >= 2) {
+      from = from || locParts[0].trim();
+      to = to || locParts[locParts.length - 1].trim();
+    } else if (ev.location && !from) {
+      from = ev.location.trim();
+    }
+  }
+
+  // 3. Shorten to airport codes if they look like full names
+  if (from.length > 4) from = from.slice(0, 3).toUpperCase();
+  if (to.length > 4) to = to.slice(0, 3).toUpperCase();
 
   return {
     flightNum: ev.flightNum || ev.title,

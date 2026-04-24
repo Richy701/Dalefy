@@ -22,6 +22,9 @@ module.exports = ({ config }) => ({
           {
             name: "FlightTracker",
           },
+          {
+            name: "UpcomingEvent",
+          },
         ],
       },
     ],

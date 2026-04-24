@@ -19,7 +19,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dafadventures.app",
       "infoPlist": {
-        "NSSupportsLiveActivities": true
+        "NSSupportsLiveActivities": true,
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

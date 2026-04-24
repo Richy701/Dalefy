@@ -46,18 +46,43 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
   // Initial fetch
   fetchTrips().then(onChange).catch(() => {});
 
-  // Listen only to published trips (unauthenticated reads require status filter)
-  const q = query(
-    collection(firebaseDb(), TRIPS),
-    where("status", "==", "Published"),
-    orderBy("start", "desc"),
-  );
-  return onSnapshot(q, () => {
-    // Re-fetch with device filter when any trip changes
-    fetchTrips().then(onChange).catch(() => {});
-  }, () => {
-    // Silently ignore permission errors on the listener
-  });
+  // Listen to the specific trips this device has joined — avoids security rule
+  // issues with broad collection queries and ensures we get notified of all
+  // changes (including event reordering, layout edits, etc.)
+  let innerUnsubs: Unsubscribe[] = [];
+
+  async function setupListeners() {
+    try {
+      const deviceId = await getDeviceId();
+      const memberSnap = await getDocs(
+        query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
+      );
+      const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
+
+      // Clean up any previous listeners
+      innerUnsubs.forEach(u => u());
+      innerUnsubs = [];
+
+      if (tripIds.length === 0) return;
+
+      // Subscribe to each trip doc individually
+      for (const tripId of tripIds) {
+        const unsub = onSnapshot(doc(firebaseDb(), TRIPS, tripId), () => {
+          // Any trip doc changed — re-fetch all joined trips
+          fetchTrips().then(onChange).catch(() => {});
+        }, (err) => {
+          console.warn(`[subscribeToTrips] listener error for ${tripId}:`, err.message);
+        });
+        innerUnsubs.push(unsub);
+      }
+    } catch (err) {
+      console.warn("[subscribeToTrips] setup failed:", err);
+    }
+  }
+
+  setupListeners();
+
+  return () => { innerUnsubs.forEach(u => u()); };
 }
 
 export async function upsertTrip(trip: Trip): Promise<void> {

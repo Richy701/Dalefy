@@ -25,6 +25,14 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
+/** For sorting: hotel checkout events should sort by checkout time, not check-in time */
+function sortMinutes(ev: { type: string; time: string; title: string; checkout?: string }): number {
+  if (ev.type === "hotel" && ev.checkout && /check.?out/i.test(ev.title)) {
+    return timeToMinutes(ev.checkout);
+  }
+  return timeToMinutes(ev.time);
+}
+
 const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
   flight: Plane, hotel: Hotel, activity: Compass, dining: Utensils,
 };
@@ -57,7 +65,8 @@ export default function DayDetailScreen() {
 
   const dayEvents = trip.events
     .filter(ev => ev.date === date)
-    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    .sort((a, b) => sortMinutes(a) - sortMinutes(b));
+
 
   const allDates = [...new Set(trip.events.map(e => e.date))].sort();
   const dayIndex = allDates.indexOf(date!) + 1;

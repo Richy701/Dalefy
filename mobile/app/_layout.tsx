@@ -34,6 +34,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
+import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
@@ -118,6 +119,7 @@ function AppStack() {
 
   // Start/update/end iOS Live Activities for today's flights
   useFlightLiveActivity();
+  useUpcomingEventLiveActivity();
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
