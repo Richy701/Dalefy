@@ -6,7 +6,6 @@ import {
   frame,
   background,
   shapes,
-  opacity,
 } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity } from "expo-widgets";
 
@@ -203,68 +202,36 @@ function FlightTrackerActivity(
     <Image systemName="airplane" size={11} color={teal} />
   );
 
-  // ── Expanded: leading — airport code + time ──
+  // ── Expanded: leading — departure code (white like airport boards) ──
   const expandedLeading = (
-    <VStack modifiers={[frame({ maxHeight: 44 })]}>
-      <Text
-        modifiers={[
-          font({ size: 20, weight: "black", design: "rounded" }),
-          foregroundStyle(textPrimary),
-        ]}
-      >
-        {props.from || "---"}
-      </Text>
-      <Text
-        modifiers={[
-          font({ size: 9, weight: "semibold" }),
-          foregroundStyle(textSecondary),
-        ]}
-      >
-        {props.departTime}
-      </Text>
-    </VStack>
+    <Text modifiers={[padding({ all: 12 }), font({ weight: "bold", size: 16 }), foregroundStyle("#ffffff")]}>
+      {props.from || "---"}
+    </Text>
   );
 
-  // ── Expanded: trailing — airport code + time ──
+  // ── Expanded: trailing — arrival code (white like airport boards) ──
   const expandedTrailing = (
-    <VStack modifiers={[frame({ maxHeight: 44 })]}>
-      <Text
-        modifiers={[
-          font({ size: 20, weight: "black", design: "rounded" }),
-          foregroundStyle(textPrimary),
-        ]}
-      >
-        {props.to || "---"}
-      </Text>
-      <Text
-        modifiers={[
-          font({ size: 9, weight: "semibold" }),
-          foregroundStyle(textSecondary),
-        ]}
-      >
-        {props.arriveTime || "--:--"}
-      </Text>
-    </VStack>
+    <Text modifiers={[padding({ all: 12 }), font({ weight: "bold", size: 16 }), foregroundStyle("#ffffff")]}>
+      {props.to || "---"}
+    </Text>
   );
 
-  // ── Expanded: center — icon + flight number ──
+  // ── Expanded: center — airplane + flight number ──
   const expandedCenter = (
-    <VStack modifiers={[frame({ maxHeight: 44 })]}>
+    <HStack modifiers={[padding({ all: 8 })]}>
       <Image systemName="airplane" size={12} color={teal} />
-      <Text
-        modifiers={[
-          font({ size: 8, weight: "bold" }),
-          foregroundStyle(textDim),
-        ]}
-      >
+      <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(textDim)]}>
         {props.flightNum}
       </Text>
-    </VStack>
+    </HStack>
   );
 
-  // ── Expanded: bottom — status centered ──
+  // ── Expanded: bottom — times + status + gate ──
   const expandedBottom = (
-    <HStack modifiers={[frame({ maxWidth: Infinity, maxHeight: 20 })]}>
+    <HStack modifiers={[padding({ all: 8 })]}>
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(textSecondary)]}>
+        {props.departTime}
+      </Text>
       <Spacer />
       <HStack
         modifiers={[
@@ -274,14 +241,17 @@ function FlightTrackerActivity(
       >
         <Text
           modifiers={[
-            font({ size: 9, weight: "bold" }),
+            font({ size: 10, weight: "bold" }),
             foregroundStyle(statusColor),
           ]}
         >
-          {statusLabel}
+          {statusLabel + (props.gate ? " · Gate " + props.gate : "")}
         </Text>
       </HStack>
       <Spacer />
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(textSecondary)]}>
+        {props.arriveTime || "--:--"}
+      </Text>
     </HStack>
   );
 

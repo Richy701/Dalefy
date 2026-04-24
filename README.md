@@ -15,6 +15,8 @@ Trip planning without the mess. A modern travel management platform for organize
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
 - **Unified Theming** -- Single brand accent color across all event types, light and dark modes
+- **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts 
+for today's flights and updates live via the flight status cron
 - **Push Notifications** -- Trip update and flight status alerts for travelers via Expo push notifications
 - **PWA Support** -- Installable as a progressive web app with offline caching
 
@@ -29,7 +31,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Charts:** Recharts
 - **Routing:** react-router-dom v7 (HashRouter)
 - **PDF:** html2canvas + jsPDF
-- **Mobile:** Expo / React Native (in `/mobile`)
+- **Mobile:** Expo / React Native (in `/mobile`), expo-widgets (Live Activities + Dynamic Island)
 
 ## Getting Started
 
@@ -51,6 +53,16 @@ npx expo start --ios
 
 The mobile app is traveler-facing — no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
 
+### Live Activities & Dynamic Island
+
+Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock Screen and Dynamic Island:
+
+- **Dynamic Island expanded**: Airport codes (leading/trailing), flight number + airplane icon (center), departure/arrival times + status pill (bottom)
+- **Dynamic Island compact**: Airplane icon + departure code (leading), arrival code (trailing)
+- **Lock Screen banner**: Full flight board with route, times, gate, and status
+
+The `useFlightLiveActivity` hook automatically starts activities for today's flights, updates them when Firestore data changes, and ends them when a flight lands or is cancelled. Airport codes are resolved from Firestore fields (`depAirport`/`arrAirport`), location parsing, or a fallback API call.
+
 ## API Endpoints
 
 Serverless functions in `api/` — all endpoints validate input and return generic errors (no internal details leaked).
@@ -66,7 +78,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/image-proxy` | — | SSRF-protected image proxy (HTTPS only, private IPs blocked, 5MB limit) |
 | `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Haiku 4.5 — extracts events, travelers, info sections |
 | `/api/push` | Bearer | Push notifications — requires CRON_SECRET or Firebase auth token |
-| `/api/check-flight-status` | Bearer | Cron (every 30 min): checks flight status and pushes updates to travelers |
+| `/api/check-flight-status` | Bearer | Cron (every 30 min): checks flight status, saves airport codes, and pushes updates to travelers |
 
 ## Security
 

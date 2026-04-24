@@ -136,8 +136,8 @@ function CompactCard({
 // ─── Flight Card ──────────────────────────────────────────────────────────────
 function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const parts = event.location?.match(/^(.+?)\s+to\s+(.+)$/i);
-  const from = parts?.[1]?.trim() ?? event.location ?? "";
-  const to = parts?.[2]?.trim() ?? "";
+  const from = event.depAirport || parts?.[1]?.trim() || event.location || "";
+  const to = event.arrAirport || parts?.[2]?.trim() || "";
 
   // Sparse: no destination means the route viz looks broken — collapse to compact row.
   if (!to) {

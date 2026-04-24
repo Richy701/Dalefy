@@ -33,6 +33,8 @@ export interface TravelEvent {
   seatDetails?: string;
   duration?: string;
   status?: string;
+  depAirport?: string;
+  arrAirport?: string;
   checkin?: string;
   checkout?: string;
   notes?: string;
