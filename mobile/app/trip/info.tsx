@@ -54,11 +54,12 @@ export default function InfoScreen() {
         title: "Information",
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTransparent: true,
+        headerTransparent: Platform.OS === "ios",
         headerBlurEffect: isDark ? "dark" : "light",
         headerTintColor: C.teal,
         headerTitleStyle: { color: C.teal, fontWeight: "700" },
         headerShadowVisible: false,
+        ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
       }} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
 

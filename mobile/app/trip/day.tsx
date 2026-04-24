@@ -1,5 +1,5 @@
 import {
-  View, Text, ScrollView, Pressable, StyleSheet,
+  View, Text, ScrollView, Pressable, StyleSheet, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -79,11 +79,12 @@ export default function DayDetailScreen() {
         title: `Day ${dayIndex}`,
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTransparent: true,
+        headerTransparent: Platform.OS === "ios",
         headerBlurEffect: isDark ? "dark" : "light",
         headerTintColor: C.teal,
         headerTitleStyle: { color: C.teal, fontWeight: "700" },
         headerShadowVisible: false,
+        ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
       }} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">

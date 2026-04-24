@@ -451,7 +451,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   return (
-    <View style={[styles.outer, { paddingTop: insets.top + S.xs, marginTop: -insets.top }]}>
+    <View style={[styles.outer, { paddingTop: insets.top + S.xs, ...(Platform.OS === "ios" ? { marginTop: -insets.top } : {}) }]}>
       <LinearGradient
         colors={[`${C.teal}18`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}

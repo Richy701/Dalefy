@@ -183,7 +183,11 @@ export default function DestinationsScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: C.card }}>
         <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
+          )}
           <Text style={styles.screenTitle}>Destinations</Text>
         </View>
         <View style={styles.empty}>
@@ -205,7 +209,11 @@ export default function DestinationsScreen() {
     <View style={{ flex: 1, backgroundColor: C.card }}>
       {/* ── Sticky blur header ── */}
       <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-        <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        {Platform.OS === "ios" ? (
+          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
+        )}
         <Text style={styles.screenTitle}>Destinations</Text>
       </View>
 

@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { initializeFirestore, getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY!,
@@ -16,7 +16,14 @@ let dbInstance: Firestore | null = null;
 function init() {
   if (!app && isFirebaseConfigured()) {
     app = initializeApp(firebaseConfig);
-    dbInstance = getFirestore(app);
+    try {
+      dbInstance = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+      });
+    } catch {
+      // Already initialized (e.g. hot reload) — fall back to existing instance
+      dbInstance = getFirestore(app);
+    }
   }
 }
 

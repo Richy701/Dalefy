@@ -165,7 +165,7 @@ export default function SharedTripScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Hero */}
         <View style={styles.hero}>

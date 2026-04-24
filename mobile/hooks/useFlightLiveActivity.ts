@@ -40,20 +40,28 @@ function isTomorrow(dateStr: string): boolean {
 }
 
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
-  // Extract airport codes from location (e.g. "London Heathrow (LHR)" → "LHR")
-  const fromMatch = ev.location?.match(/\(([A-Z]{3})\)/);
-  const toMatch = ev.description?.match(/\(([A-Z]{3})\)/);
+  let from = "";
+  let to = "";
+
+  // Parse "X to Y" from location (e.g. "MAN to DOH", "London Gatwick to Antalya")
+  const locRoute = ev.location?.match(/^(.+?)\s+to\s+(.+)$/i);
+  if (locRoute) {
+    from = locRoute[1].trim();
+    to = locRoute[2].trim();
+  } else if (ev.location) {
+    from = ev.location.trim();
+  }
 
   return {
     flightNum: ev.flightNum || ev.title,
     airline: ev.airline || "",
-    fromCode: fromMatch?.[1] || ev.location?.slice(0, 3).toUpperCase() || "---",
-    toCode: toMatch?.[1] || "---",
+    from: from || "---",
+    to: to || "---",
     departTime: ev.time || "",
     arriveTime: ev.endTime || "",
     status: ev.status || "Scheduled",
     gate: ev.gate || "",
-    terminal: ev.terminal || "",
+    duration: ev.duration || "",
   };
 }
 

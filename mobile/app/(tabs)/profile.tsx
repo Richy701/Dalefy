@@ -77,7 +77,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={s.safe} edges={[]}>
+    <SafeAreaView style={s.safe} edges={["top"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}

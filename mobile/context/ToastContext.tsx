@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { Text, StyleSheet } from "react-native";
+import { Text, View, StyleSheet, Platform } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
   runOnJS, Easing,
@@ -71,11 +71,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         ]}
         pointerEvents="none"
       >
-        <BlurView
-          intensity={80}
-          tint={isDark ? "dark" : "light"}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: 50 }]}
-        />
+        {Platform.OS === "ios" ? (
+          <BlurView
+            intensity={80}
+            tint={isDark ? "dark" : "light"}
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 50 }]}
+          />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, { borderRadius: 50, backgroundColor: isDark ? "rgba(30,30,30,0.95)" : "rgba(250,250,250,0.95)" }]} />
+        )}
         <Text style={[styles.text, { color: type === "error" ? "#ff453a" : C.textPrimary }]} numberOfLines={1}>
           {message}
         </Text>

@@ -212,6 +212,18 @@ export default function TripScreen() {
         headerBackButtonDisplayMode: "minimal",
         headerTintColor: C.teal,
         headerShadowVisible: false,
+        ...(Platform.OS === "android" ? {
+          headerStyle: { backgroundColor: "transparent" },
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              hitSlop={8}
+            >
+              <ChevronLeft size={22} color="#fff" strokeWidth={2} />
+            </Pressable>
+          ),
+        } : {}),
       }} />
 
       {/* ── Sticky compact header — fades in as hero collapses ── */}

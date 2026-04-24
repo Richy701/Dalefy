@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import {
-  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator,
+  View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
@@ -52,17 +52,18 @@ export default function DocumentScreen() {
   const statusBg = isSigned ? C.greenDim : doc.status === "Expired" ? C.redDim : C.amberDim;
 
   return (
-    <SafeAreaView style={s.safe} edges={[]}>
+    <SafeAreaView style={s.safe} edges={Platform.OS === "android" ? ["top"] : []}>
       <Stack.Screen options={{
         headerShown: true,
         title: doc.name,
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTransparent: true,
+        headerTransparent: Platform.OS === "ios",
         headerBlurEffect: isDark ? "dark" : "light",
         headerTintColor: C.teal,
         headerTitleStyle: { color: C.teal, fontWeight: "700", fontSize: 16 },
         headerShadowVisible: false,
+        ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
         headerRight: () => (
           <View style={[s.statusPill, { backgroundColor: statusBg }]}>
             <StatusIcon size={12} color={statusColor} strokeWidth={2} />

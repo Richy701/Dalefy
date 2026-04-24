@@ -5,8 +5,8 @@ import {
   padding,
   frame,
   background,
-  opacity,
   shapes,
+  opacity,
 } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity } from "expo-widgets";
 
@@ -14,18 +14,19 @@ type LiveActivityEnvironment = {
   colorScheme: "light" | "dark";
   isLuminanceReduced?: boolean;
   isActivityFullscreen?: boolean;
+  activityFamily?: "small" | "medium";
 };
 
 export type FlightTrackerProps = {
   flightNum: string;
   airline: string;
-  fromCode: string;
-  toCode: string;
+  from: string;
+  to: string;
   departTime: string;
   arriveTime: string;
   status: string;
   gate: string;
-  terminal: string;
+  duration?: string;
 };
 
 function FlightTrackerActivity(
@@ -36,10 +37,9 @@ function FlightTrackerActivity(
 
   const isDark = environment.colorScheme === "dark";
   const teal = "#0bd2b5";
-  const bg = isDark ? "#131316" : "#ffffff";
   const textPrimary = isDark ? "#ffffff" : "#000000";
   const textSecondary = isDark ? "#8e8e93" : "#6e6e73";
-  const textDim = isDark ? "#48484a" : "#c7c7cc";
+  const textDim = isDark ? "#48484a" : "#aeaeb2";
 
   const status = props.status?.toLowerCase() ?? "";
   const statusColor =
@@ -47,43 +47,40 @@ function FlightTrackerActivity(
     status.includes("delay") ? "#f59e0b" :
     status.includes("landed") || status.includes("arrived") ? "#22c55e" :
     status.includes("boarding") ? teal :
-    textSecondary;
+    "#22c55e";
 
   const statusLabel =
     status.includes("cancel") ? "CANCELLED" :
     status.includes("delay") ? "DELAYED" :
     status.includes("landed") || status.includes("arrived") ? "LANDED" :
     status.includes("boarding") ? "BOARDING" :
-    status.includes("scheduled") ? "ON TIME" :
-    props.status?.toUpperCase() || "TRACKING";
+    "ON TIME";
 
-  // ── Banner (Lock Screen / Notification Center) ──
+  // ── Banner (Lock Screen) ──
   const banner = (
     <VStack
       modifiers={[
-        padding({ all: 16 }),
+        padding({ horizontal: 16, vertical: 12 }),
         frame({ maxWidth: Infinity }),
-        background(bg),
       ]}
     >
-      {/* Top: flight number + status */}
       <HStack>
         <HStack>
-          <Image systemName="airplane" size={12} color={teal} />
+          <Image systemName="airplane" size={11} color={teal} />
           <Text
             modifiers={[
-              font({ size: 13, weight: "bold" }),
-              foregroundStyle(textPrimary),
+              font({ size: 12, weight: "semibold" }),
+              foregroundStyle(textSecondary),
             ]}
           >
-            {props.flightNum}
+            {props.airline ? props.airline + " " : ""}{props.flightNum}
           </Text>
         </HStack>
         <Spacer />
         <HStack
           modifiers={[
-            padding({ horizontal: 8, vertical: 3 }),
-            background(statusColor + "20", shapes.capsule()),
+            padding({ horizontal: 7, vertical: 2 }),
+            background(statusColor + "22", shapes.capsule()),
           ]}
         >
           <Text
@@ -97,26 +94,24 @@ function FlightTrackerActivity(
         </HStack>
       </HStack>
 
-      {/* Route: FROM → TO */}
       <HStack
         modifiers={[
-          padding({ top: 12 }),
+          padding({ top: 8 }),
           frame({ maxWidth: Infinity }),
         ]}
       >
-        {/* Departure */}
         <VStack>
           <Text
             modifiers={[
-              font({ size: 28, weight: "black", design: "rounded" }),
+              font({ size: 26, weight: "black", design: "rounded" }),
               foregroundStyle(textPrimary),
             ]}
           >
-            {props.fromCode}
+            {props.from}
           </Text>
           <Text
             modifiers={[
-              font({ size: 13, weight: "medium" }),
+              font({ size: 12, weight: "medium" }),
               foregroundStyle(textSecondary),
             ]}
           >
@@ -125,35 +120,33 @@ function FlightTrackerActivity(
         </VStack>
 
         <Spacer />
-
-        {/* Flight path */}
         <VStack>
-          <Image systemName="airplane" size={16} color={teal} />
-          <Text
-            modifiers={[
-              font({ size: 9, weight: "medium" }),
-              foregroundStyle(textDim),
-            ]}
-          >
-            {props.airline}
-          </Text>
+          <Image systemName="airplane" size={13} color={teal} />
+          {props.duration ? (
+            <Text
+              modifiers={[
+                font({ size: 9, weight: "medium" }),
+                foregroundStyle(textDim),
+              ]}
+            >
+              {props.duration}
+            </Text>
+          ) : null}
         </VStack>
-
         <Spacer />
 
-        {/* Arrival */}
         <VStack>
           <Text
             modifiers={[
-              font({ size: 28, weight: "black", design: "rounded" }),
+              font({ size: 26, weight: "black", design: "rounded" }),
               foregroundStyle(textPrimary),
             ]}
           >
-            {props.toCode}
+            {props.to}
           </Text>
           <Text
             modifiers={[
-              font({ size: 13, weight: "medium" }),
+              font({ size: 12, weight: "medium" }),
               foregroundStyle(textSecondary),
             ]}
           >
@@ -162,85 +155,68 @@ function FlightTrackerActivity(
         </VStack>
       </HStack>
 
-      {/* Bottom: gate + terminal */}
-      {(props.gate || props.terminal) ? (
-        <HStack modifiers={[padding({ top: 8 })]}>
-          {props.terminal ? (
-            <HStack>
-              <Text
-                modifiers={[
-                  font({ size: 10, weight: "semibold" }),
-                  foregroundStyle(textSecondary),
-                ]}
-              >
-                {"T" + props.terminal}
-              </Text>
-            </HStack>
-          ) : null}
-          {props.gate ? (
-            <HStack>
-              <Text
-                modifiers={[
-                  font({ size: 10, weight: "bold" }),
-                  foregroundStyle(teal),
-                ]}
-              >
-                {"Gate " + props.gate}
-              </Text>
-            </HStack>
-          ) : null}
+      {props.gate ? (
+        <HStack modifiers={[padding({ top: 6 })]}>
+          <Text
+            modifiers={[
+              font({ size: 10, weight: "bold" }),
+              foregroundStyle(teal),
+            ]}
+          >
+            {"Gate " + props.gate}
+          </Text>
           <Spacer />
         </HStack>
       ) : null}
     </VStack>
   );
 
-  // ── Dynamic Island: compact leading ──
+  // ── Compact: leading ──
   const compactLeading = (
     <HStack>
-      <Image systemName="airplane" size={10} color={teal} />
+      <Image systemName="airplane" size={9} color={teal} />
       <Text
         modifiers={[
-          font({ size: 12, weight: "bold" }),
+          font({ size: 11, weight: "bold" }),
           foregroundStyle(textPrimary),
         ]}
       >
-        {props.fromCode}
+        {props.from}
       </Text>
     </HStack>
   );
 
-  // ── Dynamic Island: compact trailing ──
+  // ── Compact: trailing ──
   const compactTrailing = (
     <Text
       modifiers={[
-        font({ size: 12, weight: "bold" }),
+        font({ size: 11, weight: "bold" }),
         foregroundStyle(textPrimary),
       ]}
     >
-      {props.toCode}
+      {props.to}
     </Text>
   );
 
-  // ── Dynamic Island: minimal ──
+  // ── Minimal ──
   const minimal = (
-    <Image systemName="airplane" size={12} color={teal} />
+    <Image systemName="airplane" size={11} color={teal} />
   );
 
-  // ── Dynamic Island: expanded ──
+  // ── Expanded: leading — city/code + time, kept tight ──
   const expandedLeading = (
-    <VStack>
+    <VStack modifiers={[frame({ maxHeight: 40 })]}>
       <Text
         modifiers={[
-          font({ size: 24, weight: "black", design: "rounded" }),
+          font({ size: 18, weight: "black", design: "rounded" }),
           foregroundStyle(textPrimary),
         ]}
       >
-        {props.fromCode}
+        {props.from}
       </Text>
       <Text
         modifiers={[
-          font({ size: 12, weight: "medium" }),
+          font({ size: 10, weight: "medium" }),
           foregroundStyle(textSecondary),
         ]}
       >
@@ -249,19 +225,20 @@ function FlightTrackerActivity(
     </VStack>
   );
 
+  // ── Expanded: trailing ──
   const expandedTrailing = (
-    <VStack>
+    <VStack modifiers={[frame({ maxHeight: 40 })]}>
       <Text
         modifiers={[
-          font({ size: 24, weight: "black", design: "rounded" }),
+          font({ size: 18, weight: "black", design: "rounded" }),
           foregroundStyle(textPrimary),
         ]}
       >
-        {props.toCode}
+        {props.to}
       </Text>
       <Text
         modifiers={[
-          font({ size: 12, weight: "medium" }),
+          font({ size: 10, weight: "medium" }),
           foregroundStyle(textSecondary),
         ]}
       >
@@ -270,13 +247,14 @@ function FlightTrackerActivity(
     </VStack>
   );
 
+  // ── Expanded: center — just the icon + flight number ──
   const expandedCenter = (
-    <VStack>
-      <Image systemName="airplane" size={14} color={teal} />
+    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+      <Image systemName="airplane" size={11} color={teal} />
       <Text
         modifiers={[
-          font({ size: 10, weight: "bold" }),
-          foregroundStyle(textSecondary),
+          font({ size: 8, weight: "bold" }),
+          foregroundStyle(textDim),
         ]}
       >
         {props.flightNum}
@@ -284,17 +262,19 @@ function FlightTrackerActivity(
     </VStack>
   );
 
+  // ── Expanded: bottom — status centered ──
   const expandedBottom = (
-    <HStack modifiers={[frame({ maxWidth: Infinity })]}>
+    <HStack modifiers={[frame({ maxWidth: Infinity, maxHeight: 20 })]}>
+      <Spacer />
       <HStack
         modifiers={[
-          padding({ horizontal: 8, vertical: 4 }),
-          background(statusColor + "20", shapes.capsule()),
+          padding({ horizontal: 8, vertical: 2 }),
+          background(statusColor + "22", shapes.capsule()),
         ]}
       >
         <Text
           modifiers={[
-            font({ size: 10, weight: "bold" }),
+            font({ size: 9, weight: "bold" }),
             foregroundStyle(statusColor),
           ]}
         >
@@ -302,26 +282,6 @@ function FlightTrackerActivity(
         </Text>
       </HStack>
       <Spacer />
-      {props.gate ? (
-        <Text
-          modifiers={[
-            font({ size: 11, weight: "bold" }),
-            foregroundStyle(teal),
-          ]}
-        >
-          {"Gate " + props.gate}
-        </Text>
-      ) : null}
-      {props.terminal ? (
-        <Text
-          modifiers={[
-            font({ size: 11, weight: "semibold" }),
-            foregroundStyle(textSecondary),
-          ]}
-        >
-          {"T" + props.terminal}
-        </Text>
-      ) : null}
     </HStack>
   );
 
