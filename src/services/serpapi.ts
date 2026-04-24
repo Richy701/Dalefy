@@ -98,7 +98,22 @@ export async function searchHotels(
   check_out: string,
   adults = 2
 ): Promise<HotelResult[]> {
-  const params = new URLSearchParams({ q, check_in, check_out, adults: String(adults) });
+  // Booking.com API rejects past dates — use future stand-in dates for the search
+  // while preserving the original dates for the event
+  let apiCheckIn = check_in;
+  let apiCheckOut = check_out;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (new Date(check_in) < today) {
+    const nights = Math.max(1, Math.round((new Date(check_out).getTime() - new Date(check_in).getTime()) / 86400000));
+    const futureIn = new Date(today);
+    futureIn.setDate(futureIn.getDate() + 7);
+    const futureOut = new Date(futureIn);
+    futureOut.setDate(futureOut.getDate() + nights);
+    apiCheckIn = futureIn.toISOString().slice(0, 10);
+    apiCheckOut = futureOut.toISOString().slice(0, 10);
+  }
+  const params = new URLSearchParams({ q, check_in: apiCheckIn, check_out: apiCheckOut, adults: String(adults) });
   const res = await fetch(`/api/hotels?${params}`);
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();

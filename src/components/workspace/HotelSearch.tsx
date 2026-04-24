@@ -138,12 +138,6 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                 </div>
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-                {h.pricePerNight && (
-                  <>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{h.pricePerNight}</p>
-                    <p className="text-[9px] text-slate-500 dark:text-slate-400">/night</p>
-                  </>
-                )}
                 {selected === h.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
