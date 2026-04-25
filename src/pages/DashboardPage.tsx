@@ -58,15 +58,37 @@ function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
 }
 
-function useLiveCountdown(targetDate: string | undefined) {
+/** Get the actual departure timestamp from the chronologically earliest event */
+function getFirstEventTime(trip: Trip): string {
+  let earliest: Date | null = null;
+
+  for (const ev of trip.events ?? []) {
+    if (!ev.date || !ev.time) continue;
+    const match = ev.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!match) continue;
+    let hours = parseInt(match[1], 10);
+    const mins = parseInt(match[2], 10);
+    const ampm = match[3]?.toUpperCase();
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    const d = new Date(ev.date);
+    d.setHours(hours, mins, 0, 0);
+    if (!earliest || d < earliest) earliest = d;
+  }
+
+  return earliest ? earliest.toISOString() : trip.start;
+}
+
+function useLiveCountdown(trip: Trip | undefined) {
+  const target = trip ? getFirstEventTime(trip) : undefined;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    if (!targetDate) return;
+    if (!target) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [targetDate]);
-  if (!targetDate) return null;
-  const diff = Math.max(0, new Date(targetDate).getTime() - now);
+  }, [target]);
+  if (!target) return null;
+  const diff = Math.max(0, new Date(target).getTime() - now);
   return {
     days: Math.floor(diff / 86400000),
     hours: Math.floor((diff % 86400000) / 3600000),
@@ -161,7 +183,7 @@ export function DashboardPage() {
       .slice(0, 2),
     [trips]);
 
-  const countdown = useLiveCountdown(upcomingCards[0]?.start);
+  const countdown = useLiveCountdown(upcomingCards[0]);
 
   // Spotlight trip for "For your X Trip"
   const spotlightTrip = useMemo(() =>
@@ -448,6 +470,23 @@ export function DashboardPage() {
                       </div>
                     ))}
                   </div>
+                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
+                    <MapPin className="h-3 w-3 text-brand" />
+                    {upcomingCards[0].destination || upcomingCards[0].name}
+                    <ArrowUpRight className="h-3 w-3" />
+                  </p>
+                </button>
+              ) : upcomingCards[0] && new Date(upcomingCards[0].end) >= new Date() ? (
+                <button
+                  onClick={() => handleOpenTrip(upcomingCards[0])}
+                  className="group mt-5 block text-left"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand mb-2">
+                    Currently Travelling
+                  </p>
+                  <p className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-brand">
+                    NOW
+                  </p>
                   <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
                     <MapPin className="h-3 w-3 text-brand" />
                     {upcomingCards[0].destination || upcomingCards[0].name}

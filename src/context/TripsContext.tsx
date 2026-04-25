@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useMemo, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useMemo, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip, TravelEvent } from "@/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -43,6 +43,7 @@ const TripsContext = createContext<TripsContextType>({
 
 function useCloudTrips(uid: string | null) {
   const qc = useQueryClient();
+  const skipNextSnapshot = useRef(false);
 
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
     queryKey: ["trips", uid],
@@ -56,6 +57,11 @@ function useCloudTrips(uid: string | null) {
   useEffect(() => {
     if (!uid) return;
     const unsub = subscribeToTrips((updated) => {
+      // Skip the echo from our own write to prevent overwriting local edits
+      if (skipNextSnapshot.current) {
+        skipNextSnapshot.current = false;
+        return;
+      }
       qc.setQueryData<Trip[]>(["trips", uid], updated);
     });
     return () => unsub();
@@ -65,6 +71,7 @@ function useCloudTrips(uid: string | null) {
     const prev = qc.getQueryData<Trip[]>(["trips", uid]) ?? [];
     const next = typeof action === "function" ? action(prev) : action;
     qc.setQueryData<Trip[]>(["trips", uid], next);
+    skipNextSnapshot.current = true;
     syncToCloud(prev, next);
   }, [qc, uid]);
 

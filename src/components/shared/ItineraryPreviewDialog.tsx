@@ -156,7 +156,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
               {grouped.map(([date, events], dayIdx) => {
                 const d = new Date(date + "T12:00:00");
                 return (
-                  <div key={date}>
+                  <div key={date} style={forPrint ? { breakInside: "avoid", pageBreakInside: "avoid" } : undefined}>
                     {/* Day header */}
                     <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
                       <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-brand/10 border border-brand/20 flex flex-col items-center justify-center shrink-0">
@@ -256,7 +256,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
   const typeLabel = ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : "Activity";
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4" style={forPrint ? { breakInside: "avoid", pageBreakInside: "avoid" } : undefined}>
       <div className="flex items-start gap-3 flex-1 min-w-0">
         {/* Icon */}
         <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-[#1a1a1a]")}>
@@ -270,7 +270,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
 
           {/* Description */}
           {ev.description && (
-            <p className={cn("mt-1 text-[11px] leading-relaxed line-clamp-3", forPrint ? "text-slate-500" : "text-slate-600 dark:text-[#999]")}>{ev.description}</p>
+            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-slate-500" : "text-slate-600 dark:text-[#999] line-clamp-3")}>{ev.description}</p>
           )}
 
           {/* Time + location */}
@@ -285,7 +285,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
             {ev.location && (
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" strokeWidth={1.8} />
-                <span className="truncate max-w-[180px] sm:max-w-[200px]">{ev.location}</span>
+                <span className={forPrint ? "" : "truncate max-w-[180px] sm:max-w-[200px]"}>{ev.location}</span>
               </span>
             )}
             {ev.duration && (
@@ -359,7 +359,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
                   className={cn("inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded border transition-colors", forPrint ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#aaa] hover:text-brand hover:border-brand/30")}
                 >
                   <Paperclip className="h-2.5 w-2.5 shrink-0" strokeWidth={1.8} />
-                  <span className="truncate max-w-[120px] sm:max-w-[160px]">{doc.name}</span>
+                  <span className={forPrint ? "" : "truncate max-w-[120px] sm:max-w-[160px]"}>{doc.name}</span>
                 </a>
               ))}
             </div>
@@ -367,7 +367,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
 
           {/* Notes */}
           {ev.notes && (
-            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic line-clamp-2 leading-relaxed", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")}>
+            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666] line-clamp-2")}>
               {ev.notes}
             </p>
           )}

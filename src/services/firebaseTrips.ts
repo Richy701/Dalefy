@@ -5,7 +5,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseDb, firebaseAuth, firebaseStorage } from "./firebase";
-import type { Trip, TravelEvent } from "@/types";
+import type { Trip } from "@/types";
 import { logger } from "@/lib/logger";
 
 const TRIPS = "trips";

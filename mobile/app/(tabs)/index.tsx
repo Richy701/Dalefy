@@ -249,18 +249,41 @@ function QRScanPane({ C, styles, onScanned }: {
 }
 
 // ── Live Countdown ────────────────────────────────────────────────────────────
-function useLiveCountdown(targetDate: string | undefined) {
+
+/** Get the actual departure timestamp from the chronologically earliest event */
+function getFirstEventTime(trip: Trip): string {
+  let earliest: Date | null = null;
+
+  for (const ev of trip.events ?? []) {
+    if (!ev.date || !ev.time) continue;
+    const match = ev.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!match) continue;
+    let hours = parseInt(match[1], 10);
+    const mins = parseInt(match[2], 10);
+    const ampm = match[3]?.toUpperCase();
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    const d = new Date(ev.date);
+    d.setHours(hours, mins, 0, 0);
+    if (!earliest || d < earliest) earliest = d;
+  }
+
+  return earliest ? earliest.toISOString() : trip.start;
+}
+
+function useLiveCountdown(trip: Trip | undefined) {
+  const target = trip ? getFirstEventTime(trip) : undefined;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    if (!targetDate) return;
+    if (!target) return;
     // On Android, update less frequently to reduce re-renders
     const interval = Platform.OS === "android" ? 10000 : 1000;
     const id = setInterval(() => setNow(Date.now()), interval);
     return () => clearInterval(id);
-  }, [targetDate]);
+  }, [target]);
 
-  if (!targetDate) return null;
-  const diff = Math.max(0, new Date(targetDate).getTime() - now);
+  if (!target) return null;
+  const diff = Math.max(0, new Date(target).getTime() - now);
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
@@ -350,7 +373,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const greeting = firstName ? `${timeOfDay}, ${firstName}` : timeOfDay;
   const greetingFontSize = greeting.length > 22 ? 18 : greeting.length > 18 ? 20 : T["3xl"] - 2;
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
-  const countdown = useLiveCountdown(nextTrip?.start);
+  const countdown = useLiveCountdown(nextTrip);
 
   const closeSheet = () => {
     setCodeOpen(false);
