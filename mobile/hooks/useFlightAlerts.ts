@@ -1,7 +1,39 @@
 import { useEffect, useRef } from "react";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
-import type { TravelEvent } from "@/shared/types";
+import type { TravelEvent, Notification } from "@/shared/types";
+
+const AIRPORT_NAMES: Record<string, string> = {
+  LHR: "London Heathrow", MAN: "Manchester", STN: "London Stansted",
+  LGW: "London Gatwick", BHX: "Birmingham", EDI: "Edinburgh",
+  GLA: "Glasgow", BRS: "Bristol", LTN: "London Luton",
+  ICN: "Seoul Incheon", NRT: "Tokyo Narita", HND: "Tokyo Haneda",
+  KIX: "Osaka Kansai", HKG: "Hong Kong", SIN: "Singapore Changi",
+  BKK: "Bangkok", KUL: "Kuala Lumpur", MNL: "Manila",
+  CGK: "Jakarta", DEL: "Delhi", BOM: "Mumbai",
+  PEK: "Beijing", PVG: "Shanghai", TPE: "Taipei",
+  DXB: "Dubai", DOH: "Doha", AUH: "Abu Dhabi",
+  NBO: "Nairobi", JNB: "Johannesburg", CPT: "Cape Town",
+  CDG: "Paris Charles de Gaulle", AMS: "Amsterdam", FRA: "Frankfurt",
+  FCO: "Rome Fiumicino", BCN: "Barcelona", MAD: "Madrid",
+  NAP: "Naples", IST: "Istanbul", ATH: "Athens",
+  JFK: "New York JFK", LAX: "Los Angeles", ORD: "Chicago O'Hare",
+  MIA: "Miami", SFO: "San Francisco", ATL: "Atlanta",
+  YYZ: "Toronto", MEX: "Mexico City", GRU: "São Paulo",
+  SYD: "Sydney", MEL: "Melbourne", AKL: "Auckland",
+  MLE: "Malé",
+};
+
+function friendlyAirport(code: string): string {
+  return AIRPORT_NAMES[code.toUpperCase()] ?? code;
+}
+
+/** Parse "LHR to ICN" and return the destination as a friendly name */
+function friendlyDestination(location: string): string | null {
+  const match = location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/i);
+  if (match) return friendlyAirport(match[2]);
+  return null;
+}
 
 /**
  * Watches trip flight events for status changes (gate, terminal, delay,
@@ -37,36 +69,34 @@ function detectChanges(
   prev: FlightSnapshot,
   next: FlightSnapshot,
   ev: TravelEvent,
-): { message: string; detail: string; type: "info" | "success" | "warning" } | null {
+): { message: string; detail: string; type: Notification["type"] } | null {
   const changes: string[] = [];
-  let type: "info" | "success" | "warning" = "info";
+  let type: Notification["type"] = "flight";
   const label = ev.flightNum || ev.title;
 
   // Status changes
   if (next.status && next.status !== prev.status) {
     const s = next.status.toLowerCase();
     if (s.includes("cancel")) {
-      type = "warning";
       return {
         message: `${label} Cancelled`,
         detail: `Your flight has been cancelled. Contact ${ev.airline || "the airline"} for rebooking.`,
-        type,
+        type: "warning" as const,
       };
     }
     if (s.includes("landed") || s.includes("arrived")) {
-      type = "success";
+      const dest = ev.location ? friendlyDestination(ev.location) : null;
       return {
         message: `${label} Landed`,
-        detail: ev.location ? `Arrived at ${ev.location}` : "Your flight has landed.",
-        type,
+        detail: dest ? `Arrived at ${dest}` : "Your flight has landed.",
+        type: "landed" as const,
       };
     }
     if (s.includes("boarding")) {
-      type = "info";
       return {
         message: `${label} Now Boarding`,
         detail: next.gate ? `Head to gate ${next.gate}` : "Proceed to your gate.",
-        type,
+        type: "boarding" as const,
       };
     }
     if (s.includes("delay")) {

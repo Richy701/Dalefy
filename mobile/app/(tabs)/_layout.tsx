@@ -47,9 +47,9 @@ function IOSTabLayout() {
         default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)" },
         selected: { color: C.teal },
       }}
-      sceneContainerStyle={{ backgroundColor: C.card }}
+      sceneContainerStyle={{ backgroundColor: C.bg }}
       screenOptions={{
-        contentStyle: { backgroundColor: C.card },
+        contentStyle: { backgroundColor: C.bg },
         headerShown: false,
       }}
     >

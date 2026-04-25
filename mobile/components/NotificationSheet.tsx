@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import ContextMenu from "@/components/ContextMenu";
-import { Bell, CheckCheck, Trash2, Plane, AlertTriangle, CircleCheck } from "lucide-react-native";
+import { Bell, Trash2, Plane, PlaneLanding, PlaneTakeoff, AlertTriangle, Hotel, Utensils, CalendarDays, Car } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -40,21 +40,21 @@ export function NotificationSheet({ visible, onClose }: Props) {
             {unreadCount > 0 && (
               <Pressable
                 onPress={() => { haptic.light(); markAllRead(); }}
-                style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
+                style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mark all as read"
               >
-                <CheckCheck size={16} color={C.teal} strokeWidth={2} />
+                <Text style={styles.headerTextBtnLabel}>Read All</Text>
               </Pressable>
             )}
-            {notifications.length > 0 && (
+            {notifications.length > 0 && unreadCount === 0 && (
               <Pressable
                 onPress={() => { haptic.light(); clearAll(); }}
-                style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
+                style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
                 accessibilityRole="button"
                 accessibilityLabel="Clear all"
               >
-                <Trash2 size={16} color={C.textTertiary} strokeWidth={2} />
+                <Text style={[styles.headerTextBtnLabel, { color: C.textTertiary }]}>Clear</Text>
               </Pressable>
             )}
           </View>
@@ -114,6 +114,22 @@ export function NotificationSheet({ visible, onClose }: Props) {
   );
 }
 
+/* ── Icon picker — uses type first, falls back to message content for old notifications ── */
+
+function NotificationIcon({ n, C }: { n: { type: string; message: string }; C: ThemeColors }) {
+  const msg = n.message.toLowerCase();
+  if (n.type === "warning" || msg.includes("cancelled") || msg.includes("delayed")) return <AlertTriangle size={16} color={C.amber} strokeWidth={1.8} />;
+  if (n.type === "landed" || msg.includes("landed")) return <PlaneLanding size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "boarding" || msg.includes("boarding")) return <PlaneTakeoff size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "flight" || msg.includes("flight") || msg.includes("gate") || msg.includes("terminal")) return <Plane size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "hotel" || msg.includes("hotel") || msg.includes("check-in")) return <Hotel size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "dining" || msg.includes("dining") || msg.includes("restaurant")) return <Utensils size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "transfer" || msg.includes("transfer") || msg.includes("pickup")) return <Car size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "activity") return <CalendarDays size={16} color={C.teal} strokeWidth={1.8} />;
+  if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart")) return <Plane size={16} color={C.teal} strokeWidth={1.8} />;
+  return <Bell size={16} color={C.teal} strokeWidth={1.8} />;
+}
+
 /* ── Swipeable notification row ── */
 
 interface RowProps {
@@ -141,7 +157,7 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
             style={[styles.swipeBtn, { backgroundColor: C.teal }]}
             onPress={() => { swipeRef.current?.close(); onMarkRead(); }}
           >
-            <CheckCheck size={16} color="#000" strokeWidth={2} />
+            <Text style={{ fontSize: 10, fontWeight: "700", color: "#000", textTransform: "uppercase", letterSpacing: 0.5 }}>Read</Text>
           </Pressable>
         )}
         <Pressable
@@ -186,20 +202,7 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
           ]}
         >
           <View style={styles.itemRow}>
-            <View style={[styles.typeIcon, {
-              backgroundColor: n.type === "warning" ? `${C.amber}15`
-                : n.type === "success" ? `${C.green}15`
-                : `${C.teal}15`,
-            }]}>
-              {n.type === "warning" ? (
-                <AlertTriangle size={14} color={C.amber} strokeWidth={2} />
-              ) : n.type === "success" ? (
-                <CircleCheck size={14} color={C.green} strokeWidth={2} />
-              ) : (
-                <Plane size={14} color={C.teal} strokeWidth={2} />
-              )}
-              {!n.read && <View style={styles.dot} />}
-            </View>
+            <NotificationIcon n={n} C={C} />
             <View style={styles.itemContent}>
               <Text style={[styles.itemMessage, n.read && styles.itemMessageRead]}>{n.message}</Text>
               <Text style={styles.itemDetail} numberOfLines={2}>{n.detail}</Text>
@@ -256,6 +259,15 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       justifyContent: "center",
       borderRadius: 20,
     },
+    headerTextBtn: {
+      paddingVertical: 4,
+      paddingHorizontal: 4,
+    },
+    headerTextBtnLabel: {
+      fontSize: T.xs,
+      fontWeight: "600",
+      color: C.teal,
+    },
     doneText: {
       fontSize: T.base,
       fontWeight: "600",
@@ -290,22 +302,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: 8,
-    },
-    typeIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    dot: {
-      position: "absolute",
-      top: 0,
-      right: 0,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: C.teal,
     },
     itemContent: { flex: 1, minWidth: 0 },
     itemMessage: {

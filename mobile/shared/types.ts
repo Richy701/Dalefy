@@ -135,5 +135,5 @@ export interface Notification {
   detail: string;
   time: string;
   read: boolean;
-  type: "info" | "success" | "warning";
+  type: "info" | "success" | "warning" | "flight" | "landed" | "boarding" | "hotel" | "dining" | "activity" | "transfer";
 }

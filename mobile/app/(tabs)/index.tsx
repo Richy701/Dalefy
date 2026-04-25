@@ -5,7 +5,7 @@ import {
 import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withSpring, withDelay, withTiming,
   Easing, runOnJS, interpolate,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
@@ -474,7 +474,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   return (
-    <View style={[styles.outer, { paddingTop: insets.top + S.xs, ...(Platform.OS === "ios" ? { marginTop: -insets.top } : {}) }]}>
+    <View style={[styles.outer, { paddingTop: insets.top + (Platform.OS === "ios" ? 56 : S.xs), ...(Platform.OS === "ios" ? { marginTop: -insets.top } : {}) }]}>
       <LinearGradient
         colors={[`${C.teal}18`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1232,23 +1232,20 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
+      {/* ── Greeting Hero (fixed, doesn't scroll) ── */}
+      <GreetingHero
+        nextTrip={nextUpcoming}
+        isActive={isNextActive}
+        onPress={(t) => router.push(`/trip/${t.id}`)}
+      />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        contentInset={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        scrollIndicatorInsets={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
-
-        {/* ── Greeting Hero ── */}
-        <GreetingHero
-          nextTrip={nextUpcoming}
-          isActive={isNextActive}
-          onPress={(t) => router.push(`/trip/${t.id}`)}
-        />
 
         {/* ── Search ── */}
         {trips.length > 0 && (
