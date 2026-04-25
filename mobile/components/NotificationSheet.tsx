@@ -143,15 +143,10 @@ interface RowProps {
 function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: RowProps) {
   const swipeRef = useRef<Swipeable>(null);
 
-  const renderRightActions = useCallback((_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const translateX = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [0, 80],
-      extrapolate: "clamp",
-    });
-
+  const actionWidth = n.read ? 56 : 112;
+  const renderRightActions = useCallback(() => {
     return (
-      <Animated.View style={[styles.swipeActions, { transform: [{ translateX }] }]}>
+      <View style={[styles.swipeActions, { width: actionWidth }]}>
         {!n.read && (
           <Pressable
             style={[styles.swipeBtn, { backgroundColor: C.teal }]}
@@ -166,9 +161,9 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
         >
           <Trash2 size={16} color="#fff" strokeWidth={2} />
         </Pressable>
-      </Animated.View>
+      </View>
     );
-  }, [n.read, C, styles, onMarkRead, onRemove]);
+  }, [n.read, C, styles, onMarkRead, onRemove, actionWidth]);
 
   const contextActions = [
     ...(!n.read ? [{ title: "Mark as Read", systemIcon: "checkmark.circle" }] : []),
@@ -186,6 +181,7 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
       ref={swipeRef}
       renderRightActions={renderRightActions}
       overshootRight={false}
+      rightThreshold={40}
       friction={2}
     >
       <ContextMenu
@@ -202,7 +198,9 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
           ]}
         >
           <View style={styles.itemRow}>
-            <NotificationIcon n={n} C={C} />
+            <View style={styles.iconWrap}>
+              <NotificationIcon n={n} C={C} />
+            </View>
             <View style={styles.itemContent}>
               <Text style={[styles.itemMessage, n.read && styles.itemMessageRead]}>{n.message}</Text>
               <Text style={styles.itemDetail} numberOfLines={2}>{n.detail}</Text>
@@ -290,7 +288,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // Notification item
     item: {
-      paddingHorizontal: S.sm,
+      paddingHorizontal: S.md,
       paddingVertical: 14,
       borderRadius: R.lg,
       backgroundColor: C.bg,
@@ -303,6 +301,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "flex-start",
       gap: 8,
     },
+    iconWrap: { width: 20, alignItems: "center" as const, marginTop: 2 },
     itemContent: { flex: 1, minWidth: 0 },
     itemMessage: {
       fontSize: T.sm,

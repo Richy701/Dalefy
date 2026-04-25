@@ -1182,7 +1182,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
-    toast("Trips synced");
+    toast("You're all up to date");
   }, [reload, toast]);
 
   const sorted = useMemo(() =>
