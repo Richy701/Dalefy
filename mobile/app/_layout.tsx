@@ -33,6 +33,7 @@ import { useQuickActionRouting } from "expo-quick-actions/router";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
+import { useTripReminders } from "@/hooks/useTripReminders";
 import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
@@ -116,6 +117,9 @@ function AppStack() {
 
   // Watch flight events for status changes (gate, delay, boarding, landed, cancelled)
   useFlightAlerts();
+
+  // Schedule local reminders for upcoming trips, flights, hotels, activities
+  useTripReminders();
 
   // Start/update/end iOS Live Activities for today's flights
   useFlightLiveActivity();
