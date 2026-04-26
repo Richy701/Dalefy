@@ -7,7 +7,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Moon, Sun, Smartphone, Palette, Bell, Shield, ChevronRight,
   Droplet, Vibrate, Pencil, ExternalLink, Info,
-  FileText,
+  FileText, CalendarSync, Activity, MessageCircleQuestion, Share2, FileCheck,
 } from "lucide-react-native";
 import { T, R, S, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
 
@@ -171,13 +171,24 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.row}>
-            <Bell size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <CalendarSync size={18} color={C.textSecondary} strokeWidth={1.5} />
             <Text style={s.rowLabel}>Itinerary updates</Text>
             <Switch
               value={prefs.itineraryUpdates}
               onValueChange={(v) => { haptic.selection(); setPref("itineraryUpdates", v); }}
               trackColor={{ false: C.elevated, true: C.tealMid }}
               thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
+            />
+          </View>
+          <View style={s.divider} />
+          <View style={s.row}>
+            <Activity size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Text style={s.rowLabel}>Live Activity</Text>
+            <Switch
+              value={prefs.liveActivity !== false}
+              onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
+              trackColor={{ false: C.elevated, true: C.tealMid }}
+              thumbColor={prefs.liveActivity !== false ? C.teal : C.textTertiary}
             />
           </View>
         </View>
@@ -203,12 +214,34 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/support"); }}
+            accessibilityRole="link"
+            accessibilityLabel="Help & support"
+          >
+            <MessageCircleQuestion size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Text style={s.rowLabel}>Help & support</Text>
+            <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
+          </Pressable>
+          <View style={s.divider} />
+          <Pressable
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/privacy"); }}
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
             <Shield size={18} color={C.textSecondary} strokeWidth={1.5} />
             <Text style={s.rowLabel}>Privacy policy</Text>
+            <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
+          </Pressable>
+          <View style={s.divider} />
+          <Pressable
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/terms"); }}
+            accessibilityRole="link"
+            accessibilityLabel="Terms of service"
+          >
+            <FileCheck size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Text style={s.rowLabel}>Terms of service</Text>
             <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
           </Pressable>
           <View style={s.divider} />

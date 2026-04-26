@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { FlightTrackerProps } from "@/widgets/FlightTracker";
 
@@ -119,11 +120,21 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
  */
 export function useFlightLiveActivity() {
   const { trips } = useTrips();
+  const { prefs } = usePreferences();
   const activitiesRef = useRef<LiveActivityRef[]>([]);
   const didCleanup = useRef(false);
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !FlightTracker) return;
+
+    // If Live Activity is disabled, end all and bail
+    if (prefs.liveActivity === false) {
+      for (const ref of activitiesRef.current) {
+        try { ref.activity.end("default"); } catch {}
+      }
+      activitiesRef.current = [];
+      return;
+    }
 
     // End any stale Live Activities from previous sessions on first run
     if (!didCleanup.current) {
@@ -202,5 +213,5 @@ export function useFlightLiveActivity() {
         activitiesRef.current = activitiesRef.current.filter(a => a.eventId !== ref.eventId);
       }
     }
-  }, [trips]);
+  }, [trips, prefs.liveActivity]);
 }

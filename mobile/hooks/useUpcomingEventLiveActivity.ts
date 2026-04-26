@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { UpcomingEventProps } from "@/widgets/UpcomingEvent";
 
@@ -77,11 +78,22 @@ function eventToProps(ev: TravelEvent): UpcomingEventProps {
  */
 export function useUpcomingEventLiveActivity() {
   const { trips } = useTrips();
+  const { prefs } = usePreferences();
   const activityRef = useRef<{ eventId: string; activity: any } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !UpcomingEvent) return;
+
+    // If Live Activity is disabled, end any active ones and bail
+    if (prefs.liveActivity === false) {
+      try {
+        const instances = UpcomingEvent.getInstances();
+        for (const inst of instances) { try { inst.end("default"); } catch {} }
+      } catch {}
+      activityRef.current = null;
+      return;
+    }
 
     // Clean up any stale activities from previous sessions on first run
     if (!activityRef.current) {
@@ -175,5 +187,5 @@ export function useUpcomingEventLiveActivity() {
         activityRef.current = null;
       }
     };
-  }, [trips]);
+  }, [trips, prefs.liveActivity]);
 }

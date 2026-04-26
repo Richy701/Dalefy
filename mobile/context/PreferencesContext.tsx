@@ -13,6 +13,7 @@ export interface Preferences {
   orgSlug: string;
   tripReminders: boolean;
   itineraryUpdates: boolean;
+  liveActivity: boolean;
   accent: AccentId;
   haptics: boolean;
   themeMode: ThemeMode;
@@ -25,6 +26,7 @@ const DEFAULT_PREFS: Preferences = {
   orgSlug: "",
   tripReminders: true,
   itineraryUpdates: true,
+  liveActivity: true,
   accent: "teal",
   haptics: true,
   themeMode: "system",
