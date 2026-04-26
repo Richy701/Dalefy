@@ -261,22 +261,27 @@ async function scheduleReminders(trips: Trip[]) {
         }
       }
 
+      // Hotel check-in: only schedule for future days (today is covered by Live Activity)
       if (ev.type === "hotel" && ev.checkin) {
         const checkinDate = parseDate(ev.date);
         if (checkinDate) {
-          checkinDate.setHours(9, 0, 0, 0);
-          if (checkinDate.getTime() > now) {
-            let body = `${ev.title}, check-in is today${ev.time ? ` at ${ev.time}` : ""}.`;
-            if (ev.checkout) body += `\nCheck-out: ${ev.checkout}`;
-            if (ev.location) body += `\n${ev.location}`;
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const isToday = ev.date === todayStr;
+          if (!isToday) {
+            checkinDate.setHours(9, 0, 0, 0);
+            if (checkinDate.getTime() > now) {
+              let body = `${ev.title}, check-in is tomorrow${ev.time ? ` at ${ev.time}` : ""}.`;
+              if (ev.checkout) body += `\nCheck-out: ${ev.checkout}`;
+              if (ev.location) body += `\n${ev.location}`;
 
-            await scheduleOne(
-              `${REMINDER_PREFIX}hotel-${trip.id}-${ev.id}`,
-              "Hotel Check-in Today",
-              body,
-              checkinDate,
-              { tripId: trip.id, category: "reminder" },
-            );
+              await scheduleOne(
+                `${REMINDER_PREFIX}hotel-${trip.id}-${ev.id}`,
+                "Hotel Check-in Tomorrow",
+                body,
+                checkinDate,
+                { tripId: trip.id, category: "reminder" },
+              );
+            }
           }
         }
       }

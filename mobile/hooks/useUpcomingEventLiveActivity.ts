@@ -51,12 +51,21 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 2) + "..." : s;
 }
 
+/** Strip redundant type prefixes like "Hotel check-in — " since the type label already shows */
+function cleanTitle(title: string): string {
+  return title
+    .replace(/^Hotel\s+check-?in\s*[—–-]\s*/i, "")
+    .replace(/^Flight\s*[—–-]\s*/i, "")
+    .replace(/^Transfer\s*[—–-]\s*/i, "")
+    .replace(/^Dining\s*[—–-]\s*/i, "");
+}
+
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   return {
-    title: truncate(ev.title, 40),
+    title: truncate(cleanTitle(ev.title), 32),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
-    location: truncate(ev.location || "", 40),
+    location: truncate(ev.location || "", 32),
     icon: TYPE_ICONS[ev.type] || "calendar",
   };
 }

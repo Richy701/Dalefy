@@ -38,11 +38,11 @@ function UpcomingEventActivity(
 ) {
   "widget";
 
-  const isDark = environment.colorScheme === "dark";
   const teal = "#0bd2b5";
-  const textPrimary = isDark ? "#ffffff" : "#000000";
-  const textSecondary = isDark ? "#8e8e93" : "#6e6e73";
-  const textDim = isDark ? "#48484a" : "#aeaeb2";
+  // Live Activities always render on dark/translucent backgrounds — force light text
+  const textPrimary = "#ffffff";
+  const textSecondary = "#a0a0a5";
+  const textDim = "#68686d";
 
   const typeLabel = props.type.charAt(0).toUpperCase() + props.type.slice(1);
   const icon = props.icon || TYPE_ICONS[props.type] || "calendar";
