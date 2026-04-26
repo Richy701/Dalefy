@@ -36,7 +36,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 import { useBrand } from "@/context/BrandContext";
@@ -301,10 +301,9 @@ function LiveCountdownDisplay({ countdown, C }: {
           <View style={{ alignItems: "center", minWidth: 40 }}>
             <Text style={{
               fontSize: 34,
-              fontFamily: F.black,
-              fontWeight: "900",
+              fontWeight: "700",
               color: C.textPrimary,
-              letterSpacing: -1.5,
+              letterSpacing: -1,
               lineHeight: 38,
               fontVariant: ["tabular-nums"],
             }}>
@@ -739,8 +738,8 @@ function makeGreetingStyles(C: ThemeColors) {
       letterSpacing: 2, textTransform: "uppercase",
     },
     greeting: {
-      fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.5,
+      fontWeight: T.bold,
+      color: C.textPrimary, letterSpacing: -0.3,
       marginBottom: S.xs,
     },
     headerActions: {
@@ -867,8 +866,8 @@ function makeGreetingStyles(C: ThemeColors) {
       letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4,
     },
     countdownNumber: {
-      fontSize: 48, fontFamily: F.black, fontWeight: T.black, color: C.textPrimary,
-      letterSpacing: -2, lineHeight: 48,
+      fontSize: 48, fontWeight: T.bold, color: C.textPrimary,
+      letterSpacing: -1.5, lineHeight: 48,
     },
     countdownMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
     countdownDest: {
