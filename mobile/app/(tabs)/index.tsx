@@ -27,7 +27,7 @@ import {
   Search, MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
   Bell, Sun, Moon, Plus, X as XIcon, ScanLine, Link2, Hash,
-  Check,
+  Check, Clock,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
@@ -1010,6 +1010,22 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
           </View>
           <View style={styles.actions} />
         </View>
+
+        {/* Info chips — time & location */}
+        <View style={styles.infoRow}>
+          {ev.time ? (
+            <View style={styles.infoChip}>
+              <Clock size={11} color={C.textTertiary} strokeWidth={2} />
+              <Text style={styles.infoText}>{ev.time}</Text>
+            </View>
+          ) : null}
+          {ev.location ? (
+            <View style={styles.infoChip}>
+              <MapPin size={11} color={C.textTertiary} strokeWidth={2} />
+              <Text style={styles.infoText} numberOfLines={1}>{ev.location}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
@@ -1039,6 +1055,13 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
     },
     sub: { fontSize: T.sm, color: C.textSecondary, lineHeight: 20 },
     actions: { flexDirection: "row", gap: S["2xs"] },
+    infoRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 8 },
+    infoChip: {
+      flexDirection: "row", alignItems: "center", gap: 4,
+      backgroundColor: C.elevated, borderRadius: R.full,
+      paddingHorizontal: 8, paddingVertical: 3,
+    },
+    infoText: { fontSize: 11, fontWeight: "500" as const, color: C.textTertiary, maxWidth: 120 },
     heartBtn: {
       width: 28, height: 28, borderRadius: R.full,
       alignItems: "center", justifyContent: "center",
