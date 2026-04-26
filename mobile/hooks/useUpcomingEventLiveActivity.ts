@@ -83,6 +83,16 @@ export function useUpcomingEventLiveActivity() {
   useEffect(() => {
     if (Platform.OS !== "ios" || !UpcomingEvent) return;
 
+    // Clean up any stale activities from previous sessions on first run
+    if (!activityRef.current) {
+      try {
+        const stale = UpcomingEvent.getInstances();
+        for (const inst of stale) {
+          try { inst.end("default"); } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    }
+
     function update() {
       const now = nowMinutes();
 
@@ -119,28 +129,25 @@ export function useUpcomingEventLiveActivity() {
 
       const props = eventToProps(upcoming);
 
-      if (current) {
-        if (current.eventId === upcoming.id) {
-          // Same event — just update in case data changed
-          try { current.activity.update(props); } catch { /* ignore */ }
-        } else {
-          // Different event — end old, start new
-          try { current.activity.end("default"); } catch { /* ignore */ }
-          try {
-            const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
-            activityRef.current = { eventId: upcoming.id, activity };
-          } catch (err) {
-            console.warn("[UpcomingEventLiveActivity] Failed to start:", err);
-            activityRef.current = null;
-          }
-        }
+      if (current && current.eventId === upcoming.id) {
+        // Same event — just update in case data changed
+        try { current.activity.update(props); } catch { /* ignore */ }
       } else {
-        // No active Live Activity — start one
+        // End ALL existing instances to prevent duplicates
+        try {
+          const instances = UpcomingEvent.getInstances();
+          for (const inst of instances) {
+            try { inst.end("default"); } catch { /* ignore */ }
+          }
+        } catch { /* ignore */ }
+
+        // Start fresh
         try {
           const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
           activityRef.current = { eventId: upcoming.id, activity };
         } catch (err) {
           console.warn("[UpcomingEventLiveActivity] Failed to start:", err);
+          activityRef.current = null;
         }
       }
 
