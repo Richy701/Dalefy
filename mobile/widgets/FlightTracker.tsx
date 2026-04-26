@@ -35,10 +35,10 @@ function FlightTrackerActivity(
   "widget";
 
   const teal = "#0bd2b5";
-  // Live Activities always render on dark/translucent backgrounds — force light text
-  const textPrimary = "#ffffff";
-  const textSecondary = "#a0a0a5";
-  const textDim = "#68686d";
+  // Use system-adaptive hierarchical styles for liquid glass compatibility
+  const hierarchicalPrimary = { type: "hierarchical" as const, style: "primary" as const };
+  const hierarchicalSecondary = { type: "hierarchical" as const, style: "secondary" as const };
+  const hierarchicalTertiary = { type: "hierarchical" as const, style: "tertiary" as const };
 
   const status = props.status?.toLowerCase() ?? "";
   const statusColor =
@@ -69,7 +69,7 @@ function FlightTrackerActivity(
           <Text
             modifiers={[
               font({ size: 12, weight: "semibold" }),
-              foregroundStyle(textSecondary),
+              foregroundStyle(hierarchicalSecondary),
             ]}
           >
             {props.airline ? props.airline + " " : ""}{props.flightNum}
@@ -103,7 +103,7 @@ function FlightTrackerActivity(
           <Text
             modifiers={[
               font({ size: 26, weight: "black", design: "rounded" }),
-              foregroundStyle(textPrimary),
+              foregroundStyle(hierarchicalPrimary),
             ]}
           >
             {props.from}
@@ -111,7 +111,7 @@ function FlightTrackerActivity(
           <Text
             modifiers={[
               font({ size: 12, weight: "medium" }),
-              foregroundStyle(textSecondary),
+              foregroundStyle(hierarchicalSecondary),
             ]}
           >
             {props.departTime}
@@ -125,7 +125,7 @@ function FlightTrackerActivity(
             <Text
               modifiers={[
                 font({ size: 9, weight: "medium" }),
-                foregroundStyle(textDim),
+                foregroundStyle(hierarchicalTertiary),
               ]}
             >
               {props.duration}
@@ -138,7 +138,7 @@ function FlightTrackerActivity(
           <Text
             modifiers={[
               font({ size: 26, weight: "black", design: "rounded" }),
-              foregroundStyle(textPrimary),
+              foregroundStyle(hierarchicalPrimary),
             ]}
           >
             {props.to}
@@ -146,7 +146,7 @@ function FlightTrackerActivity(
           <Text
             modifiers={[
               font({ size: 12, weight: "medium" }),
-              foregroundStyle(textSecondary),
+              foregroundStyle(hierarchicalSecondary),
             ]}
           >
             {props.arriveTime || "--:--"}
@@ -178,7 +178,7 @@ function FlightTrackerActivity(
       <Text
         modifiers={[
           font({ size: 11, weight: "bold" }),
-          foregroundStyle(textPrimary),
+          foregroundStyle(hierarchicalPrimary),
         ]}
       >
         {props.from}
@@ -191,7 +191,7 @@ function FlightTrackerActivity(
     <Text
       modifiers={[
         font({ size: 11, weight: "bold" }),
-        foregroundStyle(textPrimary),
+        foregroundStyle(hierarchicalPrimary),
       ]}
     >
       {props.to}
@@ -221,7 +221,7 @@ function FlightTrackerActivity(
   const expandedCenter = (
     <HStack modifiers={[padding({ all: 8 })]}>
       <Image systemName="airplane" size={12} color={teal} />
-      <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(textDim)]}>
+      <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(hierarchicalTertiary)]}>
         {props.flightNum}
       </Text>
     </HStack>
@@ -230,7 +230,7 @@ function FlightTrackerActivity(
   // ── Expanded: bottom — times + status + gate ──
   const expandedBottom = (
     <HStack modifiers={[padding({ all: 8 })]}>
-      <Text modifiers={[font({ size: 11 }), foregroundStyle(textSecondary)]}>
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
         {props.departTime}
       </Text>
       <Spacer />
@@ -250,7 +250,7 @@ function FlightTrackerActivity(
         </Text>
       </HStack>
       <Spacer />
-      <Text modifiers={[font({ size: 11 }), foregroundStyle(textSecondary)]}>
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
         {props.arriveTime || "--:--"}
       </Text>
     </HStack>

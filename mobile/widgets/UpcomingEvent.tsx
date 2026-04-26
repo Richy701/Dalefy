@@ -39,10 +39,10 @@ function UpcomingEventActivity(
   "widget";
 
   const teal = "#0bd2b5";
-  // Live Activities always render on dark/translucent backgrounds — force light text
-  const textPrimary = "#ffffff";
-  const textSecondary = "#a0a0a5";
-  const textDim = "#68686d";
+  // Use system-adaptive hierarchical styles for liquid glass compatibility
+  const hierarchicalPrimary = { type: "hierarchical" as const, style: "primary" as const };
+  const hierarchicalSecondary = { type: "hierarchical" as const, style: "secondary" as const };
+  const hierarchicalTertiary = { type: "hierarchical" as const, style: "tertiary" as const };
 
   const typeLabel = props.type.charAt(0).toUpperCase() + props.type.slice(1);
   const icon = props.icon || TYPE_ICONS[props.type] || "calendar";
@@ -71,7 +71,7 @@ function UpcomingEventActivity(
         <Text
           modifiers={[
             font({ size: 12, weight: "semibold" }),
-            foregroundStyle(textSecondary),
+            foregroundStyle(hierarchicalSecondary),
           ]}
         >
           {props.time}
@@ -81,7 +81,7 @@ function UpcomingEventActivity(
       <Text
         modifiers={[
           font({ size: 18, weight: "bold" }),
-          foregroundStyle(textPrimary),
+          foregroundStyle(hierarchicalPrimary),
           padding({ top: 4 }),
         ]}
       >
@@ -90,11 +90,11 @@ function UpcomingEventActivity(
 
       {props.location ? (
         <HStack modifiers={[padding({ top: 4 })]}>
-          <Image systemName="mappin" size={9} color={textDim} />
+          <Image systemName="mappin" size={9} color={teal} />
           <Text
             modifiers={[
               font({ size: 11, weight: "medium" }),
-              foregroundStyle(textSecondary),
+              foregroundStyle(hierarchicalSecondary),
             ]}
           >
             {props.location}
@@ -131,7 +131,7 @@ function UpcomingEventActivity(
       <Text
         modifiers={[
           font({ size: 11, weight: "bold" }),
-          foregroundStyle(textPrimary),
+          foregroundStyle(hierarchicalPrimary),
         ]}
       >
         {props.time}
@@ -144,7 +144,7 @@ function UpcomingEventActivity(
     <Text
       modifiers={[
         font({ size: 11, weight: "semibold" }),
-        foregroundStyle(textSecondary),
+        foregroundStyle(hierarchicalSecondary),
       ]}
     >
       {props.title.length > 18 ? props.title.slice(0, 16) + "..." : props.title}
@@ -178,7 +178,7 @@ function UpcomingEventActivity(
         <Text
           modifiers={[
             font({ size: 10, weight: "medium" }),
-            foregroundStyle(textSecondary),
+            foregroundStyle(hierarchicalSecondary),
           ]}
         >
           {props.location.length > 14 ? props.location.slice(0, 12) + "..." : props.location}
@@ -193,7 +193,7 @@ function UpcomingEventActivity(
       <Text
         modifiers={[
           font({ size: 13, weight: "bold" }),
-          foregroundStyle(textPrimary),
+          foregroundStyle(hierarchicalPrimary),
         ]}
       >
         {props.title.length > 20 ? props.title.slice(0, 18) + "..." : props.title}
