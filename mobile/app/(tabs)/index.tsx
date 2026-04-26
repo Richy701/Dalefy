@@ -866,8 +866,8 @@ function makeGreetingStyles(C: ThemeColors) {
       letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4,
     },
     countdownNumber: {
-      fontSize: 48, fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: -1.5, lineHeight: 48,
+      fontSize: 40, fontWeight: T.semibold, color: C.textPrimary,
+      letterSpacing: -1, lineHeight: 42,
     },
     countdownMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
     countdownDest: {
