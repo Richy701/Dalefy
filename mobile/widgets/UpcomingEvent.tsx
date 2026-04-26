@@ -103,6 +103,14 @@ function UpcomingEventActivity(
       ) : null}
 
       <HStack modifiers={[padding({ top: 6 })]}>
+        <Text
+          modifiers={[
+            font({ size: 9, weight: "semibold" }),
+            foregroundStyle(textDim),
+          ]}
+        >
+          Dalefy
+        </Text>
         <Spacer />
         <HStack
           modifiers={[

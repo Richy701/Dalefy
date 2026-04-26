@@ -34,11 +34,11 @@ function FlightTrackerActivity(
 ) {
   "widget";
 
-  const isDark = environment.colorScheme === "dark";
   const teal = "#0bd2b5";
-  const textPrimary = isDark ? "#ffffff" : "#000000";
-  const textSecondary = isDark ? "#8e8e93" : "#6e6e73";
-  const textDim = isDark ? "#48484a" : "#aeaeb2";
+  // Live Activities always render on dark/translucent backgrounds — force light text
+  const textPrimary = "#ffffff";
+  const textSecondary = "#a0a0a5";
+  const textDim = "#68686d";
 
   const status = props.status?.toLowerCase() ?? "";
   const statusColor =
@@ -154,8 +154,8 @@ function FlightTrackerActivity(
         </VStack>
       </HStack>
 
-      {props.gate ? (
-        <HStack modifiers={[padding({ top: 6 })]}>
+      <HStack modifiers={[padding({ top: 6 })]}>
+        {props.gate ? (
           <Text
             modifiers={[
               font({ size: 10, weight: "bold" }),
@@ -164,9 +164,17 @@ function FlightTrackerActivity(
           >
             {"Gate " + props.gate}
           </Text>
-          <Spacer />
-        </HStack>
-      ) : null}
+        ) : null}
+        <Spacer />
+        <Text
+          modifiers={[
+            font({ size: 9, weight: "semibold" }),
+            foregroundStyle(textDim),
+          ]}
+        >
+          Dalefy
+        </Text>
+      </HStack>
     </VStack>
   );
 
