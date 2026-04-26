@@ -39,8 +39,8 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
-import { useBrand } from "@/context/BrandContext";
-import { Logo } from "@/components/Logo";
+
+
 let CameraView: any = null;
 let useCameraPermissions: any = null;
 try {
@@ -344,7 +344,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   onPress: (t: Trip) => void;
 }) {
   const { C, isDark } = useTheme();
-  const { brand } = useBrand();
+
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
   const router = useRouter();
@@ -475,16 +475,9 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       <View style={styles.illustrationWrap} pointerEvents="none">
         <Illustration name="together" width={170} height={140} />
       </View>
-      {/* Top bar — brand + actions */}
+      {/* Top bar — actions */}
       <View style={styles.topBar}>
-        <View style={styles.brandRow}>
-          {brand.logoUrl ? (
-            <Image source={{ uri: brand.logoUrl }} style={{ width: 24, height: 24, borderRadius: 5 }} />
-          ) : (
-            <Logo size={20} color={C.teal} />
-          )}
-          <Text style={styles.brandLabel}>{brand.name}</Text>
-        </View>
+        <View style={{ flex: 1 }} />
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => setCodeOpen(true)}
@@ -729,13 +722,6 @@ function makeGreetingStyles(C: ThemeColors) {
     topBar: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       marginBottom: S.xs, zIndex: 2,
-    },
-    brandRow: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-    },
-    brandLabel: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 2, textTransform: "uppercase",
     },
     greeting: {
       fontWeight: T.semibold,
