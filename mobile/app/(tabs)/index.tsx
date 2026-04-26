@@ -53,13 +53,6 @@ function daysUntil(dateStr: string) {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
 }
 
-const EVENT_TAGS: Record<string, string[]> = {
-  activity: ["Experience", "Adventure", "Culture"],
-  hotel:    ["Luxury", "Stay", "Comfort"],
-  dining:   ["Food", "Local Cuisine", "Dining"],
-  flight:   ["Flight", "Aviation", "Transit"],
-  transfer: ["Transfer", "Transport", "Pickup"],
-};
 
 // ── Trip Found Reveal ────────────────────────────────────────────────────────
 function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
@@ -984,7 +977,6 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
   const { C } = useTheme();
   const router = useRouter();
   const color = (C as Record<string, string>)[ev.type] ?? C.teal;
-  const tags  = (EVENT_TAGS[ev.type] ?? []).slice(0, 3);
   const Icon  = ev.type === "hotel" ? Hotel
     : ev.type === "dining" ? Utensils
     : ev.type === "flight" ? Plane
@@ -1018,16 +1010,6 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
           </View>
           <View style={styles.actions} />
         </View>
-
-        {tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {tags.map(tag => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
     </Pressable>
   );
@@ -1065,12 +1047,6 @@ function makeSpotlightCardStyles(C: ThemeColors, _color: string) {
       width: 28, height: 28, borderRadius: R.full,
       alignItems: "center", justifyContent: "center",
     },
-    tagsRow: { flexDirection: "row", gap: 4, flexWrap: "wrap", marginTop: 6 },
-    tag: {
-      backgroundColor: C.elevated, borderRadius: R.full,
-      paddingHorizontal: 8, paddingVertical: 3,
-    },
-    tagText: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.5 },
   });
 }
 

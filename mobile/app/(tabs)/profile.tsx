@@ -6,11 +6,11 @@ import { useRouter } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Moon, Sun, Smartphone, Palette, Bell, Shield, ChevronRight,
-  Droplet, Vibrate, Trash2, Pencil, ExternalLink, Info,
-  FileText, Download,
+  Droplet, Vibrate, Pencil, ExternalLink, Info,
+  FileText,
 } from "lucide-react-native";
 import { T, R, S, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
-import { INITIAL_TRIPS } from "@/shared/trips";
+
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTrips } from "@/context/TripsContext";
@@ -24,7 +24,7 @@ export default function ProfileScreen() {
   const { C, isDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
   const { brand } = useBrand();
-  const { trips, clearTrips, addTrip, reload } = useTrips();
+  const { trips, reload } = useTrips();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -56,25 +56,7 @@ export default function ProfileScreen() {
     return `${short} in ${diff} days`;
   }, [trips]);
 
-  const handleClearTrips = () => {
-    if (trips.length === 0) return;
-    Alert.alert(
-      "Clear all trips?",
-      `This will remove ${trips.length} trip${trips.length === 1 ? "" : "s"} from this device.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: () => {
-            haptic.warning();
-            clearTrips();
-            toast("All trips cleared");
-          },
-        },
-      ]
-    );
-  };
+
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
@@ -238,59 +220,6 @@ export default function ProfileScreen() {
         </View>
         </FadeIn>
 
-        {/* ── Danger zone ── */}
-        <View style={s.dangerSection}>
-          <Pressable
-            style={({ pressed }) => [s.demoBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => {
-              haptic.selection();
-              // Clear org branding so demo screenshots show default Dalefy brand
-              setPref("orgId", "");
-              setPref("orgSlug", "");
-              let added = 0;
-              for (const trip of INITIAL_TRIPS) {
-                if (!trips.some(t => t.id === trip.id)) {
-                  addTrip(trip);
-                  added++;
-                }
-              }
-              toast(added > 0 ? `${added} demo trips loaded` : "Demo trips already loaded");
-            }}
-          >
-            <Download size={15} color={C.teal} strokeWidth={1.5} />
-            <Text style={s.demoBtnText}>Load demo trips</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.dangerBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={handleClearTrips}
-            disabled={trips.length === 0}
-          >
-            <Trash2 size={15} color={trips.length === 0 ? C.textDim : "#ef4444"} strokeWidth={1.5} />
-            <Text style={[s.dangerText, trips.length === 0 && { color: C.textDim }]}>
-              Clear all trips ({trips.length})
-            </Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.dangerBtn, { opacity: pressed ? 0.7 : 1, marginTop: 8 }]}
-            onPress={() => {
-              Alert.alert("Reset App?", "This will clear all data and return to the setup screen.", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Reset",
-                  style: "destructive",
-                  onPress: async () => {
-                    haptic.warning();
-                    await AsyncStorage.clear();
-                    router.replace("/welcome");
-                  },
-                },
-              ]);
-            }}
-          >
-            <Trash2 size={15} color="#ef4444" strokeWidth={1.5} />
-            <Text style={s.dangerText}>Reset app</Text>
-          </Pressable>
-        </View>
 
         {/* ── Footer ── */}
         <View style={s.footer}>
