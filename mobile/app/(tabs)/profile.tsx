@@ -40,18 +40,30 @@ export default function ProfileScreen() {
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
 
-  // Next upcoming trip
+  // Next upcoming or active trip
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const nextTrip = useMemo(() => {
+    // Check for currently active trip first
+    const active = trips.find(t => {
+      const start = new Date(t.start + "T00:00:00");
+      const end = new Date(t.end + "T00:00:00");
+      return start <= today && end >= today;
+    });
+    if (active) {
+      const dest = active.destination || active.name;
+      const short = dest.length > 18 ? dest.slice(0, 18).trimEnd() + "…" : dest;
+      return `Travelling · ${short}`;
+    }
+    // Then check upcoming
     const upcoming = trips
-      .filter(t => new Date(t.start + "T00:00:00") >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+      .filter(t => new Date(t.start + "T00:00:00") > today)
       .sort((a, b) => a.start.localeCompare(b.start));
     if (upcoming.length === 0) return null;
     const t = upcoming[0];
-    const diff = Math.ceil((new Date(t.start + "T00:00:00").getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86400000);
+    const diff = Math.ceil((new Date(t.start + "T00:00:00").getTime() - today.getTime()) / 86400000);
     const dest = t.destination || t.name;
     const short = dest.length > 18 ? dest.slice(0, 18).trimEnd() + "…" : dest;
-    if (diff === 0) return `${short} is today`;
     if (diff === 1) return `${short} tomorrow`;
     return `${short} in ${diff} days`;
   }, [trips]);
