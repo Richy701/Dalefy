@@ -738,7 +738,7 @@ function makeGreetingStyles(C: ThemeColors) {
       letterSpacing: 2, textTransform: "uppercase",
     },
     greeting: {
-      fontWeight: T.bold,
+      fontWeight: T.semibold,
       color: C.textPrimary, letterSpacing: -0.3,
       marginBottom: S.xs,
     },
