@@ -103,14 +103,17 @@ function UpcomingEventActivity(
       ) : null}
 
       <HStack modifiers={[padding({ top: 6 })]}>
-        <Text
-          modifiers={[
-            font({ size: 9, weight: "semibold" }),
-            foregroundStyle(textDim),
-          ]}
-        >
-          Dalefy
-        </Text>
+        <HStack>
+          <Image systemName="d.circle.fill" size={11} color={teal} />
+          <Text
+            modifiers={[
+              font({ size: 9, weight: "bold" }),
+              foregroundStyle(textDim),
+            ]}
+          >
+            Dalefy
+          </Text>
+        </HStack>
         <Spacer />
         <HStack
           modifiers={[
