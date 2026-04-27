@@ -235,6 +235,18 @@ export function MediaPage() {
 
   const chipScrollRef = useRef<HTMLDivElement>(null);
 
+  // Click-outside to close trip picker
+  useEffect(() => {
+    if (!tripPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setTripPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [tripPickerOpen]);
+
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
       <PageHeader
@@ -420,12 +432,12 @@ export function MediaPage() {
                   <div className="h-5 w-6 rounded overflow-hidden shrink-0">
                     <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
                   </div>
-                  <span className="truncate max-w-[120px]">{selectedTrip.name}</span>
+                  <span className="truncate max-w-[180px]">{selectedTrip.name}</span>
                 </>
               ) : (
                 <span className="text-slate-400 dark:text-[#666]">Select trip</span>
               )}
-              <ChevronDown className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
+              <ChevronDown className={`h-3 w-3 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
             </button>
 
             {tripPickerOpen && (
@@ -615,60 +627,71 @@ export function MediaPage() {
             </div>
           )
         ) : (
-          <div
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => { if (!uploading && allItems.length === 0) fileInputRef.current?.click(); }}
-            className={`flex flex-col items-center justify-center py-20 mx-auto max-w-lg w-full rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
-              isDragging
-                ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
-                : "border-black/[0.08] dark:border-[#222] bg-white/[0.02] dark:bg-white/[0.02] hover:border-brand/30 hover:bg-brand/[0.02]"
-            }`}
-          >
-            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
-              isDragging ? "bg-brand/15" : "bg-white/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
-            }`}>
-              <Upload className={`h-6 w-6 ${isDragging ? "text-brand" : "text-slate-300 dark:text-[#444]"}`} />
+          <div className="mx-auto max-w-2xl w-full space-y-3">
+            {/* Drop zone — clickable area for drag & drop / browse */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
+              className={`flex flex-col items-center justify-center py-24 sm:py-32 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+                isDragging
+                  ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
+                  : "border-black/[0.08] dark:border-[#222] bg-white/50 dark:bg-white/[0.02] hover:border-brand/30 hover:bg-brand/[0.02]"
+              }`}
+            >
+              <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mb-5 transition-colors ${
+                isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
+              }`}>
+                <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-300 dark:text-[#444]"}`} />
+              </div>
+              <p className={`text-base font-black uppercase tracking-[0.2em] ${isDragging ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}>
+                {isDragging ? "Drop files here" : "Drop photos here"}
+              </p>
+              <p className="text-xs text-slate-400 dark:text-[#666] mt-2">
+                or click to browse · images &amp; videos up to 50 MB
+              </p>
             </div>
-            <p className={`text-sm font-black uppercase tracking-[0.2em] ${isDragging ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}>
-              {isDragging ? "Drop files here" : "Drop photos here"}
-            </p>
-            <p className="text-[11px] text-slate-400 dark:text-[#666] mt-1.5">
-              or click to browse
-            </p>
 
-            {/* Trip picker + upload button */}
-            <div className="flex items-center gap-2 mt-6" onClick={(e) => e.stopPropagation()}>
-              <div className="relative" ref={pickerRef}>
+            {/* Trip picker + upload button — separate row below drop zone */}
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex-1 min-w-0" ref={pickerRef}>
                 <button
                   onClick={() => setTripPickerOpen((o) => !o)}
-                  className="flex items-center gap-2 pl-2 pr-2.5 py-2 rounded-xl bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/40 transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
+                  className={`w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white ${
+                    tripPickerOpen
+                      ? "bg-white dark:bg-[#111111] border-brand/50 shadow-md"
+                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/40 shadow-sm dark:shadow-none"
+                  }`}
                 >
                   {selectedTrip ? (
                     <>
-                      <div className="h-5 w-6 rounded overflow-hidden shrink-0">
+                      <div className="h-6 w-8 rounded-lg overflow-hidden shrink-0">
                         <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
                       </div>
-                      <span className="truncate max-w-[120px]">{selectedTrip.name}</span>
+                      <span className="truncate flex-1 text-left">{selectedTrip.name}</span>
                     </>
                   ) : (
-                    <span className="text-slate-400 dark:text-[#666]">Select trip</span>
+                    <span className="text-slate-400 dark:text-[#666] flex-1 text-left">Select trip</span>
                   )}
-                  <ChevronDown className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
+                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
                 </button>
                 {tripPickerOpen && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
                     {trips.map((t) => (
                       <button
                         key={t.id}
                         onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
                       >
-                        <div className="h-6 w-8 rounded overflow-hidden shrink-0">
+                        <div className="h-7 w-10 rounded-lg overflow-hidden shrink-0">
                           <img src={t.image} alt="" className="h-full w-full object-cover" />
                         </div>
-                        <span className="text-[11px] font-bold truncate">{t.name}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-[#666]">{t.destination}</p>
+                        </div>
+                        {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </button>
                     ))}
                   </div>
@@ -676,7 +699,8 @@ export function MediaPage() {
               </div>
               <button
                 onClick={() => !uploading && fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
+                disabled={uploading}
+                className="flex items-center gap-2 h-11 px-6 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
               >
                 <Upload className="h-3.5 w-3.5" />
                 Upload
