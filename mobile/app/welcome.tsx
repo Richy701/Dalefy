@@ -2,16 +2,14 @@ import { useMemo, useState, useRef, useCallback } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Image,
-  ActionSheetIOS, Alert, ActivityIndicator, Dimensions,
+  ActionSheetIOS, Alert, Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { ArrowRight, ArrowLeft, Camera, User, Building2 } from "lucide-react-native";
-import Animated, {
-  FadeIn, FadeInUp, FadeOut, FadeOutLeft, FadeInRight,
-  SlideInRight, SlideOutLeft,
-} from "react-native-reanimated";
+import { uploadAvatar } from "@/services/avatarUpload";
+import { ArrowRight, ArrowLeft, Camera, User, Building2, Check } from "lucide-react-native";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useBrand } from "@/context/BrandContext";
@@ -48,9 +46,8 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
-  const isEdit = !!prefs.name;
+  const isEdit = !!(prefs.name);
 
-  // If editing profile, skip straight to profile step
   const initialStep: Step = isEdit
     ? "profile"
     : prefs.orgId
@@ -64,6 +61,7 @@ export default function WelcomeScreen() {
 
   const [name, setName] = useState(prefs.name);
   const [avatar, setAvatar] = useState(prefs.avatar || "");
+  const uploadedUrlRef = useRef<string | null>(null);
   const agencyRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -137,7 +135,15 @@ export default function WelcomeScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setAvatar(result.assets[0].uri);
+        const tempUri = result.assets[0].uri;
+        setAvatar(tempUri);
+        uploadAvatar(tempUri).then((url) => {
+          if (url) {
+            uploadedUrlRef.current = url;
+            setAvatar(url);
+            setPref("avatar", url);
+          }
+        });
       }
     };
 
@@ -162,11 +168,13 @@ export default function WelcomeScreen() {
   };
 
   // ── Submit ──
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return;
     haptic.selection();
     setPref("name", trimmed);
-    if (avatar) setPref("avatar", avatar);
+    const finalAvatar = uploadedUrlRef.current || avatar;
+    if (finalAvatar) setPref("avatar", finalAvatar);
+
     if (isEdit && router.canGoBack()) {
       toast("Profile updated");
       router.back();
@@ -285,20 +293,14 @@ export default function WelcomeScreen() {
                 pressed && { opacity: 0.9 },
               ]}
             >
-              {agencyLoading ? (
-                <ActivityIndicator size="small" color="#000" />
-              ) : (
-                <>
-                  <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
-                    Connect
-                  </Text>
-                  <ArrowRight
-                    size={16}
-                    color={agencyCode.trim() ? "#000" : C.textTertiary}
-                    strokeWidth={2.5}
-                  />
-                </>
-              )}
+              <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
+                Connect
+              </Text>
+              <ArrowRight
+                size={16}
+                color={agencyCode.trim() ? "#000" : C.textTertiary}
+                strokeWidth={2.5}
+              />
             </Pressable>
             <Pressable onPress={skipAgency} style={styles.skipBtn}>
               <Text style={styles.skipText}>I don't have a code</Text>
@@ -400,14 +402,14 @@ export default function WelcomeScreen() {
 
         {/* CTA */}
         <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.footer}>
-          {!isEdit && !prefs.orgId && (
+          {!isEdit && (
             <Pressable
               onPress={goBackToAgency}
               style={styles.backRow}
               accessibilityRole="button"
             >
               <ArrowLeft size={14} color={C.textTertiary} strokeWidth={2} />
-              <Text style={styles.skipText}>Back to agency code</Text>
+              <Text style={styles.skipText}>Back</Text>
             </Pressable>
           )}
           <Pressable
@@ -424,11 +426,9 @@ export default function WelcomeScreen() {
             <Text style={[styles.ctaText, !canSubmit && { color: C.textTertiary }]}>
               {isEdit ? "Save" : "Get Started"}
             </Text>
-            <ArrowRight
-              size={16}
-              color={canSubmit ? "#000" : C.textTertiary}
-              strokeWidth={2.5}
-            />
+            {!isEdit && (
+              <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} strokeWidth={2.5} />
+            )}
           </Pressable>
         </Animated.View>
       </KeyboardAvoidingView>
@@ -467,10 +467,9 @@ function makeStyles(C: ThemeColors) {
     },
     splashTitle: {
       fontSize: T["4xl"],
-      fontFamily: F.black,
-      fontWeight: T.black,
+      fontWeight: "700",
       color: C.textPrimary,
-      letterSpacing: -0.8,
+      letterSpacing: -0.3,
       lineHeight: T["4xl"] + 6,
       marginBottom: S.xs,
     },
@@ -546,8 +545,8 @@ function makeStyles(C: ThemeColors) {
     // ── Copy ──
     copy: { marginBottom: S.lg },
     title: {
-      fontSize: T["3xl"], fontFamily: F.black, fontWeight: T.black,
-      color: C.textPrimary, letterSpacing: -0.6, lineHeight: T["3xl"] + 6,
+      fontSize: T["3xl"], fontWeight: "700",
+      color: C.textPrimary, letterSpacing: -0.3, lineHeight: T["3xl"] + 6,
       marginBottom: S.xs,
     },
     sub: {

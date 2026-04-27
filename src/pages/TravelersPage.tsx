@@ -25,6 +25,8 @@ import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useDemo } from "@/hooks/useDemo";
+import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
 type Tab = "travelers" | "hr" | "app-users";
@@ -49,6 +51,7 @@ export function TravelersPage() {
   const { accentColor } = usePreferences();
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
+  const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const brandHex = accentColor;
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -273,6 +276,7 @@ export function TravelersPage() {
 
   const handleAddTraveler = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    if (demoGate()) return;
     if (!drawerForm.name.trim() || !drawerForm.email.trim()) return;
     const newUser: UserType = {
       id: `custom-${Date.now()}`,
@@ -350,7 +354,7 @@ export function TravelersPage() {
           </div>
         ) : undefined}
         cta={
-          <Button onClick={() => setInviteOpen(true)} className="rounded-full bg-brand hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
+          <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-full bg-brand hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
             <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">ADD TRAVELER</span>
           </Button>
         }
@@ -409,7 +413,7 @@ export function TravelersPage() {
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
               </div>
               <button
-                onClick={() => setInviteOpen(true)}
+                onClick={() => { if (!demoGate()) setInviteOpen(true); }}
                 className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Add Traveler
@@ -1185,6 +1189,7 @@ export function TravelersPage() {
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+      <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
   );
 }

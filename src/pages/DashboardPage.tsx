@@ -29,10 +29,12 @@ import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDemo } from "@/hooks/useDemo";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import MapboxMap, { Source, Layer, Marker } from "react-map-gl/mapbox";
 import { geocode } from "@/services/geocode";
@@ -108,6 +110,8 @@ export function DashboardPage() {
   const { showToast, addNotification } = useNotifications();
   const { accentColor } = usePreferences();
   const { canDeleteTrip, isOrgMember } = usePermissions();
+  const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
+  const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
   const hexToRgbCss = (hex: string) => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -398,11 +402,29 @@ export function DashboardPage() {
           </div>
         }
         cta={
-          <Button onClick={() => setIsNewTripOpen(true)} className="rounded-full bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0">
+          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="rounded-full bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0">
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Trip</span>
           </Button>
         }
       />
+
+      {/* ── Demo welcome banner ── */}
+      {isDemo && !demoBannerDismissed && (
+        <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-2xl border border-brand/20 bg-brand/[0.06] px-5 py-3.5">
+          <Compass className="h-5 w-5 text-brand shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
+            <p className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">Browse trips, explore features — sign up to create your own.</p>
+          </div>
+          <button
+            onClick={() => { setDemoBannerDismissed(true); sessionStorage.setItem("daf-demo-banner-dismissed", "1"); }}
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors shrink-0"
+            aria-label="Dismiss"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -414,7 +436,7 @@ export function DashboardPage() {
             </p>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsNewTripOpen(true)}
+                onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
                 className="inline-flex items-center gap-2 rounded-full bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" /> New Trip
@@ -559,7 +581,7 @@ export function DashboardPage() {
                   <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
-                    <button onClick={() => setIsNewTripOpen(true)} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
+                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
                   </div>
                 )}
               </section>
@@ -1029,10 +1051,10 @@ export function DashboardPage() {
                               <EllipsisVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
-                                <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1041,7 +1063,7 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => setIsNewTripOpen(true)} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-black/[0.06] dark:border-transparent flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-black/[0.06] dark:border-transparent flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
                   <div className="h-14 w-14 rounded-full bg-slate-50 dark:bg-[#050505] border border-transparent dark:border-transparent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
                 </button>
@@ -1054,7 +1076,7 @@ export function DashboardPage() {
                       <Plane className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips yet</p>
-                    <button onClick={() => setIsNewTripOpen(true)} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
+                    <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
                 {filteredTrips.map(trip => {
@@ -1121,10 +1143,10 @@ export function DashboardPage() {
                               <EllipsisVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => handleDuplicateTrip(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(trip)} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
-                                <DropdownMenuItem onClick={() => setDeletingTripId(trip.id)} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1399,6 +1421,7 @@ export function DashboardPage() {
         initialFile={droppedFile}
       />
       <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </div>
   );
 }

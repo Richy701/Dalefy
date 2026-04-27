@@ -28,6 +28,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { TravelEvent, Trip, TripOrganizer, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
+import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -49,6 +50,8 @@ import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDemo } from "@/hooks/useDemo";
+import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
@@ -77,9 +80,11 @@ export function WorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
+  const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
   const { canDeleteTrip, isOrgMember } = usePermissions();
+  const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
@@ -317,6 +322,7 @@ export function WorkspacePage() {
   };
 
   const handleAddEvent = (type: TravelEvent["type"] = "activity") => {
+    if (demoGate()) return;
     setImageSeed(0);
     setImageIsAuto(true);
     setImageSearch("");
@@ -335,6 +341,7 @@ export function WorkspacePage() {
   };
 
   const handleEditEvent = (event: TravelEvent) => {
+    if (demoGate()) return;
     setImageSeed(0);
     setImageIsAuto(!event.image);
     setImageSearch("");
@@ -346,6 +353,7 @@ export function WorkspacePage() {
 
   const handleSaveEvent = (e: React.FormEvent) => {
     e.preventDefault();
+    if (demoGate()) return;
     if (!editingEvent) return;
     const existing = trip.events.find(ev => ev.id === editingEvent.id);
     const action = existing ? "updated" : "added";
@@ -357,6 +365,7 @@ export function WorkspacePage() {
   };
 
   const handleDeleteEvent = (eventId: string) => {
+    if (demoGate()) return;
     const removed = trip.events.find(ev => ev.id === eventId);
     deleteEvent(trip.id, eventId);
     showToast("Event deleted");
@@ -589,11 +598,13 @@ export function WorkspacePage() {
   };
 
   const handleOpenEditOrg = () => {
+    if (demoGate()) return;
     setEditOrgData({ ...(trip.organizer ?? {}) });
     setEditOrgOpen(true);
   };
   const handleSaveOrg = (e: React.FormEvent) => {
     e.preventDefault();
+    if (demoGate()) return;
     const org = editOrgData.name?.trim() ? editOrgData as Trip["organizer"] : undefined;
     updateTrip(trip.id, { organizer: org });
     setEditOrgOpen(false);
@@ -601,11 +612,13 @@ export function WorkspacePage() {
   };
 
   const handleOpenEditInfo = () => {
+    if (demoGate()) return;
     setEditInfoData(trip.info ? trip.info.map(i => ({ ...i })) : []);
     setEditInfoOpen(true);
   };
   const handleSaveInfo = (e: React.FormEvent) => {
     e.preventDefault();
+    if (demoGate()) return;
     const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim());
     updateTrip(trip.id, { info: cleaned.length > 0 ? cleaned : undefined });
     setEditInfoOpen(false);
@@ -613,6 +626,7 @@ export function WorkspacePage() {
   };
 
   const handleOpenEditTrip = () => {
+    if (demoGate()) return;
     setEditingTrip({
       name: trip.name,
       destination: trip.destination ?? "",
@@ -632,6 +646,7 @@ export function WorkspacePage() {
 
   const handleSaveTrip = (e: React.FormEvent) => {
     e.preventDefault();
+    if (demoGate()) return;
     // Clean up organizer: null out if name is empty
     const cleaned = { ...editingTrip };
     if (cleaned.organizer && !cleaned.organizer.name?.trim()) {
@@ -648,6 +663,7 @@ export function WorkspacePage() {
   };
 
   const handleDeleteTrip = () => {
+    if (demoGate()) return;
     deleteTrip(trip.id);
     navigate("/dashboard");
     toast.success("Trip deleted");
@@ -1131,8 +1147,10 @@ export function WorkspacePage() {
             {/* Media tab */}
             {activeTab === "media" && (
               <TripMediaGallery
+                tripId={trip.id}
                 media={trip.media ?? []}
                 onUpdate={(media) => updateTrip(trip.id, { media })}
+                uploaderName={user?.name}
               />
             )}
 
@@ -2249,6 +2267,8 @@ export function WorkspacePage() {
         onConfirm={handleDeleteTrip}
         destructive
       />
+
+      <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
 
       {/* Hidden off-screen div for PDF export — renders the preview layout in light theme */}
       <div

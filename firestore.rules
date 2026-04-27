@@ -70,6 +70,11 @@ service cloud.firestore {
       allow write: if request.auth != null && isOrgAdmin(orgId);
     }
 
+    // ── Helper: check if the caller is a trip member (by auth UID) ──────
+    function isTripMember(tripId) {
+      return exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + tripId));
+    }
+
     // ── Trips ──────────────────────────────────────────────────────────────
     match /trips/{tripId} {
       // Authenticated users can read any trip (needed for short_code uniqueness checks);
@@ -82,26 +87,35 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.resource.data.user_id == request.auth.uid;
 
-      // Only the creator, org admin, or cron user can update/delete
-      allow update, delete: if request.auth != null
-                            && (resource.data.user_id == request.auth.uid
-                                || isCronUser()
-                                || (resource.data.organization_id != null
-                                    && isOrgAdmin(resource.data.organization_id)));
+      // The creator, org admin, cron user, or trip member can update;
+      // only creator/org admin/cron can delete
+      allow update: if request.auth != null
+                    && (resource.data.user_id == request.auth.uid
+                        || isCronUser()
+                        || isTripMember(tripId)
+                        || (resource.data.organization_id != null
+                            && isOrgAdmin(resource.data.organization_id)));
+      allow delete: if request.auth != null
+                    && (resource.data.user_id == request.auth.uid
+                        || isCronUser()
+                        || (resource.data.organization_id != null
+                            && isOrgAdmin(resource.data.organization_id)));
     }
 
     // ── Trip members ───────────────────────────────────────────────────────
     match /trip_members/{docId} {
       // Read: authenticated users or device reading own entry
       allow read: if request.auth != null || resource.data.device_id != null;
-      // Create: must include a trip_id and either device_id or user_id
+      // Create: must include a trip_id and either device_id, uid, or user_id
       allow create: if request.resource.data.trip_id is string
                     && request.resource.data.trip_id.size() > 0
                     && (request.resource.data.device_id is string
+                        || (request.auth != null && request.resource.data.uid == request.auth.uid)
                         || (request.auth != null && request.resource.data.user_id == request.auth.uid));
-      // Only the member themselves or an admin can update/delete
+      // The member themselves can update/delete (by user_id, uid, or device_id)
       allow update, delete: if request.auth != null
         && (resource.data.user_id == request.auth.uid
+            || resource.data.uid == request.auth.uid
             || resource.data.device_id == request.auth.uid);
     }
 

@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
+import { useDemo } from "@/hooks/useDemo";
+import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { BRAND } from "@/config/brand";
 import { useBrand } from "@/context/BrandContext";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -90,6 +92,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { brand } = useBrand();
+  const { isDemo, upgradeOpen, setUpgradeOpen } = useDemo();
 
   const currentPath = location.pathname;
   const isActive    = (path: string) => path === "/" ? currentPath === "/" : currentPath === path;
@@ -327,6 +330,24 @@ export function AppSidebar() {
           )}
         </SidebarContent>
 
+        {/* ── Demo badge ── */}
+        {isDemo && !collapsed && (
+          <div className="px-3 pb-2">
+            <button
+              onClick={() => setUpgradeOpen(true)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-brand/[0.07] border border-brand/15 hover:bg-brand/[0.12] transition-colors group"
+            >
+              <div className="h-6 w-6 rounded-lg bg-brand/15 flex items-center justify-center shrink-0">
+                <ArrowUpRight className="h-3 w-3 text-brand" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-[10px] font-bold text-brand leading-none">Demo Mode</p>
+                <p className="text-[9px] text-sidebar-foreground/40 mt-0.5">Sign up free →</p>
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* ── User footer ── */}
         <SidebarFooter className="border-t border-[#1a1a1a] p-2">
           <UserFooter onSignOut={() => setSignOutOpen(true)} />
@@ -344,6 +365,7 @@ export function AppSidebar() {
         onConfirm={handleSignOut}
         destructive
       />
+      <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }

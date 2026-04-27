@@ -16,7 +16,7 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { fetchTripById, logTripJoin } from "@/services/firebaseTrips";
 import { usePreferences } from "@/context/PreferencesContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
@@ -410,7 +410,7 @@ function makeStyles(C: ThemeColors) {
       letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
     },
     heroTitle: {
-      fontSize: T["3xl"] + 4, fontFamily: F.black, fontWeight: T.black,
+      fontSize: T["3xl"] + 4, fontWeight: "700",
       color: "#ffffff", letterSpacing: -0.3, marginBottom: S.sm, lineHeight: 36,
     },
 

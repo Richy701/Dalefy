@@ -8,7 +8,7 @@ import {
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
+import { T, R, S, type ThemeColors, eventColor } from "@/constants/theme";
 import { EventCard, DocsRow } from "@/components/EventCard";
 import { useMemo, useCallback } from "react";
 
@@ -174,10 +174,9 @@ function makeStyles(C: ThemeColors) {
     },
     dayTitle: {
       fontSize: T["3xl"] + 4,
-      fontFamily: F.black,
-      fontWeight: T.black,
+      fontWeight: "700",
       color: C.textPrimary,
-      letterSpacing: -0.8,
+      letterSpacing: -0.3,
       lineHeight: 36,
     },
     dateRow: {

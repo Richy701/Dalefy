@@ -1,16 +1,20 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Trash2, ZoomIn, Play, ImageIcon, VideoIcon } from "lucide-react";
+import { Upload, Trash2, ZoomIn, Play, ImageIcon, VideoIcon, Download } from "lucide-react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { firebaseStorage } from "@/services/firebase";
 import type { TripMedia } from "@/types";
 
 interface Props {
+  tripId: string;
   media: TripMedia[];
   onUpdate: (media: TripMedia[]) => void;
+  uploaderName?: string;
 }
 
-export function TripMediaGallery({ media, onUpdate }: Props) {
+export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -21,12 +25,16 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
   const lightboxSlides = images.map((m) => ({ src: m.url, title: m.name }));
 
   const processFiles = useCallback(
-    (files: File[]) => {
+    async (files: File[]) => {
       const valid = files.filter(
         (f) => f.type.startsWith("image/") || f.type.startsWith("video/")
       );
       if (!valid.length) {
         toast.error("Only image and video files are supported");
+        return;
+      }
+      if (valid.some((f) => f.size > 50 * 1024 * 1024)) {
+        toast.error("Files must be under 50 MB");
         return;
       }
 
@@ -35,45 +43,49 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
 
       const interval = setInterval(() => {
         setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(interval);
-            return prev;
-          }
-          return prev + Math.random() * 18;
+          if (prev >= 90) { clearInterval(interval); return prev; }
+          return prev + Math.random() * 12;
         });
-      }, 80);
+      }, 120);
 
-      const readers = valid.map(
-        (file) =>
-          new Promise<TripMedia>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) =>
-              resolve({
-                id: `media-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                type: file.type.startsWith("video/") ? "video" : "image",
-                name: file.name,
-                url: ev.target?.result as string,
-                size: file.size,
-                uploadedAt: new Date().toISOString(),
-              });
-            reader.readAsDataURL(file);
-          })
-      );
+      try {
+        const uploaded: TripMedia[] = await Promise.all(
+          valid.map(async (file) => {
+            const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const ext = file.name.split(".").pop() || "jpg";
+            const storagePath = `trips/${tripId}/media/${id}.${ext}`;
+            const storageRef = ref(firebaseStorage(), storagePath);
+            await uploadBytes(storageRef, file, { contentType: file.type });
+            const url = await getDownloadURL(storageRef);
+            return {
+              id,
+              type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
+              name: file.name,
+              url,
+              size: file.size,
+              uploadedAt: new Date().toISOString(),
+              uploadedBy: uploaderName || undefined,
+            };
+          }),
+        );
 
-      Promise.all(readers).then((newMedia) => {
         clearInterval(interval);
         setUploadProgress(100);
         setTimeout(() => {
-          onUpdate([...media, ...newMedia]);
+          onUpdate([...media, ...uploaded]);
           setUploading(false);
           setUploadProgress(0);
-          toast.success(
-            `${newMedia.length} file${newMedia.length > 1 ? "s" : ""} added`
-          );
+          toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
         }, 350);
-      });
+      } catch (err) {
+        clearInterval(interval);
+        setUploading(false);
+        setUploadProgress(0);
+        toast.error("Upload failed — check your connection");
+        console.error("[TripMediaGallery] Upload error:", err);
+      }
     },
-    [media, onUpdate]
+    [media, onUpdate, tripId]
   );
 
   const handleDrop = useCallback(
@@ -220,6 +232,15 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
                           <ZoomIn className="h-4 w-4" />
                         </button>
                       )}
+                      <a
+                        href={item.url}
+                        download={item.name}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
                       <button
                         onClick={() => handleDelete(item.id)}
                         className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
@@ -254,7 +275,7 @@ export function TripMediaGallery({ media, onUpdate }: Props) {
                     </p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-[10px] text-slate-500 dark:text-[#888888]">
-                        {fmt(item.size)}
+                        {item.uploadedBy ? `by ${item.uploadedBy}` : fmt(item.size)}
                       </p>
                       <p className="text-[10px] text-slate-500 dark:text-[#888888]">
                         {new Date(item.uploadedAt).toLocaleDateString("en-US", {

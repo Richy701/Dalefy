@@ -12,7 +12,7 @@ import {
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
@@ -516,7 +516,7 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6,
     },
     heroTitle: {
-      fontSize: T["3xl"] + 4, fontFamily: F.black, fontWeight: T.black,
+      fontSize: T["3xl"] + 4, fontWeight: "700",
       color: "#ffffff", letterSpacing: -0.3, marginBottom: S.sm, lineHeight: 36,
     },
 

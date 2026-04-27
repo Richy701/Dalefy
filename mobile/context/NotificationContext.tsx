@@ -29,7 +29,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(raw => {
-      if (raw) setNotifications(JSON.parse(raw));
+      if (raw) {
+        const parsed: Notification[] = JSON.parse(raw);
+        // Deduplicate by id (legacy data may have timestamp-only collisions)
+        const seen = new Set<string>();
+        const deduped = parsed.filter(n => {
+          if (seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+        setNotifications(deduped);
+        if (deduped.length !== parsed.length) {
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(deduped)).catch(() => {});
+        }
+      }
     }).catch(() => {});
   }, []);
 
@@ -42,7 +55,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const addNotification = useCallback((n: Omit<Notification, "id" | "read">) => {
     setNotifications(prev => {
-      const next = [{ ...n, id: Date.now().toString(), read: false }, ...prev].slice(0, 50);
+      const next = [{ ...n, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, read: false }, ...prev].slice(0, 50);
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });

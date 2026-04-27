@@ -294,8 +294,8 @@ const styles = StyleSheet.create({
 
   header: { paddingHorizontal: S.md, marginBottom: S.lg },
   headerTitle: {
-    fontSize: 28, fontFamily: F.black, fontWeight: "900",
-    letterSpacing: -0.5,
+    fontSize: 28, fontWeight: "700",
+    letterSpacing: -0.3,
   },
   headerSub: { fontSize: T.sm, fontWeight: "500", marginTop: 4 },
 

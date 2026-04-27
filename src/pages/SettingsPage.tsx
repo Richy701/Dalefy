@@ -21,6 +21,8 @@ import { useTrips } from "@/context/TripsContext";
 import { useOrg } from "@/context/OrgContext";
 import { useBrand } from "@/context/BrandContext";
 import { usePreferences, ACCENT_PRESETS } from "@/context/PreferencesContext";
+import { useDemo } from "@/hooks/useDemo";
+import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { playChime } from "@/lib/sound";
 
 interface SectionProps {
@@ -117,6 +119,7 @@ export function SettingsPage() {
   } = usePreferences();
   const { currentOrg, orgRole, tablesReady, isLoading: orgLoading, createOrg } = useOrg();
   const { brand, orgBranding, refreshBranding } = useBrand();
+  const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [resetOpen, setResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -151,6 +154,7 @@ export function SettingsPage() {
   }, [currentOrg?.agencyCode]);
 
   const handleSaveBranding = async () => {
+    if (demoGate()) return;
     const orgId = currentOrg?.id ?? "local";
     setSavingBrand(true);
     const { error } = await updateBranding(orgId, {
@@ -194,6 +198,7 @@ export function SettingsPage() {
   };
 
   const handleCreateOrg = async () => {
+    if (demoGate()) return;
     if (!newOrgName.trim()) return;
     setCreatingOrg(true);
     const { error } = await createOrg(newOrgName.trim());
@@ -207,6 +212,7 @@ export function SettingsPage() {
   };
 
   const handleChangePassword = async () => {
+    if (demoGate()) return;
     if (newPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
@@ -620,7 +626,7 @@ export function SettingsPage() {
               value="Clears trips, compliance overrides, and custom travelers. Keeps your account."
               action={
                 <Button
-                  onClick={() => setResetOpen(true)}
+                  onClick={() => { if (!demoGate()) setResetOpen(true); }}
                   variant="ghost"
                   className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-black uppercase tracking-wider text-[10px] px-3 gap-1.5"
                 >
@@ -681,6 +687,7 @@ export function SettingsPage() {
         onConfirm={resetData}
         destructive
       />
+      <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </>
   );
 }

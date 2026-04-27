@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      apiRoutesPlugin(env),
       VitePWA({
         registerType: "autoUpdate",
         includeAssets: ["favicon.svg"],
@@ -58,12 +59,18 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ["embla-carousel-react", "embla-carousel"],
     },
-    server: {
-      proxy: {
-        "/api/parse-itinerary": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
+  }
+})
+
+function apiRoutesPlugin(env: Record<string, string>) {
+  return {
+    name: "api-routes",
+    configureServer(server: any) {
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        const url = new URL(req.url!, `http://${req.headers.host}`)
+        const p = url.pathname
+        try {
+          if (p === "/api/parse-itinerary") {
             if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Method not allowed" })); return }
             const apiKey = env.ANTHROPIC_API_KEY
             if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
@@ -168,7 +175,6 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               })
               const content = message.content[0]
               if (content.type !== "text") { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Unexpected response" })); return }
-              // Extract JSON object — handle markdown fences, leading/trailing text
               const jsonMatch = content.text.match(/\{[\s\S]*\}/)
               if (!jsonMatch) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "No JSON found in AI response" })); return }
               const raw = jsonMatch[0]
@@ -179,13 +185,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               console.error("parse-itinerary error:", err)
               res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI parsing failed", detail: err.message }))
             }
-          },
-        },
-        "/api/flights": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/flights") {
             const from = url.searchParams.get("from") ?? ""
             const to = url.searchParams.get("to") ?? ""
             const date = url.searchParams.get("date") ?? ""
@@ -198,8 +198,8 @@ Return ONLY the JSON object, no markdown fences or explanation.`
                 fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T00:00/${date}T11:59?direction=Departure`, { headers: hdrs }),
                 fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T12:00/${date}T23:59?direction=Departure`, { headers: hdrs }),
               ])
-              const d1 = r1.ok ? await r1.json() : {}
-              const d2 = r2.ok ? await r2.json() : {}
+              const d1: any = r1.ok ? await r1.json() : {}
+              const d2: any = r2.ok ? await r2.json() : {}
               const allDeps = [...(d1.departures ?? []), ...(d2.departures ?? [])]
               const toUpper = to.toUpperCase()
               const matched = allDeps
@@ -230,13 +230,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch {
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ flights: [] }))
             }
-          },
-        },
-        "/api/flight-number": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/flight-number") {
             const number = url.searchParams.get("number") ?? ""
             const date = url.searchParams.get("date") ?? ""
             const key = env.RAPIDAPI_KEY
@@ -279,13 +273,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch {
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ flights: [] }))
             }
-          },
-        },
-        "/api/hotels": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/hotels") {
             const q = url.searchParams.get("q") ?? ""
             const check_in = url.searchParams.get("check_in") ?? ""
             const check_out = url.searchParams.get("check_out") ?? ""
@@ -295,15 +283,13 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST }
             if (!key || !q || !check_in || !check_out) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
             try {
-              // Step 1: resolve destination
               const locResp = await fetch(`https://${RAPID_HOST}/v1/hotels/locations?name=${encodeURIComponent(q)}&locale=en-gb`, { headers: hdrs })
               const locData = await locResp.json()
               const dest = Array.isArray(locData) ? locData[0] : null
               if (!dest) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
-              // Step 2: search hotels
               const params = new URLSearchParams({ dest_id: dest.dest_id, dest_type: dest.dest_type ?? "city", checkin_date: check_in, checkout_date: check_out, adults_number: adults, room_number: "1", units: "metric", filter_by_currency: "USD", order_by: "popularity", locale: "en-gb" })
               const hotelResp = await fetch(`https://${RAPID_HOST}/v1/hotels/search?${params}`, { headers: hdrs })
-              const hotelData = await hotelResp.json()
+              const hotelData: any = await hotelResp.json()
               const hotels = (hotelData.result ?? []).slice(0, 8).map((h: any) => {
                 return {
                   name: h.hotel_name ?? "",
@@ -320,13 +306,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch {
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] }))
             }
-          },
-        },
-        "/api/activities": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/activities") {
             const q = url.searchParams.get("q") ?? ""
             const key = env.RAPIDAPI_KEY
             const HOST = "local-business-data.p.rapidapi.com"
@@ -336,7 +316,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               const resp = await fetch(`https://${HOST}/search?${params}`, {
                 headers: { "x-rapidapi-key": key, "x-rapidapi-host": HOST },
               })
-              const data = await resp.json()
+              const data: any = await resp.json()
               const activities = (data.data ?? []).slice(0, 8).map((a: any) => ({
                 name: a.name ?? "",
                 rating: a.rating ?? 0,
@@ -350,13 +330,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch {
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities: [] }))
             }
-          },
-        },
-        "/api/dining": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/dining") {
             const q = url.searchParams.get("q") ?? ""
             const key = env.RAPIDAPI_KEY
             const HOST = "local-business-data.p.rapidapi.com"
@@ -365,7 +339,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": HOST }
               const params = new URLSearchParams({ query: `restaurants in ${q}`, limit: "8" })
               const resp = await fetch(`https://${HOST}/search?${params}`, { headers: hdrs })
-              const data = await resp.json()
+              const data: any = await resp.json()
               const restaurants = (data.data ?? []).slice(0, 8).map((r: any) => ({
                 name: r.name ?? "",
                 rating: r.rating ?? 0,
@@ -380,13 +354,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch {
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] }))
             }
-          },
-        },
-        "/api/images": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/images") {
             const q = url.searchParams.get("q") ?? ""
             const page = url.searchParams.get("page") ?? "1"
             const perPage = url.searchParams.get("per_page") ?? "9"
@@ -449,14 +417,8 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               if (await tryPexels()) return
             }
             json({ urls: [], source: null })
-          },
-        },
-        "/api/image-proxy": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const reqUrl = new URL(req.url!, `http://${req.headers.host}`)
-            const imageUrl = reqUrl.searchParams.get("url") ?? ""
+          } else if (p === "/api/image-proxy") {
+            const imageUrl = url.searchParams.get("url") ?? ""
             if (!imageUrl) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Missing param: url" })); return }
             let parsed: URL
             try { parsed = new URL(imageUrl) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid URL" })); return }
@@ -474,13 +436,7 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               if (buf.length > 5 * 1024 * 1024) { res.statusCode = 413; res.end(); return }
               res.setHeader("Content-Type", ct); res.setHeader("Cache-Control", "public, max-age=86400"); res.end(buf)
             } catch { res.statusCode = 502; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Failed to fetch image" })) }
-          },
-        },
-        "/api/geocode": {
-          target: "http://localhost:3000",
-          changeOrigin: true,
-          bypass: async (req, res) => {
-            const url = new URL(req.url!, `http://${req.headers.host}`)
+          } else if (p === "/api/geocode") {
             const q = url.searchParams.get("q") ?? ""
             const token = env.MAPBOX_TOKEN
             if (!token || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ coord: null })); return }
@@ -495,9 +451,15 @@ Return ONLY the JSON object, no markdown fences or explanation.`
               }
             } catch {}
             res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ coord: null }))
-          },
-        },
-      },
+          } else {
+            return next()
+          }
+        } catch (err: any) {
+          if (!res.headersSent) {
+            res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: err.message }))
+          }
+        }
+      })
     },
   }
-})
+}

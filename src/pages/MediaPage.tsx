@@ -13,11 +13,15 @@ import {
   Image as ImageIcon,
   Film,
   ArrowUpRight,
+  Download,
 } from "lucide-react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { firebaseStorage } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import type { TripMedia } from "@/types";
@@ -38,6 +42,7 @@ function formatDate(iso: string) {
 
 export function MediaPage() {
   const { trips, updateTrip } = useTrips();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [activeTripFilter, setActiveTripFilter] = useState<string>("all");
@@ -101,7 +106,7 @@ export function MediaPage() {
   const selectedTrip = trips.find((t) => t.id === uploadTripId);
 
   const processFiles = useCallback(
-    (files: File[]) => {
+    async (files: File[]) => {
       if (!uploadTripId) {
         toast.error("Select a trip first");
         return;
@@ -113,6 +118,10 @@ export function MediaPage() {
         toast.error("Only image and video files are supported");
         return;
       }
+      if (valid.some((f) => f.size > 50 * 1024 * 1024)) {
+        toast.error("Files must be under 50 MB");
+        return;
+      }
 
       setUploading(true);
       setUploadProgress(0);
@@ -120,39 +129,48 @@ export function MediaPage() {
       const interval = setInterval(() => {
         setUploadProgress((p) => {
           if (p >= 90) { clearInterval(interval); return p; }
-          return p + Math.random() * 18;
+          return p + Math.random() * 12;
         });
-      }, 80);
+      }, 120);
 
-      const readers = valid.map(
-        (file) =>
-          new Promise<TripMedia>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) =>
-              resolve({
-                id: `media-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-                type: file.type.startsWith("video/") ? "video" : "image",
-                name: file.name,
-                url: ev.target?.result as string,
-                size: file.size,
-                uploadedAt: new Date().toISOString(),
-              });
-            reader.readAsDataURL(file);
-          })
-      );
+      try {
+        const uploaded: TripMedia[] = await Promise.all(
+          valid.map(async (file) => {
+            const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const ext = file.name.split(".").pop() || "jpg";
+            const storagePath = `trips/${uploadTripId}/media/${id}.${ext}`;
+            const storageRef = ref(firebaseStorage(), storagePath);
+            await uploadBytes(storageRef, file, { contentType: file.type });
+            const url = await getDownloadURL(storageRef);
+            return {
+              id,
+              type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
+              name: file.name,
+              url,
+              size: file.size,
+              uploadedAt: new Date().toISOString(),
+              uploadedBy: user?.name || undefined,
+            };
+          }),
+        );
 
-      Promise.all(readers).then((newMedia) => {
         clearInterval(interval);
         setUploadProgress(100);
         const trip = trips.find((t) => t.id === uploadTripId);
         if (!trip) return;
         setTimeout(() => {
-          updateTrip(uploadTripId, { media: [...(trip.media ?? []), ...newMedia] });
+          updateTrip(uploadTripId, { media: [...(trip.media ?? []), ...uploaded] });
           setUploading(false);
           setUploadProgress(0);
-          toast.success(`${newMedia.length} file${newMedia.length > 1 ? "s" : ""} added to ${trip.name}`);
+          toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to ${trip.name}`);
         }, 350);
-      });
+      } catch (err) {
+        clearInterval(interval);
+        setUploading(false);
+        setUploadProgress(0);
+        toast.error("Upload failed — check your connection");
+        console.error("[MediaPage] Upload error:", err);
+      }
     },
     [uploadTripId, trips, updateTrip]
   );
@@ -369,8 +387,18 @@ export function MediaPage() {
 
         <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
-        {/* ── Compact Upload Bar ── */}
-        <div
+        {/* Hidden file input — always rendered so empty-state button works */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={(e) => { processFiles(Array.from(e.target.files || [])); e.target.value = ""; }}
+        />
+
+        {/* ── Compact Upload Bar (only when media exists) ── */}
+        {allItems.length > 0 && <div
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
@@ -380,15 +408,6 @@ export function MediaPage() {
               : "border-black/[0.06] dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none"
           }`}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(e) => { processFiles(Array.from(e.target.files || [])); e.target.value = ""; }}
-          />
-
           {/* Trip picker + upload button row */}
           <div className="flex items-center gap-2.5 sm:contents">
           <div className="relative shrink-0 flex-1 sm:flex-none" ref={pickerRef}>
@@ -477,10 +496,10 @@ export function MediaPage() {
             <Upload className="h-3.5 w-3.5" />
             Upload
           </button>
-        </div>
+        </div>}
 
         {/* ── Filters: scrollable trip chips + type toggle ── */}
-        <div className="flex items-center justify-between gap-4">
+        {allItems.length > 0 && <div className="flex items-center justify-between gap-4">
           {/* Trip chips — horizontally scrollable with fade edges */}
           <div className="relative flex-1 min-w-0">
             {/* Left fade */}
@@ -543,7 +562,7 @@ export function MediaPage() {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* ── Gallery grouped by trip ── */}
         {filtered.length > 0 ? (
@@ -596,14 +615,73 @@ export function MediaPage() {
             </div>
           )
         ) : (
-          <div className="flex flex-col items-center justify-center py-32 text-slate-500 dark:text-[#888888]">
-            <Images className="h-16 w-16 mb-4 opacity-15" />
-            <p className="text-xs font-black uppercase tracking-[0.3em]">No media yet</p>
-            <p className="text-[11px] mt-1 opacity-70">
-              {allItems.length === 0
-                ? "Select a trip and upload your first photos or videos"
-                : "No media matches the current filter"}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => { if (!uploading && allItems.length === 0) fileInputRef.current?.click(); }}
+            className={`flex flex-col items-center justify-center py-20 mx-auto max-w-lg w-full rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+              isDragging
+                ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
+                : "border-black/[0.08] dark:border-[#222] bg-white/[0.02] dark:bg-white/[0.02] hover:border-brand/30 hover:bg-brand/[0.02]"
+            }`}
+          >
+            <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 transition-colors ${
+              isDragging ? "bg-brand/15" : "bg-white/[0.04] dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
+            }`}>
+              <Upload className={`h-6 w-6 ${isDragging ? "text-brand" : "text-slate-300 dark:text-[#444]"}`} />
+            </div>
+            <p className={`text-sm font-black uppercase tracking-[0.2em] ${isDragging ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}>
+              {isDragging ? "Drop files here" : "Drop photos here"}
             </p>
+            <p className="text-[11px] text-slate-400 dark:text-[#666] mt-1.5">
+              or click to browse
+            </p>
+
+            {/* Trip picker + upload button */}
+            <div className="flex items-center gap-2 mt-6" onClick={(e) => e.stopPropagation()}>
+              <div className="relative" ref={pickerRef}>
+                <button
+                  onClick={() => setTripPickerOpen((o) => !o)}
+                  className="flex items-center gap-2 pl-2 pr-2.5 py-2 rounded-xl bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/40 transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
+                >
+                  {selectedTrip ? (
+                    <>
+                      <div className="h-5 w-6 rounded overflow-hidden shrink-0">
+                        <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
+                      </div>
+                      <span className="truncate max-w-[120px]">{selectedTrip.name}</span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400 dark:text-[#666]">Select trip</span>
+                  )}
+                  <ChevronDown className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
+                </button>
+                {tripPickerOpen && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+                    {trips.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}
+                      >
+                        <div className="h-6 w-8 rounded overflow-hidden shrink-0">
+                          <img src={t.image} alt="" className="h-full w-full object-cover" />
+                        </div>
+                        <span className="text-[11px] font-bold truncate">{t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Upload
+              </button>
+            </div>
           </div>
         )}
         </div>
@@ -664,6 +742,15 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
               <ZoomIn className="h-4 w-4" />
             </button>
           )}
+          <a
+            href={item.url}
+            download={item.name}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+          >
+            <Download className="h-4 w-4" />
+          </a>
           <button
             onClick={() => onDelete(item)}
             className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
@@ -679,7 +766,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
         <div className="flex items-center justify-between mt-1">
           <p className="text-[9px] font-bold text-brand truncate uppercase tracking-tight">{item.tripName}</p>
           <div className="flex items-center gap-2 shrink-0">
-            {item.size && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">{formatSize(item.size)}</span>}
+            {item.uploadedBy && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">by {item.uploadedBy}</span>}
             {item.uploadedAt && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">{formatDate(item.uploadedAt)}</span>}
           </div>
         </div>

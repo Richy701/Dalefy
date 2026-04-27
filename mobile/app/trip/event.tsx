@@ -342,8 +342,8 @@ function makeStyles(C: ThemeColors) {
     },
     typePillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.2 },
     heroTitle: {
-      fontSize: 26, fontWeight: "900", color: C.textPrimary,
-      letterSpacing: -0.5, lineHeight: 30,
+      fontSize: 26, fontWeight: "700", color: C.textPrimary,
+      letterSpacing: -0.3, lineHeight: 30,
     },
     heroSub: { fontSize: T.base, fontWeight: "500", color: C.textTertiary, marginTop: 2 },
 
@@ -396,7 +396,7 @@ function makeStyles(C: ThemeColors) {
       padding: S.lg, borderRadius: R.xl, gap: S.sm,
     },
     confLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 },
-    confValue: { fontSize: 20, fontWeight: "900", letterSpacing: 2 },
+    confValue: { fontSize: 20, fontWeight: "700", letterSpacing: 2 },
 
     // Text cards
     textCard: {

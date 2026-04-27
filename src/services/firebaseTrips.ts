@@ -206,9 +206,21 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
     }
   }
 
-  // Trip-level media — strip base64 (media uploads not supported yet)
+  // Trip-level media — upload base64/local to Firebase Storage
   if (clean.media?.length) {
-    clean.media = clean.media.filter(m => !isBase64(m.url));
+    clean.media = await Promise.all(
+      clean.media.map(async (m, i) => {
+        if (isBase64(m.url)) {
+          try {
+            const url = await uploadBase64Image(m.url, `trips/${trip.id}/media/${m.id || `m-${i}`}`);
+            return { ...m, url };
+          } catch {
+            return m; // keep original on failure
+          }
+        }
+        return m;
+      }),
+    );
   }
 
   // Events — upload base64 or external image URLs

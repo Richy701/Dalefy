@@ -3,7 +3,7 @@ import {
   query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { firebaseDb } from "./firebase";
+import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import type { Trip } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
 
@@ -58,6 +58,23 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
         query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
       );
       const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
+
+      // Backfill UID-keyed member docs for Firestore rule checks
+      try {
+        await waitForAuth();
+        const uid = firebaseAuth().currentUser?.uid;
+        if (uid) {
+          for (const memberDoc of memberSnap.docs) {
+            const data = memberDoc.data();
+            const uidKey = `${uid}_${data.trip_id}`;
+            // Only create if it doesn't exist yet (merge: true is safe)
+            setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidKey), {
+              ...data,
+              uid,
+            }, { merge: true }).catch(() => {});
+          }
+        }
+      } catch { /* auth not ready — skip backfill */ }
 
       // Clean up any previous listeners
       innerUnsubs.forEach(u => u());
@@ -140,14 +157,30 @@ export async function logTripJoin(
   try {
     const deviceId = await getDeviceId();
     const memberId = `${deviceId}_${tripId}`;
-    await setDoc(doc(firebaseDb(), TRIP_MEMBERS, memberId), {
+    const memberData = {
       device_id: deviceId,
       trip_id: tripId,
       trip_name: tripName,
       name: userName,
       avatar: avatar || null,
       joined_at: new Date().toISOString(),
-    }, { merge: true });
+    };
+    await setDoc(doc(firebaseDb(), TRIP_MEMBERS, memberId), memberData, { merge: true });
+
+    // Also create a UID-keyed member doc so Firestore rules can verify membership
+    try {
+      await waitForAuth();
+      const uid = firebaseAuth().currentUser?.uid;
+      if (uid) {
+        const uidMemberId = `${uid}_${tripId}`;
+        await setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidMemberId), {
+          ...memberData,
+          uid,
+        }, { merge: true });
+      }
+    } catch {
+      // auth not ready or anonymous auth disabled — non-critical
+    }
   } catch {
     // non-critical — don't block the join flow
   }

@@ -71,6 +71,11 @@ function eventToProps(ev: TravelEvent): UpcomingEventProps {
   };
 }
 
+/** Safely call a Live Activity method that may return a promise */
+function safe(fn: () => unknown) {
+  try { Promise.resolve(fn()).catch(() => {}); } catch { /* ignore */ }
+}
+
 /**
  * Shows the next upcoming non-flight event for today as an iOS Live Activity.
  * Skips flights (those get their own FlightTracker Live Activity).
@@ -89,7 +94,7 @@ export function useUpcomingEventLiveActivity() {
     if (prefs.liveActivity === false) {
       try {
         const instances = UpcomingEvent.getInstances();
-        for (const inst of instances) { try { inst.end("default"); } catch {} }
+        for (const inst of instances) safe(() => inst.end("default"));
       } catch {}
       activityRef.current = null;
       return;
@@ -99,9 +104,7 @@ export function useUpcomingEventLiveActivity() {
     if (!activityRef.current) {
       try {
         const stale = UpcomingEvent.getInstances();
-        for (const inst of stale) {
-          try { inst.end("default"); } catch { /* ignore */ }
-        }
+        for (const inst of stale) safe(() => inst.end("default"));
       } catch { /* ignore */ }
     }
 
@@ -133,7 +136,7 @@ export function useUpcomingEventLiveActivity() {
       if (!upcoming) {
         // No upcoming events — end any active Live Activity
         if (current) {
-          try { current.activity.end("default"); } catch { /* ignore */ }
+          safe(() => current.activity.end("default"));
           activityRef.current = null;
         }
         return;
@@ -143,14 +146,12 @@ export function useUpcomingEventLiveActivity() {
 
       if (current && current.eventId === upcoming.id) {
         // Same event — just update in case data changed
-        try { current.activity.update(props); } catch { /* ignore */ }
+        safe(() => current.activity.update(props));
       } else {
         // End ALL existing instances to prevent duplicates
         try {
           const instances = UpcomingEvent.getInstances();
-          for (const inst of instances) {
-            try { inst.end("default"); } catch { /* ignore */ }
-          }
+          for (const inst of instances) safe(() => inst.end("default"));
         } catch { /* ignore */ }
 
         // Start fresh
@@ -183,7 +184,7 @@ export function useUpcomingEventLiveActivity() {
       if (timerRef.current) clearTimeout(timerRef.current);
       sub.remove();
       if (activityRef.current) {
-        try { activityRef.current.activity.end("default"); } catch { /* ignore */ }
+        safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
     };

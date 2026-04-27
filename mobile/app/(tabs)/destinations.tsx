@@ -488,7 +488,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm,
     },
     headerTitle: {
-      fontSize: T["3xl"], fontWeight: T.black, letterSpacing: -0.5,
+      fontSize: T["3xl"], fontWeight: T.bold, letterSpacing: -0.3,
       color: C.textPrimary,
     },
     headerSub: {

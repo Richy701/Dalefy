@@ -118,6 +118,11 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
  * updates it when the event data changes, and ends it when the
  * flight status indicates completion.
  */
+/** Safely call a Live Activity method that may return a promise */
+function safe(fn: () => unknown) {
+  try { Promise.resolve(fn()).catch(() => {}); } catch { /* ignore */ }
+}
+
 export function useFlightLiveActivity() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
@@ -129,9 +134,7 @@ export function useFlightLiveActivity() {
 
     // If Live Activity is disabled, end all and bail
     if (prefs.liveActivity === false) {
-      for (const ref of activitiesRef.current) {
-        try { ref.activity.end("default"); } catch {}
-      }
+      for (const r of activitiesRef.current) safe(() => r.activity.end("default"));
       activitiesRef.current = [];
       return;
     }
@@ -141,7 +144,7 @@ export function useFlightLiveActivity() {
       didCleanup.current = true;
       try {
         const stale = FlightTracker.getInstances();
-        for (const a of stale) { try { a.end("immediate"); } catch {} }
+        for (const a of stale) safe(() => a.end("immediate"));
         console.log(`[FlightLiveActivity] Cleaned up ${stale.length} stale activities`);
       } catch {}
     }
@@ -168,10 +171,10 @@ export function useFlightLiveActivity() {
 
       if (existing) {
         if (isEnded) {
-          try { existing.activity.end("default", props); } catch { /* ignore */ }
+          safe(() => existing.activity.end("default", props));
           activitiesRef.current = current.filter(a => a.eventId !== ev.id);
         } else {
-          try { existing.activity.update(props); } catch { /* ignore */ }
+          safe(() => existing.activity.update(props));
         }
       } else if (!isEnded) {
         try {
@@ -207,10 +210,10 @@ export function useFlightLiveActivity() {
 
     // End activities for flights no longer in today's list
     const todayIds = new Set(todayFlights.map(e => e.id));
-    for (const ref of current) {
-      if (!todayIds.has(ref.eventId)) {
-        try { ref.activity.end("default"); } catch { /* ignore */ }
-        activitiesRef.current = activitiesRef.current.filter(a => a.eventId !== ref.eventId);
+    for (const r of current) {
+      if (!todayIds.has(r.eventId)) {
+        safe(() => r.activity.end("default"));
+        activitiesRef.current = activitiesRef.current.filter(a => a.eventId !== r.eventId);
       }
     }
   }, [trips, prefs.liveActivity]);

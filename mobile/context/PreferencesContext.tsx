@@ -9,6 +9,7 @@ export type ThemeMode = "light" | "dark" | "system";
 export interface Preferences {
   name: string;
   avatar: string;
+  uid: string;
   orgId: string;
   orgSlug: string;
   tripReminders: boolean;
@@ -22,6 +23,7 @@ export interface Preferences {
 const DEFAULT_PREFS: Preferences = {
   name: "",
   avatar: "",
+  uid: "",
   orgId: "",
   orgSlug: "",
   tripReminders: true,

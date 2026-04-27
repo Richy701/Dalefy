@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Images, Play, Plus, Upload, Camera, X, Trash2,
   Image as LucideImage, Film, MapPin, ChevronRight, Aperture,
@@ -17,12 +17,16 @@ import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
-import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { type ThemeColors, T, R, S } from "@/constants/theme";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import * as ImagePicker from "expo-image-picker";
-import { File as ExpoFile } from "expo-file-system/next";
+import * as Linking from "expo-linking";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { uploadTripMedia } from "@/services/mediaUpload";
+import { upsertTrip as upsertTripRemote } from "@/services/firebaseTrips";
 import type { TripMedia, Trip } from "@/shared/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -31,15 +35,6 @@ const GRID_COLS = 3;
 const GRID_ITEM_SIZE = (SCREEN_W - S.md * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
 
 function formatSize(bytes: number) {
   if (!bytes) return "";
@@ -53,6 +48,10 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
+/**
+ * Pick media from the device library.
+ * Returns items with local URIs — caller is responsible for uploading.
+ */
 async function pickMedia(onPicked: (items: TripMedia[]) => void) {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
@@ -66,30 +65,14 @@ async function pickMedia(onPicked: (items: TripMedia[]) => void) {
     selectionLimit: 20,
   });
   if (!result.canceled) {
-    const items: TripMedia[] = await Promise.all(
-      result.assets.map(async (a, i) => {
-        let url = a.uri;
-        try {
-          const file = new ExpoFile(a.uri);
-          const buffer = await file.arrayBuffer();
-          const base64 = arrayBufferToBase64(buffer);
-          const mimeType = a.type === "video"
-            ? "video/mp4"
-            : a.uri.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-          url = `data:${mimeType};base64,${base64}`;
-        } catch {
-          // Fall back to local URI
-        }
-        return {
-          id: `upload-${Date.now()}-${i}`,
-          type: (a.type === "video" ? "video" : "image") as "image" | "video",
-          name: a.fileName ?? `media-${i + 1}`,
-          url,
-          size: a.fileSize ?? 0,
-          uploadedAt: new Date().toISOString(),
-        };
-      }),
-    );
+    const items: TripMedia[] = result.assets.map((a, i) => ({
+      id: `upload-${Date.now()}-${i}`,
+      type: (a.type === "video" ? "video" : "image") as "image" | "video",
+      name: a.fileName ?? `media-${i + 1}`,
+      url: a.uri,
+      size: a.fileSize ?? 0,
+      uploadedAt: new Date().toISOString(),
+    }));
     onPicked(items);
   }
 }
@@ -295,19 +278,23 @@ function MediaViewer({ item, tripName, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-function GridItem({ item, index, isLast, remaining, onPress, C }: {
+function GridItem({ item, index, isLast, remaining, onPress, isSolo, C }: {
   item: TripMedia;
   index: number;
   isLast: boolean;
   remaining: number;
   onPress: () => void;
+  isSolo?: boolean;
   C: ThemeColors;
 }) {
-  // First item in section = hero (spans 2 cols, 2 rows)
   const isHero = index === 0;
-  const size = isHero
-    ? GRID_ITEM_SIZE * 2 + GRID_GAP
-    : GRID_ITEM_SIZE;
+  const fullWidth = SCREEN_W - S.md * 2;
+  const size = isSolo
+    ? fullWidth
+    : isHero
+      ? GRID_ITEM_SIZE * 2 + GRID_GAP
+      : GRID_ITEM_SIZE;
+  const height = isSolo ? fullWidth * 0.65 : size;
 
   return (
     <ContextMenu
@@ -316,7 +303,7 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
         { title: "Share", systemIcon: "square.and.arrow.up" },
         { title: "Delete", systemIcon: "trash", destructive: true },
       ]}
-      onPress={(e) => {
+      onPress={(e: any) => {
         if (e.nativeEvent.index === 0) onPress();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
       }}
@@ -326,8 +313,8 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
       style={{
         width: size,
-        height: size,
-        borderRadius: isHero ? R.xl : R.md,
+        height,
+        borderRadius: isHero || isSolo ? R.xl : R.md,
         overflow: "hidden",
         backgroundColor: C.card,
       }}
@@ -345,8 +332,8 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
         </View>
       )}
 
-      {/* Type badge on hero */}
-      {isHero && (
+      {/* Type badge on hero / solo */}
+      {(isHero || isSolo) && (
         <View style={{
           position: "absolute", top: S.xs, left: S.xs,
           flexDirection: "row", alignItems: "center", gap: 4,
@@ -386,6 +373,7 @@ function GridItem({ item, index, isLast, remaining, onPress, C }: {
 export default function MediaScreen() {
   const { C, isDark } = useTheme();
   const { toast } = useToast();
+  const { prefs } = usePreferences();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
   const { trips, updateTrip, reload } = useTrips();
@@ -395,21 +383,58 @@ export default function MediaScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [viewerItem, setViewerItem] = useState<(TripMedia & { tripId: string; tripName: string }) | null>(null);
 
+  const [uploading, setUploading] = useState(false);
+  /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
+  const PENDING_KEY = "daf-pending-media";
+  const [pendingMedia, setPendingMediaRaw] = useState<Record<string, TripMedia[]>>({});
+  const pendingLoaded = useRef(false);
+
+  // Wrap setter to also persist
+  const setPendingMedia = useCallback((updater: (prev: Record<string, TripMedia[]>) => Record<string, TripMedia[]>) => {
+    setPendingMediaRaw(prev => {
+      const next = updater(prev);
+      AsyncStorage.setItem(PENDING_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  // Load persisted pending media on mount
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_KEY).then(raw => {
+      if (raw) setPendingMediaRaw(JSON.parse(raw));
+      pendingLoaded.current = true;
+    }).catch(() => { pendingLoaded.current = true; });
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
   }, [reload]);
 
+  // Merge context trips with pending uploads so local picks show instantly
+  // Dedup: skip pending items already in context
+  const mergedTrips = useMemo(() =>
+    trips.map(t => {
+      const pending = pendingMedia[t.id];
+      if (!pending?.length) return t;
+      const existingIds = new Set((t.media ?? []).map(m => m.id));
+      const newItems = pending.filter(m => !existingIds.has(m.id));
+      if (!newItems.length) return t;
+      return { ...t, media: [...(t.media ?? []), ...newItems] };
+    }),
+    [trips, pendingMedia],
+  );
+
   // Aggregated data
   const allItems = useMemo(() =>
-    trips.flatMap(t => (t.media ?? []).map(m => ({ ...m, tripId: t.id, tripName: t.destination || t.name }))),
-    [trips],
+    mergedTrips.flatMap(t => (t.media ?? []).map(m => ({ ...m, tripId: t.id, tripName: t.destination || t.name }))),
+    [mergedTrips],
   );
 
   const photos = useMemo(() => allItems.filter(m => m.type === "image").length, [allItems]);
   const videos = useMemo(() => allItems.filter(m => m.type === "video").length, [allItems]);
-  const tripsWithMedia = useMemo(() => trips.filter(t => (t.media?.length ?? 0) > 0), [trips]);
+  const tripsWithMedia = useMemo(() => mergedTrips.filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
 
   const filteredTrips = useMemo(() => {
     let list = tripFilter === "all" ? tripsWithMedia : tripsWithMedia.filter(t => t.id === tripFilter);
@@ -431,11 +456,55 @@ export default function MediaScreen() {
     const trip = trips.find(t => t.id === tripId);
     if (!trip) return;
     setPickerOpen(false);
-    pickMedia(items => {
-      updateTrip({ ...trip, media: [...(trip.media ?? []), ...items] });
-      toast(`${items.length} file${items.length > 1 ? "s" : ""} added`);
+    const existingMedia = trip.media ?? [];
+
+    pickMedia((rawItems) => {
+      // Stamp uploader name onto each item
+      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveler" }));
+
+      // 1. Show immediately using component-local state (subscription can't touch this)
+      setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
+      setUploading(true);
+      toast(`Uploading ${items.length} file${items.length > 1 ? "s" : ""}...`);
+
+      // 2. Upload to cloud, then write directly to Firestore
+      uploadTripMedia(items, tripId)
+        .then(async (uploaded) => {
+          const finalMedia = [...existingMedia, ...uploaded];
+          const finalTrip = { ...trip, media: finalMedia };
+
+          // Write to Firestore FIRST — only clear pending once confirmed
+          try {
+            await upsertTripRemote(finalTrip);
+            // Firestore confirmed! Update context and clear pending
+            updateTrip(finalTrip);
+            const itemIds = new Set(items.map(m => m.id));
+            setPendingMedia(prev => {
+              const remaining = (prev[tripId] ?? []).filter(m => !itemIds.has(m.id));
+              if (!remaining.length) {
+                const next = { ...prev };
+                delete next[tripId];
+                return next;
+              }
+              return { ...prev, [tripId]: remaining };
+            });
+            toast(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
+          } catch (err) {
+            console.warn("[Media] Firestore write failed:", err);
+            // Keep pending items — they'll persist via AsyncStorage
+            updateTrip(finalTrip); // optimistic at least
+            toast("Photos saved — syncing shortly");
+          }
+        })
+        .catch((err) => {
+          console.warn("[Media] Upload failed:", err);
+          toast("Couldn't upload — try again later");
+        })
+        .finally(() => {
+          setUploading(false);
+        });
     });
-  }, [trips, updateTrip, toast]);
+  }, [trips, updateTrip, setPendingMedia, toast]);
 
   const handleUploadNew = useCallback(() => {
     if (trips.length === 0) {
@@ -484,19 +553,29 @@ export default function MediaScreen() {
         ) : (
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
         )}
-        <Text style={styles.screenTitle}>Gallery</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.screenTitle}>Gallery</Text>
+          {trips.length > 0 && (
+            <Pressable
+              style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+            >
+              <Plus size={16} color="#000" strokeWidth={2.5} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 52 }]}
         contentInsetAdjustmentBehavior="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
         {/* ── Hero Banner ── */}
         {allItems.length > 0 ? (
-          <View style={[styles.heroBanner, { paddingTop: insets.top + S.xs }]}>
+          <View style={styles.heroBanner}>
             {heroTrip?.image && (
               <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
             )}
@@ -504,18 +583,6 @@ export default function MediaScreen() {
               colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
               style={StyleSheet.absoluteFillObject}
             />
-
-            {/* Top row */}
-            <View style={styles.heroTopRow}>
-              <View />
-              <Pressable
-                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1 }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-              >
-                <Aperture size={15} color="#000" strokeWidth={2.5} />
-                <Text style={styles.uploadFabText}>Upload</Text>
-              </Pressable>
-            </View>
 
             {/* Hero content */}
             <View style={styles.heroContent}>
@@ -525,7 +592,6 @@ export default function MediaScreen() {
                   <Text style={styles.heroLocText}>{heroTrip.destination.toUpperCase()}</Text>
                 </View>
               )}
-              <Text style={styles.heroTitle}>Gallery</Text>
 
               <View style={styles.statRow}>
                 <StatPill icon={LucideImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
@@ -630,11 +696,12 @@ export default function MediaScreen() {
 
                   {/* Masonry-ish grid: hero + small items */}
                   <View style={styles.masonryWrap}>
-                    {/* Hero item (left) */}
+                    {/* Hero item (left) — full width if solo */}
                     {visible[0] && (
                       <GridItem
                         item={visible[0]}
                         index={0}
+                        isSolo={visible.length === 1}
                         isLast={visible.length === 1 && remaining > 0}
                         remaining={visible.length === 1 ? remaining : 0}
                         onPress={() => setViewerItem({ ...visible[0], tripId: trip.id, tripName: trip.destination || trip.name })}
@@ -699,10 +766,18 @@ function makeStyles(C: ThemeColors) {
       position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
       overflow: "hidden",
     },
+    headerRow: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: S.md, paddingVertical: 10,
+    },
     screenTitle: {
       fontSize: 22, fontWeight: "700",
-      color: C.teal, paddingHorizontal: S.md,
-      paddingVertical: 10,
+      color: C.textPrimary,
+    },
+    headerUploadBtn: {
+      width: 32, height: 32, borderRadius: R.full,
+      backgroundColor: C.teal,
+      alignItems: "center", justifyContent: "center",
     },
 
     // ── Hero Banner ──
@@ -713,22 +788,12 @@ function makeStyles(C: ThemeColors) {
       borderBottomRightRadius: R["2xl"],
       paddingHorizontal: S.md,
       paddingBottom: S.lg,
+      justifyContent: "flex-end",
+      minHeight: 200,
     },
     emptyHeader: {
       paddingHorizontal: S.md,
       paddingBottom: S.sm,
-    },
-    heroTopRow: {
-      flexDirection: "row", alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: S.md,
-    },
-    brandRow: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-    },
-    brandText: {
-      fontSize: T.xs, fontWeight: T.bold, color: "#fff",
-      letterSpacing: 1.5, textTransform: "uppercase",
     },
     uploadFab: {
       flexDirection: "row", alignItems: "center", gap: 5,
@@ -748,10 +813,6 @@ function makeStyles(C: ThemeColors) {
     heroLocText: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 1.5,
-    },
-    heroTitle: {
-      fontSize: T["4xl"] + 4, fontFamily: F.black, fontWeight: T.black,
-      color: "#fff", letterSpacing: -1, lineHeight: T["4xl"] + 6,
     },
     statRow: {
       flexDirection: "row", gap: S.xs, marginTop: S.xs,
@@ -797,8 +858,8 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.xl, gap: S.sm,
     },
     emptyTitle: {
-      fontSize: T["2xl"], fontWeight: T.black, color: C.textPrimary,
-      letterSpacing: -0.5, textAlign: "center",
+      fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary,
+      letterSpacing: -0.3, textAlign: "center",
     },
     emptyText: {
       fontSize: T.sm, color: C.textTertiary,

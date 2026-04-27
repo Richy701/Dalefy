@@ -32,5 +32,6 @@ module.exports = ({ config }) => ({
       "@rnmapbox/maps",
       { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ?? "" },
     ],
+    "expo-web-browser",
   ],
 });

@@ -34,6 +34,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useTripReminders } from "@/hooks/useTripReminders";
+import { useTripNotifications } from "@/hooks/useTripNotifications";
 import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
@@ -121,6 +122,9 @@ function AppStack() {
   // Schedule local reminders for upcoming trips, flights, hotels, activities
   useTripReminders();
 
+  // Seed in-app notification list from current trip state (landed flights, today's events, etc.)
+  useTripNotifications();
+
   // Start/update/end iOS Live Activities for today's flights
   useFlightLiveActivity();
   useUpcomingEventLiveActivity();
@@ -157,11 +161,11 @@ function AppStack() {
 
   useEffect(() => {
     if (!ready) return;
-    // Send to welcome if no name set
-    if (!prefs.name && pathname !== "/welcome") {
+    // Send to welcome if no name or no uid (must sign in)
+    if ((!prefs.name || !prefs.uid) && pathname !== "/welcome") {
       router.replace("/welcome");
     }
-  }, [ready, prefs.name, prefs.orgId, pathname, router]);
+  }, [ready, prefs.name, prefs.uid, pathname, router]);
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {
