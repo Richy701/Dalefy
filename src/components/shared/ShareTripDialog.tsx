@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Check, Link2, Smartphone, Plane, MapPin, CalendarDays } from "lucide-react";
+import { Copy, Check, Link2, Smartphone, Plane, MapPin, CalendarDays, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -71,15 +71,26 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-w-md bg-slate-100 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-3xl p-0 overflow-hidden"
+        className="w-full h-full max-w-none rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] sm:overflow-hidden"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
-          <DialogTitle>Share trip — {tripName}</DialogTitle>
+          <DialogTitle>Share trip - {tripName}</DialogTitle>
           <DialogDescription>Scan QR to open itinerary</DialogDescription>
         </DialogHeader>
 
-        <div className="p-5">
+        {/* Mobile close button */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-2 sm:hidden">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Share Trip</p>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] active:scale-95 transition-transform"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5 pt-2 sm:pt-5">
           {/* Boarding pass ticket */}
           <div className="relative bg-white dark:bg-[#0f0f0f] rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
             {/* Top accent bar */}
@@ -189,7 +200,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                   return (
                     <span
                       key={i}
-                      className={`${isShort ? "w-12 h-14 text-[32px]" : "w-10 h-12 text-[24px]"} rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums leading-none transition-colors`}
+                      className={`${isShort ? "w-10 h-12 text-[24px] sm:w-12 sm:h-14 sm:text-[32px]" : "w-8 h-10 text-[20px] sm:w-10 sm:h-12 sm:text-[24px]"} rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums leading-none transition-colors`}
                       style={{
                         borderColor: filled ? `${accentColor}50` : "rgba(148,163,184,0.25)",
                         backgroundColor: filled ? `${accentColor}10` : "transparent",
@@ -222,7 +233,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
           </div>
 
           {/* Link rows */}
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-2 pb-4 sm:pb-0">
             <LinkRow
               icon={Link2}
               label="Web Link"

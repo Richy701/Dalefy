@@ -373,8 +373,10 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
   );
 }
 
-export function EventCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
-  if (ev.type === "flight") return <FlightCard ev={ev} C={C} tripId={tripId} />;
-  if (ev.type === "hotel")  return <HotelCard  ev={ev} C={C} tripId={tripId} />;
-  return <ActivityCard ev={ev} C={C} tripId={tripId} />;
+export function EventCard({ ev, C, tripId, isLeader = false }: { ev: TravelEvent; C: ThemeColors; tripId?: string; isLeader?: boolean }) {
+  // Strip sensitive fields for standard travelers
+  const event = isLeader ? ev : { ...ev, notes: undefined, supplier: undefined, confNumber: undefined, documents: undefined };
+  if (event.type === "flight") return <FlightCard ev={event} C={C} tripId={tripId} />;
+  if (event.type === "hotel")  return <HotelCard  ev={event} C={C} tripId={tripId} />;
+  return <ActivityCard ev={event} C={C} tripId={tripId} />;
 }

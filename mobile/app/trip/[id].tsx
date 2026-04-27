@@ -18,6 +18,7 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
+import { useTripRole } from "@/hooks/useTripRole";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -64,6 +65,7 @@ export default function TripScreen() {
   const router = useRouter();
   const { C, isDark } = useTheme();
   const { brand } = useBrand();
+  const { isLeader } = useTripRole(id);
 
 
   const insets = useSafeAreaInsets();
@@ -330,16 +332,20 @@ export default function TripScreen() {
         </View>
 
         {/* ── Organizer contact card ── */}
-        {trip.organizer && <OrganizerCard organizer={trip.organizer} C={C} />}
+        {trip.organizer && <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />}
 
         {/* ── Information & Documents ── */}
-        {trip.info && trip.info.length > 0 && (
-          <InfoDocsRow
-            count={trip.info.length}
-            C={C}
-            onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
-          />
-        )}
+        {trip.info && trip.info.length > 0 && (() => {
+          const SENSITIVE = /price|cost|budget|pnr|supplier|booking\s*ref|payment|invoice|conf|rate|tariff|margin|commission/i;
+          const visibleInfo = isLeader ? trip.info : trip.info.filter(i => !SENSITIVE.test(i.title) && !SENSITIVE.test(i.body));
+          return visibleInfo.length > 0 ? (
+            <InfoDocsRow
+              count={visibleInfo.length}
+              C={C}
+              onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id, leaderOnly: isLeader ? "1" : "0" } })}
+            />
+          ) : null;
+        })()}
 
 
         {/* ── Map (only when native module is linked) ── */}

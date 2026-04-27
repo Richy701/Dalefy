@@ -116,6 +116,8 @@ export async function generateUniqueShortCode(): Promise<string> {
 
 // ── Trip Members ────────────────────────────────────────────────────────────
 
+export type TripMemberRole = "traveler" | "leader";
+
 export interface TripMember {
   device_id: string;
   trip_id: string;
@@ -123,6 +125,7 @@ export interface TripMember {
   name: string;
   avatar: string | null;
   joined_at: string;
+  role?: TripMemberRole;
 }
 
 export async function fetchTripMembers(): Promise<TripMember[]> {
@@ -161,6 +164,37 @@ export async function deleteAppUser(deviceId: string): Promise<number> {
   }
   logger.log("deleteAppUser", `deleted ${deleted}/${snap.size} docs for device ${deviceId}`);
   return deleted;
+}
+
+/** Update the role on all trip_members docs for a device+trip pair */
+export async function updateTripMemberRole(
+  deviceId: string,
+  tripId: string,
+  role: TripMemberRole,
+): Promise<void> {
+  const snap = await getDocs(
+    query(
+      collection(firebaseDb(), TRIP_MEMBERS),
+      where("device_id", "==", deviceId),
+      where("trip_id", "==", tripId),
+    ),
+  );
+  for (const d of snap.docs) {
+    await setDoc(d.ref, { role }, { merge: true });
+  }
+  // Also update UID-keyed docs if they exist
+  const uidSnap = await getDocs(
+    query(
+      collection(firebaseDb(), TRIP_MEMBERS),
+      where("trip_id", "==", tripId),
+    ),
+  );
+  for (const d of uidSnap.docs) {
+    const data = d.data();
+    if (data.device_id === deviceId && d.id !== `${deviceId}_${tripId}`) {
+      await setDoc(d.ref, { role }, { merge: true });
+    }
+  }
 }
 
 export async function deleteAllTripMembers(): Promise<number> {

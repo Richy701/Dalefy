@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
 
@@ -23,8 +24,13 @@ export default function InfoScreen() {
     else router.replace("/(tabs)");
   }, [router]);
 
+  const { isLeader } = useTripRole(tripId);
   const trip = trips.find(t => t.id === tripId);
-  const infoItems = trip?.info ?? [];
+  const SENSITIVE = /price|cost|budget|pnr|supplier|booking\s*ref|payment|invoice|conf|rate|tariff|margin|commission/i;
+  const infoItems = (() => {
+    const all = trip?.info ?? [];
+    return isLeader ? all : all.filter(i => !SENSITIVE.test(i.title) && !SENSITIVE.test(i.body));
+  })();
 
   // Start with first item expanded
   const [expandedId, setExpandedId] = useState<string | null>(infoItems[0]?.id ?? null);

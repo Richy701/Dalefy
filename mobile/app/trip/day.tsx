@@ -8,6 +8,7 @@ import {
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, type ThemeColors, eventColor } from "@/constants/theme";
 import { EventCard, DocsRow } from "@/components/EventCard";
 import { useMemo, useCallback } from "react";
@@ -42,6 +43,7 @@ export default function DayDetailScreen() {
   const { trips } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
+  const { isLeader } = useTripRole(tripId);
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -129,8 +131,8 @@ export default function DayDetailScreen() {
         <View style={styles.eventsSection}>
           {dayEvents.map((ev) => (
             <View key={ev.id}>
-              <EventCard ev={ev} C={C} tripId={tripId} />
-              {ev.documents && ev.documents.length > 0 && (
+              <EventCard ev={ev} C={C} tripId={tripId} isLeader={isLeader} />
+              {isLeader && ev.documents && ev.documents.length > 0 && (
                 <DocsRow documents={ev.documents} C={C} />
               )}
             </View>

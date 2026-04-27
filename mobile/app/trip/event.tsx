@@ -14,6 +14,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
 import { useMemo, useCallback } from "react";
 import type { TravelEvent } from "@/shared/types";
@@ -47,6 +48,7 @@ export default function EventDetailScreen() {
   const { trips } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
+  const { isLeader } = useTripRole(tripId);
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -83,7 +85,7 @@ export default function EventDetailScreen() {
   if (ev.date) chips.push({ icon: Calendar, text: formatDate(ev.date) });
   if (ev.time) chips.push({ icon: Clock, text: ev.time + (ev.endTime ? ` – ${ev.endTime}` : "") });
   if (ev.duration) chips.push({ icon: Clock, text: ev.duration });
-  if (ev.supplier) chips.push({ icon: Users, text: ev.supplier });
+  if (isLeader && ev.supplier) chips.push({ icon: Users, text: ev.supplier });
   if (ev.terminal) chips.push({ icon: Navigation, text: `Terminal ${ev.terminal}` });
   if (ev.gate) chips.push({ icon: Navigation, text: `Gate ${ev.gate}` });
   if (ev.seatDetails) chips.push({ icon: Users, text: `Seat ${ev.seatDetails}` });
@@ -208,7 +210,7 @@ export default function EventDetailScreen() {
         )}
 
         {/* ── Confirmation number ── */}
-        {ev.confNumber && (
+        {isLeader && ev.confNumber && (
           <Pressable onPress={copyConf} style={({ pressed }) => [styles.confCard, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.confLabel, { color: C.textTertiary }]}>CONFIRMATION</Text>
@@ -225,16 +227,16 @@ export default function EventDetailScreen() {
           </View>
         )}
 
-        {/* ── Notes ── */}
-        {ev.notes && (
+        {/* ── Notes (leader only) ── */}
+        {isLeader && ev.notes && (
           <View style={[styles.textCard, { backgroundColor: C.card }]}>
             <Text style={[styles.textCardLabel, { color: C.textTertiary }]}>NOTES</Text>
             <Text style={[styles.textBody, { color: C.textSecondary }]}>{ev.notes}</Text>
           </View>
         )}
 
-        {/* ── Documents ── */}
-        {ev.documents && ev.documents.length > 0 && (
+        {/* ── Documents (leader only) ── */}
+        {isLeader && ev.documents && ev.documents.length > 0 && (
           <View style={styles.px}>
             <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>DOCUMENTS</Text>
             {ev.documents.map(doc => (

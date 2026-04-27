@@ -7,9 +7,10 @@ import type { TripOrganizer } from "@/shared/types";
 interface OrganizerCardProps {
   organizer: TripOrganizer;
   C: ThemeColors;
+  isLeader?: boolean;
 }
 
-export function OrganizerCard({ organizer, C }: OrganizerCardProps) {
+export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardProps) {
   const s = makeStyles(C);
 
   const initials = organizer.name
@@ -50,8 +51,8 @@ export function OrganizerCard({ organizer, C }: OrganizerCardProps) {
         </View>
       </View>
 
-      {/* Action buttons */}
-      {(organizer.phone || organizer.email) && (
+      {/* Action buttons — leader only */}
+      {isLeader && (organizer.phone || organizer.email) && (
         <View style={s.actions}>
           {organizer.phone && (
             <Pressable

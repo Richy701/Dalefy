@@ -148,6 +148,40 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   return null;
 }
 
+// ── Role Check ─────────────────────────────────────────────────────────────
+
+export type TripMemberRole = "traveler" | "leader";
+
+/** Get this device's role for a specific trip */
+export async function fetchMemberRole(tripId: string): Promise<TripMemberRole> {
+  try {
+    const deviceId = await getDeviceId();
+    const snap = await getDoc(doc(firebaseDb(), TRIP_MEMBERS, `${deviceId}_${tripId}`));
+    if (snap.exists()) {
+      return (snap.data().role as TripMemberRole) || "traveler";
+    }
+  } catch { /* default to traveler */ }
+  return "traveler";
+}
+
+/** Subscribe to role changes for this device on a specific trip */
+export function subscribeToMemberRole(
+  tripId: string,
+  onChange: (role: TripMemberRole) => void,
+): Unsubscribe {
+  let unsub: Unsubscribe = () => {};
+  getDeviceId().then(deviceId => {
+    unsub = onSnapshot(doc(firebaseDb(), TRIP_MEMBERS, `${deviceId}_${tripId}`), (snap) => {
+      if (snap.exists()) {
+        onChange((snap.data().role as TripMemberRole) || "traveler");
+      } else {
+        onChange("traveler");
+      }
+    }, () => { onChange("traveler"); });
+  });
+  return () => unsub();
+}
+
 // ── Trip Members ────────────────────────────────────────────────────────────
 
 export async function logTripJoin(

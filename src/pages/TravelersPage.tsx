@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
-import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
@@ -109,13 +109,28 @@ export function TravelersPage() {
     }
   }, [showToast]);
 
+  const handleToggleRole = useCallback(async (deviceId: string, tripId: string, currentRole: TripMemberRole) => {
+    const newRole: TripMemberRole = currentRole === "leader" ? "traveler" : "leader";
+    try {
+      await updateTripMemberRole(deviceId, tripId, newRole);
+      setAppUsers(prev => prev.map(m =>
+        m.device_id === deviceId && m.trip_id === tripId ? { ...m, role: newRole } : m
+      ));
+      showToast(`Role updated to ${newRole === "leader" ? "Trip Leader" : "Traveler"}`);
+    } catch (err) {
+      console.error("Role update failed:", err);
+      showToast("Failed to update role");
+    }
+  }, [showToast]);
+
   // Group app users by device_id (unique person)
   const groupedAppUsers = useMemo(() => {
-    const map = new Map<string, { name: string; avatar: string | null; trips: { id: string; name: string; joinedAt: string }[] }>();
+    const map = new Map<string, { name: string; avatar: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
     for (const m of appUsers) {
       const existing = map.get(m.device_id);
+      const tripEntry = { id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at, role: (m.role || "traveler") as TripMemberRole };
       if (existing) {
-        existing.trips.push({ id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at });
+        existing.trips.push(tripEntry);
         // Use latest name/avatar
         if (new Date(m.joined_at) > new Date(existing.trips[0]?.joinedAt ?? 0)) {
           existing.name = m.name;
@@ -125,7 +140,7 @@ export function TravelersPage() {
         map.set(m.device_id, {
           name: m.name,
           avatar: m.avatar,
-          trips: [{ id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at }],
+          trips: [tripEntry],
         });
       }
     }
@@ -1023,54 +1038,56 @@ export function TravelersPage() {
 
                           {/* ── Expanded detail panel ── */}
                           {isExpanded && (
-                            <div className="px-4 sm:px-6 pb-5 pt-1 bg-slate-50/50 dark:bg-[#0a0a0a]/50 border-t border-slate-100 dark:border-[#1a1a1a] animate-fade-in">
-                              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-4 sm:gap-6">
-                                {/* User info */}
-                                <div className="space-y-3">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">User Details</p>
-                                  <div className="flex items-center gap-3">
-                                    {user.avatar ? (
-                                      <img src={user.avatar} alt={user.name} className="h-14 w-14 rounded-2xl object-cover border-2 border-brand/20" />
-                                    ) : (
-                                      <div className="h-14 w-14 rounded-2xl bg-brand text-black flex items-center justify-center font-black text-sm">{initials}</div>
-                                    )}
-                                    <div>
-                                      <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">{user.name || "Unknown"}</p>
-                                      <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-0.5 flex items-center gap-1">
-                                        <Fingerprint className="h-3 w-3" />
-                                        <span className="font-mono text-[10px]">{user.deviceId.slice(0, 12)}…</span>
+                            <div className="px-4 sm:px-6 pb-5 pt-3 bg-slate-50/50 dark:bg-[#0a0a0a]/50 border-t border-slate-100 dark:border-[#1a1a1a] animate-fade-in">
+                              {/* User profile header */}
+                              <div className="flex items-center gap-4 mb-5">
+                                {user.avatar ? (
+                                  <img src={user.avatar} alt={user.name} className="h-14 w-14 rounded-2xl object-cover ring-2 ring-brand/20" />
+                                ) : (
+                                  <div className="h-14 w-14 rounded-2xl bg-brand text-black flex items-center justify-center font-black text-sm">{initials}</div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">{user.name || "Unknown"}</p>
+                                  <p className="text-[10px] font-bold text-slate-500 dark:text-[#666] mt-0.5 flex items-center gap-1 font-mono">
+                                    <Fingerprint className="h-3 w-3" />
+                                    {user.deviceId.slice(0, 12)}…
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteAppUser(user.deviceId, user.name)}
+                                  className="shrink-0 h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] text-red-500 bg-red-500/10 ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-1.5"
+                                >
+                                  <Trash2 className="h-3 w-3" /> Remove
+                                </button>
+                              </div>
+
+                              {/* Trip permissions */}
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-2.5">Trip Permissions</p>
+                              <div className="space-y-2">
+                                {[...user.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
+                                  <div key={t.id} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
+                                    <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                      <MapPin className="h-3.5 w-3.5 text-brand" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
+                                      <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider mt-0.5">
+                                        Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                                       </p>
                                     </div>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleToggleRole(user.deviceId, t.id, t.role); }}
+                                      className={`shrink-0 h-8 px-3.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-1.5 ${
+                                        t.role === "leader"
+                                          ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
+                                          : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
+                                      }`}
+                                    >
+                                      <ShieldCheck className="h-3 w-3" />
+                                      {t.role === "leader" ? "Leader" : "Traveler"}
+                                    </button>
                                   </div>
-                                  <button
-                                    onClick={() => handleDeleteAppUser(user.deviceId, user.name)}
-                                    className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors"
-                                  >
-                                    <Trash2 className="h-3 w-3" /> Remove User
-                                  </button>
-                                </div>
-
-                                {/* Trip history */}
-                                <div className="space-y-3">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Trip History · {user.trips.length}</p>
-                                  <div className="space-y-1.5">
-                                    {[...user.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
-                                      <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                                        <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                                          <MapPin className="h-3 w-3 text-brand" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
-                                          <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">
-                                            Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                                            {" · "}
-                                            {new Date(t.joinedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
+                                ))}
                               </div>
                             </div>
                           )}

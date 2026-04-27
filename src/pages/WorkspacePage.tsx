@@ -56,6 +56,7 @@ import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuer
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
+import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
@@ -162,6 +163,7 @@ export function WorkspacePage() {
   const [tripImagePage, setTripImagePage] = useState(1);
   const [tripImageLastQuery, setTripImageLastQuery] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [sendInviteOpen, setSendInviteOpen] = useState(false);
   const [reimportOpen, setReimportOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editOrgOpen, setEditOrgOpen] = useState(false);
@@ -671,59 +673,7 @@ export function WorkspacePage() {
 
   const handleShareTrip = () => setShareOpen(true);
 
-  const handleSendEmail = () => {
-    const nights = Math.max(1, Math.ceil(
-      (new Date(trip.end).getTime() - new Date(trip.start).getTime()) / 86400000
-    ));
-    const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
-
-    const eventsByDay: Record<string, typeof trip.events> = {};
-    for (const ev of trip.events) {
-      if (!eventsByDay[ev.date]) eventsByDay[ev.date] = [];
-      eventsByDay[ev.date].push(ev);
-    }
-    const sortedDays = Object.entries(eventsByDay).sort(([a], [b]) => a.localeCompare(b));
-
-    let itineraryText = "";
-    sortedDays.forEach(([date, events], i) => {
-      const d = new Date(date + "T12:00:00");
-      itineraryText += `\nDAY ${i + 1} — ${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}\n`;
-      events.forEach(ev => {
-        const type = ev.type.charAt(0).toUpperCase() + ev.type.slice(1);
-        itineraryText += `  ${ev.time || ""} ${type}: ${ev.title}`;
-        if (ev.location) itineraryText += ` (${ev.location})`;
-        itineraryText += "\n";
-      });
-    });
-
-    const subject = `Your Itinerary: ${trip.name}`;
-    const body = [
-      `Hi,`,
-      ``,
-      `Your itinerary for ${trip.name} is ready!`,
-      ``,
-      `TRIP DETAILS`,
-      `${trip.destination ? `Destination: ${trip.destination}` : ""}`,
-      `Dates: ${fmt(trip.start)} — ${fmt(trip.end)} (${nights} night${nights !== 1 ? "s" : ""})`,
-      trip.paxCount ? `Travelers: ${trip.paxCount}` : "",
-      ``,
-      `ITINERARY`,
-      itineraryText,
-      ``,
-      `VIEW FULL ITINERARY`,
-      shareUrl,
-      trip.shortCode ? `\nTrip PIN: ${trip.shortCode}` : "",
-      ``,
-      `—`,
-      `Sent via ${BRAND.name}`,
-    ].filter(Boolean).join("\n");
-
-    const a = document.createElement("a");
-    a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    a.click();
-    toast.success("Email client opened");
-  };
+  const handleSendEmail = () => setSendInviteOpen(true);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
@@ -1810,6 +1760,13 @@ export function WorkspacePage() {
         onOpenChange={setShareOpen}
         tripId={trip.id}
         tripName={trip.name}
+      />
+
+      <SendInviteModal
+        open={sendInviteOpen}
+        onOpenChange={setSendInviteOpen}
+        trip={trip}
+        travelers={tripTravelers}
       />
 
       <ItineraryPreviewDialog
