@@ -10,6 +10,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Flight Status Notifications** -- Automated cron checks flight status every 30 minutes and pushes updates (delays, gate changes, cancellations) to travelers
 - **Image Search** -- Multi-source image search (Google, Unsplash, Pexels) with provider picker
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
+- **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
@@ -53,6 +54,14 @@ npx expo start --ios
 
 The mobile app is traveler-facing — no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
 
+### Media Uploads
+
+Travelers can upload photos and videos from the mobile gallery. Uploads sync to Firebase Storage and appear in the web Media Library organized by trip. HEIC images are automatically converted to JPEG before upload for cross-browser compatibility. File size limit: 500 MB.
+
+### App Users
+
+The web Travelers page shows all mobile users who have joined trips via PIN. Admins can view user details, trip history, and remove individual users or clear all. Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
+
 ### Live Activities & Dynamic Island
 
 Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock Screen and Dynamic Island:
@@ -87,7 +96,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 - **CORS** — restricted to production domain and localhost dev
 - **CSP** — Content-Security-Policy header on all responses
 - **Push auth** — `/api/push` requires bearer token (cron secret or Firebase ID token)
-- **Firestore rules** — scoped reads/writes per user, org admin checks, cron user allowlist
+- **Firestore rules** — scoped reads/writes per user, org admin checks, trip member verification, cron user allowlist
 - **Storage rules** — org admin required for logo uploads, image types only (no SVG)
 - **Trip PINs** — 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I)
 - **SVG sanitization** — DOMPurify with filters disabled to prevent external resource loading

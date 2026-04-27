@@ -59,6 +59,12 @@
         "projectId": "4bffc7b2-6f5d-481c-8712-44e8d9107dbb"
       }
     },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4bffc7b2-6f5d-481c-8712-44e8d9107dbb"
+    },
     "owner": "richmond701"
   }
 }

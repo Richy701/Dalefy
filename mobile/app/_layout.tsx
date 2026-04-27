@@ -162,10 +162,10 @@ function AppStack() {
   useEffect(() => {
     if (!ready) return;
     // Send to welcome if no name or no uid (must sign in)
-    if ((!prefs.name || !prefs.uid) && pathname !== "/welcome") {
+    if (!prefs.name && pathname !== "/welcome") {
       router.replace("/welcome");
     }
-  }, [ready, prefs.name, prefs.uid, pathname, router]);
+  }, [ready, prefs.name, pathname, router]);
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {

@@ -10,7 +10,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileExclamationPoint, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, ChartColumn, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check } from "lucide-react";
+import { Search, UserPlus, FileCheck, FileExclamationPoint, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, ChartColumn, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check, Trash2, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
-import { fetchTripMembers, type TripMember } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, type TripMember } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
@@ -69,6 +69,8 @@ export function TravelersPage() {
   const HR_PER_PAGE = 6;
   const [appUsers, setAppUsers] = useState<TripMember[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
+  const [expandedAppUser, setExpandedAppUser] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -77,6 +79,35 @@ export function TravelersPage() {
       .then(setAppUsers)
       .finally(() => setAppUsersLoading(false));
   }, []);
+
+  const handleClearAppUsers = useCallback(async () => {
+    if (!confirm("Delete all app users? This removes everyone from the trip_members collection in Firebase. This cannot be undone.")) return;
+    setClearing(true);
+    try {
+      const count = await deleteAllTripMembers();
+      setAppUsers([]);
+      setExpandedAppUser(null);
+      showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
+    } catch (err) {
+      console.error("Clear app users failed:", err);
+      showToast("Failed to clear app users — check console for details");
+    } finally {
+      setClearing(false);
+    }
+  }, [showToast]);
+
+  const handleDeleteAppUser = useCallback(async (deviceId: string, name: string) => {
+    if (!confirm(`Remove ${name || "this user"}? This deletes all their trip membership records.`)) return;
+    try {
+      const count = await deleteAppUser(deviceId);
+      setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
+      setExpandedAppUser(null);
+      showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
+    } catch (err) {
+      console.error("Delete app user failed:", err);
+      showToast("Failed to remove user — check console");
+    }
+  }, [showToast]);
 
   // Group app users by device_id (unique person)
   const groupedAppUsers = useMemo(() => {
@@ -878,10 +909,24 @@ export function TravelersPage() {
                 ))}
               </div>
 
+              {/* Clear all button */}
+              {groupedAppUsers.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">All Users</p>
+                  <button
+                    onClick={handleClearAppUsers}
+                    disabled={clearing}
+                    className="flex items-center gap-2 h-9 px-4 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {clearing ? "Clearing..." : "Clear All"}
+                  </button>
+                </div>
+              )}
+
               {/* Users list */}
               <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] flex items-center">
+                {/* Header — hidden on mobile */}
+                <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] items-center">
                   <div className="w-14" />
                   <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Name</div>
                   <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trips Joined</div>
@@ -913,63 +958,122 @@ export function TravelersPage() {
                       const latestJoin = user.trips.reduce((a, b) =>
                         new Date(a.joinedAt) > new Date(b.joinedAt) ? a : b
                       );
+                      const isExpanded = expandedAppUser === user.deviceId;
                       return (
-                        <div
-                          key={user.deviceId}
-                          className="flex items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group"
-                        >
-                          {/* Avatar */}
-                          <div className="w-14 shrink-0">
-                            {user.avatar ? (
-                              <img
-                                src={user.avatar}
-                                alt={user.name}
-                                className="h-10 w-10 rounded-xl object-cover"
-                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
-                              />
-                            ) : null}
-                            <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>
-                              {initials}
-                            </div>
+                        <div key={user.deviceId}>
+                          {/* ── Mobile card layout ── */}
+                          <div className="sm:hidden">
+                            <button
+                              onClick={() => setExpandedAppUser(isExpanded ? null : user.deviceId)}
+                              className="w-full text-left p-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="shrink-0">
+                                  {user.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                                  ) : null}
+                                  <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>{initials}</div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name || "Unknown"}</div>
+                                  <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{user.trips.length} trip{user.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                </div>
+                                <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                              </div>
+                            </button>
                           </div>
-                          {/* Name */}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
-                              {user.name || "Unknown"}
+
+                          {/* ── Desktop row ── */}
+                          <button
+                            onClick={() => setExpandedAppUser(isExpanded ? null : user.deviceId)}
+                            className="hidden sm:flex w-full items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group text-left"
+                          >
+                            <div className="w-14 shrink-0">
+                              {user.avatar ? (
+                                <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                              ) : null}
+                              <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>{initials}</div>
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
-                              <Smartphone className="h-3 w-3" /> Mobile app user
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name || "Unknown"}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
+                                <Smartphone className="h-3 w-3" /> Mobile app user
+                              </div>
                             </div>
-                          </div>
-                          {/* Trips */}
-                          <div className="w-48">
-                            <div className="flex flex-wrap gap-1.5">
-                              {user.trips.slice(0, 3).map(t => (
-                                <span
-                                  key={t.id}
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-brand/10 text-brand"
-                                >
-                                  <MapPin className="h-2.5 w-2.5" />
-                                  {t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "…" : t.name}
-                                </span>
-                              ))}
-                              {user.trips.length > 3 && (
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">
-                                  +{user.trips.length - 3}
-                                </span>
-                              )}
+                            <div className="w-48">
+                              <div className="flex flex-wrap gap-1.5">
+                                {user.trips.slice(0, 3).map(t => (
+                                  <span key={t.id} className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-brand/10 text-brand">
+                                    <MapPin className="h-2.5 w-2.5" />
+                                    {t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "…" : t.name}
+                                  </span>
+                                ))}
+                                {user.trips.length > 3 && (
+                                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">+{user.trips.length - 3}</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          {/* Last active */}
-                          <div className="w-40 text-right">
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
-                              {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "2-digit",
-                              })}
-                            </span>
-                          </div>
+                            <div className="w-40 flex items-center justify-end gap-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                                {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+                              </span>
+                              <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            </div>
+                          </button>
+
+                          {/* ── Expanded detail panel ── */}
+                          {isExpanded && (
+                            <div className="px-4 sm:px-6 pb-5 pt-1 bg-slate-50/50 dark:bg-[#0a0a0a]/50 border-t border-slate-100 dark:border-[#1a1a1a] animate-fade-in">
+                              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-4 sm:gap-6">
+                                {/* User info */}
+                                <div className="space-y-3">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">User Details</p>
+                                  <div className="flex items-center gap-3">
+                                    {user.avatar ? (
+                                      <img src={user.avatar} alt={user.name} className="h-14 w-14 rounded-2xl object-cover border-2 border-brand/20" />
+                                    ) : (
+                                      <div className="h-14 w-14 rounded-2xl bg-brand text-black flex items-center justify-center font-black text-sm">{initials}</div>
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">{user.name || "Unknown"}</p>
+                                      <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-0.5 flex items-center gap-1">
+                                        <Fingerprint className="h-3 w-3" />
+                                        <span className="font-mono text-[10px]">{user.deviceId.slice(0, 12)}…</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteAppUser(user.deviceId, user.name)}
+                                    className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors"
+                                  >
+                                    <Trash2 className="h-3 w-3" /> Remove User
+                                  </button>
+                                </div>
+
+                                {/* Trip history */}
+                                <div className="space-y-3">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Trip History · {user.trips.length}</p>
+                                  <div className="space-y-1.5">
+                                    {[...user.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
+                                      <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
+                                        <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                          <MapPin className="h-3 w-3 text-brand" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">
+                                            Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                            {" · "}
+                                            {new Date(t.joinedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

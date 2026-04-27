@@ -103,7 +103,9 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
 }
 
 export async function upsertTrip(trip: Trip): Promise<void> {
+  console.log("[upsertTrip] saving trip:", trip.id, "media:", trip.media?.length ?? 0);
   await setDoc(doc(firebaseDb(), TRIPS, trip.id), tripToDoc(trip), { merge: true });
+  console.log("[upsertTrip] done");
 }
 
 export async function removeTrip(id: string): Promise<void> {
@@ -156,7 +158,9 @@ export async function logTripJoin(
 ): Promise<void> {
   try {
     const deviceId = await getDeviceId();
-    const memberId = `${deviceId}_${tripId}`;
+    await waitForAuth();
+    const uid = firebaseAuth().currentUser?.uid ?? null;
+
     const memberData = {
       device_id: deviceId,
       trip_id: tripId,
@@ -164,25 +168,59 @@ export async function logTripJoin(
       name: userName,
       avatar: avatar || null,
       joined_at: new Date().toISOString(),
+      ...(uid ? { uid } : {}),
     };
+
+    // Device-keyed doc (includes uid so rules can verify ownership)
+    const memberId = `${deviceId}_${tripId}`;
     await setDoc(doc(firebaseDb(), TRIP_MEMBERS, memberId), memberData, { merge: true });
 
-    // Also create a UID-keyed member doc so Firestore rules can verify membership
-    try {
-      await waitForAuth();
-      const uid = firebaseAuth().currentUser?.uid;
-      if (uid) {
-        const uidMemberId = `${uid}_${tripId}`;
-        await setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidMemberId), {
-          ...memberData,
-          uid,
-        }, { merge: true });
-      }
-    } catch {
-      // auth not ready or anonymous auth disabled — non-critical
+    // UID-keyed doc so Firestore rules can verify membership via isTripMember()
+    if (uid) {
+      const uidMemberId = `${uid}_${tripId}`;
+      await setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidMemberId), memberData, { merge: true });
     }
   } catch {
     // non-critical — don't block the join flow
+  }
+}
+
+/** Update name/avatar on all existing trip_members docs for this device */
+export async function updateMemberProfile(name: string, avatar: string | null): Promise<void> {
+  try {
+    await waitForAuth();
+    const uid = firebaseAuth().currentUser?.uid;
+    if (!uid) return;
+
+    // Query by uid — Firestore rules allow update when resource.data.uid == request.auth.uid
+    const snap = await getDocs(
+      query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)),
+    );
+    console.log("[updateMemberProfile] uid:", uid, "found", snap.size, "docs, name:", name);
+    if (snap.empty) return;
+
+    // Collect device-keyed doc IDs to update those too
+    const deviceId = await getDeviceId();
+    const tripIds = new Set<string>();
+
+    for (const d of snap.docs) {
+      await setDoc(d.ref, { name, avatar: avatar || null }, { merge: true });
+      const data = d.data();
+      if (data.trip_id) tripIds.add(data.trip_id);
+    }
+
+    // Also update device-keyed docs (they now have uid field too)
+    for (const tripId of tripIds) {
+      const deviceDocId = `${deviceId}_${tripId}`;
+      const deviceRef = doc(firebaseDb(), TRIP_MEMBERS, deviceDocId);
+      const deviceSnap = await getDoc(deviceRef);
+      if (deviceSnap.exists()) {
+        await setDoc(deviceRef, { name, avatar: avatar || null, uid }, { merge: true });
+      }
+    }
+    console.log("[updateMemberProfile] done");
+  } catch (err) {
+    console.warn("[updateMemberProfile] failed:", err);
   }
 }
 

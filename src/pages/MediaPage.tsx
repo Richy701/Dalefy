@@ -118,8 +118,8 @@ export function MediaPage() {
         toast.error("Only image and video files are supported");
         return;
       }
-      if (valid.some((f) => f.size > 50 * 1024 * 1024)) {
-        toast.error("Files must be under 50 MB");
+      if (valid.some((f) => f.size > 500 * 1024 * 1024)) {
+        toast.error("Files must be under 500 MB");
         return;
       }
 
@@ -649,7 +649,7 @@ export function MediaPage() {
                 {isDragging ? "Drop files here" : "Drop photos here"}
               </p>
               <p className="text-xs text-slate-400 dark:text-[#666] mt-2">
-                or click to browse · images &amp; videos up to 50 MB
+                or click to browse · images &amp; videos up to 500 MB
               </p>
             </div>
 

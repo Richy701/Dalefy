@@ -112,11 +112,16 @@ service cloud.firestore {
                     && (request.resource.data.device_id is string
                         || (request.auth != null && request.resource.data.uid == request.auth.uid)
                         || (request.auth != null && request.resource.data.user_id == request.auth.uid));
-      // The member themselves can update/delete (by user_id, uid, or device_id)
+      // The member themselves, the trip owner, or an org admin can update/delete.
+      // Also allow if a UID-keyed sibling doc exists (proves device ownership).
       allow update, delete: if request.auth != null
         && (resource.data.user_id == request.auth.uid
             || resource.data.uid == request.auth.uid
-            || resource.data.device_id == request.auth.uid);
+            || resource.data.device_id == request.auth.uid
+            || exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + resource.data.trip_id))
+            || get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.user_id == request.auth.uid
+            || (get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
+                && isOrgAdmin(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id)));
     }
 
     // ── Push tokens: scoped to owning user (cron can read all for notifications)

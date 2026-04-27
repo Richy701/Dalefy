@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { uploadAvatar } from "@/services/avatarUpload";
+import { updateMemberProfile } from "@/services/firebaseTrips";
 import { ArrowRight, ArrowLeft, Camera, User, Building2, Check } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
@@ -174,6 +175,10 @@ export default function WelcomeScreen() {
     setPref("name", trimmed);
     const finalAvatar = uploadedUrlRef.current || avatar;
     if (finalAvatar) setPref("avatar", finalAvatar);
+
+    // Sync name/avatar to all existing trip_members docs in Firebase
+    console.log("[welcome] submit isEdit:", isEdit, "name:", trimmed);
+    if (isEdit) updateMemberProfile(trimmed, finalAvatar || null);
 
     if (isEdit && router.canGoBack()) {
       toast("Profile updated");

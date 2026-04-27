@@ -130,10 +130,53 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
     const snap = await getDocs(
       query(collection(firebaseDb(), TRIP_MEMBERS), orderBy("joined_at", "desc")),
     );
-    return snap.docs.map((d) => d.data() as TripMember);
+    // Deduplicate: logTripJoin creates two docs per join (device_id + uid keyed).
+    // Keep one entry per device_id+trip_id pair — prefer the device-keyed doc.
+    const all = snap.docs.map((d) => d.data() as TripMember);
+    const seen = new Map<string, TripMember>();
+    for (const m of all) {
+      const key = `${m.device_id}_${m.trip_id}`;
+      if (!seen.has(key)) seen.set(key, m);
+    }
+    return Array.from(seen.values());
   } catch {
     return [];
   }
+}
+
+/** Delete all trip_members docs for a given device_id (both device-keyed and uid-keyed) */
+export async function deleteAppUser(deviceId: string): Promise<number> {
+  const snap = await getDocs(
+    query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
+  );
+  if (snap.empty) return 0;
+  let deleted = 0;
+  for (const d of snap.docs) {
+    try {
+      await deleteDoc(d.ref);
+      deleted++;
+    } catch (err) {
+      logger.log("deleteAppUser", `failed to delete ${d.id}:`, err);
+    }
+  }
+  logger.log("deleteAppUser", `deleted ${deleted}/${snap.size} docs for device ${deviceId}`);
+  return deleted;
+}
+
+export async function deleteAllTripMembers(): Promise<number> {
+  const snap = await getDocs(collection(firebaseDb(), TRIP_MEMBERS));
+  if (snap.empty) return 0;
+  let deleted = 0;
+  for (const d of snap.docs) {
+    try {
+      await deleteDoc(d.ref);
+      deleted++;
+    } catch (err) {
+      logger.log("deleteAllTripMembers", `failed to delete ${d.id}:`, err);
+    }
+  }
+  logger.log("deleteAllTripMembers", `deleted ${deleted}/${snap.size} docs`);
+  return deleted;
 }
 
 // ── Image upload ──────────────────────────────────────────────────────────

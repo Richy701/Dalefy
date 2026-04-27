@@ -1,7 +1,7 @@
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
-  View, Text, ScrollView, Image, StyleSheet, Dimensions,
+  View, Text, ScrollView, Image, StyleSheet, Dimensions, FlatList,
   Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
@@ -26,7 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
-import { upsertTrip as upsertTripRemote } from "@/services/firebaseTrips";
+import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
 import type { TripMedia, Trip } from "@/shared/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -179,98 +179,119 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
-function MediaViewer({ item, tripName, visible, onClose, onDelete, C }: {
-  item: (TripMedia & { tripName: string }) | null;
-  tripName: string;
+function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
+  items: (TripMedia & { tripId: string; tripName: string })[];
+  initialIndex: number;
   visible: boolean;
   onClose: () => void;
-  onDelete: () => void;
+  onDelete: (item: TripMedia & { tripId: string; tripName: string }) => void;
   C: ThemeColors;
 }) {
   const insets = useSafeAreaInsets();
-  if (!item) return null;
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const flatListRef = useRef<FlatList>(null);
+
+  // Sync when opening on a new item
+  useEffect(() => {
+    if (visible && initialIndex >= 0) {
+      setActiveIndex(initialIndex);
+      setTimeout(() => flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false }), 50);
+    }
+  }, [visible, initialIndex]);
+
+  if (!visible || items.length === 0) return null;
+  const current = items[activeIndex] ?? items[0];
+
+  const renderItem = ({ item }: { item: TripMedia & { tripName: string } }) => (
+    <View style={{ width: SCREEN_W, height: "100%", justifyContent: "center", alignItems: "center" }}>
+      {item.type === "image" ? (
+        <Image source={{ uri: item.url }} style={{ width: SCREEN_W, height: "100%" }} resizeMode="contain" />
+      ) : (
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+          <Play size={28} color="#fff" strokeWidth={2} fill="#fff" />
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: "#000" }}>
-        {/* Image */}
-        {item.type === "image" ? (
-          <Image
-            source={{ uri: item.url }}
-            style={StyleSheet.absoluteFillObject}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, { alignItems: "center", justifyContent: "center" }]}>
-            <View style={{
-              width: 72, height: 72, borderRadius: 36,
-              backgroundColor: "rgba(255,255,255,0.15)",
-              alignItems: "center", justifyContent: "center",
-            }}>
-              <Play size={28} color="#fff" strokeWidth={2} fill="#fff" />
-            </View>
-          </View>
-        )}
+        <FlatList
+          ref={flatListRef}
+          data={items}
+          renderItem={renderItem}
+          keyExtractor={(m) => m.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={initialIndex}
+          getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
+          onMomentumScrollEnd={(e) => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+            setActiveIndex(idx);
+          }}
+        />
 
         {/* Top bar */}
         <LinearGradient
           colors={["rgba(0,0,0,0.7)", "transparent"]}
+          pointerEvents="box-none"
           style={{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: insets.top + S.xs, paddingHorizontal: S.md, paddingBottom: S.xl }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Pressable
               onPress={onClose}
-              style={{
-                width: 36, height: 36, borderRadius: 18,
-                backgroundColor: "rgba(255,255,255,0.15)",
-                alignItems: "center", justifyContent: "center",
-              }}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
             >
               <X size={18} color="#fff" strokeWidth={2} />
             </Pressable>
-            <Pressable
-              onPress={onDelete}
-              style={{
-                width: 36, height: 36, borderRadius: 18,
-                backgroundColor: "rgba(239,68,68,0.3)",
-                alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <Trash2 size={16} color="#ef4444" strokeWidth={2} />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: "rgba(255,255,255,0.6)" }}>
+                {activeIndex + 1} / {items.length}
+              </Text>
+              <Pressable
+                onPress={() => onDelete(current)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(239,68,68,0.3)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Trash2 size={16} color="#ef4444" strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
         </LinearGradient>
 
         {/* Bottom info */}
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.8)"]}
-          style={{
-            position: "absolute", bottom: 0, left: 0, right: 0,
-            paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: S.xl,
-          }}
+          pointerEvents="none"
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: S.xl }}
         >
-          <Text style={{
-            fontSize: T.base, fontWeight: T.bold, color: "#fff",
-            marginBottom: 4,
-          }} numberOfLines={1}>{item.name}</Text>
+          <Text style={{ fontSize: T.base, fontWeight: T.bold, color: "#fff", marginBottom: 4 }} numberOfLines={1}>{current.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-            <Text style={{
-              fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-              letterSpacing: 0.8, textTransform: "uppercase",
-            }}>{tripName}</Text>
-            {item.size > 0 && (
+            <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 0.8, textTransform: "uppercase" }}>{current.tripName}</Text>
+            {current.size > 0 && (
               <>
                 <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.4)" }}>·</Text>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatSize(item.size)}</Text>
+                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatSize(current.size)}</Text>
               </>
             )}
-            {item.uploadedAt && (
+            {current.uploadedAt && (
               <>
                 <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.4)" }}>·</Text>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatDate(item.uploadedAt)}</Text>
+                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatDate(current.uploadedAt)}</Text>
               </>
             )}
           </View>
         </LinearGradient>
+
+        {/* Page dots */}
+        {items.length > 1 && items.length <= 12 && (
+          <View style={{ position: "absolute", bottom: insets.bottom + S.md + 60, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 4 }}>
+            {items.map((_, i) => (
+              <View key={i} style={{ width: i === activeIndex ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === activeIndex ? C.teal : "rgba(255,255,255,0.3)" }} />
+            ))}
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -278,23 +299,20 @@ function MediaViewer({ item, tripName, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-function GridItem({ item, index, isLast, remaining, onPress, isSolo, C }: {
+function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C }: {
   item: TripMedia;
   index: number;
   isLast: boolean;
   remaining: number;
   onPress: () => void;
+  onDelete: () => void;
   isSolo?: boolean;
   C: ThemeColors;
 }) {
   const isHero = index === 0;
   const fullWidth = SCREEN_W - S.md * 2;
-  const size = isSolo
-    ? fullWidth
-    : isHero
-      ? GRID_ITEM_SIZE * 2 + GRID_GAP
-      : GRID_ITEM_SIZE;
-  const height = isSolo ? fullWidth * 0.65 : size;
+  const size = isHero || isSolo ? fullWidth : GRID_ITEM_SIZE;
+  const height = isHero || isSolo ? fullWidth * 0.55 : GRID_ITEM_SIZE;
 
   return (
     <ContextMenu
@@ -306,6 +324,7 @@ function GridItem({ item, index, isLast, remaining, onPress, isSolo, C }: {
       onPress={(e: any) => {
         if (e.nativeEvent.index === 0) onPress();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
+        else if (e.nativeEvent.index === 2) onDelete();
       }}
     >
     <ScalePress
@@ -376,12 +395,12 @@ export default function MediaScreen() {
   const { prefs } = usePreferences();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, updateTrip, reload } = useTrips();
+  const { trips, updateTrip, updateTripLocal, reload } = useTrips();
   const [refreshing, setRefreshing] = useState(false);
   const [tripFilter, setTripFilter] = useState("all");
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [viewerItem, setViewerItem] = useState<(TripMedia & { tripId: string; tripName: string }) | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(-1);
 
   const [uploading, setUploading] = useState(false);
   /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
@@ -408,9 +427,28 @@ export default function MediaScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Clear pending media cache — Firestore is the source of truth
+    setPendingMedia(() => ({}));
     await reload();
     setRefreshing(false);
-  }, [reload]);
+  }, [reload, setPendingMedia]);
+
+  // Clean up pending items that have been uploaded or removed
+  useEffect(() => {
+    let changed = false;
+    const cleaned: Record<string, TripMedia[]> = {};
+    for (const [tripId, items] of Object.entries(pendingMedia)) {
+      const trip = trips.find(t => t.id === tripId);
+      const existingIds = new Set((trip?.media ?? []).map(m => m.id));
+      // Keep only items not yet in Firestore and not already uploaded
+      const remaining = items.filter(m =>
+        !existingIds.has(m.id) && !m.url.includes("firebasestorage.googleapis.com")
+      );
+      if (remaining.length !== items.length) changed = true;
+      if (remaining.length > 0) cleaned[tripId] = remaining;
+    }
+    if (changed) setPendingMedia(() => cleaned);
+  }, [trips, pendingMedia, setPendingMedia]);
 
   // Merge context trips with pending uploads so local picks show instantly
   // Dedup: skip pending items already in context
@@ -453,11 +491,10 @@ export default function MediaScreen() {
   }, [tripFilter, tripsWithMedia, trips]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
+    console.log("[Media] handleUploadToTrip called, tripId:", tripId);
     const trip = trips.find(t => t.id === tripId);
-    if (!trip) return;
+    if (!trip) { console.warn("[Media] trip not found!"); return; }
     setPickerOpen(false);
-    const existingMedia = trip.media ?? [];
-
     pickMedia((rawItems) => {
       // Stamp uploader name onto each item
       const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveler" }));
@@ -465,13 +502,20 @@ export default function MediaScreen() {
       // 1. Show immediately using component-local state (subscription can't touch this)
       setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
       setUploading(true);
+      console.log("[Media] picked", items.length, "items, uploading to trip:", tripId);
       toast(`Uploading ${items.length} file${items.length > 1 ? "s" : ""}...`);
 
       // 2. Upload to cloud, then write directly to Firestore
       uploadTripMedia(items, tripId)
         .then(async (uploaded) => {
-          const finalMedia = [...existingMedia, ...uploaded];
-          const finalTrip = { ...trip, media: finalMedia };
+          // Fetch latest trip from Firestore to avoid overwriting media from other uploads
+          const freshTrip = await fetchTripById(tripId) ?? trip;
+          const existingMedia = freshTrip.media ?? [];
+          // Deduplicate by id in case of retry
+          const existingIds = new Set(existingMedia.map(m => m.id));
+          const newMedia = uploaded.filter(m => !existingIds.has(m.id));
+          const finalMedia = [...existingMedia, ...newMedia];
+          const finalTrip = { ...freshTrip, media: finalMedia };
 
           // Write to Firestore FIRST — only clear pending once confirmed
           try {
@@ -532,17 +576,31 @@ export default function MediaScreen() {
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
-        onPress: () => {
-          const trip = trips.find(t => t.id === item.tripId);
-          if (!trip) return;
-          updateTrip({ ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) });
-          setViewerItem(null);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          toast("Removed");
+        onPress: async () => {
+          try {
+            // Fetch fresh trip to avoid stale closure
+            const freshTrip = await fetchTripById(item.tripId);
+            const trip = freshTrip ?? trips.find(t => t.id === item.tripId);
+            if (!trip) return;
+            const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
+            // Optimistic local update
+            updateTripLocal(updated);
+            setViewerIndex(-1);
+            // Write to Firestore directly so we can catch failures
+            await upsertTripRemote(updated);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast("Removed");
+          } catch (err: any) {
+            const msg = err?.message || String(err);
+            console.warn("[handleDelete] Firestore write failed:", msg);
+            // Revert — reload from Firestore
+            reload().catch(() => {});
+            Alert.alert("Delete failed", msg);
+          }
         },
       },
     ]);
-  }, [trips, updateTrip, toast]);
+  }, [trips, updateTripLocal, reload, toast]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.card }}>
@@ -694,37 +752,36 @@ export default function MediaScreen() {
                     </Pressable>
                   </View>
 
-                  {/* Masonry-ish grid: hero + small items */}
-                  <View style={styles.masonryWrap}>
-                    {/* Hero item (left) — full width if solo */}
-                    {visible[0] && (
-                      <GridItem
-                        item={visible[0]}
-                        index={0}
-                        isSolo={visible.length === 1}
-                        isLast={visible.length === 1 && remaining > 0}
-                        remaining={visible.length === 1 ? remaining : 0}
-                        onPress={() => setViewerItem({ ...visible[0], tripId: trip.id, tripName: trip.destination || trip.name })}
-                        C={C}
-                      />
-                    )}
-                    {/* Right column (stacked small items) */}
-                    {visible.length > 1 && (
-                      <View style={styles.masonryRight}>
-                        {visible.slice(1).map((m, i) => (
-                          <GridItem
-                            key={m.id}
-                            item={m}
-                            index={i + 1}
-                            isLast={i === visible.length - 2 && remaining > 0}
-                            remaining={i === visible.length - 2 ? remaining : 0}
-                            onPress={() => setViewerItem({ ...m, tripId: trip.id, tripName: trip.destination || trip.name })}
-                            C={C}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                  {/* Hero image — full width */}
+                  {visible[0] && (
+                    <GridItem
+                      item={visible[0]}
+                      index={0}
+                      isSolo={visible.length === 1}
+                      isLast={visible.length === 1 && remaining > 0}
+                      remaining={visible.length === 1 ? remaining : 0}
+                      onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[0].id))}
+                      onDelete={() => handleDelete({ ...visible[0], tripId: trip.id })}
+                      C={C}
+                    />
+                  )}
+                  {/* Grid of remaining items — 3 columns */}
+                  {visible.length > 1 && (
+                    <View style={styles.gridWrap}>
+                      {visible.slice(1).map((m, i) => (
+                        <GridItem
+                          key={m.id}
+                          item={m}
+                          index={i + 1}
+                          isLast={i === visible.length - 2 && remaining > 0}
+                          remaining={i === visible.length - 2 ? remaining : 0}
+                          onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
+                          onDelete={() => handleDelete({ ...m, tripId: trip.id })}
+                          C={C}
+                        />
+                      ))}
+                    </View>
+                  )}
                 </View>
                 </FadeIn>
               );
@@ -745,11 +802,11 @@ export default function MediaScreen() {
 
       {/* Full-screen viewer */}
       <MediaViewer
-        item={viewerItem}
-        tripName={viewerItem?.tripName ?? ""}
-        visible={!!viewerItem}
-        onClose={() => setViewerItem(null)}
-        onDelete={() => viewerItem && handleDelete(viewerItem)}
+        items={allItems}
+        initialIndex={viewerIndex}
+        visible={viewerIndex >= 0}
+        onClose={() => setViewerIndex(-1)}
+        onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
         C={C}
       />
     </View>
@@ -912,13 +969,10 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center", justifyContent: "center",
     },
 
-    // ── Masonry Grid ──
-    masonryWrap: {
-      flexDirection: "row", gap: GRID_GAP,
-    },
-    masonryRight: {
-      flex: 1, gap: GRID_GAP,
-      flexDirection: "row", flexWrap: "wrap",
+    // ── Photo Grid ──
+    gridWrap: {
+      flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP,
+      marginTop: GRID_GAP,
     },
   });
 }

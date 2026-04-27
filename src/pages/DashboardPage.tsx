@@ -458,8 +458,8 @@ export function DashboardPage() {
 
           {/* ── Greeting Hero ── */}
           <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-slate-200/30 dark:border-white/[0.06] px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
-            <div className="relative z-10 max-w-full sm:max-w-[55%]">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+            <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                 {greeting}, {firstName} 👋
               </h1>
               {upcomingCards[0] && countdown && countdown.total > 0 ? (

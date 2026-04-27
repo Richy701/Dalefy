@@ -363,7 +363,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const timeOfDay = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const greeting = firstName ? `${timeOfDay}, ${firstName}` : timeOfDay;
-  const greetingFontSize = greeting.length > 22 ? 18 : greeting.length > 18 ? 20 : T["3xl"] - 2;
+  const greetingFontSize = greeting.length > 26 ? 16 : greeting.length > 22 ? 18 : greeting.length > 18 ? 20 : T["3xl"] - 2;
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
   const countdown = useLiveCountdown(nextTrip);
 
