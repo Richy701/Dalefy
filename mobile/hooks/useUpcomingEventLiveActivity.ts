@@ -48,6 +48,12 @@ function nowMinutes(): number {
   return now.getHours() * 60 + now.getMinutes();
 }
 
+/** Minutes remaining until midnight (start of the next day). */
+function minutesUntilMidnight(): number {
+  const now = new Date();
+  return (24 * 60) - (now.getHours() * 60 + now.getMinutes());
+}
+
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 2) + "..." : s;
 }
@@ -123,6 +129,8 @@ export function useUpcomingEventLiveActivity() {
 
     function update() {
       const now = nowMinutes();
+      const todayStr = new Date().toISOString().slice(0, 10);
+      console.log(`[UpcomingEventLA] update() — today=${todayStr} now=${now}min`);
 
       // Collect today's non-flight events across all trips, sorted by time
       const todayEvents: TravelEvent[] = [];
@@ -152,6 +160,16 @@ export function useUpcomingEventLiveActivity() {
           safe(() => current.activity.end("default"));
           activityRef.current = null;
         }
+        // Also end any lingering system instances (e.g. stale from a previous day)
+        try {
+          const lingering = UpcomingEvent.getInstances();
+          for (const inst of lingering) safe(() => inst.end("immediate"));
+        } catch { /* ignore */ }
+
+        // Schedule re-check at midnight so we pick up tomorrow's events
+        if (timerRef.current) clearTimeout(timerRef.current);
+        const minsToMidnight = minutesUntilMidnight();
+        timerRef.current = setTimeout(update, (minsToMidnight + 1) * 60 * 1000);
         return;
       }
 
@@ -177,12 +195,17 @@ export function useUpcomingEventLiveActivity() {
         }
       }
 
-      // Schedule next check: when the current event's time passes, advance to the next
+      // Schedule next check: whichever comes first — event window expiry or midnight
       if (timerRef.current) clearTimeout(timerRef.current);
       const eventMins = timeToMinutes(upcoming.time);
       const minsUntilPast = eventMins + 30 - now; // 30 min window
-      if (minsUntilPast > 0) {
-        timerRef.current = setTimeout(update, minsUntilPast * 60 * 1000);
+      const minsToMidnight = minutesUntilMidnight();
+      const nextCheck = Math.min(
+        minsUntilPast > 0 ? minsUntilPast : Infinity,
+        minsToMidnight + 1, // re-evaluate right after midnight
+      );
+      if (nextCheck < Infinity) {
+        timerRef.current = setTimeout(update, nextCheck * 60 * 1000);
       }
     }
 
