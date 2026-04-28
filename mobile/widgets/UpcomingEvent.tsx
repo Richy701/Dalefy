@@ -18,6 +18,7 @@ type LiveActivityEnvironment = {
 
 export type UpcomingEventProps = {
   title: string;
+  shortTitle?: string;
   type: "dining" | "activity" | "transfer" | "hotel" | "flight";
   time: string;
   location: string;
@@ -133,7 +134,7 @@ function UpcomingEventActivity(
         foregroundStyle(hierarchicalSecondary),
       ]}
     >
-      {(() => { const s = props.title.split(/\s*[—–\-:]\s*/)[0].trim(); return s.length > 16 ? s.slice(0, 14) + "..." : s; })()}
+      {props.shortTitle || props.title}
     </Text>
   );
 
@@ -152,11 +153,10 @@ function UpcomingEventActivity(
     <Spacer />
   );
 
-  // ── Expanded: center — short title (strip after dash/colon) ──
-  const shortTitle = props.title.split(/\s*[—–\-:]\s*/)[0].trim();
+  // ── Expanded: center — short title ──
   const expandedCenter = (
     <Text modifiers={[padding({ all: 4 }), font({ size: 14, weight: "bold" }), foregroundStyle(hierarchicalPrimary)]}>
-      {shortTitle.length > 24 ? shortTitle.slice(0, 22) + "..." : shortTitle}
+      {props.shortTitle || props.title}
     </Text>
   );
 

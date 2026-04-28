@@ -61,9 +61,17 @@ function cleanTitle(title: string): string {
     .replace(/^Dining\s*[—–-]\s*/i, "");
 }
 
+/** Shorten title for Dynamic Island — strip after dash/colon */
+function summarise(title: string): string {
+  const short = title.split(/\s*[—–\-:]\s*/)[0].trim();
+  return truncate(short, 24);
+}
+
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
+  const cleaned = cleanTitle(ev.title);
   return {
-    title: truncate(cleanTitle(ev.title), 48),
+    title: truncate(cleaned, 48),
+    shortTitle: summarise(cleaned),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
     location: truncate(ev.location || "", 40),
