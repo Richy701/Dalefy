@@ -1,30 +1,20 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseStorage, firebaseAuth, waitForAuth } from "./firebase";
-import * as FileSystem from "expo-file-system";
-import { Platform } from "react-native";
 
 /**
- * Read a local file URI into a Uint8Array.
- * On Android, fetch() can't reliably read file:// and content:// URIs,
- * so we use expo-file-system to read as base64 and decode.
+ * Read a local file URI into a Blob via XMLHttpRequest.
+ * Unlike fetch(), XHR properly handles file:// and content:// URIs
+ * on Android without loading the entire file into a base64 string.
  */
-async function readFileAsBytes(uri: string): Promise<Uint8Array> {
-  if (Platform.OS === "android") {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const buffer = await new Response(blob).arrayBuffer();
-  return new Uint8Array(buffer);
+function uriToBlob(uri: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = () => resolve(xhr.response as Blob);
+    xhr.onerror = () => reject(new Error("Failed to read file"));
+    xhr.responseType = "blob";
+    xhr.open("GET", uri, true);
+    xhr.send(null);
+  });
 }
 
 /**
@@ -48,21 +38,24 @@ export async function uploadAvatar(localUri: string): Promise<string | null> {
       return null;
     }
 
-    const bytes = await readFileAsBytes(localUri);
+    const blob = await uriToBlob(localUri);
 
     // Validate size client-side (2MB limit)
-    if (bytes.length > 2 * 1024 * 1024) {
-      console.warn("[AvatarUpload] File too large:", bytes.length);
+    if (blob.size > 2 * 1024 * 1024) {
+      console.warn("[AvatarUpload] File too large:", blob.size);
       return null;
     }
 
-    // Determine extension from URI
+    // Determine extension from content type or URI
+    const type = blob.type || "";
     const lower = localUri.toLowerCase();
-    const contentType = lower.includes(".png") ? "image/png" : lower.includes(".webp") ? "image/webp" : "image/jpeg";
+    const contentType = type.includes("png") || lower.includes(".png") ? "image/png"
+      : type.includes("webp") || lower.includes(".webp") ? "image/webp"
+      : "image/jpeg";
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
 
     const storageRef = ref(firebaseStorage(), `avatars/${uid}/avatar.${ext}`);
-    await uploadBytes(storageRef, bytes, { contentType });
+    await uploadBytes(storageRef, blob, { contentType });
 
     const url = await getDownloadURL(storageRef);
     console.log("[AvatarUpload] Uploaded:", url);

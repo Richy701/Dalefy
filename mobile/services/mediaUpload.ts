@@ -1,8 +1,6 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseStorage, waitForAuth, firebaseAuth } from "./firebase";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system";
-import { Platform } from "react-native";
 import type { TripMedia } from "@/shared/types";
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
@@ -46,28 +44,19 @@ function guessMimeType(uri: string): string {
 }
 
 /**
- * Read a local file URI into a Uint8Array.
- * On Android, fetch() can't reliably read file:// and content:// URIs,
- * so we use expo-file-system to read as base64 and decode.
+ * Read a local file URI into a Blob via XMLHttpRequest.
+ * Unlike fetch(), XHR properly handles file:// and content:// URIs
+ * on Android without loading the entire file into a base64 string.
  */
-async function readFileAsBytes(uri: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
-  if (Platform.OS === "android") {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return { bytes, mimeType: guessMimeType(uri) };
-  }
-
-  // iOS: fetch() works fine with file:// URIs
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const buffer = await new Response(blob).arrayBuffer();
-  return { bytes: new Uint8Array(buffer), mimeType: blob.type || guessMimeType(uri) };
+function uriToBlob(uri: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = () => resolve(xhr.response as Blob);
+    xhr.onerror = () => reject(new Error("Failed to read file"));
+    xhr.responseType = "blob";
+    xhr.open("GET", uri, true);
+    xhr.send(null);
+  });
 }
 
 /**
@@ -93,11 +82,11 @@ export async function uploadMediaFile(
     // Convert HEIC → JPEG before uploading
     const { uri: uploadUri, contentType } = await ensureWebCompatible(localUri, rawType);
 
-    // Read the file into bytes
-    const { bytes } = await readFileAsBytes(uploadUri);
+    // Read the file into a blob (XHR handles file:// and content:// on Android)
+    const blob = await uriToBlob(uploadUri);
 
-    if (bytes.length > MAX_FILE_SIZE) {
-      console.warn("[MediaUpload] File too large:", bytes.length);
+    if (blob.size > MAX_FILE_SIZE) {
+      console.warn("[MediaUpload] File too large:", blob.size);
       return null;
     }
 
@@ -119,7 +108,7 @@ export async function uploadMediaFile(
 
     const storagePath = `trips/${tripId}/media/${mediaId}.${ext}`;
     const storageRef = ref(firebaseStorage(), storagePath);
-    await uploadBytes(storageRef, bytes, { contentType });
+    await uploadBytes(storageRef, blob, { contentType });
 
     const url = await getDownloadURL(storageRef);
     console.log("[MediaUpload] Uploaded:", storagePath);
