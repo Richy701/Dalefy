@@ -133,7 +133,7 @@ function UpcomingEventActivity(
         foregroundStyle(hierarchicalSecondary),
       ]}
     >
-      {props.title.length > 16 ? props.title.slice(0, 14) + "..." : props.title}
+      {(() => { const s = props.title.split(/\s*[—–\-:]\s*/)[0].trim(); return s.length > 16 ? s.slice(0, 14) + "..." : s; })()}
     </Text>
   );
 
@@ -152,10 +152,11 @@ function UpcomingEventActivity(
     <Spacer />
   );
 
-  // ── Expanded: center — title ──
+  // ── Expanded: center — short title (strip after dash/colon) ──
+  const shortTitle = props.title.split(/\s*[—–\-:]\s*/)[0].trim();
   const expandedCenter = (
-    <Text modifiers={[padding({ all: 4 }), font({ size: 13, weight: "bold" }), foregroundStyle(hierarchicalPrimary)]}>
-      {props.title.length > 28 ? props.title.slice(0, 26) + "..." : props.title}
+    <Text modifiers={[padding({ all: 4 }), font({ size: 14, weight: "bold" }), foregroundStyle(hierarchicalPrimary)]}>
+      {shortTitle.length > 24 ? shortTitle.slice(0, 22) + "..." : shortTitle}
     </Text>
   );
 
