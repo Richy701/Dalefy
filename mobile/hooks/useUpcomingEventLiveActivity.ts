@@ -111,23 +111,28 @@ function truncate(s: string, max: number): string {
 
 /** Strip redundant type prefixes like "Hotel check-in — " since the type label already shows */
 function cleanTitle(title: string): string {
+  // For hotel check-in/out, flip to "Check out of Novotel..."
+  const hotelMatch = title.match(/^Hotel\s+check-?(in|out)\s*[—–]\s*(.*)/i);
+  if (hotelMatch) {
+    const action = hotelMatch[1].toLowerCase() === "out" ? "Check out of" : "Check in to";
+    return `${action} ${hotelMatch[2]}`;
+  }
   return title
-    .replace(/^Hotel\s+check-?in\s*[—–-]\s*/i, "")
-    .replace(/^Flight\s*[—–-]\s*/i, "")
-    .replace(/^Transfer\s*[—–-]\s*/i, "")
-    .replace(/^Dining\s*[—–-]\s*/i, "");
+    .replace(/^Flight\s*[—–]\s*/i, "")
+    .replace(/^Transfer\s*[—–]\s*/i, "")
+    .replace(/^Dining\s*[—–]\s*/i, "");
 }
 
 /** Shorten title for Dynamic Island — strip after dash/colon */
 function summarise(title: string): string {
-  const short = title.split(/\s*[—–\-:]\s*/)[0].trim();
+  const short = title.split(/\s+[—–]\s+|\s*:\s*/)[0].trim();
   return truncate(short, 24);
 }
 
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   const cleaned = cleanTitle(ev.title);
   // Summarise for banner: just the part before the dash
-  const bannerTitle = cleaned.split(/\s*[—–\-]\s*/)[0].trim();
+  const bannerTitle = cleaned.split(/\s+[—–]\s+/)[0].trim();
   // Location: just the venue name, strip address details after comma
   const shortLocation = (ev.location || "").split(",")[0].trim();
   return {
