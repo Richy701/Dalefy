@@ -152,19 +152,10 @@ function UpcomingEventActivity(
     </VStack>
   );
 
-  // ── Expanded: trailing — location ──
+  // ── Expanded: trailing — type icon ──
   const expandedTrailing = (
     <VStack modifiers={[padding({ all: 12 })]}>
-      {props.location ? (
-        <Text
-          modifiers={[
-            font({ size: 11, weight: "medium" }),
-            foregroundStyle(hierarchicalSecondary),
-          ]}
-        >
-          {props.location.length > 20 ? props.location.slice(0, 18) + "..." : props.location}
-        </Text>
-      ) : null}
+      <Image systemName={icon} size={14} color={teal} />
     </VStack>
   );
 
@@ -177,7 +168,7 @@ function UpcomingEventActivity(
           foregroundStyle(hierarchicalPrimary),
         ]}
       >
-        {props.title.length > 28 ? props.title.slice(0, 26) + "..." : props.title}
+        {props.title.length > 34 ? props.title.slice(0, 32) + "..." : props.title}
       </Text>
     </VStack>
   );
