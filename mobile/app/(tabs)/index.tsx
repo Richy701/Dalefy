@@ -25,7 +25,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  Search, MapPin, ChevronRight, CalendarDays, Users,
+  MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
   Bell, Sun, Moon, Plus, X as XIcon, ScanLine, Link2, Hash,
   Check, Clock,
@@ -1167,7 +1167,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1212,14 +1211,10 @@ export default function HomeScreen() {
 
   const upcomingIds = useMemo(() => new Set(upcomingCards.map(t => t.id)), [upcomingCards]);
 
-  // All Trips: excludes upcoming cards, filtered by search
+  // All Trips: excludes upcoming cards
   const allTrips = useMemo(() =>
-    sorted.filter(t =>
-      !upcomingIds.has(t.id) &&
-      (t.name.toLowerCase().includes(search.toLowerCase()) ||
-       (t.destination ?? "").toLowerCase().includes(search.toLowerCase()))
-    ),
-    [sorted, upcomingIds, search]);
+    sorted.filter(t => !upcomingIds.has(t.id)),
+    [sorted, upcomingIds]);
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
@@ -1237,22 +1232,6 @@ export default function HomeScreen() {
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
-
-        {/* ── Search ── */}
-        {trips.length > 0 && (
-          <View style={styles.searchWrap}>
-            <Search size={14} color={C.textTertiary} strokeWidth={1.5} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search trips…"
-              placeholderTextColor={C.textTertiary}
-              value={search}
-              onChangeText={setSearch}
-              clearButtonMode="while-editing"
-              returnKeyType="search"
-            />
-          </View>
-        )}
 
         {/* ── Upcoming Trip ── */}
         {!ready ? (
@@ -1415,15 +1394,6 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.bold,
       color: C.textTertiary, textTransform: "uppercase", letterSpacing: 1,
     },
-
-    // ── Search ──
-    searchWrap: {
-      flexDirection: "row", alignItems: "center", gap: S.xs,
-      backgroundColor: C.card, borderRadius: R.lg,
-      paddingHorizontal: S.sm, height: 44,
-      marginHorizontal: S.md,
-    },
-    searchInput: { flex: 1, fontSize: T.base, color: C.textPrimary },
 
     // ── Trip rows ──
     listCard: {
