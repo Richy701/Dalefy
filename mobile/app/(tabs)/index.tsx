@@ -823,7 +823,8 @@ function makeGreetingStyles(C: ThemeColors) {
       textAlign: "center", marginTop: S.sm,
     },
     qrFrame: {
-      width: 220, height: 220,
+      width: Math.min(220, Dimensions.get("window").width - S.md * 4),
+      height: Math.min(220, Dimensions.get("window").width - S.md * 4),
       borderRadius: R.xl, overflow: "hidden",
       backgroundColor: "#000",
       alignSelf: "center",

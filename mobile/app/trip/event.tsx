@@ -9,7 +9,7 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   Plane, Hotel, Compass, Utensils, Car,
   MapPin, Clock, Hash, FileText, Navigation,
-  Calendar, Users, ArrowRight, Copy, ChevronRight,
+  Calendar, Users, ArrowRight, Copy, ChevronRight, ChevronLeft,
 } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
@@ -99,10 +99,22 @@ export default function EventDetailScreen() {
         title: "",
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTransparent: true,
-        headerBlurEffect: isDark ? "dark" : "light",
+        headerTransparent: Platform.OS === "ios",
+        headerBlurEffect: Platform.OS === "ios" ? (isDark ? "dark" : "light") : undefined,
         headerTintColor: "#fff",
         headerShadowVisible: false,
+        ...(Platform.OS === "android" ? {
+          headerStyle: { backgroundColor: "transparent" },
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              hitSlop={8}
+            >
+              <ChevronLeft size={22} color="#fff" strokeWidth={2} />
+            </Pressable>
+          ),
+        } : {}),
       }} />
 
       <ScrollView
