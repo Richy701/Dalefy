@@ -142,9 +142,9 @@ function UpcomingEventActivity(
     <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
-  // ── Expanded: trailing — type icon ──
+  // ── Expanded: trailing — empty ──
   const expandedTrailing = (
-    <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
+    <Spacer />
   );
 
   // ── Expanded: center — title ──
