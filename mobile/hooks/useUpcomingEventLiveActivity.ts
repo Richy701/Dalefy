@@ -63,10 +63,10 @@ function cleanTitle(title: string): string {
 
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   return {
-    title: truncate(cleanTitle(ev.title), 32),
+    title: truncate(cleanTitle(ev.title), 48),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
-    location: truncate(ev.location || "", 32),
+    location: truncate(ev.location || "", 40),
     icon: TYPE_ICONS[ev.type] || "calendar",
   };
 }
