@@ -52,6 +52,7 @@ export interface TripMedia {
   size: number;
   uploadedAt: string;
   uploadedBy?: string;
+  uploaderId?: string;
 }
 
 export interface TripOrganizer {

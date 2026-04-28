@@ -27,6 +27,7 @@ import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
 import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
+import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -396,6 +397,8 @@ export default function MediaScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
   const { trips, updateTripLocal, reload } = useTrips();
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  useEffect(() => { getDeviceId().then(setDeviceId); }, []);
   const [refreshing, setRefreshing] = useState(false);
   const [tripFilter, setTripFilter] = useState("all");
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
@@ -454,14 +457,16 @@ export default function MediaScreen() {
   // Dedup: skip pending items already in context
   const mergedTrips = useMemo(() =>
     trips.map(t => {
+      // Filter to only this device's uploads
+      const ownMedia = (t.media ?? []).filter(m => !m.uploaderId || m.uploaderId === deviceId);
       const pending = pendingMedia[t.id];
-      if (!pending?.length) return t;
-      const existingIds = new Set((t.media ?? []).map(m => m.id));
+      if (!pending?.length) return { ...t, media: ownMedia };
+      const existingIds = new Set(ownMedia.map(m => m.id));
       const newItems = pending.filter(m => !existingIds.has(m.id));
-      if (!newItems.length) return t;
-      return { ...t, media: [...(t.media ?? []), ...newItems] };
+      if (!newItems.length) return { ...t, media: ownMedia };
+      return { ...t, media: [...ownMedia, ...newItems] };
     }),
-    [trips, pendingMedia],
+    [trips, pendingMedia, deviceId],
   );
 
   // Aggregated data
@@ -497,7 +502,7 @@ export default function MediaScreen() {
     setPickerOpen(false);
     pickMedia((rawItems) => {
       // Stamp uploader name onto each item
-      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveler" }));
+      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveler", uploaderId: deviceId || "" }));
 
       // 1. Show immediately using component-local state (subscription can't touch this)
       setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
