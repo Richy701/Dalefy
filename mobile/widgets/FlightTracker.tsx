@@ -64,17 +64,14 @@ function FlightTrackerActivity(
       ]}
     >
       <HStack>
-        <HStack>
-          <Image systemName="airplane" size={11} color={teal} />
-          <Text
-            modifiers={[
-              font({ size: 12, weight: "semibold" }),
-              foregroundStyle(hierarchicalSecondary),
-            ]}
-          >
-            {props.airline ? props.airline + " " : ""}{props.flightNum}
-          </Text>
-        </HStack>
+        <Text
+          modifiers={[
+            font({ size: 12, weight: "semibold" }),
+            foregroundStyle(hierarchicalSecondary),
+          ]}
+        >
+          {props.airline ? props.airline + " " : ""}{props.flightNum}
+        </Text>
         <Spacer />
         <HStack
           modifiers={[
@@ -102,7 +99,7 @@ function FlightTrackerActivity(
         <VStack>
           <Text
             modifiers={[
-              font({ size: 26, weight: "black", design: "rounded" }),
+              font({ size: 28, weight: "black", design: "rounded" }),
               foregroundStyle(hierarchicalPrimary),
             ]}
           >
@@ -120,11 +117,11 @@ function FlightTrackerActivity(
 
         <Spacer />
         <VStack>
-          <Image systemName="airplane" size={13} color={teal} />
+          <Image systemName="airplane" size={14} color={teal} />
           {props.duration ? (
             <Text
               modifiers={[
-                font({ size: 9, weight: "medium" }),
+                font({ size: 10, weight: "medium" }),
                 foregroundStyle(hierarchicalTertiary),
               ]}
             >
@@ -137,7 +134,7 @@ function FlightTrackerActivity(
         <VStack>
           <Text
             modifiers={[
-              font({ size: 26, weight: "black", design: "rounded" }),
+              font({ size: 28, weight: "black", design: "rounded" }),
               foregroundStyle(hierarchicalPrimary),
             ]}
           >
@@ -154,8 +151,8 @@ function FlightTrackerActivity(
         </VStack>
       </HStack>
 
-      <HStack modifiers={[padding({ top: 6 })]}>
-        {props.gate ? (
+      {props.gate ? (
+        <HStack modifiers={[padding({ top: 6 })]}>
           <Text
             modifiers={[
               font({ size: 10, weight: "bold" }),
@@ -164,10 +161,9 @@ function FlightTrackerActivity(
           >
             {"Gate " + props.gate}
           </Text>
-        ) : null}
-        <Spacer />
-        <Image systemName="globe.europe.africa.fill" size={12} color={teal} />
-      </HStack>
+          <Spacer />
+        </HStack>
+      ) : null}
     </VStack>
   );
 

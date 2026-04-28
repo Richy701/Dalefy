@@ -80,7 +80,7 @@ function UpcomingEventActivity(
 
       <Text
         modifiers={[
-          font({ size: 18, weight: "bold" }),
+          font({ size: 20, weight: "bold" }),
           foregroundStyle(hierarchicalPrimary),
           padding({ top: 4 }),
         ]}
@@ -102,25 +102,6 @@ function UpcomingEventActivity(
         </HStack>
       ) : null}
 
-      <HStack modifiers={[padding({ top: 6 })]}>
-        <Image systemName="globe.europe.africa.fill" size={12} color={teal} />
-        <Spacer />
-        <HStack
-          modifiers={[
-            padding({ horizontal: 7, vertical: 2 }),
-            background(teal + "22", shapes.capsule()),
-          ]}
-        >
-          <Text
-            modifiers={[
-              font({ size: 9, weight: "bold" }),
-              foregroundStyle(teal),
-            ]}
-          >
-            UP NEXT
-          </Text>
-        </HStack>
-      </HStack>
     </VStack>
   );
 
