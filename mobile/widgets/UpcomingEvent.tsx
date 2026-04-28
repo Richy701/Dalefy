@@ -137,26 +137,14 @@ function UpcomingEventActivity(
     <Image systemName={icon} size={11} color={teal} />
   );
 
-  // ── Expanded: leading — type icon + time ──
+  // ── Expanded: leading — type icon ──
   const expandedLeading = (
-    <VStack modifiers={[padding({ all: 12 })]}>
-      <Image systemName={icon} size={14} color={teal} />
-      <Text
-        modifiers={[
-          font({ size: 11, weight: "bold" }),
-          foregroundStyle(teal),
-        ]}
-      >
-        {props.time}
-      </Text>
-    </VStack>
+    <Image systemName={icon} size={16} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
-  // ── Expanded: trailing — type icon ──
+  // ── Expanded: trailing — empty (info lives in bottom row) ──
   const expandedTrailing = (
-    <VStack modifiers={[padding({ all: 12 })]}>
-      <Image systemName={icon} size={14} color={teal} />
-    </VStack>
+    <Spacer />
   );
 
   // ── Expanded: center — title ──
