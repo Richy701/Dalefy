@@ -69,12 +69,16 @@ function summarise(title: string): string {
 
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   const cleaned = cleanTitle(ev.title);
+  // Summarise for banner: just the part before the dash
+  const bannerTitle = cleaned.split(/\s*[—–\-]\s*/)[0].trim();
+  // Location: just the venue name, strip address details after comma
+  const shortLocation = (ev.location || "").split(",")[0].trim();
   return {
-    title: truncate(cleaned, 48),
+    title: truncate(bannerTitle, 36),
     shortTitle: summarise(cleaned),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
-    location: truncate(ev.location || "", 40),
+    location: truncate(shortLocation, 28),
     icon: TYPE_ICONS[ev.type] || "calendar",
   };
 }
@@ -108,13 +112,14 @@ export function useUpcomingEventLiveActivity() {
       return;
     }
 
-    // Clean up any stale activities from previous sessions on first run
-    if (!activityRef.current) {
-      try {
-        const stale = UpcomingEvent.getInstances();
-        for (const inst of stale) safe(() => inst.end("default"));
-      } catch { /* ignore */ }
-    }
+    // Always clean up stale activities before starting
+    try {
+      const stale = UpcomingEvent.getInstances();
+      if (stale.length > 0) {
+        console.log(`[UpcomingEventLA] Cleaning ${stale.length} stale activities`);
+        for (const inst of stale) safe(() => inst.end("immediate"));
+      }
+    } catch { /* ignore */ }
 
     function update() {
       const now = nowMinutes();
