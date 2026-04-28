@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import type { TravelEvent } from "@/shared/types";
+import type { Trip, TravelEvent } from "@/shared/types";
 import type { FlightTrackerProps } from "@/widgets/FlightTracker";
 
 // Lazy-load to avoid crash on Android / Expo Go
@@ -45,26 +45,74 @@ async function fetchAirportCodes(flightNum: string, date: string): Promise<{ fro
   }
 }
 
-function isToday(dateStr: string): boolean {
-  const now = new Date();
-  const d = new Date(dateStr + "T00:00:00");
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+/** Map destination string to IANA timezone. */
+const DEST_TZ: Record<string, string> = {
+  seoul: "Asia/Seoul",
+  korea: "Asia/Seoul",
+  tokyo: "Asia/Tokyo",
+  japan: "Asia/Tokyo",
+  bangkok: "Asia/Bangkok",
+  thailand: "Asia/Bangkok",
+  bali: "Asia/Makassar",
+  singapore: "Asia/Singapore",
+  dubai: "Asia/Dubai",
+  istanbul: "Europe/Istanbul",
+  turkey: "Europe/Istanbul",
+  antalya: "Europe/Istanbul",
+  london: "Europe/London",
+  paris: "Europe/Paris",
+  rome: "Europe/Rome",
+  nairobi: "Africa/Nairobi",
+  kenya: "Africa/Nairobi",
+  new york: "America/New_York",
+  los angeles: "America/Los_Angeles",
+  sydney: "Australia/Sydney",
+  amalfi: "Europe/Rome",
+  iceland: "Atlantic/Reykjavik",
+  reykjavik: "Atlantic/Reykjavik",
+  cape town: "Africa/Johannesburg",
+  marrakech: "Africa/Casablanca",
+  cancun: "America/Cancun",
+  mexico: "America/Mexico_City",
+  hong kong: "Asia/Hong_Kong",
+  maldives: "Indian/Maldives",
+  mauritius: "Indian/Mauritius",
+  fiji: "Pacific/Fiji",
+};
+
+function getDestinationTz(destination?: string): string | undefined {
+  if (!destination) return undefined;
+  const lower = destination.toLowerCase();
+  for (const [key, tz] of Object.entries(DEST_TZ)) {
+    if (lower.includes(key)) return tz;
+  }
+  return undefined;
 }
 
-function isTomorrow(dateStr: string): boolean {
+/** Get today's date string in a timezone. */
+function todayInTz(tz?: string): string {
   const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const d = new Date(dateStr + "T00:00:00");
-  return (
-    d.getFullYear() === tomorrow.getFullYear() &&
-    d.getMonth() === tomorrow.getMonth() &&
-    d.getDate() === tomorrow.getDate()
-  );
+  if (!tz) {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** Get tomorrow's date string in a timezone. */
+function tomorrowInTz(tz?: string): string {
+  const tomorrow = new Date(Date.now() + 86400000);
+  if (!tz) {
+    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(tomorrow);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
@@ -149,13 +197,16 @@ export function useFlightLiveActivity() {
       } catch {}
     }
 
-    // Collect today's flight events across all trips
+    // Collect today's flight events across all trips (timezone-aware)
     const todayFlights: TravelEvent[] = [];
     for (const trip of trips) {
+      const tz = getDestinationTz(trip.destination);
+      const today = todayInTz(tz);
+      const tomorrow = tomorrowInTz(tz);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
         console.log(`[FlightLiveActivity] Flight: ${ev.flightNum} date=${ev.date} depAirport=${ev.depAirport} arrAirport=${ev.arrAirport} location=${ev.location}`);
-        if (isToday(ev.date) || isTomorrow(ev.date)) {
+        if (ev.date === today || ev.date === tomorrow) {
           todayFlights.push(ev);
         }
       }
