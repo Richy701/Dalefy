@@ -142,37 +142,38 @@ function UpcomingEventActivity(
     <Image systemName={icon} size={11} color={teal} />
   );
 
-  // ── Expanded: leading — just time, short ──
+  // ── Expanded: leading — icon only ──
   const expandedLeading = (
-    <Text modifiers={[padding({ all: 12 }), font({ weight: "bold", size: 14, design: "rounded" }), foregroundStyle(teal)]}>
-      {props.time.replace(/:00\s/g, " ").replace(/\s*(AM|PM)/i, (_, m) => m.toLowerCase())}
-    </Text>
-  );
-
-  // ── Expanded: trailing — just icon ──
-  const expandedTrailing = (
     <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
-  // ── Expanded: center — title only ──
+  // ── Expanded: trailing — empty ──
+  const expandedTrailing = (
+    <Spacer />
+  );
+
+  // ── Expanded: center — title ──
   const expandedCenter = (
     <Text modifiers={[padding({ all: 4 }), font({ size: 13, weight: "bold" }), foregroundStyle(hierarchicalPrimary)]}>
-      {props.title.length > 24 ? props.title.slice(0, 22) + "..." : props.title}
+      {props.title.length > 28 ? props.title.slice(0, 26) + "..." : props.title}
     </Text>
   );
 
-  // ── Expanded: bottom — location only ──
+  // ── Expanded: bottom — time + location ──
   const expandedBottom = (
     <HStack modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
+      <Text modifiers={[font({ size: 10, weight: "bold" }), foregroundStyle(teal)]}>
+        {props.time}
+      </Text>
+      <Spacer />
       {props.location ? (
         <HStack>
           <Image systemName="mappin" size={8} color={teal} />
           <Text modifiers={[font({ size: 10 }), foregroundStyle(hierarchicalSecondary)]}>
-            {props.location.length > 30 ? props.location.slice(0, 28) + "..." : props.location}
+            {props.location.length > 24 ? props.location.slice(0, 22) + "..." : props.location}
           </Text>
         </HStack>
       ) : null}
-      <Spacer />
     </HStack>
   );
 
