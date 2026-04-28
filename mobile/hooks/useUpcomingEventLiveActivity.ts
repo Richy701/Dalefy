@@ -130,19 +130,21 @@ export function useUpcomingEventLiveActivity() {
     function update() {
       const now = nowMinutes();
       const todayStr = new Date().toISOString().slice(0, 10);
-      console.log(`[UpcomingEventLA] update() — today=${todayStr} now=${now}min`);
 
       // Collect today's non-flight events across all trips, sorted by time
       const todayEvents: TravelEvent[] = [];
+      let skipped = 0;
       for (const trip of trips) {
         for (const ev of trip.events) {
-          if (!isToday(ev.date)) continue;
+          if (!isToday(ev.date)) { skipped++; continue; }
           if (ev.type === "flight") continue; // handled by FlightTracker
           const mins = timeToMinutes(ev.time);
           if (mins < 0) continue; // skip events with unparseable times
           todayEvents.push(ev);
         }
       }
+
+      console.log(`[UpcomingEventLA] update() today=${todayStr} now=${now}min found=${todayEvents.length} skipped=${skipped}`);
 
       todayEvents.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
@@ -152,20 +154,17 @@ export function useUpcomingEventLiveActivity() {
         return mins >= now - 30; // show events that started up to 30 mins ago
       });
 
-      const current = activityRef.current;
+      // Always end all existing system instances first to prevent stale activities
+      try {
+        const instances = UpcomingEvent.getInstances();
+        if (instances.length > 0) {
+          console.log(`[UpcomingEventLA] Ending ${instances.length} existing instances`);
+          for (const inst of instances) safe(() => inst.end("immediate"));
+        }
+      } catch { /* ignore */ }
 
       if (!upcoming) {
-        // No upcoming events — end any active Live Activity
-        if (current) {
-          safe(() => current.activity.end("default"));
-          activityRef.current = null;
-        }
-        // Also end any lingering system instances (e.g. stale from a previous day)
-        try {
-          const lingering = UpcomingEvent.getInstances();
-          for (const inst of lingering) safe(() => inst.end("immediate"));
-        } catch { /* ignore */ }
-
+        activityRef.current = null;
         // Schedule re-check at midnight so we pick up tomorrow's events
         if (timerRef.current) clearTimeout(timerRef.current);
         const minsToMidnight = minutesUntilMidnight();
@@ -175,24 +174,14 @@ export function useUpcomingEventLiveActivity() {
 
       const props = eventToProps(upcoming);
 
-      if (current && current.eventId === upcoming.id) {
-        // Same event — just update in case data changed
-        safe(() => current.activity.update(props));
-      } else {
-        // End ALL existing instances to prevent duplicates
-        try {
-          const instances = UpcomingEvent.getInstances();
-          for (const inst of instances) safe(() => inst.end("default"));
-        } catch { /* ignore */ }
-
-        // Start fresh
-        try {
-          const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
-          activityRef.current = { eventId: upcoming.id, activity };
-        } catch (err) {
-          console.warn("[UpcomingEventLiveActivity] Failed to start:", err);
-          activityRef.current = null;
-        }
+      // Start fresh activity for the current event
+      try {
+        const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
+        activityRef.current = { eventId: upcoming.id, activity };
+        console.log(`[UpcomingEventLA] Started: "${upcoming.title}" date=${upcoming.date}`);
+      } catch (err) {
+        console.warn("[UpcomingEventLiveActivity] Failed to start:", err);
+        activityRef.current = null;
       }
 
       // Schedule next check: whichever comes first — event window expiry or midnight
