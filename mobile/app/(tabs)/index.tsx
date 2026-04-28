@@ -803,11 +803,10 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     pinRow: {
       flexDirection: "row", justifyContent: "center",
-      gap: Math.min(10, (Dimensions.get("window").width - S.md * 2 - S.sm * 2 - 6 * 44) / 5),
-      marginVertical: S.xs,
+      gap: 8, marginVertical: S.xs,
     },
     pinCell: {
-      width: Math.min(52, (Dimensions.get("window").width - S.md * 2 - S.sm * 2 - 50) / 6),
+      flex: 1, maxWidth: 52,
       height: 60, borderRadius: 12,
       borderWidth: 1.5, borderColor: C.border,
       backgroundColor: C.elevated,
