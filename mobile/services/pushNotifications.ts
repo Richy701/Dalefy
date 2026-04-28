@@ -1,7 +1,8 @@
 import { Platform } from "react-native";
 import { doc, setDoc } from "firebase/firestore";
-import { firebaseDb, isFirebaseConfigured } from "./firebase";
+import { firebaseDb, firebaseAuth, waitForAuth, isFirebaseConfigured } from "./firebase";
 import { readPreferencesFromStorage } from "@/context/PreferencesContext";
+import { getDeviceId } from "./deviceId";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 let Device: typeof import("expo-device") | null = null;
@@ -66,12 +67,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
 async function saveTokenToFirestore(token: string) {
   if (!isFirebaseConfigured()) return;
 
+  await waitForAuth();
+  const deviceId = await getDeviceId();
+  const uid = firebaseAuth().currentUser?.uid ?? null;
   const deviceName = Device?.deviceName ?? `${Platform.OS} device`;
   // Use token as document ID for natural upsert behavior
   const tokenId = token.replace(/[/\\]/g, "_");
   await setDoc(doc(firebaseDb(), "push_tokens", tokenId), {
     token,
+    device_id: deviceId,
+    user_id: uid,
     device_name: deviceName,
+    platform: Platform.OS,
     updated_at: new Date().toISOString(),
   }, { merge: true });
 }

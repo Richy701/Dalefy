@@ -1,31 +1,19 @@
-import { collection, getDocs } from "firebase/firestore";
-import { firebaseDb, isFirebaseConfigured, firebaseAuth } from "./firebase";
+import { isFirebaseConfigured, firebaseAuth } from "./firebase";
 
-export async function notifyTripUpdate(tripId: string, tripName: string, action: "published" | "updated") {
-  if (!isFirebaseConfigured()) return;
+/**
+ * Notify trip members of itinerary changes via the server-side endpoint.
+ * The endpoint handles looking up which devices are members of the trip
+ * and sending push notifications only to them.
+ */
+export async function notifyTripUpdate(tripId: string, tripName: string, changes: string[]) {
+  if (!isFirebaseConfigured() || !changes.length) return;
 
-  let snap;
-  try {
-    snap = await getDocs(collection(firebaseDb(), "push_tokens"));
-  } catch {
-    return; // push_tokens not accessible — skip silently
-  }
-  const tokens = snap.docs.map(d => d.data().token as string).filter(Boolean);
-
-  if (!tokens.length) return;
-
-  const title = action === "published" ? "Trip Published" : "Trip Updated";
-  const body = action === "published"
-    ? `"${tripName}" is now live — check your itinerary!`
-    : `"${tripName}" has been updated.`;
-
-  // Send via server-side proxy — include Firebase auth token
   const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
   if (!idToken) return;
 
-  fetch("/api/push", {
+  fetch("/api/notify-trip-update", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ tokens, title, body, data: { tripId } }),
+    body: JSON.stringify({ tripId, tripName, changes }),
   }).catch(() => {});
 }
