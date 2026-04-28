@@ -128,7 +128,7 @@ function UpcomingEventActivity(
         foregroundStyle(hierarchicalSecondary),
       ]}
     >
-      {props.title.length > 18 ? props.title.slice(0, 16) + "..." : props.title}
+      {props.title.length > 22 ? props.title.slice(0, 20) + "..." : props.title}
     </Text>
   );
 
@@ -139,11 +139,11 @@ function UpcomingEventActivity(
 
   // ── Expanded: leading — type icon + time ──
   const expandedLeading = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+    <VStack modifiers={[padding({ all: 12 })]}>
       <Image systemName={icon} size={14} color={teal} />
       <Text
         modifiers={[
-          font({ size: 10, weight: "bold" }),
+          font({ size: 11, weight: "bold" }),
           foregroundStyle(teal),
         ]}
       >
@@ -154,15 +154,15 @@ function UpcomingEventActivity(
 
   // ── Expanded: trailing — location ──
   const expandedTrailing = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+    <VStack modifiers={[padding({ all: 12 })]}>
       {props.location ? (
         <Text
           modifiers={[
-            font({ size: 10, weight: "medium" }),
+            font({ size: 11, weight: "medium" }),
             foregroundStyle(hierarchicalSecondary),
           ]}
         >
-          {props.location.length > 14 ? props.location.slice(0, 12) + "..." : props.location}
+          {props.location.length > 20 ? props.location.slice(0, 18) + "..." : props.location}
         </Text>
       ) : null}
     </VStack>
@@ -170,38 +170,33 @@ function UpcomingEventActivity(
 
   // ── Expanded: center — title ──
   const expandedCenter = (
-    <VStack modifiers={[frame({ maxHeight: 40 })]}>
+    <VStack modifiers={[padding({ all: 8 })]}>
       <Text
         modifiers={[
-          font({ size: 13, weight: "bold" }),
+          font({ size: 14, weight: "bold" }),
           foregroundStyle(hierarchicalPrimary),
         ]}
       >
-        {props.title.length > 20 ? props.title.slice(0, 18) + "..." : props.title}
+        {props.title.length > 28 ? props.title.slice(0, 26) + "..." : props.title}
       </Text>
     </VStack>
   );
 
-  // ── Expanded: bottom — "UP NEXT" badge ──
+  // ── Expanded: bottom — time + location summary ──
   const expandedBottom = (
-    <HStack modifiers={[frame({ maxWidth: Infinity, maxHeight: 20 })]}>
+    <HStack modifiers={[padding({ all: 8 })]}>
+      <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
+        {props.time}
+      </Text>
       <Spacer />
-      <HStack
-        modifiers={[
-          padding({ horizontal: 8, vertical: 2 }),
-          background(teal + "22", shapes.capsule()),
-        ]}
-      >
-        <Text
-          modifiers={[
-            font({ size: 9, weight: "bold" }),
-            foregroundStyle(teal),
-          ]}
-        >
-          UP NEXT
-        </Text>
-      </HStack>
-      <Spacer />
+      {props.location ? (
+        <HStack>
+          <Image systemName="mappin" size={9} color={teal} />
+          <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
+            {props.location.length > 20 ? props.location.slice(0, 18) + "..." : props.location}
+          </Text>
+        </HStack>
+      ) : null}
     </HStack>
   );
 
