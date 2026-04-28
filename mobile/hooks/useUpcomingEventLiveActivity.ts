@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import type { Trip, TravelEvent } from "@/shared/types";
+import type { TravelEvent } from "@/shared/types";
 import type { UpcomingEventProps } from "@/widgets/UpcomingEvent";
 
 let UpcomingEvent: any = null;
@@ -52,17 +52,17 @@ const DEST_TZ: Record<string, string> = {
   rome: "Europe/Rome",
   nairobi: "Africa/Nairobi",
   kenya: "Africa/Nairobi",
-  new york: "America/New_York",
-  los angeles: "America/Los_Angeles",
+  "new york": "America/New_York",
+  "los angeles": "America/Los_Angeles",
   sydney: "Australia/Sydney",
   amalfi: "Europe/Rome",
   iceland: "Atlantic/Reykjavik",
   reykjavik: "Atlantic/Reykjavik",
-  cape town: "Africa/Johannesburg",
+  "cape town": "Africa/Johannesburg",
   marrakech: "Africa/Casablanca",
   cancun: "America/Cancun",
   mexico: "America/Mexico_City",
-  hong kong: "Asia/Hong_Kong",
+  "hong kong": "Asia/Hong_Kong",
   maldives: "Indian/Maldives",
   mauritius: "Indian/Mauritius",
   fiji: "Pacific/Fiji",
