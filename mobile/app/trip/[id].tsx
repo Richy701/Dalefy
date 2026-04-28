@@ -132,7 +132,6 @@ export default function TripScreen() {
       [0, 1],
       Extrapolation.CLAMP,
     ),
-    pointerEvents: scrollY.value > COLLAPSE_START ? "auto" as const : "none" as const,
   }));
 
   // Back button: always visible but adjusts bg
@@ -230,6 +229,7 @@ export default function TripScreen() {
 
       {/* ── Sticky compact header — fades in as hero collapses ── */}
       <Animated.View
+        pointerEvents="box-none"
         style={[
           styles.stickyHeader,
           { paddingTop: insets.top, height: HEADER_H + insets.top },
