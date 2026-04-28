@@ -1,6 +1,7 @@
 import {
   View, Text, ScrollView, Pressable, Image,
   StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform, Share,
+  Dimensions,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
@@ -516,10 +517,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         onRequestClose={closeSheet}
       >
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ flex: 1, backgroundColor: C.card }}
           >
-            <View style={[styles.codeSheet, { paddingBottom: insets.bottom + S.md, flex: 1 }]}>
+            <ScrollView
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={[styles.codeSheet, { paddingBottom: insets.bottom + S.md, flexGrow: 1 }]}
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.sheetGrabber} />
 
               {/* Header row */}
@@ -655,7 +661,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               )}
               </>
               )}
-            </View>
+            </ScrollView>
           </KeyboardAvoidingView>
       </Modal>
 
@@ -752,7 +758,6 @@ function makeGreetingStyles(C: ThemeColors) {
       borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
       paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.xl,
       gap: S.xs,
-      overflow: "hidden" as const,
     },
     sheetGrabber: {
       alignSelf: "center",
@@ -798,10 +803,12 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     pinRow: {
       flexDirection: "row", justifyContent: "center",
-      gap: 10, marginVertical: S.xs,
+      gap: Math.min(10, (Dimensions.get("window").width - S.md * 2 - S.sm * 2 - 6 * 44) / 5),
+      marginVertical: S.xs,
     },
     pinCell: {
-      width: 52, height: 60, borderRadius: 12,
+      width: Math.min(52, (Dimensions.get("window").width - S.md * 2 - S.sm * 2 - 50) / 6),
+      height: 60, borderRadius: 12,
       borderWidth: 1.5, borderColor: C.border,
       backgroundColor: C.elevated,
       textAlign: "center",
