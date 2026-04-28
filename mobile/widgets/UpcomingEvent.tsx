@@ -142,9 +142,9 @@ function UpcomingEventActivity(
     <Image systemName={icon} size={11} color={teal} />
   );
 
-  // ── Expanded: leading — icon only ──
+  // ── Expanded: leading — empty ──
   const expandedLeading = (
-    <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
+    <Spacer />
   );
 
   // ── Expanded: trailing — empty ──

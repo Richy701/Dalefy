@@ -118,14 +118,6 @@ function FlightTrackerActivity(
 
         <Spacer />
         <VStack>
-          <Text
-            modifiers={[
-              font({ size: 8, weight: "medium", design: "monospaced" }),
-              foregroundStyle(hierarchicalTertiary),
-            ]}
-          >
-            {"- - - -"}
-          </Text>
           <Image systemName="airplane" size={14} color={teal} />
           {props.duration ? (
             <Text
