@@ -110,33 +110,47 @@ function truncate(s: string, max: number): string {
 }
 
 /** Strip redundant type prefixes like "Hotel check-in — " since the type label already shows */
+/** Rewrite event titles into clear, natural English for the banner. */
 function cleanTitle(title: string): string {
-  // For hotel check-in/out, flip to "Check out of Novotel..."
-  const hotelMatch = title.match(/^Hotel\s+check-?(in|out)\s*[—–]\s*(.*)/i);
-  if (hotelMatch) {
-    const action = hotelMatch[1].toLowerCase() === "out" ? "Check out of" : "Check in to";
-    return `${action} ${hotelMatch[2]}`;
+  // "X check-in/out — Venue" → "Check in to Venue" / "Check out of Venue"
+  const checkMatch = title.match(/check-?(in|out)\s*[—–]\s*(.*)/i);
+  if (checkMatch) {
+    const action = checkMatch[1].toLowerCase() === "out" ? "Check out of" : "Check in to";
+    return `${action} ${checkMatch[2]}`;
   }
-  return title
-    .replace(/^Flight\s*[—–]\s*/i, "")
-    .replace(/^Transfer\s*[—–]\s*/i, "")
-    .replace(/^Dining\s*[—–]\s*/i, "");
+  // "Meal — Restaurant" → "Meal at Restaurant"
+  const mealMatch = title.match(/^(Dinner|Lunch|Breakfast|Brunch|Welcome Dinner|Farewell Dinner)\s*[—–]\s*(.*)/i);
+  if (mealMatch) return `${mealMatch[1]} at ${mealMatch[2]}`;
+  // "X transfer to Y" / "X pickup & transfer to Y" → "Transfer to Y"
+  const transferMatch = title.match(/(?:transfer|pickup)\s+(?:&\s+transfer\s+)?to\s+(.*)/i);
+  if (transferMatch) return `Transfer to ${transferMatch[1]}`;
+  // "Type — details" (Flight, Tour, etc.) → strip prefix, keep details
+  const prefixMatch = title.match(/^(Flight|Transfer)\s*[—–]\s*(.*)/i);
+  if (prefixMatch) return prefixMatch[2];
+  return title;
 }
 
-/** Shorten title for Dynamic Island — strip after dash/colon */
+/** Shorten title for Dynamic Island (~24 chars max), returned in CAPS. */
 function summarise(title: string): string {
-  const short = title.split(/\s+[—–]\s+|\s*:\s*/)[0].trim();
-  return truncate(short, 24);
+  // Split on em/en dash or colon to get the core action
+  const core = title.split(/\s+[—–]\s+|\s*:\s*/)[0].trim();
+  // Strip trailing venue/detail phrases for brevity
+  const short = core
+    .replace(/\s+at\s+.*$/i, "")
+    .replace(/\s+of\s+.*$/i, "")
+    .replace(/\s+to\s+.*$/i, "")
+    .replace(/\s+for\s+.*$/i, "")
+    .replace(/\s*&\s*.*/i, "")
+    .trim();
+  return truncate(short, 24).toUpperCase();
 }
 
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
   const cleaned = cleanTitle(ev.title);
-  // Summarise for banner: just the part before the dash
-  const bannerTitle = cleaned.split(/\s+[—–]\s+/)[0].trim();
   // Location: just the venue name, strip address details after comma
   const shortLocation = (ev.location || "").split(",")[0].trim();
   return {
-    title: truncate(bannerTitle, 36),
+    title: truncate(cleaned, 36),
     shortTitle: summarise(cleaned),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
