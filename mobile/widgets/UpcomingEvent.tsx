@@ -137,16 +137,14 @@ function UpcomingEventActivity(
     <Image systemName={icon} size={11} color={teal} />
   );
 
-  // ── Expanded: leading — time ──
+  // ── Expanded: leading — type icon ──
   const expandedLeading = (
-    <Text modifiers={[padding({ all: 12 }), font({ weight: "bold", size: 16 }), foregroundStyle("#ffffff")]}>
-      {props.time || "--:--"}
-    </Text>
+    <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
   // ── Expanded: trailing — type icon ──
   const expandedTrailing = (
-    <Image systemName={icon} size={16} color={teal} modifiers={[padding({ all: 12 })]} />
+    <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
   // ── Expanded: center — title ──
@@ -163,18 +161,21 @@ function UpcomingEventActivity(
     </VStack>
   );
 
-  // ── Expanded: bottom — location ──
+  // ── Expanded: bottom — time + location ──
   const expandedBottom = (
     <HStack modifiers={[padding({ all: 8 })]}>
+      <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(teal)]}>
+        {props.time}
+      </Text>
+      <Spacer />
       {props.location ? (
         <HStack>
           <Image systemName="mappin" size={9} color={teal} />
           <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
-            {props.location.length > 28 ? props.location.slice(0, 26) + "..." : props.location}
+            {props.location.length > 22 ? props.location.slice(0, 20) + "..." : props.location}
           </Text>
         </HStack>
       ) : null}
-      <Spacer />
     </HStack>
   );
 
