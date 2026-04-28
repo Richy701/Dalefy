@@ -395,7 +395,7 @@ export default function MediaScreen() {
   const { prefs } = usePreferences();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, updateTrip, updateTripLocal, reload } = useTrips();
+  const { trips, updateTripLocal, reload } = useTrips();
   const [refreshing, setRefreshing] = useState(false);
   const [tripFilter, setTripFilter] = useState("all");
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
@@ -520,8 +520,8 @@ export default function MediaScreen() {
           // Write to Firestore FIRST — only clear pending once confirmed
           try {
             await upsertTripRemote(finalTrip);
-            // Firestore confirmed! Update context and clear pending
-            updateTrip(finalTrip);
+            // Firestore confirmed! Update local state only (no double-write)
+            updateTripLocal(finalTrip);
             const itemIds = new Set(items.map(m => m.id));
             setPendingMedia(prev => {
               const remaining = (prev[tripId] ?? []).filter(m => !itemIds.has(m.id));
@@ -536,7 +536,7 @@ export default function MediaScreen() {
           } catch (err) {
             console.warn("[Media] Firestore write failed:", err);
             // Keep pending items — they'll persist via AsyncStorage
-            updateTrip(finalTrip); // optimistic at least
+            updateTripLocal(finalTrip);
             toast("Photos saved — syncing shortly");
           }
         })
@@ -548,7 +548,7 @@ export default function MediaScreen() {
           setUploading(false);
         });
     });
-  }, [trips, updateTrip, setPendingMedia, toast]);
+  }, [trips, updateTripLocal, setPendingMedia, toast]);
 
   const handleUploadNew = useCallback(() => {
     if (trips.length === 0) {

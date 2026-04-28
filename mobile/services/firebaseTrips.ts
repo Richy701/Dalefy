@@ -104,6 +104,7 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
 
 export async function upsertTrip(trip: Trip): Promise<void> {
   console.log("[upsertTrip] saving trip:", trip.id, "media:", trip.media?.length ?? 0);
+  await waitForAuth();
   await setDoc(doc(firebaseDb(), TRIPS, trip.id), tripToDoc(trip), { merge: true });
   console.log("[upsertTrip] done");
 }
