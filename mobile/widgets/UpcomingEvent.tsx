@@ -39,61 +39,67 @@ function UpcomingEventActivity(
   "widget";
 
   const teal = "#0bd2b5";
-  // Use system-adaptive hierarchical styles for liquid glass compatibility
   const hierarchicalPrimary = { type: "hierarchical" as const, style: "primary" as const };
   const hierarchicalSecondary = { type: "hierarchical" as const, style: "secondary" as const };
-  const hierarchicalTertiary = { type: "hierarchical" as const, style: "tertiary" as const };
 
   const typeLabel = props.type.charAt(0).toUpperCase() + props.type.slice(1);
   const icon = props.icon || TYPE_ICONS[props.type] || "calendar";
 
-  // ── Banner (Lock Screen) ──
+  // ── Banner (Lock Screen) — this is the main view, give it room ──
   const banner = (
     <VStack
       modifiers={[
-        padding({ horizontal: 16, vertical: 12 }),
+        padding({ horizontal: 20, vertical: 14 }),
         frame({ maxWidth: Infinity }),
       ]}
     >
+      {/* Top: time left, type badge right */}
       <HStack>
-        <HStack>
-          <Image systemName={icon} size={11} color={teal} />
+        <Text
+          modifiers={[
+            font({ size: 13, weight: "bold", design: "rounded" }),
+            foregroundStyle(teal),
+          ]}
+        >
+          {props.time}
+        </Text>
+        <Spacer />
+        <HStack
+          modifiers={[
+            padding({ horizontal: 8, vertical: 3 }),
+            background(teal + "18", shapes.capsule()),
+          ]}
+        >
+          <Image systemName={icon} size={10} color={teal} />
           <Text
             modifiers={[
-              font({ size: 11, weight: "bold" }),
+              font({ size: 10, weight: "bold" }),
               foregroundStyle(teal),
             ]}
           >
             {typeLabel.toUpperCase()}
           </Text>
         </HStack>
-        <Spacer />
-        <Text
-          modifiers={[
-            font({ size: 12, weight: "semibold" }),
-            foregroundStyle(hierarchicalSecondary),
-          ]}
-        >
-          {props.time}
-        </Text>
       </HStack>
 
+      {/* Title — big, bold, let it breathe */}
       <Text
         modifiers={[
-          font({ size: 20, weight: "bold" }),
+          font({ size: 22, weight: "bold" }),
           foregroundStyle(hierarchicalPrimary),
-          padding({ top: 4 }),
+          padding({ top: 8 }),
         ]}
       >
         {props.title}
       </Text>
 
+      {/* Location — subtle, with pin */}
       {props.location ? (
-        <HStack modifiers={[padding({ top: 4 })]}>
-          <Image systemName="mappin" size={9} color={teal} />
+        <HStack modifiers={[padding({ top: 6 })]}>
+          <Image systemName="mappin" size={10} color={teal} />
           <Text
             modifiers={[
-              font({ size: 11, weight: "medium" }),
+              font({ size: 12, weight: "medium" }),
               foregroundStyle(hierarchicalSecondary),
             ]}
           >
@@ -101,11 +107,10 @@ function UpcomingEventActivity(
           </Text>
         </HStack>
       ) : null}
-
     </VStack>
   );
 
-  // ── Compact: leading ──
+  // ── Compact: leading — icon + time ──
   const compactLeading = (
     <HStack>
       <Image systemName={icon} size={9} color={teal} />
@@ -120,7 +125,7 @@ function UpcomingEventActivity(
     </HStack>
   );
 
-  // ── Compact: trailing ──
+  // ── Compact: trailing — short title ──
   const compactTrailing = (
     <Text
       modifiers={[
@@ -128,54 +133,46 @@ function UpcomingEventActivity(
         foregroundStyle(hierarchicalSecondary),
       ]}
     >
-      {props.title.length > 22 ? props.title.slice(0, 20) + "..." : props.title}
+      {props.title.length > 16 ? props.title.slice(0, 14) + "..." : props.title}
     </Text>
   );
 
-  // ── Minimal ──
+  // ── Minimal — just the icon ──
   const minimal = (
     <Image systemName={icon} size={11} color={teal} />
   );
 
-  // ── Expanded: leading — type icon ──
+  // ── Expanded: leading — just time, short ──
   const expandedLeading = (
+    <Text modifiers={[padding({ all: 12 }), font({ weight: "bold", size: 14, design: "rounded" }), foregroundStyle(teal)]}>
+      {props.time.replace(/:00\s/g, " ").replace(/\s*(AM|PM)/i, (_, m) => m.toLowerCase())}
+    </Text>
+  );
+
+  // ── Expanded: trailing — just icon ──
+  const expandedTrailing = (
     <Image systemName={icon} size={14} color={teal} modifiers={[padding({ all: 12 })]} />
   );
 
-  // ── Expanded: trailing — empty ──
-  const expandedTrailing = (
-    <Spacer />
-  );
-
-  // ── Expanded: center — title ──
+  // ── Expanded: center — title only ──
   const expandedCenter = (
-    <VStack modifiers={[padding({ all: 8 })]}>
-      <Text
-        modifiers={[
-          font({ size: 14, weight: "bold" }),
-          foregroundStyle(hierarchicalPrimary),
-        ]}
-      >
-        {props.title.length > 34 ? props.title.slice(0, 32) + "..." : props.title}
-      </Text>
-    </VStack>
+    <Text modifiers={[padding({ all: 4 }), font({ size: 13, weight: "bold" }), foregroundStyle(hierarchicalPrimary)]}>
+      {props.title.length > 24 ? props.title.slice(0, 22) + "..." : props.title}
+    </Text>
   );
 
-  // ── Expanded: bottom — time + location ──
+  // ── Expanded: bottom — location only ──
   const expandedBottom = (
-    <HStack modifiers={[padding({ all: 8 })]}>
-      <Text modifiers={[font({ size: 11, weight: "semibold" }), foregroundStyle(teal)]}>
-        {props.time}
-      </Text>
-      <Spacer />
+    <HStack modifiers={[padding({ horizontal: 12, vertical: 4 })]}>
       {props.location ? (
         <HStack>
-          <Image systemName="mappin" size={9} color={teal} />
-          <Text modifiers={[font({ size: 11 }), foregroundStyle(hierarchicalSecondary)]}>
-            {props.location.length > 22 ? props.location.slice(0, 20) + "..." : props.location}
+          <Image systemName="mappin" size={8} color={teal} />
+          <Text modifiers={[font({ size: 10 }), foregroundStyle(hierarchicalSecondary)]}>
+            {props.location.length > 30 ? props.location.slice(0, 28) + "..." : props.location}
           </Text>
         </HStack>
       ) : null}
+      <Spacer />
     </HStack>
   );
 
