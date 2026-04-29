@@ -14,7 +14,7 @@ import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
-import { AIRLINE_COLORS } from "@/data/airlines";
+import { AIRLINE_COLORS, airlineLogoUrl } from "@/data/airlines";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import type { ComplianceDoc, User } from "@/types";
@@ -24,11 +24,11 @@ type Tab = "operations" | "compliance";
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-black/[0.06] dark:border-transparent bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
+    <div className="rounded-2xl border border-black/[0.06] dark:border-[#1a1a1a] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
-          <div className={`h-8 w-8 rounded-lg border border-transparent dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
+          <div className={`h-8 w-8 rounded-lg border border-black/[0.06] dark:border-[#1a1a1a] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
@@ -44,7 +44,6 @@ export function ReportsPage() {
   const { user } = useAuth();
   const { accentColor } = usePreferences();
   const brandHex = accentColor;
-  const STATUS_COLORS: Record<string, string> = { Draft: "#64748b", Published: brandHex, "In Progress": "#f59e0b" };
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
@@ -162,7 +161,7 @@ export function ReportsPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 flex flex-col min-h-full">
           {/* Title + tabs */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/[0.06] dark:border-transparent">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/[0.06] dark:border-[#1a1a1a]">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
@@ -202,7 +201,7 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-8 animate-fade-in mt-8">
               {/* ── Hero Stats Strip ── */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
                   <div className="text-center lg:text-left shrink-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
@@ -235,13 +234,13 @@ export function ReportsPage() {
               </div>
 
               {/* Trip Pipeline — full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
                 </div>
                 {pipelineData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
                     <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                       <Plane className="h-5 w-5 text-brand opacity-60" />
                     </div>
@@ -268,7 +267,7 @@ export function ReportsPage() {
                       { name: "Draft", value: stats.pipeline.draft, color: "#64748b", desc: "Not yet published" },
                       { name: "Published", value: stats.pipeline.published, color: brandHex, desc: "Ready to go" },
                       { name: "In Progress", value: stats.pipeline.inProgress, color: "#f59e0b", desc: "Currently active" },
-                    ].map(s => {
+                    ].filter(s => s.value > 0).map(s => {
                       const pct = stats.pipeline.total > 0 ? Math.round((s.value / stats.pipeline.total) * 100) : 0;
                       return (
                         <div key={s.name} className="space-y-2">
@@ -294,70 +293,69 @@ export function ReportsPage() {
                 )}
               </div>
 
-              {/* ── Event Breakdown + Trips by Month — 2 col ── */}
+              {/* ── Team Overview + Trips by Month — 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Event Type Breakdown */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
-                  <div className="mb-6">
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Event Breakdown</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">By category</p>
+                {/* Team Overview */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                  <div className="mb-5">
+                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} members`; })()}</p>
                   </div>
-                  {stats.typeDistribution.length > 0 ? (
-                    <div className="flex flex-col items-center gap-6">
-                      <div className="h-52 w-52">
-                        <ChartContainer config={{ Flight: { label: "Flight", color: "#38bdf8" }, Hotel: { label: "Hotel", color: "#fbbf24" }, Activity: { label: "Activity", color: brandHex }, Dining: { label: "Dining", color: "#fb7185" } } satisfies ChartConfig} className="h-52 w-52 aspect-square">
-                          <PieChart>
-                            <Pie data={stats.typeDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={80} strokeWidth={0} animationDuration={700}>
-                              {stats.typeDistribution.map((d) => {
-                                const tc: Record<string, string> = { Flight: "#38bdf8", Hotel: "#fbbf24", Activity: brandHex, Dining: "#fb7185" };
-                                return <Cell key={d.name} fill={tc[d.name] || "#64748b"} />;
-                              })}
-                            </Pie>
-                            <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-                            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-xs font-black">{stats.totalEvents} Events</text>
-                          </PieChart>
-                        </ChartContainer>
+                  {(() => {
+                    const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
+                    if (allTravelers.length === 0) return (
+                      <div className="h-52 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                        <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                          <Users className="h-5 w-5 text-brand opacity-60" />
+                        </div>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members</p>
                       </div>
-                      <div className="w-full grid grid-cols-2 gap-3">
-                        {stats.typeDistribution.map((t) => {
-                          const pct = stats.totalEvents > 0 ? Math.round((t.value / stats.totalEvents) * 100) : 0;
-                          const cfg: Record<string, { hex: string; icon: React.ReactNode }> = {
-                            Flight:   { hex: "#38bdf8", icon: <Plane className="h-3 w-3" /> },
-                            Hotel:    { hex: "#fbbf24", icon: <Hotel className="h-3 w-3" /> },
-                            Activity: { hex: brandHex,  icon: <MapPin className="h-3 w-3" /> },
-                            Dining:   { hex: "#fb7185", icon: <Clock className="h-3 w-3" /> },
-                          };
-                          const c = cfg[t.name] || { hex: "#64748b", icon: <ChartColumn className="h-3 w-3" /> };
+                    );
+                    const roleColors: Record<string, string> = { "Trip Manager": brandHex, Agent: "#38bdf8", Traveller: "#fbbf24", Admin: "#a78bfa", Other: "#64748b" };
+                    return (
+                      <div className="space-y-1">
+                        {allTravelers.slice(0, 7).map(t => {
+                          const docs = complianceOverrides[t.id] || t.compliance || [];
+                          const reqDocs = docs.filter(d => d.status !== "Not Required");
+                          const signedDocs = reqDocs.filter(d => d.status === "Signed").length;
+                          const hasIssue = reqDocs.some(d => d.status === "Pending" || d.status === "Expired");
+                          const roleColor = roleColors[t.role || "Other"] || "#64748b";
                           return (
-                            <div key={t.name} className="flex items-center gap-2.5 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
-                              <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${c.hex}18`, color: c.hex }}>
-                                {c.icon}
+                            <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors">
+                              <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{t.name}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{ color: roleColor }}>{t.role || "Other"}</p>
                               </div>
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 dark:text-white flex-1 truncate">{t.name}</span>
-                              <span className="text-[11px] font-black tabular-nums" style={{ color: c.hex }}>{pct}%</span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {hasIssue ? (
+                                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                                ) : reqDocs.length > 0 ? (
+                                  <CircleCheck className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : null}
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums">{signedDocs}/{reqDocs.length}</span>
+                              </div>
                             </div>
                           );
                         })}
+                        {allTravelers.length > 7 && (
+                          <button onClick={() => navigate("/travelers")} className="w-full text-center py-2 text-[10px] font-black uppercase tracking-widest text-brand hover:opacity-80 transition-opacity">
+                            +{allTravelers.length - 7} more
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="h-52 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
-                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                        <ChartColumn className="h-5 w-5 text-brand opacity-60" />
-                      </div>
-                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No events yet</p>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 {/* Trips by Month */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8 flex flex-col">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Departure schedule</p>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
-                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-transparent">
+                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
                       <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartColumn className="h-5 w-5 text-brand opacity-60" />
                       </div>
@@ -368,8 +366,8 @@ export function ReportsPage() {
                     <div className="flex-1 min-h-[200px]">
                       <ChartContainer config={{ count: { label: "Trips", color: brandHex } } satisfies ChartConfig} className="h-full w-full">
                         <BarChart data={stats.tripsByMonth} barCategoryGap="20%">
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
-                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700 }} />
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#888" }} />
+                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#888" }} />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} animationDuration={700} />
                         </BarChart>
@@ -379,10 +377,10 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              {/* ── Top Airlines, Top Destinations, Travel Insights — 3 col ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* ── Top Airlines + Travelers per Trip — 2 col ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Airlines */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Plane className="h-4 w-4" />
@@ -394,24 +392,25 @@ export function ReportsPage() {
                   </div>
                   {stats.topAirlines.length > 0 ? (
                     <div className="space-y-3">
-                      {stats.topAirlines.map((a) => {
+                      {stats.topAirlines.map((a, i) => {
                         const maxCount = stats.topAirlines[0]?.count || 1;
-                        const logoUrl = a.iata ? `https://www.gstatic.com/flights/airline_logos/70px/${a.iata}.png` : "";
+                        const logoUrl = airlineLogoUrl(a.iata);
                         return (
-                          <div key={a.name} className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg border border-transparent flex items-center justify-center shrink-0 overflow-hidden" style={{ background: AIRLINE_COLORS[a.iata] || "#1a1a1a" }}>
+                          <div key={a.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
+                            <span className="text-lg font-black text-slate-200 dark:text-[#222] w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
+                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-black/[0.06] dark:border-[#2a2a2a]">
                               {logoUrl ? (
-                                <img src={logoUrl} alt={a.name} className="h-5 w-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
+                                <img src={logoUrl} alt={a.name} className="h-full w-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
                               ) : null}
-                              <span className={`fallback text-[9px] font-black text-white uppercase ${logoUrl ? "hidden" : ""}`}>{a.iata || a.name.slice(0, 2)}</span>
+                              <span className={`fallback text-xs font-black uppercase ${logoUrl ? "hidden" : ""}`} style={{ color: AIRLINE_COLORS[a.iata] || "#888" }}>{a.iata || a.name.slice(0, 2)}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{a.name}</span>
-                                <span className="text-[11px] font-black tabular-nums text-brand shrink-0 ml-2">{a.count}</span>
-                              </div>
-                              <div className="h-1 bg-slate-100 dark:bg-[#0a0a0a] rounded-full overflow-hidden">
-                                <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%` }} />
+                              <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{a.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex-1 h-1 bg-slate-200 dark:bg-[#1a1a1a] rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%`, background: AIRLINE_COLORS[a.iata] || brandHex }} />
+                                </div>
+                                <span className="text-[11px] font-black tabular-nums text-brand shrink-0">{a.count}</span>
                               </div>
                             </div>
                           </div>
@@ -428,105 +427,53 @@ export function ReportsPage() {
                   )}
                 </div>
 
-                {/* Top Itineraries */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                {/* Travelers per Trip */}
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
-                      <ChartColumn className="h-4 w-4" />
+                      <Users className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Itineraries</h3>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Most packed</p>
-                    </div>
-                  </div>
-                  {stats.eventsPerTrip.length > 0 ? (
-                    <div className="space-y-3">
-                      {[...stats.eventsPerTrip].sort((a, b) => b.total - a.total).slice(0, 5).map((t, i) => (
-                        <div key={t.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
-                          <span className="text-lg font-black text-slate-200 dark:text-[#222] w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{t.name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-[#666] mt-0.5">
-                              {[t.flights && `${t.flights} ${t.flights === 1 ? "flight" : "flights"}`, t.hotels && `${t.hotels} ${t.hotels === 1 ? "stay" : "stays"}`, t.activities && `${t.activities} ${t.activities === 1 ? "activity" : "activities"}`].filter(Boolean).join(" · ")}
-                            </p>
-                          </div>
-                          <span className="text-sm font-black tracking-tighter text-brand shrink-0">{t.total}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
-                        <ChartColumn className="h-5 w-5 text-brand/30" />
-                      </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No trips yet</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Travel Insights */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
-                      <Zap className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Insights</h3>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Smart patterns</p>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Travelers per Trip</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-0.5">Group sizes</p>
                     </div>
                   </div>
                   {trips.length > 0 ? (
                     <div className="space-y-3">
-                      {[
-                        stats.insights.longestTrip && {
-                          icon: <Clock className="h-3.5 w-3.5" />,
-                          label: "Longest trip",
-                          value: `${stats.insights.longestTrip.days}d`,
-                          detail: stats.insights.longestTrip.name,
-                        },
-                        stats.insights.busiestTrip && {
-                          icon: <TrendingUp className="h-3.5 w-3.5" />,
-                          label: "Most packed",
-                          value: `${stats.insights.busiestTrip.events}`,
-                          detail: stats.insights.busiestTrip.name,
-                        },
-                        stats.insights.busiestMonth && {
-                          icon: <LucideCalendar className="h-3.5 w-3.5" />,
-                          label: "Peak month",
-                          value: `${stats.insights.busiestMonth.count}`,
-                          detail: stats.insights.busiestMonth.month,
-                        },
-                        {
-                          icon: <Plane className="h-3.5 w-3.5" />,
-                          label: "Flights",
-                          value: stats.insights.flightCount.toString(),
-                          detail: `${stats.insights.hotelCount} stays · ${stats.insights.activityCount} activities`,
-                        },
-                        {
-                          icon: <MapPin className="h-3.5 w-3.5" />,
-                          label: "Places",
-                          value: stats.insights.destinationCount.toString(),
-                          detail: `Avg ${stats.insights.avgTripDays}d per trip`,
-                        },
-                      ].filter(Boolean).map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
-                          <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                            {item!.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666] leading-none">{item!.label}</p>
-                            <p className="text-[11px] font-black uppercase tracking-tight text-slate-900 dark:text-white mt-0.5 truncate">{item!.detail}</p>
-                          </div>
-                          <span className="text-sm font-black tracking-tighter text-brand shrink-0">{item!.value}</span>
-                        </div>
-                      ))}
+                      {trips.map((t) => {
+                        const pax = parseInt(t.paxCount || "0") || (t.travelers?.length ?? 0);
+                        const maxPax = Math.max(...trips.map(tr => parseInt(tr.paxCount || "0") || (tr.travelers?.length ?? 0)), 1);
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => navigate(`/trip/${t.id}`)}
+                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] hover:bg-brand/5 dark:hover:bg-brand/5 transition-colors text-left group"
+                          >
+                            <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0">
+                              <img src={t.image} alt={t.name} className="h-full w-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{t.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex-1 h-1 bg-slate-200 dark:bg-[#1a1a1a] rounded-full overflow-hidden">
+                                  <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${maxPax > 0 ? (pax / maxPax) * 100 : 0}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Users className="h-3 w-3 text-slate-400 dark:text-[#666]" />
+                              <span className="text-sm font-black tabular-nums text-brand">{pax || "-"}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
-                        <Zap className="h-5 w-5 text-brand/30" />
+                        <Users className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No insights yet</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No trips yet</p>
                     </div>
                   )}
                 </div>
@@ -560,7 +507,7 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance — full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
@@ -622,7 +569,7 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type — full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
@@ -666,7 +613,7 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action — side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileCheck className="h-4 w-4" />
@@ -696,7 +643,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
                       <TriangleAlert className="h-4 w-4" />
@@ -745,7 +692,7 @@ export function ReportsPage() {
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
@@ -776,7 +723,7 @@ export function ReportsPage() {
                         });
                         const hasExpired = docNames.some(dn => t.compliance.find(d => d.name === dn)?.status === "Expired");
                         return (
-                          <tr key={t.id} className="border-t border-transparent dark:border-transparent hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
+                          <tr key={t.id} className="border-t border-black/[0.04] dark:border-[#1a1a1a] hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>

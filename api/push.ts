@@ -1,12 +1,17 @@
+import { verifyFirebaseToken } from "./_verifyToken.js";
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Require internal auth — only callable from the web app (with Firebase ID token) or cron
   const auth = req.headers["authorization"] ?? "";
   const cronOk = auth === `Bearer ${process.env.CRON_SECRET}`;
-  const hasFirebaseToken = auth.startsWith("Bearer ey"); // Firebase ID tokens are JWTs
-  if (!cronOk && !hasFirebaseToken) {
-    return res.status(401).json({ error: "Unauthorized" });
+
+  if (!cronOk) {
+    const token = auth.replace("Bearer ", "");
+    const payload = await verifyFirebaseToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
   }
 
   const { tokens, title, body, data } = req.body ?? {};

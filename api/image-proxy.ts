@@ -53,9 +53,19 @@ export default async function handler(req: any, res: any) {
       return res.status(413).json({ error: "Image too large" });
     }
 
+    const origin = req.headers.origin ?? "";
+    const host = req.headers.host ?? "";
+    if (origin) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost === host || originHost.endsWith(".vercel.app")) {
+          res.setHeader("Access-Control-Allow-Origin", origin);
+        }
+      } catch { /* invalid origin — skip header */ }
+    }
+
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=86400");
-    res.setHeader("Access-Control-Allow-Origin", "*");
     res.send(buffer);
   } catch {
     res.status(502).json({ error: "Failed to fetch image" });

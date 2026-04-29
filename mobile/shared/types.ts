@@ -37,6 +37,7 @@ export interface TravelEvent {
   arrAirport?: string;
   checkin?: string;
   checkout?: string;
+  endDate?: string;
   notes?: string;
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;
   documents?: EventDocument[];

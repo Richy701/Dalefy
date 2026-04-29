@@ -5,7 +5,7 @@ import {
   signInAnonymously, type Auth,
 } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import { SecureStorageAdapter } from "./secureStorageAdapter";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY!,
@@ -55,7 +55,7 @@ export function firebaseAuth(): Auth {
     const app = ensureApp();
     try {
       _auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+        persistence: getReactNativePersistence(SecureStorageAdapter),
       });
     } catch {
       _auth = getAuth(app);

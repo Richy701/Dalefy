@@ -118,7 +118,7 @@ export function useTripStats(trips: Trip[]) {
     const airlineNameRe = /\b(British Airways|Emirates|Qatar Airways|Turkish Airlines|Lufthansa|Air France|KLM|Qantas|Singapore Airlines|Cathay Pacific|ANA|Japan Airlines|Delta|American Airlines|United Airlines|Ryanair|easyJet|Kenya Airways|Ethiopian Airlines|Etihad|Virgin Atlantic|SunExpress|Pegasus|Thai Airways|Swiss|Iberia|Norwegian|Finnair|SAS|Austrian)\b/i;
     // Reverse lookup: airline name → IATA code
     const NAME_TO_IATA: Record<string, string> = {};
-    Object.entries(KNOWN_AIRLINES).forEach(([code, name]) => { NAME_TO_IATA[name.toLowerCase()] = code; });
+    Object.entries(KNOWN_AIRLINES).forEach(([code, name]) => { NAME_TO_IATA[name.toLowerCase()] = code; NAME_TO_IATA[name.toLowerCase().replace(/\s+/g, "")] = code; });
     const airlineCounts: Record<string, number> = {};
     const airlineIata: Record<string, string> = {};
     allEvents.forEach(e => {
@@ -136,7 +136,7 @@ export function useTripStats(trips: Trip[]) {
         }
       }
       if (name) {
-        if (!iata) iata = NAME_TO_IATA[name.toLowerCase()] || "";
+        if (!iata) iata = NAME_TO_IATA[name.toLowerCase()] || NAME_TO_IATA[name.toLowerCase().replace(/\s+/g, "")] || "";
         airlineCounts[name] = (airlineCounts[name] || 0) + 1;
         if (iata) airlineIata[name] = iata;
       }

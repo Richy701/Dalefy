@@ -96,21 +96,29 @@ function SidebarExtras() {
             Recent
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="space-y-0.5 px-2">
+            <div className="space-y-1.5 px-2">
               {recentTrips.map((trip) => (
                 <button
                   key={trip.id}
                   onClick={() => navigate(`/trip/${trip.id}`)}
-                  className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-brand/10 transition-colors group text-left"
+                  className="w-full rounded-xl overflow-hidden hover:ring-1 hover:ring-brand/30 transition-all group"
                 >
-                  <div className="h-7 w-9 rounded-lg overflow-hidden shrink-0">
-                    <img src={trip.image} alt={trip.name} className="h-full w-full object-cover" />
+                  <div className="relative h-16 overflow-hidden rounded-xl">
+                    <img
+                      src={trip.image}
+                      alt={trip.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-1.5">
+                      <p className="text-[10px] font-black uppercase tracking-tight text-white truncate leading-none">
+                        {trip.name}
+                      </p>
+                      <p className="text-[8px] font-bold text-white/50 truncate mt-0.5">
+                        {trip.destination || trip.status}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-sidebar-foreground/70 truncate group-hover:text-brand transition-colors">{trip.name}</p>
-                    <p className="text-[9px] text-sidebar-foreground/40 mt-0.5 truncate">{trip.destination || trip.status}</p>
-                  </div>
-                  <ArrowUpRight className="h-3 w-3 text-sidebar-foreground/30 group-hover:text-brand transition-colors shrink-0" />
                 </button>
               ))}
             </div>

@@ -10,15 +10,17 @@
  */
 
 import { listCollection, decodeValue, type FirestoreDoc } from "./_firebaseAdmin";
+import { verifyFirebaseToken } from "./_verifyToken.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  // Auth: require Firebase ID token (from web app admin)
   const auth = req.headers["authorization"] ?? "";
-  if (!auth.startsWith("Bearer ey")) {
+  const token = auth.replace("Bearer ", "");
+  const payload = await verifyFirebaseToken(token);
+  if (!payload) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -95,6 +97,6 @@ export default async function handler(req: any, res: any) {
     res.json({ sent: tokens.length, results });
   } catch (err: any) {
     console.error("[notify-trip-update] Error:", err);
-    res.status(500).json({ error: err.message || "Internal error" });
+    res.status(500).json({ error: "Internal error" });
   }
 }

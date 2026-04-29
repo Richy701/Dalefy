@@ -3,7 +3,8 @@
  * Authenticates via a dedicated cron user (Firebase Auth email/password).
  */
 
-const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || "dalefy-d87c9";
+const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID ?? "";
+if (!PROJECT_ID) throw new Error("VITE_FIREBASE_PROJECT_ID is required");
 const API_KEY = process.env.VITE_FIREBASE_API_KEY || "";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 

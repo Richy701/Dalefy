@@ -19,6 +19,11 @@ service cloud.firestore {
              && request.auth.token.email == "cron@dalefy.com";
     }
 
+    // ── Helper: check if the caller is a trip member (by auth UID) ──────
+    function isTripMember(tripId) {
+      return exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + tripId));
+    }
+
     // ── Profiles: users can read/write only their own ──────────────────────
     match /profiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -70,18 +75,17 @@ service cloud.firestore {
       allow write: if request.auth != null && isOrgAdmin(orgId);
     }
 
-    // ── Helper: check if the caller is a trip member (by auth UID) ──────
-    function isTripMember(tripId) {
-      return exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + tripId));
-    }
-
     // ── Trips ──────────────────────────────────────────────────────────────
     match /trips/{tripId} {
-      // Authenticated users can read any trip (needed for short_code uniqueness checks);
-      // unauthenticated users can only read published trips
-      allow read: if request.auth != null
-                  || resource.data.status == "Published"
-                  || resource.data.status == "published";
+      // Published trips are readable by anyone (shared links, PIN join flow).
+      // Non-published trips require ownership, membership, org membership, or cron.
+      allow read: if resource.data.status in ["Published", "published"]
+                  || (request.auth != null
+                      && (resource.data.user_id == request.auth.uid
+                          || isCronUser()
+                          || isTripMember(tripId)
+                          || (resource.data.organization_id != null
+                              && isOrgMember(resource.data.organization_id))));
 
       // Only authenticated users can create; user_id must match caller
       allow create: if request.auth != null
@@ -104,16 +108,19 @@ service cloud.firestore {
 
     // ── Trip members ───────────────────────────────────────────────────────
     match /trip_members/{docId} {
-      // Read: authenticated users or device reading own entry
-      allow read: if request.auth != null || resource.data.device_id != null;
-      // Create: must include a trip_id and either device_id, uid, or user_id
-      allow create: if request.resource.data.trip_id is string
+      // Read: authenticated users only
+      allow read: if request.auth != null;
+
+      // Create: must be authenticated, include a trip_id, and either
+      // device_id or a matching uid/user_id
+      allow create: if request.auth != null
+                    && request.resource.data.trip_id is string
                     && request.resource.data.trip_id.size() > 0
                     && (request.resource.data.device_id is string
-                        || (request.auth != null && request.resource.data.uid == request.auth.uid)
-                        || (request.auth != null && request.resource.data.user_id == request.auth.uid));
+                        || request.resource.data.uid == request.auth.uid
+                        || request.resource.data.user_id == request.auth.uid);
+
       // The member themselves, the trip owner, or an org admin can update/delete.
-      // Also allow if a UID-keyed sibling doc exists (proves device ownership).
       allow update, delete: if request.auth != null
         && (resource.data.user_id == request.auth.uid
             || resource.data.uid == request.auth.uid

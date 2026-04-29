@@ -11,20 +11,30 @@ service firebase.storage {
         && request.resource.contentType.matches('image/(png|jpeg|webp)');
     }
 
-    // Logo uploads: namespaced by org ID, restricted to org members
-    match /logos/{orgId}/{fileName} {
+    // Logo uploads: namespaced by org ID, then by uploading user's UID.
+    // Storage rules cannot cross-reference Firestore, so org-admin checks
+    // are enforced in the application layer. The UID scope prevents users
+    // from overwriting each other's uploads.
+    match /logos/{orgId}/{uid}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
+        && request.auth.uid == uid
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType.matches('image/(png|jpeg|webp)');
     }
+    // Legacy flat path (read-only for existing logos)
+    match /logos/{orgId}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
 
-    // Trip media: namespaced by trip ID, authenticated users only
-    // Covers covers, event images, and gallery media
+    // Trip media: namespaced by trip ID, authenticated users only.
+    // Storage rules cannot verify trip membership, so that check is
+    // enforced in the application layer before upload.
     match /trips/{tripId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
-        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.size < 25 * 1024 * 1024
         && request.resource.contentType.matches('(image|video)/.*');
     }
 

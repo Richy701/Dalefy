@@ -1,3 +1,8 @@
+/** Get airline logo URL by IATA code — local 200x200 transparent PNGs */
+export function airlineLogoUrl(iata: string): string {
+  return iata ? `/airlines/${iata}.png` : "";
+}
+
 /** Airline brand colors keyed by IATA code — used as fallback when logo CDN fails */
 export const AIRLINE_COLORS: Record<string, string> = {
   BA: "#075aaa", // British Airways

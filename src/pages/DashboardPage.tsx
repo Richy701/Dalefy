@@ -872,7 +872,6 @@ export function DashboardPage() {
                 const nights = Math.max(1, days - 1);
                 const agent  = spotlightTrip.attendees.split(",")[0]?.trim() || "Agent";
                 const pax    = spotlightTrip.paxCount || "—";
-                const budget = spotlightTrip.budget ? `$${spotlightTrip.budget}` : "—";
                 const dateRange = (() => {
                   const s = new Date(spotlightTrip.start);
                   const e = new Date(spotlightTrip.end);
@@ -941,11 +940,10 @@ export function DashboardPage() {
                     </div>
 
                     {/* Stat row */}
-                    <div data-compact-stat-grid className="grid grid-cols-3 gap-2 px-3 sm:px-5 pt-4 pb-4">
+                    <div data-compact-stat-grid className="grid grid-cols-2 gap-2 px-3 sm:px-5 pt-4 pb-4">
                       {[
                         { icon: LucideCalendar, label: "Duration", value: `${days} day${days === 1 ? "" : "s"}` },
                         { icon: Users,          label: "Pax",      value: pax },
-                        { icon: DollarSign,     label: "Budget",   value: budget },
                       ].map(({ icon: Icon, label, value }) => (
                         <div
                           key={label}

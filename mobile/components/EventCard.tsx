@@ -17,6 +17,23 @@ function formatDate(d: string): string {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+function nextDay(d: string): string {
+  const date = new Date(d + "T12:00:00");
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().split("T")[0];
+}
+
+function formatTimeTo24h(t: string): string {
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return t;
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const period = m[3].toUpperCase();
+  if (period === "PM" && h !== 12) h += 12;
+  if (period === "AM" && h === 12) h = 0;
+  return `${h.toString().padStart(2, "0")}:${min}`;
+}
+
 // ── Flight Card ──────────────────────────────────────────────────────────────
 function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
   const router = useRouter();
@@ -159,7 +176,8 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
             {ev.checkin && (
               <View style={{ flex: 1 }}>
                 <Text style={[cs.checkLabel, { color: C.textTertiary }]}>Check in</Text>
-                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatDate(ev.checkin)}</Text>
+                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.checkin)}</Text>
+                {ev.date && <Text style={[cs.checkDate, { color: C.textTertiary }]}>{formatDate(ev.date)}</Text>}
               </View>
             )}
             {ev.checkin && ev.checkout && (
@@ -168,7 +186,8 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
             {ev.checkout && (
               <View style={{ flex: 1, alignItems: ev.checkin ? "flex-end" : "flex-start" }}>
                 <Text style={[cs.checkLabel, { color: C.textTertiary }]}>Check out</Text>
-                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatDate(ev.checkout)}</Text>
+                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.checkout)}</Text>
+                {(ev.endDate || ev.date) && <Text style={[cs.checkDate, { color: C.textTertiary }]}>{formatDate(ev.endDate ?? nextDay(ev.date))}</Text>}
               </View>
             )}
           </View>
@@ -319,6 +338,7 @@ const cs = StyleSheet.create({
   },
   checkLabel: { fontSize: 9, fontWeight: T.semibold, letterSpacing: 0.5, marginBottom: 1 },
   checkVal: { fontSize: T.sm, fontWeight: T.bold },
+  checkDate: { fontSize: T.xs, marginTop: 2 },
 
   roomType: { fontSize: T.xs, fontWeight: T.bold, marginTop: S.xs },
   notesFlat: { fontSize: T.sm, lineHeight: 20, marginTop: S.xs },

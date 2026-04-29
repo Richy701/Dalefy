@@ -135,9 +135,6 @@ export default async function handler(req: any, res: any) {
     });
   } catch (err: any) {
     console.error("parse-itinerary error:", err);
-    return res.status(500).json({
-      error: "AI parsing failed",
-      detail: err.message ?? String(err),
-    });
+    return res.status(500).json({ error: "AI parsing failed" });
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { Appearance, Platform, View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -131,6 +131,8 @@ function AppStack() {
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
+  const ready = (fontsLoaded || fontError) && tripsReady && prefsReady;
+  const pendingTripNav = useRef<string | null>(null);
 
   useEffect(() => {
     if (!Notifications) return;
@@ -152,12 +154,23 @@ function AppStack() {
     });
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const tripId = response.notification.request.content.data?.tripId as string | undefined;
-      if (tripId) router.push(`/trip/${tripId}`);
+      if (!tripId) return;
+      if (ready) {
+        router.push(`/trip/${tripId}`);
+      } else {
+        pendingTripNav.current = tripId;
+      }
     });
     return () => { recvSub.remove(); tapSub.remove(); };
-  }, [router, addNotification, prefs.tripReminders, prefs.itineraryUpdates]);
+  }, [router, addNotification, prefs.tripReminders, prefs.itineraryUpdates, ready]);
 
-  const ready = (fontsLoaded || fontError) && tripsReady && prefsReady;
+  useEffect(() => {
+    if (ready && pendingTripNav.current) {
+      const tripId = pendingTripNav.current;
+      pendingTripNav.current = null;
+      router.push(`/trip/${tripId}`);
+    }
+  }, [ready, router]);
 
   useEffect(() => {
     if (!ready) return;
