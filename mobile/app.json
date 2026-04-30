@@ -20,7 +20,8 @@
       "bundleIdentifier": "com.dafadventures.app",
       "infoPlist": {
         "NSSupportsLiveActivities": true,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Dalefy uses your location to show nearby trip activities and provide directions."
       }
     },
     "android": {
