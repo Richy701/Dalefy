@@ -1,3 +1,7 @@
+import { Platform } from "react-native";
+
+export const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 60;
+
 export const darkColors = {
   bg: "#09090b",
   surface: "#0c0c0f",
@@ -9,13 +13,15 @@ export const darkColors = {
 
   textPrimary: "#EDEDEF",
   textSecondary: "#9a9a9a",
-  textTertiary: "#8a8a8a",
+  textTertiary: "#8e8e96",
   textDim: "#4a4a4a",
 
   teal: "#0bd2b5",
   tealDim: "rgba(11,210,181,0.1)",
   tealMid: "rgba(11,210,181,0.25)",
   tealGlow: "rgba(11,210,181,0.15)",
+
+  toggleTrack: "#3F3F46",
 
   green: "#10b981",
   greenDim: "rgba(16,185,129,0.12)",
@@ -24,7 +30,6 @@ export const darkColors = {
   red: "#ef4444",
   redDim: "rgba(239,68,68,0.12)",
 
-  // Event type colors — all use brand accent
   flight: "#0bd2b5",
   hotel: "#0bd2b5",
   activity: "#0bd2b5",
@@ -43,13 +48,15 @@ export const lightColors = {
 
   textPrimary: "#0d0f14",
   textSecondary: "#4b5263",
-  textTertiary: "#606878",
+  textTertiary: "#555d6e",
   textDim: "#c5cad6",
 
   teal: "#0ab8a0",
   tealDim: "rgba(10,184,160,0.12)",
   tealMid: "rgba(10,184,160,0.28)",
   tealGlow: "rgba(10,184,160,0.18)",
+
+  toggleTrack: "#D1D5DB",
 
   green: "#10b981",
   greenDim: "rgba(16,185,129,0.12)",

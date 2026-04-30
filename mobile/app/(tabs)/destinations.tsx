@@ -414,31 +414,31 @@ export default function DestinationsScreen() {
                       <View style={styles.cardTypes}>
                         {dest.types.flights > 0 && (
                           <View style={styles.typeBadge}>
-                            <Plane size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Plane size={9} color="#fff" strokeWidth={2} />
                             <Text style={styles.typeBadgeText}>{dest.types.flights}</Text>
                           </View>
                         )}
                         {dest.types.hotels > 0 && (
                           <View style={styles.typeBadge}>
-                            <Hotel size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Hotel size={9} color="#fff" strokeWidth={2} />
                             <Text style={styles.typeBadgeText}>{dest.types.hotels}</Text>
                           </View>
                         )}
                         {dest.types.activities > 0 && (
                           <View style={styles.typeBadge}>
-                            <Compass size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Compass size={9} color="#fff" strokeWidth={2} />
                             <Text style={styles.typeBadgeText}>{dest.types.activities}</Text>
                           </View>
                         )}
                         {dest.types.dining > 0 && (
                           <View style={styles.typeBadge}>
-                            <Utensils size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Utensils size={9} color="#fff" strokeWidth={2} />
                             <Text style={styles.typeBadgeText}>{dest.types.dining}</Text>
                           </View>
                         )}
                         {dest.types.transfers > 0 && (
                           <View style={styles.typeBadge}>
-                            <Car size={9} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                            <Car size={9} color="#fff" strokeWidth={2} />
                             <Text style={styles.typeBadgeText}>{dest.types.transfers}</Text>
                           </View>
                         )}
@@ -478,7 +478,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       overflow: "hidden",
     },
     screenTitle: {
-      fontSize: 22, fontWeight: "700",
+      fontSize: 22, fontWeight: "800",
       color: C.teal, paddingHorizontal: S.md,
       paddingVertical: 10,
     },
@@ -591,11 +591,11 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     typeBadge: {
       flexDirection: "row", alignItems: "center", gap: 3,
-      backgroundColor: "rgba(255,255,255,0.12)",
-      borderRadius: R.full, paddingHorizontal: 7, paddingVertical: 3,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4,
     },
     typeBadgeText: {
-      fontSize: 10, fontWeight: T.bold, color: "rgba(255,255,255,0.7)",
+      fontSize: 10, fontWeight: T.bold, color: "#fff",
       fontVariant: ["tabular-nums"],
     },
     cardMeta: {

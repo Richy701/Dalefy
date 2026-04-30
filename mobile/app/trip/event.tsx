@@ -2,7 +2,7 @@ import {
   View, Text, ScrollView, Pressable, Linking,
   StyleSheet, Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -15,7 +15,7 @@ import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
+import { T, R, S, F, type ThemeColors, eventColor, TAB_BAR_HEIGHT } from "@/constants/theme";
 import { useMemo, useCallback } from "react";
 import type { TravelEvent } from "@/shared/types";
 
@@ -49,6 +49,7 @@ export default function EventDetailScreen() {
   const router = useRouter();
   const { C, isDark } = useTheme();
   const { isLeader } = useTripRole(tripId);
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -137,9 +138,9 @@ export default function EventDetailScreen() {
           />
           {/* Title over gradient */}
           <View style={styles.heroContent}>
-            <View style={[styles.typePill, { backgroundColor: `${color}22` }]}>
-              <Icon size={12} color={color} strokeWidth={2.5} />
-              <Text style={[styles.typePillText, { color }]}>{typeLabel.toUpperCase()}</Text>
+            <View style={[styles.typePill, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
+              <Icon size={12} color="#fff" strokeWidth={2.5} />
+              <Text style={[styles.typePillText, { color: "#fff" }]}>{typeLabel.toUpperCase()}</Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={3}>{ev.title}</Text>
             {ev.airline && (
@@ -277,6 +278,9 @@ export default function EventDetailScreen() {
             <Text style={styles.mapsBtnText}>Open in Maps</Text>
           </Pressable>
         )}
+
+        {/* Terminal element clearance — keeps last item above tab bar */}
+        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -328,7 +332,7 @@ const frs = StyleSheet.create({
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },

@@ -12,7 +12,7 @@ import {
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, type ThemeColors, TAB_BAR_HEIGHT } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
@@ -458,6 +458,9 @@ export default function TripScreen() {
             })()}
           </View>
         </View>
+
+        {/* Terminal element clearance */}
+        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
       </Animated.ScrollView>
     </SafeAreaView>
   );
@@ -466,7 +469,7 @@ export default function TripScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 40 },
+    scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
@@ -486,7 +489,7 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center", justifyContent: "center",
     },
     stickyTitle: {
-      flex: 1, fontSize: T.base, fontWeight: T.semibold,
+      flex: 1, fontSize: T.base, fontWeight: T.bold,
       textAlign: "center", letterSpacing: -0.2,
     },
 
@@ -534,7 +537,7 @@ function makeStyles(C: ThemeColors) {
       borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
     },
     chipText: {
-      fontSize: 11, fontWeight: "500",
+      fontSize: 11, fontWeight: "600",
       color: "rgba(255,255,255,0.85)", letterSpacing: 0.1,
     },
 

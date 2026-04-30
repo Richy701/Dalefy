@@ -3,13 +3,13 @@ import {
   StyleSheet, Platform, LayoutAnimation, Share,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, type ThemeColors, TAB_BAR_HEIGHT } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
 
 export default function InfoScreen() {
@@ -17,6 +17,7 @@ export default function InfoScreen() {
   const { trips } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -62,8 +63,8 @@ export default function InfoScreen() {
         headerBackButtonDisplayMode: "minimal",
         headerTransparent: Platform.OS === "ios",
         headerBlurEffect: isDark ? "dark" : "light",
-        headerTintColor: C.teal,
-        headerTitleStyle: { color: C.teal, fontWeight: "700" },
+        headerTintColor: C.textPrimary,
+        headerTitleStyle: { color: C.textPrimary, fontWeight: "700" },
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
       }} />
@@ -97,11 +98,11 @@ export default function InfoScreen() {
                     accessibilityState={{ expanded: isOpen }}
                     accessibilityHint={isOpen ? "Double tap to collapse" : "Double tap to expand"}
                   >
-                    <Text style={[styles.sectionTitle, isOpen && { color: C.teal }]}>
+                    <Text style={styles.sectionTitle}>
                       {item.title || "Untitled"}
                     </Text>
                     <View style={[styles.chevronWrap, isOpen && styles.chevronOpen]}>
-                      <ChevronDown size={16} color={isOpen ? C.teal : C.textTertiary} strokeWidth={2} />
+                      <ChevronDown size={16} color={isOpen ? C.textPrimary : C.textTertiary} strokeWidth={2} />
                     </View>
                   </Pressable>
 
@@ -115,6 +116,9 @@ export default function InfoScreen() {
             );
           })}
         </View>
+
+        {/* Terminal element clearance */}
+        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -123,7 +127,7 @@ export default function InfoScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
@@ -147,7 +151,7 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: S.lg,
-      paddingVertical: S.md,
+      paddingVertical: S.lg,
     },
     sectionTitle: {
       flex: 1,

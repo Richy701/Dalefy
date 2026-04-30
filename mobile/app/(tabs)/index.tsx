@@ -467,14 +467,14 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   };
 
   return (
-    <View style={[styles.outer, { paddingTop: insets.top + (Platform.OS === "ios" ? 56 : S.xs), ...(Platform.OS === "ios" ? { marginTop: -insets.top } : {}) }]}>
+    <View style={[styles.outer, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
       <LinearGradient
         colors={[`${C.teal}18`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFillObject, { top: 600 }]}
       />
       <View style={styles.illustrationWrap} pointerEvents="none">
-        <Illustration name="together" width={170} height={140} />
+        <Illustration name="together" width={120} height={100} />
       </View>
       {/* Top bar — actions */}
       <View style={styles.topBar}>
@@ -506,7 +506,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         numberOfLines={1}
         ellipsizeMode="tail"
       >
-        {greeting} 👋
+        {greeting}
       </Text>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
@@ -698,12 +698,11 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           activeScale={0.98}
           onPress={() => { Haptics.selectionAsync(); setCodeOpen(true); }}
         >
-          <Text style={styles.countdownEyebrow}>Awaiting Boarding</Text>
-          <Text style={styles.countdownNumber}>0</Text>
+          <Text style={styles.countdownEyebrow}>No Upcoming Flights</Text>
           <View style={styles.countdownMeta}>
             <Plus size={11} color={C.teal} strokeWidth={2} />
             <Text style={styles.countdownDest} numberOfLines={1}>
-              Tap to paste a trip code
+              Tap to join a trip
             </Text>
             <ArrowUpRight size={11} color={C.textSecondary} strokeWidth={2} />
           </View>
@@ -995,9 +994,9 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
       <View style={styles.content}>
         <View style={styles.topRow}>
           <View style={styles.textWrap}>
-            <Text style={styles.title} numberOfLines={1}>{ev.title}</Text>
-            {(ev.notes || ev.location) ? (
-              <Text style={styles.sub} numberOfLines={2}>{ev.notes || ev.location}</Text>
+            <Text style={styles.title} numberOfLines={2}>{ev.title}</Text>
+            {(ev.location || ev.notes) ? (
+              <Text style={styles.sub} numberOfLines={2}>{ev.location || ev.notes}</Text>
             ) : null}
           </View>
           <View style={styles.actions} />
@@ -1124,7 +1123,7 @@ function TripRow({ trip }: { trip: Trip }) {
         {trip.destination ? (
           <Text style={styles.rowDest}>{trip.destination.toUpperCase()}</Text>
         ) : null}
-        <Text style={styles.rowName} numberOfLines={1}>{trip.name}</Text>
+        <Text style={styles.rowName} numberOfLines={2}>{trip.name}</Text>
         <View style={styles.rowDateRow}>
           <CalendarDays size={9} color={C.teal} strokeWidth={1.8} />
           <Text style={styles.rowDate}>
@@ -1364,7 +1363,7 @@ function makeStyles(C: ThemeColors) {
       color: C.textPrimary, letterSpacing: -0.2,
     },
     sectionSub: { fontSize: T.sm, color: C.textSecondary, marginTop: 3, lineHeight: 20 },
-    spotlightDest: { color: C.teal, fontStyle: "italic" },
+    spotlightDest: { color: C.teal },
 
     upcomingList: { gap: S.sm },
 

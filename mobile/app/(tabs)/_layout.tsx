@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Platform, Text } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
@@ -38,14 +38,14 @@ function IOSTabLayout() {
 
   return (
     <NativeTabs
-      tintColor={C.teal}
+      tintColor={C.textPrimary}
       iconColor={{
         default: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)",
-        selected: C.teal,
+        selected: C.textPrimary,
       }}
       labelStyle={{
-        default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)" },
-        selected: { color: C.teal },
+        default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)", fontWeight: "500" },
+        selected: { color: C.textPrimary, fontWeight: "700" },
       }}
       sceneContainerStyle={{ backgroundColor: C.bg }}
       screenOptions={{
@@ -72,7 +72,7 @@ function AndroidTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: C.teal,
+        tabBarActiveTintColor: C.textPrimary,
         tabBarInactiveTintColor: inactiveColor,
         tabBarStyle: {
           backgroundColor: C.bg,
@@ -99,6 +99,9 @@ function AndroidTabLayout() {
             href: hidden ? null : undefined,
             tabBarIcon: ({ color, size }) => (
               <MaterialIcons name={materialIcon} size={size} color={color} />
+            ),
+            tabBarLabel: ({ focused, color }) => (
+              <Text style={{ fontSize: 11, fontWeight: focused ? "700" : "500", color }}>{label}</Text>
             ),
           }}
         />

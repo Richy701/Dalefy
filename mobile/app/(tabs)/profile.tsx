@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image, Platform } from "react-native";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -119,7 +119,20 @@ export default function ProfileScreen() {
                 haptic.selection();
                 setMode(val);
               }}
-              style={{ width: 180 }}
+              style={{
+                width: 180,
+                ...Platform.select({
+                  ios: {
+                    shadowColor: "#000",
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 },
+                  },
+                  android: {
+                    elevation: 2,
+                  },
+                }),
+              }}
               appearance={isDark ? "dark" : "light"}
             />
           </View>
@@ -160,7 +173,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.haptics}
               onValueChange={(v) => { haptic.selection(); setPref("haptics", v); }}
-              trackColor={{ false: C.elevated, true: C.tealMid }}
+              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
               thumbColor={prefs.haptics ? C.teal : C.textTertiary}
             />
           </View>
@@ -177,7 +190,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.tripReminders}
               onValueChange={(v) => { haptic.selection(); setPref("tripReminders", v); }}
-              trackColor={{ false: C.elevated, true: C.tealMid }}
+              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
               thumbColor={prefs.tripReminders ? C.teal : C.textTertiary}
             />
           </View>
@@ -188,7 +201,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.itineraryUpdates}
               onValueChange={(v) => { haptic.selection(); setPref("itineraryUpdates", v); }}
-              trackColor={{ false: C.elevated, true: C.tealMid }}
+              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
               thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
             />
           </View>
@@ -199,7 +212,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.liveActivity !== false}
               onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
-              trackColor={{ false: C.elevated, true: C.tealMid }}
+              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
               thumbColor={prefs.liveActivity !== false ? C.teal : C.textTertiary}
             />
           </View>
