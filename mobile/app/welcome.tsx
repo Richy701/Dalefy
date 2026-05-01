@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
 import { ArrowRight, ArrowLeft, Camera, User, Building2, Check } from "lucide-react-native";
@@ -140,6 +141,14 @@ export default function WelcomeScreen() {
         const tempUri = result.assets[0].uri;
         setAvatar(tempUri);
         setUploading(true);
+        const ext = tempUri.split(".").pop()?.toLowerCase() || "jpg";
+        const localPath = `${FileSystem.documentDirectory}avatar.${ext}`;
+        FileSystem.copyAsync({ from: tempUri, to: localPath })
+          .then(() => {
+            setAvatar(localPath);
+            setPref("avatar", localPath);
+          })
+          .catch(() => {});
         uploadAvatar(tempUri).then((url) => {
           if (url) {
             uploadedUrlRef.current = url;
@@ -175,7 +184,7 @@ export default function WelcomeScreen() {
     if (!canSubmit || uploading) return;
     haptic.selection();
     setPref("name", trimmed);
-    const finalAvatar = uploadedUrlRef.current || (avatar.startsWith("http") ? avatar : null);
+    const finalAvatar = uploadedUrlRef.current || avatar;
     if (finalAvatar) setPref("avatar", finalAvatar);
 
     // Sync name/avatar to all existing trip_members docs in Firebase
