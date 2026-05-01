@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dafadventures.app",
-      "buildNumber": "8",
+      "buildNumber": "12",
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,
