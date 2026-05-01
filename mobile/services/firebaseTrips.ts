@@ -22,7 +22,7 @@ export async function fetchTrips(): Promise<Trip[]> {
   const memberSnap = await getDocs(
     query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
   );
-  const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
+  const tripIds = [...new Set(memberSnap.docs.map(d => d.data().trip_id as string))];
   if (tripIds.length === 0) return [];
 
   // Firestore "in" queries support max 30 values — batch if needed

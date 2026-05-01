@@ -63,6 +63,7 @@ export default function WelcomeScreen() {
   const [name, setName] = useState(prefs.name);
   const [avatar, setAvatar] = useState(prefs.avatar || "");
   const uploadedUrlRef = useRef<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const agencyRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -138,13 +139,14 @@ export default function WelcomeScreen() {
       if (!result.canceled && result.assets[0]) {
         const tempUri = result.assets[0].uri;
         setAvatar(tempUri);
+        setUploading(true);
         uploadAvatar(tempUri).then((url) => {
           if (url) {
             uploadedUrlRef.current = url;
             setAvatar(url);
             setPref("avatar", url);
           }
-        });
+        }).finally(() => setUploading(false));
       }
     };
 
@@ -170,10 +172,10 @@ export default function WelcomeScreen() {
 
   // ── Submit ──
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || uploading) return;
     haptic.selection();
     setPref("name", trimmed);
-    const finalAvatar = uploadedUrlRef.current || avatar;
+    const finalAvatar = uploadedUrlRef.current || (avatar.startsWith("http") ? avatar : null);
     if (finalAvatar) setPref("avatar", finalAvatar);
 
     // Sync name/avatar to all existing trip_members docs in Firebase
@@ -419,7 +421,7 @@ export default function WelcomeScreen() {
           )}
           <Pressable
             onPress={submit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || uploading}
             accessibilityRole="button"
             accessibilityLabel={isEdit ? "Save" : "Continue"}
             style={({ pressed }) => [
