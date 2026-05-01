@@ -290,7 +290,7 @@ export default function ScheduleScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingBottom: 90 },
+  scroll: { paddingBottom: 100 },
 
   header: { paddingHorizontal: S.md, marginBottom: S.lg },
   headerTitle: {

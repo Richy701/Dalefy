@@ -101,7 +101,6 @@ export default function DayDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
         {/* Day title section */}
         <View style={styles.titleSection}>
-          <Text style={styles.dayLabel}>DAY {dayIndex}</Text>
           <Text style={styles.dayTitle}>{weekday}</Text>
           <View style={styles.dateRow}>
             <Calendar size={12} color={C.textTertiary} strokeWidth={1.8} />
@@ -155,7 +154,7 @@ export default function DayDetailScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
+    scroll: { paddingBottom: 16 },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
@@ -166,13 +165,6 @@ function makeStyles(C: ThemeColors) {
     titleSection: {
       paddingHorizontal: S.lg,
       paddingBottom: S.lg,
-    },
-    dayLabel: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
-      color: C.teal,
-      letterSpacing: 3,
-      marginBottom: 4,
     },
     dayTitle: {
       fontSize: T["3xl"] + 4,
@@ -196,6 +188,7 @@ function makeStyles(C: ThemeColors) {
     // Type breakdown strip
     typeStrip: {
       flexDirection: "row",
+      flexWrap: "wrap",
       alignItems: "center",
       gap: 8,
       paddingHorizontal: S.lg,

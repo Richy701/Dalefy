@@ -15,7 +15,7 @@ import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, F, type ThemeColors, eventColor, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
 import { useMemo, useCallback } from "react";
 import type { TravelEvent } from "@/shared/types";
 
@@ -118,9 +118,10 @@ export default function EventDetailScreen() {
         } : {}),
       }} />
 
+      <View style={{ flex: 1 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ paddingBottom: 16 }}
       >
         {/* ── Hero with gradient overlay ── */}
         <View style={styles.heroWrap}>
@@ -268,48 +269,71 @@ export default function EventDetailScreen() {
           </View>
         )}
 
-        {/* ── Open in Maps button ── */}
-        {ev.location && ev.type !== "flight" && (
-          <Pressable
-            onPress={() => openInMaps(ev.title + " " + ev.location)}
-            style={({ pressed }) => [styles.mapsBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <MapPin size={16} color="#000" strokeWidth={2} />
-            <Text style={styles.mapsBtnText}>Open in Maps</Text>
-          </Pressable>
-        )}
-
-        {/* Terminal element clearance — keeps last item above tab bar */}
-        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
       </ScrollView>
+
+      {ev.location && ev.type !== "flight" && (
+        <Pressable
+          onPress={() => openInMaps(ev.title + " " + ev.location)}
+          style={({ pressed }) => [styles.mapsBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
+        >
+          <MapPin size={16} color="#000" strokeWidth={2} />
+          <Text style={styles.mapsBtnText}>Open in Maps</Text>
+        </Pressable>
+      )}
+      </View>
     </SafeAreaView>
   );
 }
 
 // ── Flight route visual ─────────────────────────────────────────────────────
-function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color: string }) {
-  const routeMatch = ev.title?.match(/^(.+?)\s*[→➜>]\s*(.+)$/);
-  const from = ev.depAirport || routeMatch?.[1]?.trim() || ev.location || "";
-  const to = ev.arrAirport || routeMatch?.[2]?.trim() || "";
-  const fromCode = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
-  const toCode = to ? (to.length <= 4 ? to.toUpperCase() : to.slice(0, 3).toUpperCase()) : "";
+function parseFlightCities(title: string): { from: string; to: string } {
+  const toMatch = title.match(/(?:^[A-Z]{2}\d+\s*[—\-–]\s*)?(.+?)\s+to\s+(.+?)(?:\s*\(.*\))?$/i);
+  if (toMatch) return { from: toMatch[1].trim(), to: toMatch[2].trim().replace(/\s*\(.*\)$/, "") };
+  const arrowMatch = title.match(/^(.+?)\s*[→➜>]\s*(.+)$/);
+  if (arrowMatch) return { from: arrowMatch[1].trim(), to: arrowMatch[2].trim() };
+  return { from: title, to: "" };
+}
 
-  if (!toCode) return null;
+function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color: string }) {
+  const depCode = ev.depAirport?.trim().toUpperCase() || "";
+  const arrCode = ev.arrAirport?.trim().toUpperCase() || "";
+  const hasIata = depCode.length >= 3 && arrCode.length >= 3;
+  const cities = parseFlightCities(ev.title || "");
+
+  const fromCity = cities.from;
+  const toCity = cities.to;
+
+  if (!hasIata && !toCity) return null;
 
   return (
     <View style={[frs.routeCard, { backgroundColor: C.card }]}>
-      <View style={frs.airport}>
-        <Text style={[frs.code, { color: C.textPrimary }]}>{fromCode}</Text>
-        <Text style={[frs.time, { color: C.textTertiary }]}>{ev.time || ""}</Text>
+      <View style={frs.endpoint}>
+        <Text style={[frs.cityName, { color: C.textPrimary }]} numberOfLines={2}>{fromCity}</Text>
+        {hasIata && (
+          <Text style={[frs.iata, { color: C.textSecondary }]}>
+            {depCode.slice(0, 3)}{ev.terminal ? ` · T${ev.terminal}` : ""}
+          </Text>
+        )}
+        {ev.time ? <Text style={[frs.time, { color: color }]}>{ev.time}</Text> : null}
       </View>
-      <View style={frs.routeMiddle}>
-        <View style={[frs.dash, { borderColor: C.border }]} />
-        <Plane size={14} color={color} strokeWidth={1.8} />
-        <View style={[frs.dash, { borderColor: C.border }]} />
+      <View style={frs.connector}>
+        <View style={frs.flightPath}>
+          <View style={[frs.pathLine, { backgroundColor: C.border }]} />
+          <Plane size={16} color={C.textSecondary} strokeWidth={1.8} style={{ transform: [{ rotate: "90deg" }] }} />
+          <View style={[frs.pathLine, { backgroundColor: C.border }]} />
+        </View>
+        {ev.duration && (
+          <Text style={[frs.duration, { color: C.textTertiary }]}>{ev.duration}</Text>
+        )}
       </View>
-      <View style={frs.airport}>
-        <Text style={[frs.code, { color: C.textPrimary }]}>{toCode}</Text>
-        <Text style={[frs.time, { color: C.textTertiary }]}>{ev.endTime || ""}</Text>
+      <View style={[frs.endpoint, { alignItems: "flex-end" }]}>
+        <Text style={[frs.cityName, { color: C.textPrimary, textAlign: "right" }]} numberOfLines={2}>{toCity}</Text>
+        {hasIata && (
+          <Text style={[frs.iata, { color: C.textSecondary }]}>
+            {arrCode.slice(0, 3)}{ev.arrTerminal ? ` · T${ev.arrTerminal}` : ""}
+          </Text>
+        )}
+        {ev.endTime ? <Text style={[frs.time, { color: color }]}>{ev.endTime}</Text> : null}
       </View>
     </View>
   );
@@ -317,22 +341,27 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
 
 const frs = StyleSheet.create({
   routeCard: {
-    flexDirection: "row", alignItems: "center",
+    flexDirection: "row", alignItems: "flex-start",
     marginHorizontal: S.lg, marginBottom: S.md,
     borderRadius: R.xl, padding: S.lg,
   },
-  airport: { alignItems: "center", width: 80 },
-  code: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
-  time: { fontSize: T.sm, fontWeight: "500", marginTop: 4 },
-  routeMiddle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  dash: { flex: 1, height: 1, borderStyle: "dashed", borderWidth: 0.5 },
+  endpoint: { flex: 1 },
+  cityName: { fontSize: T.lg, fontWeight: "700", letterSpacing: -0.2, lineHeight: 24 },
+  iata: { fontSize: 12, fontWeight: "700", letterSpacing: 1, marginTop: 2 },
+  time: { fontSize: T.base, fontWeight: "700", marginTop: 4 },
+  connector: { alignItems: "center", paddingTop: 4, flex: 0.8 },
+  flightPath: {
+    flexDirection: "row", alignItems: "center",
+    width: "100%", gap: 6, paddingHorizontal: 4,
+  },
+  pathLine: { flex: 1, height: 1 },
+  duration: { fontSize: 12, fontWeight: "500", marginTop: 4 },
 });
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },

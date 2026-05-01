@@ -215,7 +215,7 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
 
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg },
+    safe: { flex: 1, backgroundColor: C.bg, overflow: "hidden" as const },
 
     // Native drag indicator
     dragBar: {

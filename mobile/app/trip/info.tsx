@@ -9,7 +9,7 @@ import { ChevronDown } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, F, type ThemeColors, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
 
 export default function InfoScreen() {
@@ -118,7 +118,7 @@ export default function InfoScreen() {
         </View>
 
         {/* Terminal element clearance */}
-        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
+        <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>
   );

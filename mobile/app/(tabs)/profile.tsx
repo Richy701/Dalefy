@@ -297,7 +297,7 @@ export default function ProfileScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 120, paddingHorizontal: S.md },
+    scroll: { paddingBottom: 100, paddingHorizontal: S.md },
 
     // ── Hero ──
     heroCard: {

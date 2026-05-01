@@ -472,7 +472,7 @@ export default function DestinationsScreen() {
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.card },
-    scroll: { paddingBottom: 120 },
+    scroll: { paddingBottom: 100 },
     stickyHeader: {
       position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
       overflow: "hidden",

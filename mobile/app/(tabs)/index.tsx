@@ -37,7 +37,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, T, R, S, TAB_BAR_HEIGHT } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 
@@ -518,7 +518,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
       >
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1, backgroundColor: C.card }}
+            style={{ flex: 1, backgroundColor: C.card, overflow: "hidden" as const }}
           >
             <ScrollView
               bounces={false}
@@ -754,7 +754,6 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     codeSheet: {
       backgroundColor: HAS_LIQUID_GLASS ? "transparent" : C.card,
-      borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
       paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.xl,
       gap: S.xs,
     },
@@ -1226,7 +1225,7 @@ export default function HomeScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16 }]}
         keyboardShouldPersistTaps="handled"
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
@@ -1353,7 +1352,7 @@ export default function HomeScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 140 },
+    scroll: {},
 
     section: { marginTop: S.xl },
 

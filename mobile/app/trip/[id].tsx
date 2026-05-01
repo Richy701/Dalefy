@@ -12,7 +12,7 @@ import {
 } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, type ThemeColors, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { resolveCoords } from "@/shared/coordinates";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
@@ -460,7 +460,7 @@ export default function TripScreen() {
         </View>
 
         {/* Terminal element clearance */}
-        <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + 16 }} />
+        <View style={{ height: 16 }} />
       </Animated.ScrollView>
     </SafeAreaView>
   );
