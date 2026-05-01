@@ -145,8 +145,12 @@ export default function WelcomeScreen() {
         const ext = tempUri.split(".").pop()?.toLowerCase() || "jpg";
         const localPath = `${FileSystem.documentDirectory}avatar.${ext}`;
         FileSystem.copyAsync({ from: tempUri, to: localPath })
-          .then(() => setPref("avatar", localPath))
-          .catch(() => setPref("avatar", tempUri));
+          .then(() => {
+            if (!uploadedUrlRef.current) setPref("avatar", localPath);
+          })
+          .catch(() => {
+            if (!uploadedUrlRef.current) setPref("avatar", tempUri);
+          });
 
         uploadAvatar(tempUri).then((url) => {
           if (url) {
@@ -370,7 +374,7 @@ export default function WelcomeScreen() {
             >
               <View style={styles.avatarCircle}>
                 {avatar ? (
-                  <Image source={{ uri: avatar }} style={styles.avatarImage} />
+                  <Image source={{ uri: avatar }} style={styles.avatarImage} onError={() => setAvatar("")} />
                 ) : (
                   <User size={36} color={C.textTertiary} strokeWidth={1.2} />
                 )}
