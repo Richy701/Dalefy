@@ -13,6 +13,10 @@ module.exports = function withNativeWidgets(config) {
       );
       const sourceDir = path.join(projectRoot, "native-widgets");
 
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
       const files = fs.readdirSync(sourceDir).filter((f) => f.endsWith(".swift"));
       for (const file of files) {
         fs.copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));

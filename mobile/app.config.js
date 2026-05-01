@@ -5,6 +5,7 @@ module.exports = ({ config }) => ({
     "expo-font",
     "expo-image",
     "expo-sharing",
+    "./plugins/withNativeWidgets",
     [
       "expo-widgets",
       {
@@ -28,7 +29,6 @@ module.exports = ({ config }) => ({
         ],
       },
     ],
-    "./plugins/withNativeWidgets",
     [
       "@rnmapbox/maps",
       { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ?? "" },
