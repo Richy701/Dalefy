@@ -15,7 +15,7 @@ module.exports = ({ config }) => ({
             name: "TripCountdown",
             displayName: "Trip Countdown",
             description: "Countdown to your next adventure",
-            supportedFamilies: ["systemSmall", "systemMedium"],
+            supportedFamilies: ["systemSmall", "systemMedium", "systemLarge", "accessoryCircular", "accessoryRectangular", "accessoryInline"],
           },
         ],
         liveActivities: [
@@ -28,6 +28,7 @@ module.exports = ({ config }) => ({
         ],
       },
     ],
+    "./plugins/withNativeWidgets",
     [
       "@rnmapbox/maps",
       { RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ?? "" },

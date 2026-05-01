@@ -39,6 +39,7 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
+  const [avatarError, setAvatarError] = useState(false);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -86,8 +87,8 @@ export default function ProfileScreen() {
           accessibilityLabel="Edit your name"
         >
           <View style={s.avatar}>
-            {prefs.avatar ? (
-              <Image source={{ uri: prefs.avatar }} style={s.avatarImg} />
+            {prefs.avatar && !avatarError ? (
+              <Image source={{ uri: prefs.avatar }} style={s.avatarImg} onError={() => setAvatarError(true)} />
             ) : initials ? (
               <Text style={s.avatarText}>{initials}</Text>
             ) : (
