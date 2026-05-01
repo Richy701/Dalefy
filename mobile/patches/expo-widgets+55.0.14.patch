@@ -1,10 +1,11 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
-index 1234567..abcdefg 100644
+index 9eae718..40cc151 100644
 --- a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
-@@ -3,9 +3,9 @@ import ExpoModulesCore
+@@ -3,10 +3,10 @@ import WidgetKit
+ import ExpoModulesCore
  import ActivityKit
-
+ 
 -struct LiveActivityAttributes: ActivityAttributes {
 +public struct LiveActivityAttributes: ActivityAttributes {
    public struct ContentState: Codable, Hashable {
@@ -14,3 +15,4 @@ index 1234567..abcdefg 100644
 +    public var props: String
    }
  }
+ 
