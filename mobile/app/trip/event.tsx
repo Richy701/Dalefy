@@ -19,13 +19,14 @@ import { T, R, S, F, type ThemeColors, eventColor } from "@/constants/theme";
 import { useMemo, useCallback } from "react";
 import type { TravelEvent } from "@/shared/types";
 
-function openInMaps(query: string) {
-  const encoded = encodeURIComponent(query);
-  const url = Platform.select({
-    ios: `maps:0,0?q=${encoded}`,
-    default: `https://www.google.com/maps/search/?api=1&query=${encoded}`,
-  });
-  Linking.openURL(url);
+function openInMaps(location: string, coords?: [number, number]) {
+  if (coords) {
+    const [lng, lat] = coords;
+    const label = encodeURIComponent(location);
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${label}`);
+  } else {
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`);
+  }
 }
 
 function formatDate(d: string): string {
@@ -186,9 +187,9 @@ export default function EventDetailScreen() {
         )}
 
         {/* ── Location card ── */}
-        {ev.location && (
+        {ev.location && ev.type !== "flight" && (
           <Pressable
-            onPress={() => openInMaps(ev.title + " " + ev.location)}
+            onPress={() => openInMaps(ev.location, ev.locationCoords)}
             style={({ pressed }) => [styles.locationCard, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
           >
             <View style={[styles.locationIcon, { backgroundColor: `${color}15` }]}>
@@ -273,7 +274,7 @@ export default function EventDetailScreen() {
 
       {ev.location && ev.type !== "flight" && (
         <Pressable
-          onPress={() => openInMaps(ev.title + " " + ev.location)}
+          onPress={() => openInMaps(ev.location, ev.locationCoords)}
           style={({ pressed }) => [styles.mapsBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
         >
           <MapPin size={16} color="#000" strokeWidth={2} />

@@ -11,7 +11,7 @@ interface Suggestion {
 
 interface LocationAutocompleteProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, coords?: [number, number]) => void;
   placeholder?: string;
   className?: string;
 }
@@ -48,7 +48,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className }
   };
 
   const handleSelect = (s: Suggestion) => {
-    onChange(s.place_name);
+    onChange(s.place_name, s.center);
     setSuggestions([]);
     setOpen(false);
   };

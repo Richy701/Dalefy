@@ -1378,7 +1378,7 @@ export function WorkspacePage() {
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
                     <LocationAutocomplete
                       value={editingEvent?.location || ""}
-                      onChange={val => setEditingEvent(prev => prev ? { ...prev, location: val } : null)}
+                      onChange={(val, coords) => setEditingEvent(prev => prev ? { ...prev, location: val, locationCoords: coords ?? prev.locationCoords } : null)}
                       placeholder="Search for a place..."
                       className="h-10 w-full text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
                     />

@@ -20,6 +20,7 @@ export interface TravelEvent {
   title: string;
   description?: string;
   location: string;
+  locationCoords?: [number, number];
   supplier?: string;
   price?: string;
   confNumber?: string;
