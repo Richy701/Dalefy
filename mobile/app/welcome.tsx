@@ -141,14 +141,13 @@ export default function WelcomeScreen() {
         const tempUri = result.assets[0].uri;
         setAvatar(tempUri);
         setUploading(true);
+
         const ext = tempUri.split(".").pop()?.toLowerCase() || "jpg";
         const localPath = `${FileSystem.documentDirectory}avatar.${ext}`;
         FileSystem.copyAsync({ from: tempUri, to: localPath })
-          .then(() => {
-            setAvatar(localPath);
-            setPref("avatar", localPath);
-          })
-          .catch(() => {});
+          .then(() => setPref("avatar", localPath))
+          .catch(() => setPref("avatar", tempUri));
+
         uploadAvatar(tempUri).then((url) => {
           if (url) {
             uploadedUrlRef.current = url;
@@ -181,7 +180,7 @@ export default function WelcomeScreen() {
 
   // ── Submit ──
   const submit = async () => {
-    if (!canSubmit || uploading) return;
+    if (!canSubmit) return;
     haptic.selection();
     setPref("name", trimmed);
     const finalAvatar = uploadedUrlRef.current || avatar;
@@ -430,7 +429,7 @@ export default function WelcomeScreen() {
           )}
           <Pressable
             onPress={submit}
-            disabled={!canSubmit || uploading}
+            disabled={!canSubmit}
             accessibilityRole="button"
             accessibilityLabel={isEdit ? "Save" : "Continue"}
             style={({ pressed }) => [
