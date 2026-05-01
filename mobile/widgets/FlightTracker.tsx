@@ -26,6 +26,7 @@ export type FlightTrackerProps = {
   status: string;
   gate: string;
   duration?: string;
+  progress?: number;
 };
 
 function FlightTrackerActivity(

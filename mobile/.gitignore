@@ -38,5 +38,6 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
-/ios
+/ios/*
+!/ios/ExpoWidgetsTarget/
 /android
