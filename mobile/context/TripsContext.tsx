@@ -74,8 +74,11 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, [qc]);
 
-  // Use remote data when available, fall back to local cache
-  const trips = remoteTrips ?? localCache ?? [];
+  // Use remote data when available, fall back to local cache.
+  // Prefer local cache when remote returns empty but cache has data (offline scenario).
+  const trips = (remoteTrips && remoteTrips.length > 0) ? remoteTrips
+    : (localCache && localCache.length > 0) ? localCache
+    : remoteTrips ?? localCache ?? [];
   const ready = isSuccess || isError || localCache !== null;
 
   const addTrip = useCallback((trip: Trip) => {
