@@ -55,10 +55,13 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Sync remote data → local cache when it arrives (skip during pending writes)
+  // Never overwrite good cache with empty results (offline Firestore returns [])
   useEffect(() => {
     if (remoteTrips && pendingWrites.current === 0) {
-      setLocalCache(remoteTrips);
-      if (remoteTrips.length > 0) save(remoteTrips);
+      if (remoteTrips.length > 0) {
+        setLocalCache(remoteTrips);
+        save(remoteTrips);
+      }
     }
   }, [remoteTrips]);
 
@@ -67,9 +70,10 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = subscribeToTrips((freshTrips) => {
       if (pendingWrites.current > 0) return;
+      if (freshTrips.length === 0) return;
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
       setLocalCache(freshTrips);
-      if (freshTrips.length > 0) save(freshTrips);
+      save(freshTrips);
     });
     return () => unsub();
   }, [qc]);

@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Image,
   ActionSheetIOS, Alert, Dimensions,
 } from "react-native";
+import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -379,7 +380,7 @@ export default function WelcomeScreen() {
             >
               <View style={styles.avatarCircle}>
                 {avatar ? (
-                  <Image source={{ uri: avatar }} style={styles.avatarImage} onError={() => setAvatar("")} />
+                  <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
                 ) : (
                   <User size={36} color={C.textTertiary} strokeWidth={1.2} />
                 )}

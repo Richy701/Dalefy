@@ -10,6 +10,15 @@ import { getDeviceId } from "./deviceId";
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("offline-timeout")), ms),
+    ),
+  ]);
+}
+
 /**
  * Fetch only trips this device has explicitly joined (via PIN or creation).
  * 1. Get trip IDs from trip_members where device_id matches
@@ -18,9 +27,10 @@ const TRIP_MEMBERS = "trip_members";
 export async function fetchTrips(): Promise<Trip[]> {
   const deviceId = await getDeviceId();
 
-  // Get trip IDs this device has joined
-  const memberSnap = await getDocs(
-    query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
+  // Get trip IDs this device has joined (timeout prevents hanging when offline)
+  const memberSnap = await withTimeout(
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
+    8000,
   );
   const tripIds = [...new Set(memberSnap.docs.map(d => d.data().trip_id as string))];
   if (tripIds.length === 0) return [];
@@ -29,8 +39,9 @@ export async function fetchTrips(): Promise<Trip[]> {
   const trips: Trip[] = [];
   for (let i = 0; i < tripIds.length; i += 30) {
     const batch = tripIds.slice(i, i + 30);
-    const snap = await getDocs(
-      query(collection(firebaseDb(), TRIPS), where("__name__", "in", batch)),
+    const snap = await withTimeout(
+      getDocs(query(collection(firebaseDb(), TRIPS), where("__name__", "in", batch))),
+      8000,
     );
     for (const d of snap.docs) {
       trips.push(docToTrip(d.id, d.data()));
@@ -54,8 +65,9 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
   async function setupListeners() {
     try {
       const deviceId = await getDeviceId();
-      const memberSnap = await getDocs(
-        query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
+      const memberSnap = await withTimeout(
+        getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
+        8000,
       );
       const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
 
