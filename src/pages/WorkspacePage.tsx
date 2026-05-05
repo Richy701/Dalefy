@@ -12,7 +12,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Car, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, EllipsisVertical
+  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Car, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, EllipsisVertical, ListChecks
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
 import { DockBar } from "@/components/workspace/DockBar";
 import { TripMap } from "@/components/workspace/TripMap";
+import { TaskChecklist } from "@/components/workspace/TaskChecklist";
 import { TripMediaGallery } from "@/components/workspace/TripMediaGallery";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ShareTripDialog } from "@/components/shared/ShareTripDialog";
@@ -104,6 +105,7 @@ export function WorkspacePage() {
   }, [trip, searchParams, setSearchParams]);
 
   const [showMap, setShowMap] = useState(false);
+  const [showTasks, setShowTasks] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
@@ -753,7 +755,10 @@ export function WorkspacePage() {
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash2 className="h-4 w-4" />
           </button>
-          <button onClick={() => setShowMap(!showMap)} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+          <button onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showTasks ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+            <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">{showTasks ? "HIDE TASKS" : "TASKS"}</span>
+          </button>
+          <button onClick={() => { setShowMap(!showMap); if (!showMap) setShowTasks(false); }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">{showMap ? "HIDE MAP" : "SHOW MAP"}</span>
           </button>
           <button
@@ -787,7 +792,10 @@ export function WorkspacePage() {
                 <EllipsisVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
-              <DropdownMenuItem onClick={() => setShowMap(!showMap)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <ListChecks className="h-4 w-4 text-brand" /> {showTasks ? "Hide Tasks" : "Tasks"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) setShowTasks(false); }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <MapIcon className="h-4 w-4 text-brand" /> {showMap ? "Hide Map" : "Show Map"}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
@@ -866,7 +874,7 @@ export function WorkspacePage() {
         </aside>
 
         <div className="flex-1 flex flex-row overflow-hidden relative">
-          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap ? "lg:w-[60%]" : "w-full"}`}>
+          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap || showTasks ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
@@ -1088,7 +1096,7 @@ export function WorkspacePage() {
                   </div>
                 </div>
                 {/* Hide DockBar on mobile when map is fullscreen */}
-                <div className={showMap ? "hidden lg:block" : ""}>
+                <div className={showMap || showTasks ? "hidden lg:block" : ""}>
                   <DockBar onAddEvent={handleAddEvent} />
                 </div>
               </>
@@ -1236,6 +1244,28 @@ export function WorkspacePage() {
               <div className="flex-1 min-h-0">
                 <TripMap theme={theme} trip={trip} />
               </div>
+            </aside>
+          )}
+          {showTasks && (
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-sm shrink-0 z-50">
+                <div className="flex items-center gap-2.5">
+                  <ListChecks className="h-4 w-4 text-brand" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Tasks</span>
+                </div>
+                <button
+                  onClick={() => setShowTasks(false)}
+                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center active:scale-95 transition-transform"
+                  aria-label="Close tasks"
+                >
+                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                </button>
+              </div>
+              <TaskChecklist
+                tasks={trip.tasks ?? []}
+                onUpdate={(tasks) => updateTrip(trip.id, { tasks })}
+                travelers={trip.travelers}
+              />
             </aside>
           )}
         </div>

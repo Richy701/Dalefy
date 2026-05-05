@@ -91,6 +91,16 @@ export interface OrgMember {
 
 export type OrgRole = OrgMember["role"];
 
+export interface TripTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  assignee?: string;
+  dueDate?: string;
+  category?: "booking" | "documents" | "logistics" | "communication" | "other";
+  createdAt: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -114,6 +124,7 @@ export interface Trip {
   shortCode?: string;
   organizer?: TripOrganizer;
   info?: TripInfo[];
+  tasks?: TripTask[];
 }
 
 export interface ComplianceDoc {
