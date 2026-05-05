@@ -9,6 +9,7 @@ private struct TD {
   let state: String
   let tripName: String
   let destination: String
+  let tripImage: String
   let daysLeft: Int
   let startDate: String
   let currentDay: Int
@@ -22,6 +23,7 @@ private struct TD {
     state       = (props?["state"] as? String) ?? "empty"
     tripName    = (props?["tripName"] as? String) ?? ""
     destination = (props?["destination"] as? String) ?? ""
+    tripImage   = (props?["tripImage"] as? String) ?? ""
     daysLeft    = (props?["daysLeft"] as? Int) ?? 0
     startDate   = (props?["startDate"] as? String) ?? ""
     currentDay  = (props?["currentDay"] as? Int) ?? 0
@@ -146,6 +148,37 @@ private struct EventLine: View {
   }
 }
 
+// MARK: - Remote Image
+
+private func loadRemoteImage(_ urlString: String) -> UIImage? {
+  guard !urlString.isEmpty,
+        let url = URL(string: urlString),
+        let data = try? Data(contentsOf: url),
+        let img = UIImage(data: data)
+  else { return nil }
+  return img
+}
+
+private struct TripBackground: View {
+  let urlString: String
+  let dark: Bool
+
+  var body: some View {
+    if let img = loadRemoteImage(urlString) {
+      ZStack {
+        Image(uiImage: img)
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+        LinearGradient(
+          colors: [.clear, Color.black.opacity(0.5), Color.black.opacity(0.85)],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+      }
+    }
+  }
+}
+
 // MARK: - Widget
 
 struct TripCountdown: Widget {
@@ -170,7 +203,8 @@ private struct Router: View {
 
   var body: some View {
     let d = TD(props: entry.props)
-    let dark = cs == .dark
+    let hasImage = d.state != "empty" && !d.tripImage.isEmpty
+    let dark = hasImage ? true : cs == .dark
     Group {
       switch fam {
       case .systemSmall:  Small(d: d, dark: dark)
@@ -182,18 +216,31 @@ private struct Router: View {
       default: Medium(d: d, dark: dark)
       }
     }
-    .bg(dark: dark, fam: fam)
+    .bg(dark: dark, fam: fam, imageUrl: hasImage ? d.tripImage : "")
   }
 }
 
 private extension View {
-  @ViewBuilder func bg(dark: Bool, fam: WidgetFamily) -> some View {
+  @ViewBuilder func bg(dark: Bool, fam: WidgetFamily, imageUrl: String = "") -> some View {
     if fam == .accessoryCircular || fam == .accessoryRectangular || fam == .accessoryInline {
       self
     } else if #available(iOS 17.0, *) {
-      self.containerBackground(for: .widget) { dark ? Color(hex: "#050505") : Color.white }
+      self.containerBackground(for: .widget) {
+        if !imageUrl.isEmpty {
+          TripBackground(urlString: imageUrl, dark: dark)
+        } else {
+          dark ? Color(hex: "#050505") : Color.white
+        }
+      }
     } else {
-      self.background(dark ? Color(hex: "#050505") : Color.white)
+      ZStack {
+        if !imageUrl.isEmpty {
+          TripBackground(urlString: imageUrl, dark: dark)
+        } else {
+          (dark ? Color(hex: "#050505") : Color.white)
+        }
+        self
+      }
     }
   }
 }
@@ -788,7 +835,7 @@ private struct LockRect: View {
           Text("DALEFY").font(.system(size: 9, weight: .heavy)).tracking(0.3)
         }
         Text("No trips planned").font(.system(size: 13, weight: .bold))
-        Text("Tap to plan one").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+        Text("Join a trip to start").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
       }.frame(maxWidth: .infinity, alignment: .leading)
     }
   }
