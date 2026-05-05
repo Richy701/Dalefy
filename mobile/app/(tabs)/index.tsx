@@ -28,7 +28,7 @@ import {
   MapPin, ChevronRight, CalendarDays, Users,
   ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
   Bell, Sun, Moon, Plus, X as XIcon, ScanLine, Link2, Hash,
-  Check, Clock,
+  Check, Clock, WifiOff,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
@@ -1161,7 +1161,7 @@ export default function HomeScreen() {
   const { C } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, ready, reload } = useTrips();
+  const { trips, ready, offline, reload } = useTrips();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -1334,14 +1334,24 @@ export default function HomeScreen() {
 
 
         {/* ── Empty state ── */}
-        {trips.length === 0 && (
-          <View style={styles.emptyState}>
-            <Illustration name="riding" width={260} height={160} />
-            <Text style={styles.emptyTitle}>Ready for takeoff</Text>
-            <Text style={styles.emptyText}>
-              Paste the trip code or scan the QR your agent shared to unlock your itinerary.
-            </Text>
-          </View>
+        {ready && trips.length === 0 && (
+          offline ? (
+            <View style={styles.emptyState}>
+              <WifiOff size={48} color={C.textTertiary} strokeWidth={1.2} />
+              <Text style={styles.emptyTitle}>You're offline</Text>
+              <Text style={styles.emptyText}>
+                Your trips will appear here once you're back online.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Illustration name="riding" width={260} height={160} />
+              <Text style={styles.emptyTitle}>Ready for takeoff</Text>
+              <Text style={styles.emptyText}>
+                Paste the trip code or scan the QR your agent shared to unlock your itinerary.
+              </Text>
+            </View>
+          )
         )}
 
       </ScrollView>

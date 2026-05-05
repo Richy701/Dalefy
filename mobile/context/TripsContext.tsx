@@ -9,6 +9,7 @@ const CACHE_KEY = "daf-trips-cache";
 interface TripsContextValue {
   trips: Trip[];
   ready: boolean;
+  offline: boolean;
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
   updateTrip: (trip: Trip) => void;
@@ -88,6 +89,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return remoteTrips ?? localCache ?? [];
   }, [remoteTrips, localCache]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
+  const offline = isError && !isSuccess;
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
@@ -181,7 +183,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   return (
-    <TripsContext.Provider value={{ trips, ready, addTrip, deleteTrip, updateTrip, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
+    <TripsContext.Provider value={{ trips, ready, offline, addTrip, deleteTrip, updateTrip, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
       {children}
     </TripsContext.Provider>
   );
