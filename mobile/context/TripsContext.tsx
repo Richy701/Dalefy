@@ -6,6 +6,18 @@ import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/
 
 const CACHE_KEY = "daf-trips-cache";
 
+// Eager module-level cache read — fires at import time, well before React mounts.
+// If AsyncStorage resolves before first render, trips are available immediately.
+let _eagerCache: Trip[] | null = null;
+let _eagerReady = false;
+AsyncStorage.getItem(CACHE_KEY).then(raw => {
+  console.log("[TripsCache] eager load:", raw ? `${JSON.parse(raw).length} trips` : "empty");
+  if (raw) {
+    try { _eagerCache = JSON.parse(raw) as Trip[]; } catch {}
+  }
+  _eagerReady = true;
+}).catch(() => { _eagerReady = true; });
+
 interface TripsContextValue {
   trips: Trip[];
   ready: boolean;
@@ -29,19 +41,23 @@ function save(trips: Trip[]) {
 }
 
 export function TripsProvider({ children }: { children: React.ReactNode }) {
-  const [localCache, setLocalCache] = useState<Trip[] | null>(null);
+  const [localCache, setLocalCache] = useState<Trip[] | null>(_eagerCache);
   const mounted = useRef(true);
   const qc = useQueryClient();
   /** Track pending writes — block subscription updates until all writes settle */
   const pendingWrites = useRef(0);
 
-  // Load local cache for instant display
+  // Load local cache for instant display (fallback if eager read wasn't ready)
   useEffect(() => {
     mounted.current = true;
+    if (_eagerReady && _eagerCache) {
+      setLocalCache(_eagerCache);
+      return () => { mounted.current = false; };
+    }
     AsyncStorage.getItem(CACHE_KEY)
       .then(raw => {
         if (raw && mounted.current) setLocalCache(JSON.parse(raw) as Trip[]);
-        else if (mounted.current) setLocalCache([]);          // no cache → empty
+        else if (mounted.current) setLocalCache([]);
       })
       .catch(() => { if (mounted.current) setLocalCache([]); });
     return () => { mounted.current = false; };
