@@ -601,7 +601,9 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     <Text style={[styles.codeErrorText, { textAlign: "center" }]}>{codeError}</Text>
                   ) : resolving ? (
                     <Text style={styles.checkingText}>Looking up…</Text>
-                  ) : null}
+                  ) : (
+                    <Text style={styles.pinHint}>Your organiser will share a 4-6 character code.</Text>
+                  )}
                 </View>
               )}
 
@@ -754,39 +756,39 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     codeSheet: {
       backgroundColor: HAS_LIQUID_GLASS ? "transparent" : C.card,
-      paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.xl,
+      paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.xl,
       gap: S.xs,
     },
     sheetGrabber: {
       alignSelf: "center",
-      width: 40, height: 4, borderRadius: 2,
+      width: 36, height: 4, borderRadius: 2,
       backgroundColor: C.border,
-      marginBottom: S.sm,
+      marginBottom: S.md,
     },
     sheetHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      marginBottom: S.sm,
-    },
-    sheetSub: {
-      fontSize: T.sm, color: C.textSecondary, lineHeight: 20,
       marginBottom: S.md,
     },
+    sheetSub: {
+      fontSize: T.sm, color: C.textTertiary, lineHeight: 20,
+      marginBottom: S.sm, textAlign: "center",
+    },
     codeTitle: {
-      fontSize: T.xl, fontWeight: T.bold,
+      fontSize: T["2xl"], fontWeight: "700",
       color: C.textPrimary, letterSpacing: -0.3,
     },
     codeClose: {
-      width: 32, height: 32, borderRadius: 16,
+      width: 30, height: 30, borderRadius: 15,
       alignItems: "center", justifyContent: "center",
       backgroundColor: C.elevated,
     },
     modeTabs: {
       flexDirection: "row", backgroundColor: C.elevated,
-      borderRadius: R.lg, padding: 3, marginBottom: S.md,
+      borderRadius: R.lg, padding: 3, marginBottom: S.lg,
     },
     modeTab: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 5, paddingVertical: 8, borderRadius: R.md,
+      gap: 5, paddingVertical: 9, borderRadius: R.md,
     },
     modeTabActive: {
       backgroundColor: C.card,
@@ -795,25 +797,27 @@ function makeGreetingStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary,
     },
     modeContent: {
-      minHeight: 140,
       alignItems: "center",
-      paddingHorizontal: S.sm,
+      paddingHorizontal: S.xs,
     },
     pinRow: {
       flexDirection: "row", justifyContent: "center",
-      gap: 8, marginVertical: S.xs,
+      gap: 10, marginVertical: S.sm,
     },
     pinCell: {
-      flex: 1, maxWidth: 52,
-      height: 60, borderRadius: 12,
+      width: 46, height: 52, borderRadius: R.lg,
       borderWidth: 1.5, borderColor: C.border,
       backgroundColor: C.elevated,
       textAlign: "center",
-      fontSize: 24, fontWeight: T.bold,
+      fontSize: 22, fontWeight: T.bold,
       color: C.textPrimary, letterSpacing: -0.3,
     },
     pinCellFilled: { borderColor: C.teal, backgroundColor: C.tealDim },
     pinCellError: { borderColor: "#ff6b6b" },
+    pinHint: {
+      fontSize: T.xs, color: C.textDim,
+      textAlign: "center", marginTop: S.sm,
+    },
     checkingText: {
       fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
       letterSpacing: 1.5, textTransform: "uppercase",
@@ -1196,8 +1200,8 @@ export default function HomeScreen() {
   const spotlightTrip = useMemo(() =>
     sorted.filter(t => t.status !== "Draft").find(t => new Date(t.end) >= new Date()) ??
     sorted.find(t => new Date(t.end) >= new Date()) ??
-    trips[0] ?? null,
-    [sorted, trips]);
+    null,
+    [sorted]);
 
   // Place events (activity, hotel, dining) for spotlight, up to 3
   const spotlightPlaces = useMemo(() => {
