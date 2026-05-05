@@ -1231,6 +1231,14 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
 
+        {/* ── Offline banner ── */}
+        {offline && trips.length > 0 && (
+          <View style={styles.offlineBanner}>
+            <WifiOff size={14} color={C.textTertiary} strokeWidth={2} />
+            <Text style={styles.offlineText}>You're offline. Showing saved trips.</Text>
+          </View>
+        )}
+
         {/* ── Upcoming Trip ── */}
         {!ready ? (
           <View style={styles.section}>
@@ -1469,6 +1477,17 @@ function makeStyles(C: ThemeColors) {
       marginTop: 2,
     },
     quickSub: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary },
+
+    // ── Offline banner ──
+    offlineBanner: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 10, paddingHorizontal: S.md,
+      backgroundColor: C.elevated, borderRadius: R.lg,
+      marginHorizontal: S.md, marginBottom: S.sm,
+    },
+    offlineText: {
+      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
+    },
 
     // ── Empty ──
     emptyState: {
