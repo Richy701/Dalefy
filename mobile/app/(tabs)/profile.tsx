@@ -18,6 +18,7 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { useToast } from "@/context/ToastContext";
 import { FadeIn } from "@/components/FadeIn";
+import { CachedImage } from "@/components/CachedImage";
 import { useMemo, useState, useCallback } from "react";
 
 export default function ProfileScreen() {
@@ -39,7 +40,6 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
-  const [avatarError, setAvatarError] = useState(false);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -87,8 +87,8 @@ export default function ProfileScreen() {
           accessibilityLabel="Edit your name"
         >
           <View style={s.avatar}>
-            {prefs.avatar && !avatarError ? (
-              <Image source={{ uri: prefs.avatar }} style={s.avatarImg} onError={() => setAvatarError(true)} />
+            {prefs.avatar ? (
+              <CachedImage uri={prefs.avatar} style={s.avatarImg} blurhash={null} />
             ) : initials ? (
               <Text style={s.avatarText}>{initials}</Text>
             ) : (

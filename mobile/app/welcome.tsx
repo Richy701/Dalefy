@@ -144,12 +144,17 @@ export default function WelcomeScreen() {
 
         const ext = tempUri.split(".").pop()?.toLowerCase() || "jpg";
         const localPath = `${FileSystem.documentDirectory}avatar.${ext}`;
+
+        // Copy to persistent local storage first (survives app restart)
         FileSystem.copyAsync({ from: tempUri, to: localPath })
           .then(() => {
-            if (!uploadedUrlRef.current) setPref("avatar", localPath);
+            if (!uploadedUrlRef.current) {
+              setPref("avatar", localPath);
+              setAvatar(localPath);
+            }
           })
           .catch(() => {
-            if (!uploadedUrlRef.current) setPref("avatar", tempUri);
+            // Local copy failed - don't save temp URI, wait for upload
           });
 
         uploadAvatar(tempUri).then((url) => {
