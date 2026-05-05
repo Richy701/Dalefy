@@ -63,7 +63,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   const resolvedBody = useMemo(() => replaceVars(body, vars), [body, vars]);
 
   const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
-  const { resolvedAccent } = usePreferences();
+  const { resolvedAccent, accentFg } = usePreferences();
   const accentColor = resolvedAccent;
 
   const toggleTraveler = (id: string) => {
@@ -138,7 +138,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         ${bodyHtml}
       </td></tr>
       <tr><td style="padding:0 24px 24px;text-align:center;">
-        <a href="${shareUrl}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
+        <a href="${shareUrl}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:${accentFg};font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
           View Itinerary
         </a>
       </td></tr>
@@ -151,7 +151,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
           <td style="vertical-align:middle;padding-right:16px;">
             ${trip.organizer.avatar
               ? `<img src="${trip.organizer.avatar}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />`
-              : `<div style="width:48px;height:48px;border-radius:50%;background:${accentColor};color:#fff;text-align:center;line-height:48px;font-weight:700;font-size:16px;">${(trip.organizer.name || "?").charAt(0)}</div>`
+              : `<div style="width:48px;height:48px;border-radius:50%;background:${accentColor};color:${accentFg};text-align:center;line-height:48px;font-weight:700;font-size:16px;">${(trip.organizer.name || "?").charAt(0)}</div>`
             }
           </td>
           <td style="vertical-align:middle;font-size:13px;color:#6b7280;line-height:1.5;">
@@ -167,7 +167,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 </table>
 </body>
 </html>`;
-  }, [resolvedBody, trip, brand, accentColor, shareUrl]);
+  }, [resolvedBody, trip, brand, accentColor, accentFg, shareUrl]);
 
   const copyContent = useCallback(async () => {
     const html = buildEmailHtml();
@@ -239,10 +239,10 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                       className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer border",
                         selected
-                          ? "text-white border-transparent shadow-sm"
+                          ? "border-transparent shadow-sm"
                           : "bg-white dark:bg-[#161616] text-slate-600 dark:text-[#999] border-slate-200 dark:border-[#222] hover:border-slate-300 dark:hover:border-[#333]"
                       )}
-                      style={selected ? { background: accentColor } : undefined}
+                      style={selected ? { background: accentColor, color: accentFg } : undefined}
                     >
                       <span className={cn(
                         "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
@@ -336,8 +336,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               </Button>
               <Button
                 onClick={copyContent}
-                className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-6 gap-2 text-white transition-all duration-150 hover:opacity-90"
-                style={{ background: accentColor }}
+                className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-6 gap-2 transition-all duration-150 hover:opacity-90"
+                style={{ background: accentColor, color: accentFg }}
               >
                 {copiedContent ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copiedContent ? "Copied!" : "3. Copy Content"}
@@ -388,8 +388,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               {/* CTA */}
               <div className="px-6 pb-6 text-center">
                 <span
-                  className="inline-block px-10 py-3 text-white text-sm font-bold rounded-lg"
-                  style={{ background: accentColor }}
+                  className="inline-block px-10 py-3 text-sm font-bold rounded-lg"
+                  style={{ background: accentColor, color: accentFg }}
                 >
                   View Itinerary
                 </span>
@@ -408,8 +408,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                     <img src={trip.organizer.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                   ) : (
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{ background: accentColor }}
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                      style={{ background: accentColor, color: accentFg }}
                     >
                       {(trip.organizer.name || "?").charAt(0)}
                     </div>
