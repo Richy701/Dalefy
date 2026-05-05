@@ -546,12 +546,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
               {/* Boarding pass hero */}
               <View style={styles.bpHero}>
-                <View style={styles.bpFlightRow}>
-                  <View style={styles.bpDot} />
-                  <View style={styles.bpDash} />
-                  <Plane size={16} color={C.teal} strokeWidth={2} style={{ transform: [{ rotate: "-45deg" }] }} />
-                  <View style={styles.bpDash} />
-                  <View style={[styles.bpDot, { backgroundColor: C.teal }]} />
+                <View style={styles.bpIconWrap}>
+                  <Plane size={28} color={C.teal} strokeWidth={1.5} />
                 </View>
                 <Text style={styles.bpTitle}>Join a Trip</Text>
                 <Text style={styles.bpSub}>Enter your boarding code to unlock your itinerary</Text>
@@ -811,21 +807,13 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     // ── Boarding pass hero ──
     bpHero: {
-      alignItems: "center", paddingVertical: S.lg,
-      marginBottom: S.sm,
+      alignItems: "center", paddingTop: S.md, paddingBottom: S.lg,
     },
-    bpFlightRow: {
-      flexDirection: "row", alignItems: "center",
-      gap: 6, marginBottom: S.md,
-    },
-    bpDot: {
-      width: 8, height: 8, borderRadius: 4,
-      borderWidth: 1.5, borderColor: C.textTertiary,
-      backgroundColor: "transparent",
-    },
-    bpDash: {
-      width: 40, height: 1,
-      borderStyle: "dashed" as const, borderWidth: 1, borderColor: C.border,
+    bpIconWrap: {
+      width: 56, height: 56, borderRadius: 28,
+      backgroundColor: C.tealDim,
+      alignItems: "center", justifyContent: "center",
+      marginBottom: S.md,
     },
     bpTitle: {
       fontSize: T["3xl"], fontWeight: "700",
