@@ -105,7 +105,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return remoteTrips ?? localCache ?? [];
   }, [remoteTrips, localCache]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
-  const offline = isError && !isSuccess;
+  const offline = (isSuccess || isError) && (!remoteTrips || remoteTrips.length === 0) && trips.length > 0;
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
