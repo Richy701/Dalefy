@@ -170,7 +170,12 @@ private struct TripBackground: View {
           .resizable()
           .aspectRatio(contentMode: .fill)
         LinearGradient(
-          colors: [.clear, Color.black.opacity(0.5), Color.black.opacity(0.85)],
+          colors: [
+            Color.black.opacity(0.3),
+            Color.black.opacity(0.55),
+            Color.black.opacity(0.8),
+            Color.black.opacity(0.92)
+          ],
           startPoint: .top,
           endPoint: .bottom
         )
@@ -253,7 +258,7 @@ private struct Small: View {
   let d: TD
   let dark: Bool
   private var w: Color { dark ? .white : Color(hex: "#111111") }
-  private var m: Color { dark ? Color(hex: "#666666") : Color(hex: "#888888") }
+  private var m: Color { dark ? Color(hex: "#aaaaaa") : Color(hex: "#888888") }
 
   var body: some View {
     switch d.state {
@@ -298,10 +303,15 @@ private struct Small: View {
 
   private var upcoming: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text("NEXT TRIP")
-        .font(.system(size: 8, weight: .heavy))
-        .foregroundStyle(d.accent)
-        .tracking(1)
+      HStack(spacing: 3) {
+        Image(systemName: "airplane")
+          .font(.system(size: 7, weight: .bold))
+          .foregroundStyle(d.accent)
+        Text("DALEFY")
+          .font(.system(size: 7, weight: .heavy))
+          .foregroundStyle(d.accent)
+          .tracking(0.8)
+      }
 
       Spacer()
 
@@ -311,7 +321,7 @@ private struct Small: View {
         .minimumScaleFactor(0.5)
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, -16)
+        .padding(.bottom, -8)
       Text(d.daysLeft == 1 ? "DAY TO GO" : "DAYS TO GO")
         .font(.system(size: 9, weight: .heavy))
         .foregroundStyle(m)
@@ -335,17 +345,22 @@ private struct Small: View {
     VStack(spacing: 0) {
       HStack {
         HStack(spacing: 3) {
+          Image(systemName: "airplane")
+            .font(.system(size: 7, weight: .bold))
+            .foregroundStyle(d.accent)
+          Text("DALEFY")
+            .font(.system(size: 7, weight: .heavy))
+            .foregroundStyle(d.accent)
+            .tracking(0.8)
+        }
+        Spacer()
+        HStack(spacing: 3) {
           Circle().fill(.green).frame(width: 5, height: 5)
           Text("LIVE")
             .font(.system(size: 8, weight: .heavy))
             .foregroundStyle(.green)
             .tracking(1)
         }
-        Spacer()
-        Text(d.destination)
-          .font(.system(size: 9, weight: .bold))
-          .foregroundStyle(m)
-          .lineLimit(1)
       }
 
       Spacer()
@@ -364,6 +379,11 @@ private struct Small: View {
       }
 
       Spacer()
+
+      Text(d.destination)
+        .font(.system(size: 10, weight: .bold))
+        .foregroundStyle(w)
+        .lineLimit(1)
     }
     .padding(14)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -378,7 +398,7 @@ private struct Medium: View {
   let d: TD
   let dark: Bool
   private var w: Color { dark ? .white : Color(hex: "#111111") }
-  private var m: Color { dark ? Color(hex: "#666666") : Color(hex: "#888888") }
+  private var m: Color { dark ? Color(hex: "#aaaaaa") : Color(hex: "#888888") }
   private var dim: Color { dark ? Color(hex: "#333333") : Color(hex: "#cccccc") }
   private var sep: Color { dark ? Color(hex: "#222222") : Color(hex: "#dddddd") }
 
@@ -455,10 +475,22 @@ private struct Medium: View {
         .padding(.vertical, 8)
 
       VStack(alignment: .leading, spacing: 0) {
-        Text("NEXT TRIP")
-          .font(.system(size: 8, weight: .heavy))
-          .foregroundStyle(d.accent)
-          .tracking(1)
+        HStack {
+          HStack(spacing: 3) {
+            Image(systemName: "airplane")
+              .font(.system(size: 7, weight: .bold))
+              .foregroundStyle(d.accent)
+            Text("DALEFY")
+              .font(.system(size: 7, weight: .heavy))
+              .foregroundStyle(d.accent)
+              .tracking(0.8)
+          }
+          Spacer()
+          Text("NEXT TRIP")
+            .font(.system(size: 7, weight: .heavy))
+            .foregroundStyle(w.opacity(0.5))
+            .tracking(0.8)
+        }
 
         Spacer().frame(height: 8)
 
@@ -515,12 +547,24 @@ private struct Medium: View {
         .padding(.vertical, 8)
 
       VStack(alignment: .leading, spacing: 0) {
-        HStack(spacing: 3) {
-          Circle().fill(.green).frame(width: 5, height: 5)
-          Text("LIVE")
-            .font(.system(size: 8, weight: .heavy))
-            .foregroundStyle(.green)
-            .tracking(1)
+        HStack {
+          HStack(spacing: 3) {
+            Image(systemName: "airplane")
+              .font(.system(size: 7, weight: .bold))
+              .foregroundStyle(d.accent)
+            Text("DALEFY")
+              .font(.system(size: 7, weight: .heavy))
+              .foregroundStyle(d.accent)
+              .tracking(0.8)
+          }
+          Spacer()
+          HStack(spacing: 3) {
+            Circle().fill(.green).frame(width: 5, height: 5)
+            Text("LIVE")
+              .font(.system(size: 8, weight: .heavy))
+              .foregroundStyle(.green)
+              .tracking(1)
+          }
         }
 
         Text(d.destination)
@@ -566,7 +610,7 @@ private struct Large: View {
   let d: TD
   let dark: Bool
   private var w: Color { dark ? .white : Color(hex: "#111111") }
-  private var m: Color { dark ? Color(hex: "#666666") : Color(hex: "#888888") }
+  private var m: Color { dark ? Color(hex: "#aaaaaa") : Color(hex: "#888888") }
   private var dim: Color { dark ? Color(hex: "#333333") : Color(hex: "#cccccc") }
   private var line: Color { dark ? Color(hex: "#1a1a1a") : Color(hex: "#eeeeee") }
 
@@ -622,10 +666,15 @@ private struct Large: View {
   private var upcoming: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
-        Text("NEXT TRIP")
-          .font(.system(size: 9, weight: .heavy))
-          .foregroundStyle(d.accent)
-          .tracking(1)
+        HStack(spacing: 3) {
+          Image(systemName: "airplane")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(d.accent)
+          Text("DALEFY")
+            .font(.system(size: 8, weight: .heavy))
+            .foregroundStyle(d.accent)
+            .tracking(0.8)
+        }
         Spacer()
         Text(d.startDate)
           .font(.system(size: 10, weight: .bold, design: .monospaced))
@@ -695,16 +744,22 @@ private struct Large: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
         HStack(spacing: 3) {
+          Image(systemName: "airplane")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(d.accent)
+          Text("DALEFY")
+            .font(.system(size: 8, weight: .heavy))
+            .foregroundStyle(d.accent)
+            .tracking(0.8)
+        }
+        Spacer()
+        HStack(spacing: 3) {
           Circle().fill(.green).frame(width: 6, height: 6)
           Text("LIVE")
             .font(.system(size: 9, weight: .heavy))
             .foregroundStyle(.green)
             .tracking(1)
         }
-        Spacer()
-        Text(d.destination)
-          .font(.system(size: 13, weight: .bold))
-          .foregroundStyle(w)
       }
 
       Spacer().frame(height: 14)
