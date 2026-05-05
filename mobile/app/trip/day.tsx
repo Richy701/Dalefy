@@ -2,6 +2,7 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   Plane, Hotel, Compass, Utensils, Calendar,

@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import {
   Plane, Hotel, Compass, Utensils, Car,
@@ -76,6 +77,7 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
   ].filter(Boolean) as Array<{ label: string; value: string }>;
 
   const handlePress = () => {
+    Haptics.selectionAsync();
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -229,6 +231,7 @@ const fs = StyleSheet.create({
 function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
   const router = useRouter();
   const handlePress = () => {
+    Haptics.selectionAsync();
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -315,6 +318,7 @@ function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; trip
 
   const router = useRouter();
   const handlePress = () => {
+    Haptics.selectionAsync();
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -449,6 +453,7 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
   if (!documents.length) return null;
 
   const handlePress = async (doc: EventDocument) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try { await Clipboard.setStringAsync(doc.url); } catch {}
     const sizeKb = Math.max(1, Math.round(doc.size / 1024));
     const sizeText = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;

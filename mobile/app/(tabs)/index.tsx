@@ -232,10 +232,10 @@ function QRScanPane({ C, styles, onScanned }: {
           onBarcodeScanned={handleBarcode}
         />
         {/* Corner markers */}
-        <View style={[styles.qrCorner, { top: 8, left: 8 }]} />
-        <View style={[styles.qrCorner, { top: 8, right: 8, transform: [{ rotate: "90deg" }] }]} />
-        <View style={[styles.qrCorner, { bottom: 8, left: 8, transform: [{ rotate: "-90deg" }] }]} />
-        <View style={[styles.qrCorner, { bottom: 8, right: 8, transform: [{ rotate: "180deg" }] }]} />
+        <View style={[styles.qrCorner, { top: 12, left: 12 }]} />
+        <View style={[styles.qrCorner, { top: 12, right: 12, transform: [{ rotate: "90deg" }] }]} />
+        <View style={[styles.qrCorner, { bottom: 12, left: 12, transform: [{ rotate: "-90deg" }] }]} />
+        <View style={[styles.qrCorner, { bottom: 12, right: 12, transform: [{ rotate: "180deg" }] }]} />
       </View>
       <Text style={[styles.checkingText, { marginTop: S.sm }]}>Point at a trip QR code</Text>
     </View>
@@ -734,7 +734,6 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         >
           <Text style={styles.countdownEyebrow}>No Upcoming Flights</Text>
           <View style={styles.countdownMeta}>
-            <Plus size={11} color={C.teal} strokeWidth={2} />
             <Text style={styles.countdownDest} numberOfLines={1}>
               Tap to join a trip
             </Text>
@@ -875,16 +874,16 @@ function makeGreetingStyles(C: ThemeColors) {
       textAlign: "center", marginTop: S.xs,
     },
     qrFrame: {
-      width: Math.min(220, Dimensions.get("window").width - S.md * 4),
-      height: Math.min(220, Dimensions.get("window").width - S.md * 4),
-      borderRadius: R.xl, overflow: "hidden",
+      width: Dimensions.get("window").width - 80,
+      height: Dimensions.get("window").width - 80,
+      borderRadius: R["2xl"], overflow: "hidden",
       backgroundColor: "#000",
       alignSelf: "center",
     },
     qrCorner: {
-      position: "absolute", width: 28, height: 28,
-      borderTopWidth: 2.5, borderLeftWidth: 2.5,
-      borderColor: C.teal, borderTopLeftRadius: 8,
+      position: "absolute", width: 36, height: 36,
+      borderTopWidth: 3, borderLeftWidth: 3,
+      borderColor: C.teal, borderTopLeftRadius: 10,
     },
     codeInput: {
       height: 54, borderRadius: R.md,
@@ -1222,6 +1221,7 @@ export default function HomeScreen() {
   const { toast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRefreshing(true);
     await reload();
     setRefreshing(false);

@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 import { FileText, ChevronRight } from "lucide-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
@@ -14,7 +15,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
   return (
     <ScalePress
       style={s.row}
-      onPress={onPress}
+      onPress={() => { Haptics.selectionAsync(); onPress(); }}
       accessibilityRole="button"
       accessibilityLabel={`Information and documents, ${count} items`}
     >

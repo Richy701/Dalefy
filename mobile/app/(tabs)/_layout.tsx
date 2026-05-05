@@ -1,6 +1,7 @@
-import { Platform, Text } from "react-native";
+import { Platform, Text, Pressable } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
 
 const TABS: {
@@ -64,6 +65,18 @@ function IOSTabLayout() {
 }
 
 // Android: standard Tabs with solid Material-style bar
+function HapticTabButton(props: any) {
+  return (
+    <Pressable
+      {...props}
+      onPress={(e) => {
+        Haptics.selectionAsync();
+        props.onPress?.(e);
+      }}
+    />
+  );
+}
+
 function AndroidTabLayout() {
   const { C, isDark } = useTheme();
   const insets = require("react-native-safe-area-context").useSafeAreaInsets();
@@ -74,6 +87,7 @@ function AndroidTabLayout() {
         headerShown: false,
         tabBarActiveTintColor: C.textPrimary,
         tabBarInactiveTintColor: inactiveColor,
+        tabBarButton: (props) => <HapticTabButton {...props} />,
         tabBarStyle: {
           backgroundColor: C.bg,
           borderTopColor: C.border,

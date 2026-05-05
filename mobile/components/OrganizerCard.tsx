@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
+import * as Haptics from "expo-haptics";
 import { Phone, Mail, User } from "lucide-react-native";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { TripOrganizer } from "@/shared/types";
@@ -20,10 +21,12 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
     .join("");
 
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (organizer.phone) Linking.openURL(`tel:${organizer.phone}`);
   };
 
   const handleEmail = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (organizer.email) Linking.openURL(`mailto:${organizer.email}`);
   };
 

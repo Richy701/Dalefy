@@ -5,6 +5,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   Plane, Hotel, Compass, Utensils, Car,
@@ -20,6 +21,7 @@ import { useMemo, useCallback } from "react";
 import type { TravelEvent } from "@/shared/types";
 
 function openInMaps(location: string, coords?: [number, number]) {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   if (coords) {
     const [lng, lat] = coords;
     const label = encodeURIComponent(location);
@@ -79,7 +81,10 @@ export default function EventDetailScreen() {
   const typeLabel = TYPE_LABELS[ev.type] ?? "Event";
 
   const copyConf = () => {
-    if (ev.confNumber) Clipboard.setStringAsync(ev.confNumber);
+    if (ev.confNumber) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Clipboard.setStringAsync(ev.confNumber);
+    }
   };
 
   // Build compact detail chips

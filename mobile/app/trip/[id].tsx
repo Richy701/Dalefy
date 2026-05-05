@@ -6,6 +6,7 @@ import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
   ChevronLeft, Compass, MapPin, Users, Moon, Map,
@@ -168,6 +169,7 @@ export default function TripScreen() {
 
   const openInMaps = useCallback(() => {
     if (!mapCenter) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const [lng, lat] = mapCenter;
     const label = encodeURIComponent(trip?.destination || trip?.name || "Destination");
     const url = Platform.select({
@@ -356,6 +358,7 @@ export default function TripScreen() {
               { title: "Copy Address", systemIcon: "doc.on.doc" },
             ]}
             onPress={(e: any) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               if (e.nativeEvent.index === 0) openInMaps();
               else if (e.nativeEvent.index === 1) Share.share({ message: trip.destination || trip.name });
             }}
@@ -436,6 +439,7 @@ export default function TripScreen() {
                     { title: "Share Day", systemIcon: "square.and.arrow.up" },
                   ]}
                   onPress={(e: any) => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     if (e.nativeEvent.index === 0) router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } });
                     else if (e.nativeEvent.index === 1) {
                       const dayLabel = new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -451,7 +455,7 @@ export default function TripScreen() {
                     isToday={date === todayStr}
                     isFirst={dayIdx === 0}
                     isLast={dayIdx === sortedDays.length - 1}
-                    onPress={() => router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } })}
+                    onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } }); }}
                   />
                 </ContextMenu>
               ));

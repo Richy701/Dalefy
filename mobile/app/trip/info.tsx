@@ -4,6 +4,7 @@ import {
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useTrips } from "@/context/TripsContext";
@@ -37,6 +38,7 @@ export default function InfoScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(infoItems[0]?.id ?? null);
 
   const toggle = useCallback((id: string) => {
+    Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId(prev => prev === id ? null : id);
   }, []);
@@ -82,6 +84,7 @@ export default function InfoScreen() {
                   { title: "Copy Text", systemIcon: "doc.on.doc" },
                 ]}
                 onPress={(e: any) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   const text = `${item.title}\n\n${item.body ?? ""}`;
                   if (e.nativeEvent.index === 0) Share.share({ message: text });
                   else if (e.nativeEvent.index === 1) {
