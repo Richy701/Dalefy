@@ -80,10 +80,11 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
 
   // Use remote data when available, fall back to local cache.
   // Prefer local cache when remote returns empty but cache has data (offline scenario).
+  // Always wait for AsyncStorage before declaring ready — it's our offline safety net.
   const trips = (remoteTrips && remoteTrips.length > 0) ? remoteTrips
     : (localCache && localCache.length > 0) ? localCache
     : remoteTrips ?? localCache ?? [];
-  const ready = isSuccess || isError || localCache !== null;
+  const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
 
   const addTrip = useCallback((trip: Trip) => {
     const update = (prev: Trip[]) => {
