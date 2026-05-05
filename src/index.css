@@ -104,6 +104,12 @@ html[data-accent-mono]:not(.dark) .hover\:bg-brand\/80:hover {
 html[data-accent-mono]:not(.dark) .group:hover .group-hover\:bg-brand {
   color: #fff !important;
 }
+/* text-brand on dark image card overlays stays white in light mono */
+html[data-accent-mono]:not(.dark) [data-compact-trip-card] .text-brand,
+html[data-accent-mono]:not(.dark) [data-compact-spotlight-hero] .text-brand,
+html[data-accent-mono]:not(.dark) [data-dest-card] .text-brand {
+  color: #fff !important;
+}
 
 /* ── Compact mode ── tightens large vertical rhythms on dashboard/lists */
 html[data-compact="true"] [data-compact-section] { padding-top: 0.75rem; padding-bottom: 1.5rem; }

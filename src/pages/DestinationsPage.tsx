@@ -508,6 +508,7 @@ export function DestinationsPage() {
               <div
                 key={dest.name}
                 onClick={() => dest.tripIds[0] && navigate(`/trip/${dest.tripIds[0]}`)}
+                data-dest-card
                 className={`group relative rounded-2xl sm:rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
                 style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
