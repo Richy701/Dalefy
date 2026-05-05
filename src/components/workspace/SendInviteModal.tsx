@@ -138,7 +138,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         ${bodyHtml}
       </td></tr>
       <tr><td style="padding:0 24px 24px;text-align:center;">
-        <a href="${shareUrl}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:${accentFg};font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
+        <a href="${shareUrl}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
           View Itinerary
         </a>
       </td></tr>
@@ -150,8 +150,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         <table cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="vertical-align:middle;padding-right:16px;">
             ${trip.organizer.avatar
-              ? `<img src="${trip.organizer.avatar}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />`
-              : `<div style="width:48px;height:48px;border-radius:50%;background:${accentColor};color:${accentFg};text-align:center;line-height:48px;font-weight:700;font-size:16px;">${(trip.organizer.name || "?").charAt(0)}</div>`
+              ? `<img src="${trip.organizer.avatar}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />`
+              : `<div style="width:40px;height:40px;border-radius:50%;background:${accentColor};color:#ffffff;text-align:center;line-height:40px;font-weight:700;font-size:14px;">${(trip.organizer.name || "?").charAt(0)}</div>`
             }
           </td>
           <td style="vertical-align:middle;font-size:13px;color:#6b7280;line-height:1.5;">
