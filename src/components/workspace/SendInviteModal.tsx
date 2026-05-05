@@ -388,8 +388,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               {/* CTA */}
               <div className="px-6 pb-6 text-center">
                 <span
-                  className="inline-block px-10 py-3 text-sm font-bold rounded-lg"
-                  style={{ background: accentColor, color: accentFg }}
+                  className="inline-block px-8 py-2.5 text-xs font-bold rounded-full text-white"
+                  style={{ background: accentColor }}
                 >
                   View Itinerary
                 </span>
@@ -403,18 +403,18 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
               {/* Organizer Signature */}
               {trip.organizer && (
-                <div className="border-t border-slate-100 px-6 py-4 flex items-center gap-3">
+                <div className="border-t border-slate-100 mx-6 px-0 py-4 flex items-center gap-2.5">
                   {trip.organizer.avatar ? (
-                    <img src={trip.organizer.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    <img src={trip.organizer.avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                   ) : (
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                      style={{ background: accentColor, color: accentFg }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0"
+                      style={{ background: accentColor }}
                     >
                       {(trip.organizer.name || "?").charAt(0)}
                     </div>
                   )}
-                  <div className="text-[11px] leading-snug text-slate-500 min-w-0">
+                  <div className="text-[10px] leading-snug text-slate-500 min-w-0">
                     <div className="font-bold text-slate-800">{trip.organizer.name}</div>
                     {trip.organizer.role && <div>{trip.organizer.role}</div>}
                     {trip.organizer.company && <div>{trip.organizer.company}</div>}
