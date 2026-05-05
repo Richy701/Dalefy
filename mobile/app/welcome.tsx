@@ -289,7 +289,7 @@ export default function WelcomeScreen() {
                 ref={agencyRef}
                 value={agencyCode}
                 onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); }}
-                placeholder="e.g. dialaflight"
+                placeholder="e.g. dalefy"
                 placeholderTextColor={C.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
