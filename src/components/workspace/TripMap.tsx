@@ -89,8 +89,8 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  const { accentColor } = usePreferences();
-  const ACCENT = accentColor;
+  const { resolvedAccent } = usePreferences();
+  const ACCENT = resolvedAccent;
   const TYPE_COLORS: Record<string, string> = {
     ...EVENT_HEX,
     flight:   ACCENT,

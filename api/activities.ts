@@ -1,6 +1,7 @@
-import { validateQuery, requireRapidApi } from "./_validate.js";
+import { validateQuery, requireGoogleApi } from "./_validate.js";
 
-const RAPID_HOST = "local-business-data.p.rapidapi.com";
+const ADVANCED_FIELDS = "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.currentOpeningHours,places.photos";
+const BASIC_FIELDS = "places.displayName,places.formattedAddress,places.primaryType";
 
 export default async function handler(req: any, res: any) {
   const { q } = req.query as Record<string, string>;
@@ -8,35 +9,41 @@ export default async function handler(req: any, res: any) {
   const err = validateQuery(q);
   if (err) return res.status(400).json({ error: err });
 
-  const key = requireRapidApi(res);
+  const key = requireGoogleApi(res);
   if (!key) return;
 
-  try {
-    const params = new URLSearchParams({
-      query: `things to do in ${q}`,
-      limit: "8",
-    });
-
-    const resp = await fetch(`https://${RAPID_HOST}/search?${params}`, {
+  const searchPlaces = async (fields: string) => {
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
       headers: {
-        "x-rapidapi-key": key,
-        "x-rapidapi-host": RAPID_HOST,
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": fields,
       },
+      body: JSON.stringify({ textQuery: `things to do in ${q}`, maxResultCount: 8 }),
     });
-    const data = await resp.json();
+    return resp.json();
+  };
 
-    const activities = (data.data ?? []).slice(0, 8).map((a: any) => ({
-      name: a.name ?? "",
+  try {
+    let data: any = await searchPlaces(ADVANCED_FIELDS);
+    if (data.error) data = await searchPlaces(BASIC_FIELDS);
+    if (data.error) return res.json({ activities: [] });
+
+    const activities = (data.places ?? []).map((a: any) => ({
+      name: a.displayName?.text ?? "",
       rating: a.rating ?? 0,
-      reviews: a.review_count ?? 0,
-      image: a.photos_sample?.[0]?.photo_url_large ?? "",
-      address: a.full_address ?? "",
-      type: a.type ?? "",
-      openStatus: a.opening_status ?? "",
+      reviews: a.userRatingCount ?? 0,
+      image: a.photos?.[0]?.name
+        ? `https://places.googleapis.com/v1/${a.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`
+        : "",
+      address: a.formattedAddress ?? "",
+      type: (a.primaryType ?? "").replace(/_/g, " "),
+      openStatus: a.currentOpeningHours?.openNow ? "Open" : "",
     }));
 
     res.json({ activities });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch activities" });
   }
 }

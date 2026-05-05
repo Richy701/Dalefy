@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Plus, Check, Trash2, Calendar, User, Tag } from "lucide-react";
+import { Plus, Check, Trash2, CalendarDays, User, Tag } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parse } from "date-fns";
 import type { TripTask } from "@/types";
 
 interface TaskChecklistProps {
@@ -179,15 +182,17 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               </select>
             </div>
             {/* Due date */}
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-slate-400" />
-              <input
-                type="date"
-                value={newDueDate}
-                onChange={e => setNewDueDate(e.target.value)}
-                className="text-[10px] font-bold bg-transparent border-none text-slate-500 dark:text-[#888] focus:outline-none cursor-pointer"
-              />
-            </div>
+            <Popover>
+              <PopoverTrigger className="h-7 px-2 rounded-lg bg-white dark:bg-[#111] border border-slate-200 dark:border-[#252525] hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
+                <CalendarDays className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-400 dark:text-[#555]"}`}>
+                  {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
+                </span>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]">
+                <Calendar mode="single" selected={newDueDate ? parse(newDueDate, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setNewDueDate(format(d, "yyyy-MM-dd"))} />
+              </PopoverContent>
+            </Popover>
             {/* Assignee */}
             {travelers && travelers.length > 0 && (
               <div className="flex items-center gap-1">

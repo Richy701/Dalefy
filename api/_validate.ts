@@ -38,3 +38,13 @@ export function requireRapidApi(res: any): string | null {
   }
   return key;
 }
+
+/** Require GOOGLE_API_KEY env var — returns the key or sends 500 */
+export function requireGoogleApi(res: any): string | null {
+  const key = process.env.GOOGLE_API_KEY;
+  if (!key) {
+    res.status(500).json({ error: "Server configuration error" });
+    return null;
+  }
+  return key;
+}

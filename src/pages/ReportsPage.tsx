@@ -42,8 +42,8 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 export function ReportsPage() {
   const { trips } = useTrips();
   const { user } = useAuth();
-  const { accentColor } = usePreferences();
-  const brandHex = accentColor;
+  const { resolvedAccent } = usePreferences();
+  const brandHex = resolvedAccent;
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");

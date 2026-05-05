@@ -108,7 +108,7 @@ export function DashboardPage() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
-  const { accentColor } = usePreferences();
+  const { resolvedAccent: accentColor } = usePreferences();
   const { canDeleteTrip, isOrgMember } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");

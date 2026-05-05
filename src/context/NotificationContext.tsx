@@ -8,6 +8,7 @@ interface NotificationContextType {
   addNotification: (n: Omit<Notification, "id" | "read">) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  clearAll: () => void;
   showToast: (message: string, type?: "success" | "error") => void;
 }
 
@@ -18,6 +19,7 @@ const NotificationContext = createContext<NotificationContextType>({
   addNotification: () => {},
   markRead: () => {},
   markAllRead: () => {},
+  clearAll: () => {},
   showToast: () => {},
 });
 
@@ -41,6 +43,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
+  const clearAll = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
   }, []);
@@ -53,8 +59,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const value = useMemo(
-    () => ({ notifications, unreadCount, toast, addNotification, markRead, markAllRead, showToast }),
-    [notifications, unreadCount, toast, addNotification, markRead, markAllRead, showToast]
+    () => ({ notifications, unreadCount, toast, addNotification, markRead, markAllRead, clearAll, showToast }),
+    [notifications, unreadCount, toast, addNotification, markRead, markAllRead, clearAll, showToast]
   );
 
   return (

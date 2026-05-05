@@ -4,9 +4,14 @@ import { playChime } from "@/lib/sound";
 import { STORAGE } from "@/config/storageKeys";
 import { BRAND } from "@/config/brand";
 import { useBrand } from "@/context/BrandContext";
+import { useTheme } from "@/context/ThemeContext";
+
+/** Sentinel value for the theme-aware monochrome accent */
+export const MONO_ACCENT = "mono";
 
 /** Quick-pick presets shown in the color picker */
 export const ACCENT_PRESETS = [
+  MONO_ACCENT,
   "#0bd2b5", "#0ea5e9", "#6366f1", "#8b5cf6",
   "#ec4899", "#f43f5e", "#f97316", "#eab308",
   "#22c55e", "#14b8a6", "#3b82f6", "#a855f7",
@@ -46,6 +51,8 @@ interface PreferencesCtx {
   setSoundEnabled: (v: boolean) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
+  resolvedAccent: string;
+  accentFg: string;
 }
 
 const Ctx = createContext<PreferencesCtx | null>(null);
@@ -56,6 +63,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const [soundEnabled, setSoundEnabled] = useLocalStorage(STORAGE.SOUND, false);
   const [accentColor, setAccentColor] = useLocalStorage(STORAGE.ACCENT, BRAND.accentColor);
   const { brand } = useBrand();
+  const { theme } = useTheme();
 
   // Sync org branding accent color → app theme
   useEffect(() => {
@@ -68,15 +76,23 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     document.documentElement.dataset.compact = compactMode ? "true" : "false";
   }, [compactMode]);
 
+  const resolvedAccent = accentColor === MONO_ACCENT
+    ? (theme === "dark" ? "#ffffff" : "#000000")
+    : (accentColor.startsWith("#") ? accentColor : BRAND.accentColor);
+
+  const accentFg = accentColor === MONO_ACCENT
+    ? (theme === "dark" ? "#000000" : "#ffffff")
+    : "#000000";
+
   useEffect(() => {
-    // Migrate old palette IDs to hex
-    const hex = accentColor.startsWith("#") ? accentColor : BRAND.accentColor;
     const root = document.documentElement;
-    root.style.setProperty("--brand-rgb", hexToRgbStr(hex));
-    root.style.setProperty("--primary", hexToHsl(hex));
-    root.style.setProperty("--ring", hexToHsl(hex));
-    root.style.setProperty("--sidebar-ring", hexToHsl(hex));
-  }, [accentColor]);
+    root.style.setProperty("--brand-rgb", hexToRgbStr(resolvedAccent));
+    root.style.setProperty("--primary", hexToHsl(resolvedAccent));
+    root.style.setProperty("--ring", hexToHsl(resolvedAccent));
+    root.style.setProperty("--sidebar-ring", hexToHsl(resolvedAccent));
+    if (accentColor === MONO_ACCENT) root.dataset.accentMono = "true";
+    else delete root.dataset.accentMono;
+  }, [resolvedAccent, accentColor]);
 
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
@@ -99,7 +115,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <Ctx.Provider value={{ compactMode, setCompactMode, toastsEnabled, setToastsEnabled, soundEnabled, setSoundEnabled, accentColor, setAccentColor }}>
+    <Ctx.Provider value={{ compactMode, setCompactMode, toastsEnabled, setToastsEnabled, soundEnabled, setSoundEnabled, accentColor, setAccentColor, resolvedAccent, accentFg }}>
       {children}
     </Ctx.Provider>
   );

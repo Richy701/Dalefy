@@ -115,7 +115,7 @@ export function SettingsPage() {
     compactMode, setCompactMode,
     toastsEnabled, setToastsEnabled,
     soundEnabled, setSoundEnabled,
-    accentColor, setAccentColor,
+    accentColor, setAccentColor, resolvedAccent,
   } = usePreferences();
   const { currentOrg, orgRole, tablesReady, isLoading: orgLoading, createOrg } = useOrg();
   const { brand, orgBranding, refreshBranding } = useBrand();
@@ -526,7 +526,7 @@ export function SettingsPage() {
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
                   ) : (
-                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-black text-white" style={{ background: accentColor }}>
+                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-black text-white" style={{ background: resolvedAccent }}>
                       {(brandName || BRAND.name).charAt(0)}
                     </div>
                   )}

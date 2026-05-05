@@ -12,7 +12,7 @@ const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: stri
 };
 
 function NotificationList({ onClose }: { onClose?: () => void }) {
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markRead, clearAll } = useNotifications();
 
   return (
     <>
@@ -30,13 +30,13 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {unreadCount > 0 && (
+          {notifications.length > 0 && (
             <button
-              onClick={markAllRead}
+              onClick={clearAll}
               className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-brand hover:bg-brand/10 px-2.5 py-1.5 rounded-lg transition-colors"
             >
               <Check className="h-3 w-3" />
-              Read all
+              Clear all
             </button>
           )}
           {onClose && (
@@ -61,7 +61,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
             <p className="text-[10px] font-bold text-slate-300 dark:text-[#444] mt-1">No notifications yet</p>
           </div>
         ) : (
-          <div className="p-1.5">
+          <div className="p-1.5 space-y-0.5">
             {notifications.map((n) => {
               const config = TYPE_CONFIG[n.type] || TYPE_CONFIG.info;
               const Icon = config.icon;
@@ -69,26 +69,26 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                 <button
                   key={n.id}
                   onClick={() => markRead(n.id)}
-                  className={`w-full text-left p-3 rounded-xl transition-all group ${
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-all ${
                     n.read
-                      ? "hover:bg-slate-50 dark:hover:bg-[#0a0a0a] opacity-60"
+                      ? "hover:bg-slate-50 dark:hover:bg-[#0a0a0a] opacity-50"
                       : "bg-brand/[0.03] dark:bg-brand/[0.04] hover:bg-brand/[0.06] dark:hover:bg-brand/[0.08]"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`h-7 w-7 rounded-lg ${config.bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-6 w-6 rounded-md ${config.bg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`h-3 w-3 ${config.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-[11px] font-bold leading-tight ${n.read ? "text-slate-600 dark:text-[#999]" : "text-slate-900 dark:text-white"}`}>
+                      <div className="flex items-center gap-1.5">
+                        <p className={`text-[11px] font-bold leading-tight truncate ${n.read ? "text-slate-500 dark:text-[#777]" : "text-slate-900 dark:text-white"}`}>
                           {n.message}
                         </p>
                         {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </div>
-                      <p className="text-[10px] text-slate-400 dark:text-[#666] truncate mt-1 leading-tight">{n.detail}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-300 dark:text-[#444] mt-1.5">{n.time}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-[#555] truncate leading-tight">{n.detail}</p>
                     </div>
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300 dark:text-[#444] shrink-0">{n.time}</p>
                   </div>
                 </button>
               );

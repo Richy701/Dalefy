@@ -48,11 +48,11 @@ const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string 
 export function TravelersPage() {
   const { trips } = useTrips();
   const { showToast } = useNotifications();
-  const { accentColor } = usePreferences();
+  const { resolvedAccent } = usePreferences();
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
   const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
-  const brandHex = accentColor;
+  const brandHex = resolvedAccent;
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("travelers");

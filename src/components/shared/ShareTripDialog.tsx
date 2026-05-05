@@ -20,7 +20,7 @@ interface ShareTripDialogProps {
 
 export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const { accentColor } = usePreferences();
+  const { resolvedAccent: accentColor, accentFg } = usePreferences();
   const { brand } = useBrand();
   const { trips, updateTrip } = useTrips();
 
@@ -108,7 +108,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                   className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
                   style={{ backgroundColor: accentColor }}
                 >
-                  <Plane className="h-3 w-3 text-black" strokeWidth={2.5} />
+                  <Plane className="h-3 w-3" style={{ color: accentFg }} strokeWidth={2.5} />
                 </div>
               )}
               <span

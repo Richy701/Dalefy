@@ -47,9 +47,9 @@ async function geocodeDestination(name: string): Promise<[number, number] | null
 export function DestinationsPage() {
   const { trips } = useTrips();
   const { theme } = useTheme();
-  const { accentColor } = usePreferences();
-  const ACCENT = accentColor;
-  const ACCENT_RGB = (() => { const r = parseInt(accentColor.slice(1, 3), 16), g = parseInt(accentColor.slice(3, 5), 16), b = parseInt(accentColor.slice(5, 7), 16); return `${r}, ${g}, ${b}`; })();
+  const { resolvedAccent, accentFg } = usePreferences();
+  const ACCENT = resolvedAccent;
+  const ACCENT_RGB = (() => { const r = parseInt(resolvedAccent.slice(1, 3), 16), g = parseInt(resolvedAccent.slice(3, 5), 16), b = parseInt(resolvedAccent.slice(5, 7), 16); return `${r}, ${g}, ${b}`; })();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
@@ -388,7 +388,7 @@ export function DestinationsPage() {
                       }}>
                         <span style={{
                           fontFamily: "'Barlow Condensed', system-ui, sans-serif",
-                          fontSize: 9, fontWeight: 900, color: "#050505", lineHeight: 1,
+                          fontSize: 9, fontWeight: 900, color: accentFg, lineHeight: 1,
                         }}>{pin.tripCount}</span>
                       </div>
                     </div>

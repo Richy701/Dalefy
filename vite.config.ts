@@ -277,81 +277,103 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             const q = url.searchParams.get("q") ?? ""
             const check_in = url.searchParams.get("check_in") ?? ""
             const check_out = url.searchParams.get("check_out") ?? ""
-            const adults = url.searchParams.get("adults") ?? "2"
-            const key = env.RAPIDAPI_KEY
-            const RAPID_HOST = "booking-com.p.rapidapi.com"
-            const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST }
-            if (!key || !q || !check_in || !check_out) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
-            try {
-              const locResp = await fetch(`https://${RAPID_HOST}/v1/hotels/locations?name=${encodeURIComponent(q)}&locale=en-gb`, { headers: hdrs })
-              const locData = await locResp.json()
-              const dest = Array.isArray(locData) ? locData[0] : null
-              if (!dest) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
-              const params = new URLSearchParams({ dest_id: dest.dest_id, dest_type: dest.dest_type ?? "city", checkin_date: check_in, checkout_date: check_out, adults_number: adults, room_number: "1", units: "metric", filter_by_currency: "USD", order_by: "popularity", locale: "en-gb" })
-              const hotelResp = await fetch(`https://${RAPID_HOST}/v1/hotels/search?${params}`, { headers: hdrs })
-              const hotelData: any = await hotelResp.json()
-              const hotels = (hotelData.result ?? []).slice(0, 8).map((h: any) => {
-                return {
-                  name: h.hotel_name ?? "",
-                  rating: h.review_score ?? 0,
-                  reviews: h.review_nr ?? 0,
-                  image: h.max_photo_url ?? "",
-                  checkin: h.checkin?.from ?? "",
-                  checkout: h.checkout?.until ?? "",
-                  amenities: [],
-                  stars: h.class ? `${h.class}-star` : "",
-                }
+            const gKey = env.GOOGLE_API_KEY
+            if (!gKey || !q || !check_in || !check_out) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
+            const ADVANCED_FIELDS = "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.photos,places.priceLevel"
+            const BASIC_FIELDS = "places.displayName,places.formattedAddress"
+            const searchPlaces = async (fields: string) => {
+              const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Goog-Api-Key": gKey, "X-Goog-FieldMask": fields },
+                body: JSON.stringify({ textQuery: `hotels in ${q}`, maxResultCount: 8 }),
               })
+              return resp.json()
+            }
+            try {
+              let data: any = await searchPlaces(ADVANCED_FIELDS)
+              if (data.error) data = await searchPlaces(BASIC_FIELDS)
+              if (data.error) { console.error("Google Places hotels error:", data.error.message); res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] })); return }
+              const STAR_MAP: Record<string, string> = { PRICE_LEVEL_INEXPENSIVE: "2-star", PRICE_LEVEL_MODERATE: "3-star", PRICE_LEVEL_EXPENSIVE: "4-star", PRICE_LEVEL_VERY_EXPENSIVE: "5-star" }
+              const hotels = (data.places ?? []).map((h: any) => ({
+                name: h.displayName?.text ?? "",
+                rating: h.rating ?? 0,
+                reviews: h.userRatingCount ?? 0,
+                image: h.photos?.[0]?.name ? `https://places.googleapis.com/v1/${h.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${gKey}` : "",
+                checkin: check_in,
+                checkout: check_out,
+                amenities: [] as string[],
+                stars: STAR_MAP[h.priceLevel] ?? "",
+                address: h.formattedAddress ?? "",
+              }))
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels }))
-            } catch {
+            } catch (err) {
+              console.error("hotels error:", err)
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ hotels: [] }))
             }
           } else if (p === "/api/activities") {
             const q = url.searchParams.get("q") ?? ""
-            const key = env.RAPIDAPI_KEY
-            const HOST = "local-business-data.p.rapidapi.com"
-            if (!key || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities: [] })); return }
-            try {
-              const params = new URLSearchParams({ query: `things to do in ${q}`, limit: "8" })
-              const resp = await fetch(`https://${HOST}/search?${params}`, {
-                headers: { "x-rapidapi-key": key, "x-rapidapi-host": HOST },
+            const gKey = env.GOOGLE_API_KEY
+            if (!gKey || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities: [] })); return }
+            const ADVANCED = "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.currentOpeningHours,places.photos"
+            const BASIC = "places.displayName,places.formattedAddress,places.primaryType"
+            const searchPlaces = async (fields: string) => {
+              const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Goog-Api-Key": gKey, "X-Goog-FieldMask": fields },
+                body: JSON.stringify({ textQuery: `things to do in ${q}`, maxResultCount: 8 }),
               })
-              const data: any = await resp.json()
-              const activities = (data.data ?? []).slice(0, 8).map((a: any) => ({
-                name: a.name ?? "",
+              return resp.json()
+            }
+            try {
+              let data: any = await searchPlaces(ADVANCED)
+              if (data.error) data = await searchPlaces(BASIC)
+              if (data.error) { console.error("Google Places activities error:", data.error.message); res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities: [] })); return }
+              const activities = (data.places ?? []).map((a: any) => ({
+                name: a.displayName?.text ?? "",
                 rating: a.rating ?? 0,
-                reviews: a.review_count ?? 0,
-                image: a.photos_sample?.[0]?.photo_url_large ?? "",
-                address: a.full_address ?? "",
-                type: a.type ?? "",
-                openStatus: a.opening_status ?? "",
+                reviews: a.userRatingCount ?? 0,
+                image: a.photos?.[0]?.name ? `https://places.googleapis.com/v1/${a.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${gKey}` : "",
+                address: a.formattedAddress ?? "",
+                type: (a.primaryType ?? "").replace(/_/g, " "),
+                openStatus: a.currentOpeningHours?.openNow ? "Open" : "",
               }))
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities }))
-            } catch {
+            } catch (err) {
+              console.error("activities error:", err)
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ activities: [] }))
             }
           } else if (p === "/api/dining") {
             const q = url.searchParams.get("q") ?? ""
-            const key = env.RAPIDAPI_KEY
-            const HOST = "local-business-data.p.rapidapi.com"
-            if (!key || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] })); return }
+            const gKey = env.GOOGLE_API_KEY
+            if (!gKey || !q) { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] })); return }
+            const ADVANCED = "places.displayName,places.rating,places.userRatingCount,places.formattedAddress,places.primaryType,places.currentOpeningHours,places.photos,places.priceLevel"
+            const BASIC = "places.displayName,places.formattedAddress,places.primaryType"
+            const searchPlaces = async (fields: string) => {
+              const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Goog-Api-Key": gKey, "X-Goog-FieldMask": fields },
+                body: JSON.stringify({ textQuery: `restaurants in ${q}`, maxResultCount: 8 }),
+              })
+              return resp.json()
+            }
             try {
-              const hdrs = { "x-rapidapi-key": key, "x-rapidapi-host": HOST }
-              const params = new URLSearchParams({ query: `restaurants in ${q}`, limit: "8" })
-              const resp = await fetch(`https://${HOST}/search?${params}`, { headers: hdrs })
-              const data: any = await resp.json()
-              const restaurants = (data.data ?? []).slice(0, 8).map((r: any) => ({
-                name: r.name ?? "",
+              let data: any = await searchPlaces(ADVANCED)
+              if (data.error) data = await searchPlaces(BASIC)
+              if (data.error) { console.error("Google Places dining error:", data.error.message); res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] })); return }
+              const PRICE_MAP: Record<string, string> = { PRICE_LEVEL_FREE: "Free", PRICE_LEVEL_INEXPENSIVE: "$", PRICE_LEVEL_MODERATE: "$$", PRICE_LEVEL_EXPENSIVE: "$$$", PRICE_LEVEL_VERY_EXPENSIVE: "$$$$" }
+              const restaurants = (data.places ?? []).map((r: any) => ({
+                name: r.displayName?.text ?? "",
                 rating: r.rating ?? 0,
-                reviews: r.review_count ?? 0,
-                image: r.photos_sample?.[0]?.photo_url_large ?? "",
-                address: r.full_address ?? "",
-                priceTag: r.price_level ?? "",
-                cuisines: r.type ? [r.type] : [],
-                openStatus: r.opening_status ?? "",
+                reviews: r.userRatingCount ?? 0,
+                image: r.photos?.[0]?.name ? `https://places.googleapis.com/v1/${r.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${gKey}` : "",
+                address: r.formattedAddress ?? "",
+                priceTag: PRICE_MAP[r.priceLevel] ?? "",
+                cuisines: r.primaryType ? [(r.primaryType as string).replace(/_/g, " ")] : [],
+                openStatus: r.currentOpeningHours?.openNow ? "Open" : "",
               }))
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants }))
-            } catch {
+            } catch (err) {
+              console.error("dining error:", err)
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ restaurants: [] }))
             }
           } else if (p === "/api/images") {

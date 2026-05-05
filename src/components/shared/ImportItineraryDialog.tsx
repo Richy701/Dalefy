@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { EVENT_TEXT_COLORS, EVENT_ICONS, type EventType } from "@/config/eventStyles";
 import { matchOrCreateTravelers } from "@/lib/travelerSync";
 import { notifyLocalStorage } from "@/hooks/useLocalStorage";
+import { lookupFlight } from "@/services/serpapi";
 
 interface ImportItineraryDialogProps {
   open: boolean;
@@ -1024,7 +1025,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "extracting" | "review" | "importing";
+type Step = "upload" | "extracting" | "review" | "importing" | "done";
 
 export function ImportItineraryDialog({ open, onOpenChange, initialFile, existingTripId }: ImportItineraryDialogProps) {
   const [step, setStep] = useState<Step>("upload");
@@ -1033,10 +1034,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const [parsed, setParsed] = useState<ParsedTrip | null>(null);
   const [rawText, setRawText] = useState("");
   const [editInfo, setEditInfo] = useState<ParsedInfo[]>([]);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { trips, addTrip, updateTrip } = useTrips();
   const { showToast, addNotification } = useNotifications();
   const isReimport = !!existingTripId;
+  const tripBackupRef = useRef<Trip | null>(null);
 
   // Auto-process a file dropped from the dashboard
   useEffect(() => {
@@ -1054,6 +1057,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setParsed(null);
     setRawText("");
     setEditInfo([]);
+    setImportMode("merge");
   };
 
   const handleClose = (v: boolean) => {
@@ -1140,6 +1144,51 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     }
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
 
+    // Enrich flight events with live data (times, terminals, airline)
+    const FLIGHT_NUM_RE = /\b([A-Z]{2})\s*(\d{2,4})\b/;
+    for (const ev of events) {
+      if (ev.type !== "flight") continue;
+      const match = ev.title.match(FLIGHT_NUM_RE) || ev.flightNum?.match(FLIGHT_NUM_RE);
+      if (!match) continue;
+      const num = `${match[1]}${match[2]}`;
+      try {
+        const results = await lookupFlight(num, ev.date);
+        if (results.length > 0) {
+          const f = results[0];
+          if (f.departTime) ev.time = f.departTime;
+          if (f.arriveTime) ev.endTime = f.arriveTime;
+          if (f.airline) ev.airline = f.airline;
+          if (f.flightNum) ev.flightNum = f.flightNum;
+          if (f.terminal) ev.terminal = f.terminal;
+          if ((f as any).arrTerminal) ev.arrTerminal = (f as any).arrTerminal;
+          if (f.durationMins > 0) ev.duration = `${Math.floor(f.durationMins / 60)}h ${f.durationMins % 60}m`;
+          if (f.fromCode && f.toCode) ev.location = `${f.from || f.fromCode} to ${f.to || f.toCode}`;
+          if (f.status) ev.status = f.status;
+          logger.log("Import", "enriched flight:", num, "→", f.departTime, f.terminal);
+        }
+      } catch { /* flight lookup failed, keep parsed data */ }
+    }
+
+    // Enrich hotel events with Google Places data (correct name, address, image)
+    const destination = parsed.destination || "";
+    for (const ev of events) {
+      if (ev.type !== "hotel") continue;
+      const hotelQuery = ev.title + (destination ? ` hotel ${destination}` : " hotel");
+      try {
+        const params = new URLSearchParams({ q: hotelQuery, check_in: parsed.start || "2026-01-01", check_out: parsed.end || "2026-01-02" });
+        const resp = await fetch("/api/hotels?" + params);
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const match = (data.hotels ?? [])[0];
+        if (match && match.name) {
+          ev.supplier = match.name;
+          if (match.address) ev.location = match.address;
+          if (match.image && !ev.image) ev.image = match.image;
+          logger.log("Import", "enriched hotel:", hotelQuery, "→", match.name);
+        }
+      } catch { /* hotel lookup failed, keep parsed data */ }
+    }
+
     // Convert extracted images into TripMedia entries
     const tripMedia: Trip["media"] = (parsed.extractedMedia ?? []).map((m, idx) => ({
       id: `ext-${Date.now()}-${idx}`,
@@ -1179,35 +1228,76 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     logger.log("Import", "editInfo:", editInfo.length, "cleanedInfo:", cleanedInfo.length, "organizer:", parsed.organizer);
 
     if (isReimport && existingTripId) {
-      // Re-import: update text/events/travelers but keep existing media, image, status
       const existing = trips.find(t => t.id === existingTripId);
-      const updates: Partial<Trip> = {
-        name: parsed.name,
-        attendees: finalAttendees,
-        paxCount: finalPaxCount,
-        start: parsed.start,
-        end: parsed.end,
-        destination: parsed.destination,
-        events,
-        travelerIds: travelerIds ?? [],
-        travelers: tripTravelers ?? [],
-      };
-      if (parsed.organizer) {
-        updates.organizer = parsed.organizer;
+      // Backup before any changes so we can undo
+      if (existing) tripBackupRef.current = JSON.parse(JSON.stringify(existing));
+
+      if (importMode === "merge" && existing) {
+        // Merge: add new events/travelers/info alongside existing ones
+        const existingTitles = new Set(existing.events.map(e => `${e.date}|${e.title.toLowerCase()}`));
+        const newEvents = events.filter(e => !existingTitles.has(`${e.date}|${e.title.toLowerCase()}`));
+        const mergedEvents = [...existing.events, ...newEvents];
+
+        const existingTravelerIds = new Set(existing.travelerIds ?? []);
+        const mergedTravelerIds = [...(existing.travelerIds ?? []), ...(travelerIds ?? []).filter(id => !existingTravelerIds.has(id))];
+        const existingTravelerNames = new Set((existing.travelers ?? []).map(t => t.name.toLowerCase()));
+        const mergedTravelers = [...(existing.travelers ?? []), ...(tripTravelers ?? []).filter(t => !existingTravelerNames.has(t.name.toLowerCase()))];
+
+        const existingInfoTitles = new Set((existing.info ?? []).map(i => i.title.toLowerCase()));
+        const newInfo = cleanedInfo.filter(i => !existingInfoTitles.has(i.title.toLowerCase()));
+        const mergedInfo = [...(existing.info ?? []), ...newInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }))];
+
+        const updates: Partial<Trip> = {
+          events: mergedEvents,
+          travelerIds: mergedTravelerIds,
+          travelers: mergedTravelers,
+        };
+        if (mergedTravelers.length > 0) {
+          updates.attendees = mergedTravelers.slice(0, 6).map(t => t.name).join(", ") + (mergedTravelers.length > 6 ? ` +${mergedTravelers.length - 6} more` : "");
+          updates.paxCount = String(mergedTravelers.length);
+        }
+        if (mergedInfo.length > 0) updates.info = mergedInfo;
+        // Fill in missing fields from parsed data without overwriting existing
+        if (!existing.destination && parsed.destination) updates.destination = parsed.destination;
+        if ((!existing.start || existing.start === "TBD") && parsed.start) updates.start = parsed.start;
+        if ((!existing.end || existing.end === "TBD") && parsed.end) updates.end = parsed.end;
+        if (!existing.organizer && parsed.organizer) updates.organizer = parsed.organizer;
+        if (tripMedia.length > 0) {
+          const existingMedia = existing.media || [];
+          const newUrls = new Set(tripMedia.map(m => m.url));
+          updates.media = [...existingMedia.filter(m => !newUrls.has(m.url)), ...tripMedia];
+        }
+        updateTrip(existingTripId, updates);
+        showToast(`Merged ${newEvents.length} new events into "${existing.name}"`);
+        addNotification({ message: "Itinerary updated (merged)", detail: existing.name, time: "Just now", type: "success" });
+      } else {
+        // Replace: full overwrite (old behavior)
+        const updates: Partial<Trip> = {
+          name: parsed.name,
+          attendees: finalAttendees,
+          paxCount: finalPaxCount,
+          start: parsed.start,
+          end: parsed.end,
+          destination: parsed.destination,
+          events,
+          travelerIds: travelerIds ?? [],
+          travelers: tripTravelers ?? [],
+        };
+        if (parsed.organizer) {
+          updates.organizer = parsed.organizer;
+        }
+        updates.info = cleanedInfo.length > 0
+          ? cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }))
+          : undefined;
+        if (tripMedia.length > 0) {
+          const existingMedia = existing?.media || [];
+          const newUrls = new Set(tripMedia.map(m => m.url));
+          updates.media = [...existingMedia.filter(m => !newUrls.has(m.url)), ...tripMedia];
+        }
+        updateTrip(existingTripId, updates);
+        showToast(`Replaced "${parsed.name}" — ${events.length} events`);
+        addNotification({ message: "Itinerary re-imported (replaced)", detail: parsed.name, time: "Just now", type: "success" });
       }
-      // Always overwrite info on re-import — replace old entries with parsed + edited ones
-      updates.info = cleanedInfo.length > 0
-        ? cleanedInfo.map((item, idx) => ({ id: `info-${Date.now()}-${idx}`, ...item }))
-        : undefined;
-      // Merge media: dedupe by URL — new entries overwrite matching existing ones
-      if (tripMedia.length > 0) {
-        const existingMedia = existing?.media || [];
-        const newUrls = new Set(tripMedia.map(m => m.url));
-        updates.media = [...existingMedia.filter(m => !newUrls.has(m.url)), ...tripMedia];
-      }
-      updateTrip(existingTripId, updates);
-      showToast(`Updated "${parsed.name}" — ${events.length} events`);
-      addNotification({ message: "Itinerary re-imported", detail: parsed.name, time: "Just now", type: "success" });
     } else {
       const trip: Trip = {
         id: Date.now().toString(),
@@ -1231,6 +1321,32 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       showToast(`Imported "${trip.name}" — ${trip.events.length} events${mediaSuffix}`);
       addNotification({ message: "Itinerary imported", detail: trip.name, time: "Just now", type: "success" });
     }
+    if (isReimport && tripBackupRef.current) {
+      setStep("done");
+    } else {
+      handleClose(false);
+    }
+  };
+
+  const handleUndo = () => {
+    if (!tripBackupRef.current || !existingTripId) return;
+    const backup = tripBackupRef.current;
+    updateTrip(existingTripId, {
+      name: backup.name,
+      attendees: backup.attendees,
+      paxCount: backup.paxCount,
+      start: backup.start,
+      end: backup.end,
+      destination: backup.destination,
+      events: backup.events,
+      travelerIds: backup.travelerIds,
+      travelers: backup.travelers,
+      organizer: backup.organizer,
+      info: backup.info,
+      media: backup.media,
+    });
+    tripBackupRef.current = null;
+    showToast("Reverted to previous version");
     handleClose(false);
   };
 
@@ -1239,7 +1355,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-8 md:p-10 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
-            {isReimport ? "Re-import Itinerary" : "Import Itinerary"}
+            {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em]">
             {step === "upload" && "PDF · Word · PowerPoint · Text"}
@@ -1309,7 +1425,17 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 value={rawText}
               />
               <Button
-                onClick={async () => { if (rawText.trim()) await processText(rawText); }}
+                onClick={async () => {
+                  if (!rawText.trim()) return;
+                  setError("");
+                  setStep("extracting");
+                  try {
+                    await processText(rawText);
+                  } catch (e: any) {
+                    setError(e.message ?? "Could not parse this text.");
+                    setStep("upload");
+                  }
+                }}
                 disabled={!rawText.trim()}
                 className="w-full h-12 rounded-2xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
               >
@@ -1502,13 +1628,62 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             )}
 
           </div>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-4 shrink-0 bg-white dark:bg-[#111111] border-t border-slate-100 dark:border-[#1f1f1f] mt-2">
-              <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
-              <Button
-                onClick={handleImport}
-                className="flex-1 rounded-2xl h-12 font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider gap-2"
-              >
-                <CircleCheck className="h-4 w-4" /> {isReimport ? "Update" : "Import"} {parsed.events.length} Events{parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
+            <div className="shrink-0 bg-white dark:bg-[#111111] border-t border-slate-100 dark:border-[#1f1f1f] mt-2 pt-4 space-y-3">
+              {isReimport && (
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-[#1f1f1f]">
+                  <button
+                    type="button"
+                    onClick={() => setImportMode("merge")}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-[#666] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                  >
+                    Add new items
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportMode("replace")}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-[#666] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                  >
+                    Replace everything
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
+                <Button
+                  onClick={handleImport}
+                  className={`flex-1 rounded-2xl h-12 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
+                >
+                  <CircleCheck className="h-4 w-4" />
+                  {isReimport
+                    ? importMode === "merge"
+                      ? `Merge ${parsed.events.length} Events`
+                      : `Replace with ${parsed.events.length} Events`
+                    : `Import ${parsed.events.length} Events`}
+                  {parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 5: DONE (re-import with undo) ── */}
+        {step === "done" && (
+          <div className="flex flex-col items-center justify-center py-12 gap-5">
+            <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
+              <CircleCheck className="h-7 w-7 text-brand" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-900 dark:text-white">Trip Updated</p>
+              <p className="text-xs text-slate-500 dark:text-[#888]">
+                {importMode === "merge" ? "New items were added to the trip." : "Trip data was replaced."}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={handleUndo} className="rounded-2xl h-10 px-5 font-bold text-red-400 hover:bg-red-500/10 uppercase tracking-wider text-xs">
+                Undo Changes
+              </Button>
+              <Button onClick={() => handleClose(false)} className="rounded-2xl h-10 px-5 font-bold bg-brand hover:opacity-90 text-black uppercase tracking-wider text-xs">
+                Done
               </Button>
             </div>
           </div>

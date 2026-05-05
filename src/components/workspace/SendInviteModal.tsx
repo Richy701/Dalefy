@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { EMAIL_TEMPLATES, type EmailTemplate } from "@/data/emailTemplates";
 import type { Trip, User as UserType } from "@/types";
 
@@ -62,7 +63,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   const resolvedBody = useMemo(() => replaceVars(body, vars), [body, vars]);
 
   const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
-  const accentColor = brand.accentColor || "#0bd2b5";
+  const { resolvedAccent } = usePreferences();
+  const accentColor = resolvedAccent;
 
   const toggleTraveler = (id: string) => {
     setSelectedIds(prev => {

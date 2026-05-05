@@ -5,10 +5,11 @@ import type { TravelEvent } from "@/types";
 
 interface Props {
   onSelect: (data: Partial<TravelEvent>) => void;
+  defaultLocation?: string;
 }
 
-export function DiningSearch({ onSelect }: Props) {
-  const [query, setQuery] = useState("");
+export function DiningSearch({ onSelect, defaultLocation }: Props) {
+  const [query, setQuery] = useState(defaultLocation ?? "");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DiningResult[]>([]);
   const [error, setError] = useState("");
@@ -33,7 +34,6 @@ export function DiningSearch({ onSelect }: Props) {
   const pick = (r: DiningResult) => {
     setSelected(r.name);
     onSelect({
-      title: r.name,
       location: r.address || query,
       supplier: r.name,
       image: r.image || undefined,

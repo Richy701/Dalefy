@@ -88,6 +88,23 @@
   }
 }
 
+/* ── Monochrome accent ── in light mode brand=black, so flip text to white on solid brand bg */
+html[data-accent-mono]:not(.dark) .bg-brand,
+html[data-accent-mono]:not(.dark) .bg-brand\/90,
+html[data-accent-mono]:not(.dark) .bg-brand\/80,
+html[data-accent-mono]:not(.dark) .data-active\:bg-brand[data-active] {
+  color: #fff !important;
+}
+html[data-accent-mono]:not(.dark) .hover\:bg-brand:hover {
+  color: #fff !important;
+}
+html[data-accent-mono]:not(.dark) .hover\:bg-brand\/80:hover {
+  color: #fff !important;
+}
+html[data-accent-mono]:not(.dark) .group:hover .group-hover\:bg-brand {
+  color: #fff !important;
+}
+
 /* ── Compact mode ── tightens large vertical rhythms on dashboard/lists */
 html[data-compact="true"] [data-compact-section] { padding-top: 0.75rem; padding-bottom: 1.5rem; }
 html[data-compact="true"] [data-compact-section] > * + * { margin-top: 0.75rem !important; }

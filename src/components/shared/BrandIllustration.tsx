@@ -13,7 +13,7 @@ interface BrandIllustrationProps {
 }
 
 export function BrandIllustration({ src, className, draggable, ...rest }: BrandIllustrationProps) {
-  const { accentColor } = usePreferences();
+  const { resolvedAccent: accentColor } = usePreferences();
   const [svg, setSvg] = useState<string | null>(null);
 
   useEffect(() => {

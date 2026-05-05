@@ -5,10 +5,11 @@ import type { TravelEvent } from "@/types";
 
 interface Props {
   onSelect: (data: Partial<TravelEvent>) => void;
+  defaultLocation?: string;
 }
 
-export function ActivitySearch({ onSelect }: Props) {
-  const [query, setQuery] = useState("");
+export function ActivitySearch({ onSelect, defaultLocation }: Props) {
+  const [query, setQuery] = useState(defaultLocation ?? "");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ActivityResult[]>([]);
   const [error, setError] = useState("");
@@ -33,7 +34,6 @@ export function ActivitySearch({ onSelect }: Props) {
   const pick = (a: ActivityResult) => {
     setSelected(a.name);
     onSelect({
-      title: a.name,
       location: a.address || query,
       supplier: a.type || undefined,
       image: a.image || undefined,
