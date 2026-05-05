@@ -399,6 +399,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     try {
       const trip = await fetchTripByShortCode(pin);
       if (!trip) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setCodeError("No trip found for that PIN");
         setDigits(["", "", "", "", "", ""]);
         pinRefs.current[0]?.focus();
@@ -448,17 +449,19 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     setDigits(next);
     if (codeError) setCodeError(null);
 
-    if (clean && idx < 5) {
-      pinRefs.current[idx + 1]?.focus();
+    if (clean) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (idx < 5) pinRefs.current[idx + 1]?.focus();
     }
-    // Auto-submit when all 6 filled
     if (next.every((d) => d.length === 1)) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       submitPin(next.join(""));
     }
   };
 
   const handleDigitKeyPress = (idx: number, key: string) => {
     if (key === "Backspace" && !digits[idx] && idx > 0) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       pinRefs.current[idx - 1]?.focus();
       const next = [...digits];
       next[idx - 1] = "";
@@ -528,21 +531,32 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             >
               <View style={styles.sheetGrabber} />
 
-              {/* Header row */}
-              {!foundTrip && (
-              <View style={styles.sheetHeader}>
-                <Text style={styles.codeTitle}>Join a Trip</Text>
-                <Pressable onPress={closeSheet} style={styles.codeClose}>
-                  <XIcon size={14} color={C.textSecondary} strokeWidth={2} />
-                </Pressable>
-              </View>
-              )}
-
               {/* Success reveal */}
               {foundTrip ? (
                 <TripFoundReveal trip={foundTrip} C={C} />
               ) : (
               <>
+              {/* Header */}
+              <View style={styles.sheetHeader}>
+                <View style={{ flex: 1 }} />
+                <Pressable onPress={closeSheet} style={styles.codeClose} hitSlop={8}>
+                  <XIcon size={13} color={C.textSecondary} strokeWidth={2.5} />
+                </Pressable>
+              </View>
+
+              {/* Boarding pass hero */}
+              <View style={styles.bpHero}>
+                <View style={styles.bpFlightRow}>
+                  <View style={styles.bpDot} />
+                  <View style={styles.bpDash} />
+                  <Plane size={16} color={C.teal} strokeWidth={2} style={{ transform: [{ rotate: "-45deg" }] }} />
+                  <View style={styles.bpDash} />
+                  <View style={[styles.bpDot, { backgroundColor: C.teal }]} />
+                </View>
+                <Text style={styles.bpTitle}>Join a Trip</Text>
+                <Text style={styles.bpSub}>Enter your boarding code to unlock your itinerary</Text>
+              </View>
+
               {/* Mode tabs */}
               <View style={styles.modeTabs}>
                 {([
@@ -573,9 +587,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               {/* PIN entry */}
               {entryMode === "pin" && (
                 <View style={styles.modeContent}>
-                  <Text style={styles.sheetSub}>Enter the code from your organiser.</Text>
                   <View style={styles.pinRow}>
-                    {digits.map((d, i) => (
+                    {digits.slice(0, 3).map((d, i) => (
                       <TextInput
                         key={i}
                         ref={(r) => { pinRefs.current[i] = r; }}
@@ -596,13 +609,36 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                         ]}
                       />
                     ))}
+                    <View style={styles.pinDivider}>
+                      <View style={styles.pinDividerDot} />
+                    </View>
+                    {digits.slice(3, 6).map((d, i) => (
+                      <TextInput
+                        key={i + 3}
+                        ref={(r) => { pinRefs.current[i + 3] = r; }}
+                        value={d}
+                        onChangeText={(v) => handleDigitChange(i + 3, v)}
+                        onKeyPress={(e) => handleDigitKeyPress(i + 3, e.nativeEvent.key)}
+                        keyboardType="default"
+                        autoCapitalize="characters"
+                        maxLength={1}
+                        selectTextOnFocus
+                        editable={!resolving}
+                        accessibilityLabel={`Character ${i + 4} of 6`}
+                        style={[
+                          styles.pinCell,
+                          d ? styles.pinCellFilled : null,
+                          codeError ? styles.pinCellError : null,
+                        ]}
+                      />
+                    ))}
                   </View>
                   {codeError ? (
                     <Text style={[styles.codeErrorText, { textAlign: "center" }]}>{codeError}</Text>
                   ) : resolving ? (
                     <Text style={styles.checkingText}>Looking up…</Text>
                   ) : (
-                    <Text style={styles.pinHint}>Your organiser will share a 4-6 character code.</Text>
+                    <Text style={styles.pinHint}>Ask your organiser for the trip code</Text>
                   )}
                 </View>
               )}
@@ -618,6 +654,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     if (id) {
                       submitTripId(id);
                     } else {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                       setCodeError("QR code doesn't contain a valid trip link");
                       setEntryMode("pin");
                     }
@@ -628,7 +665,6 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               {/* Link paste */}
               {entryMode === "link" && (
                 <View style={[styles.modeContent, { width: "100%" }]}>
-                  <Text style={styles.sheetSub}>Paste the share link your organiser sent you.</Text>
                   <TextInput
                     value={linkValue}
                     onChangeText={(t) => { setLinkValue(t); if (codeError) setCodeError(null); }}
@@ -757,31 +793,50 @@ function makeGreetingStyles(C: ThemeColors) {
     codeSheet: {
       backgroundColor: HAS_LIQUID_GLASS ? "transparent" : C.card,
       paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.xl,
-      gap: S.xs,
     },
     sheetGrabber: {
       alignSelf: "center",
       width: 36, height: 4, borderRadius: 2,
       backgroundColor: C.border,
-      marginBottom: S.md,
+      marginBottom: S.xs,
     },
     sheetHeader: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      marginBottom: S.md,
-    },
-    sheetSub: {
-      fontSize: T.sm, color: C.textTertiary, lineHeight: 20,
-      marginBottom: S.sm, textAlign: "center",
-    },
-    codeTitle: {
-      fontSize: T["2xl"], fontWeight: "700",
-      color: C.textPrimary, letterSpacing: -0.3,
+      flexDirection: "row", alignItems: "center", justifyContent: "flex-end",
+      marginBottom: S.xs,
     },
     codeClose: {
       width: 30, height: 30, borderRadius: 15,
       alignItems: "center", justifyContent: "center",
       backgroundColor: C.elevated,
     },
+    // ── Boarding pass hero ──
+    bpHero: {
+      alignItems: "center", paddingVertical: S.lg,
+      marginBottom: S.sm,
+    },
+    bpFlightRow: {
+      flexDirection: "row", alignItems: "center",
+      gap: 6, marginBottom: S.md,
+    },
+    bpDot: {
+      width: 8, height: 8, borderRadius: 4,
+      borderWidth: 1.5, borderColor: C.textTertiary,
+      backgroundColor: "transparent",
+    },
+    bpDash: {
+      width: 40, height: 1,
+      borderStyle: "dashed" as const, borderWidth: 1, borderColor: C.border,
+    },
+    bpTitle: {
+      fontSize: T["3xl"], fontWeight: "700",
+      color: C.textPrimary, letterSpacing: -0.5,
+      marginBottom: 6,
+    },
+    bpSub: {
+      fontSize: T.sm, color: C.textTertiary,
+      textAlign: "center", lineHeight: 20, maxWidth: 260,
+    },
+    // ── Mode tabs ──
     modeTabs: {
       flexDirection: "row", backgroundColor: C.elevated,
       borderRadius: R.lg, padding: 3, marginBottom: S.lg,
@@ -796,32 +851,40 @@ function makeGreetingStyles(C: ThemeColors) {
     modeTabText: {
       fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary,
     },
+    // ── PIN entry ──
     modeContent: {
       alignItems: "center",
       paddingHorizontal: S.xs,
     },
     pinRow: {
-      flexDirection: "row", justifyContent: "center",
-      gap: 10, marginVertical: S.sm,
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, marginBottom: S.sm,
     },
     pinCell: {
-      width: 46, height: 52, borderRadius: R.lg,
+      width: 44, height: 50, borderRadius: R.md,
       borderWidth: 1.5, borderColor: C.border,
       backgroundColor: C.elevated,
       textAlign: "center",
-      fontSize: 22, fontWeight: T.bold,
-      color: C.textPrimary, letterSpacing: -0.3,
+      fontSize: 20, fontWeight: T.bold,
+      color: C.textPrimary,
     },
     pinCellFilled: { borderColor: C.teal, backgroundColor: C.tealDim },
     pinCellError: { borderColor: "#ff6b6b" },
+    pinDivider: {
+      width: 12, alignItems: "center", justifyContent: "center",
+    },
+    pinDividerDot: {
+      width: 4, height: 4, borderRadius: 2,
+      backgroundColor: C.border,
+    },
     pinHint: {
       fontSize: T.xs, color: C.textDim,
-      textAlign: "center", marginTop: S.sm,
+      textAlign: "center", marginTop: S.xs,
     },
     checkingText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
+      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
       letterSpacing: 1.5, textTransform: "uppercase",
-      textAlign: "center", marginTop: S.sm,
+      textAlign: "center", marginTop: S.xs,
     },
     qrFrame: {
       width: Math.min(220, Dimensions.get("window").width - S.md * 4),
