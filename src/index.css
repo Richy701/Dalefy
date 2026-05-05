@@ -107,7 +107,8 @@ html[data-accent-mono]:not(.dark) .group:hover .group-hover\:bg-brand {
 /* text-brand on dark image card overlays stays white in light mono */
 html[data-accent-mono]:not(.dark) [data-compact-trip-card] .text-brand,
 html[data-accent-mono]:not(.dark) [data-compact-spotlight-hero] .text-brand,
-html[data-accent-mono]:not(.dark) [data-dest-card] .text-brand {
+html[data-accent-mono]:not(.dark) [data-dest-card] .text-brand,
+html[data-accent-mono]:not(.dark) [data-workspace-hero] .text-brand {
   color: #fff !important;
 }
 

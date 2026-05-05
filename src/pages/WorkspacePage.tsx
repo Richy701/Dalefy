@@ -876,7 +876,7 @@ export function WorkspacePage() {
         <div className="flex-1 flex flex-row overflow-hidden relative">
           <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap || showTasks ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
-            <section className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
+            <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
               {/* Multi-layer gradient for depth */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
