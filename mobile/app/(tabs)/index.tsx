@@ -866,7 +866,7 @@ function makeGreetingStyles(C: ThemeColors) {
       backgroundColor: C.border,
     },
     pinHint: {
-      fontSize: T.xs, color: C.textDim,
+      fontSize: T.xs, color: C.textTertiary,
       textAlign: "center", marginTop: S.xs,
     },
     checkingText: {
