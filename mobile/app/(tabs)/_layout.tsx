@@ -87,7 +87,7 @@ function AndroidTabLayout() {
           fontSize: 11,
           fontWeight: "600",
         },
-        sceneStyle: { backgroundColor: C.card },
+        sceneStyle: { backgroundColor: C.bg },
       }}
     >
       {TABS.map(({ name, label, materialIcon, hidden }) => (

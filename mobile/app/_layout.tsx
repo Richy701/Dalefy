@@ -9,9 +9,24 @@ import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
 import * as NavigationBar from "expo-navigation-bar";
 
-// Set native root background immediately based on system appearance — before React mounts
+// Read saved theme preference and set native root background BEFORE React mounts.
+// This prevents the flash when the user's saved theme differs from the system theme.
 const systemIsDark = Appearance.getColorScheme() === "dark";
-SystemUI.setBackgroundColorAsync(systemIsDark ? "#131316" : "#ffffff");
+SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f7f8fb");
+
+// Eagerly apply saved preference — runs async but resolves before splash hides
+import AsyncStorage from "@react-native-async-storage/async-storage";
+AsyncStorage.getItem("daf-prefs").then((raw) => {
+  if (!raw) return;
+  try {
+    const { themeMode } = JSON.parse(raw);
+    if (themeMode && themeMode !== "system") {
+      const savedDark = themeMode === "dark";
+      Appearance.setColorScheme(themeMode);
+      SystemUI.setBackgroundColorAsync(savedDark ? "#09090b" : "#f7f8fb");
+    }
+  } catch { /* ignore */ }
+}).catch(() => {});
 
 // Android: transparent nav bar so content extends edge-to-edge
 if (Platform.OS === "android") {
@@ -92,7 +107,7 @@ function AppStack() {
 
   // Sync native root background with theme (status bar area)
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(isDark ? "#131316" : "#ffffff");
+    SystemUI.setBackgroundColorAsync(isDark ? "#09090b" : "#f7f8fb");
   }, [isDark]);
 
   // Android: sync nav bar color with theme
@@ -187,11 +202,11 @@ function AppStack() {
   }, [ready]);
 
   if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: C.card }} />;
+    return <View style={{ flex: 1, backgroundColor: C.bg }} />;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.card }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
       <ErrorBoundary>
         <Stack
@@ -200,7 +215,7 @@ function AppStack() {
             headerBackTitle: " ",
             headerBackButtonDisplayMode: "minimal",
             animation: "slide_from_right",
-            contentStyle: { backgroundColor: C.card },
+            contentStyle: { backgroundColor: C.bg },
           }}
         />
       </ErrorBoundary>

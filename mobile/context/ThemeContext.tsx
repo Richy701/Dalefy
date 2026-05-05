@@ -32,12 +32,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     Appearance.getColorScheme() === "light" ? "light" : "dark"
   );
 
-  // Sync native appearance on mount if user has a preference
+  // Sync native appearance whenever the saved mode changes (including initial load from storage)
   useEffect(() => {
-    if (mode !== "system") {
-      Appearance.setColorScheme(mode);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    Appearance.setColorScheme(mode === "system" ? null : mode);
+  }, [mode]);
 
   useEffect(() => {
     const sub = Appearance.addChangeListener(({ colorScheme }) => {
@@ -62,7 +60,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setMode = useCallback((m: ThemeMode) => {
     Appearance.setColorScheme(m === "system" ? null : m);
     const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
-    SystemUI.setBackgroundColorAsync(willBeDark ? "#131316" : "#ffffff");
+    SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f7f8fb");
     setPref("themeMode", m);
   }, [setPref]);
 
