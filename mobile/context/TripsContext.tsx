@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
@@ -51,7 +51,8 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     queryKey: ["trips"],
     queryFn: fetchTrips,
     staleTime: 1000 * 60 * 2,
-    retry: 2,
+    retry: 1,
+    retryDelay: 1000,
   });
 
   // Sync remote data → local cache when it arrives (skip during pending writes)
@@ -81,10 +82,23 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   // Use remote data when available, fall back to local cache.
   // Prefer local cache when remote returns empty but cache has data (offline scenario).
   // Always wait for AsyncStorage before declaring ready — it's our offline safety net.
-  const trips = (remoteTrips && remoteTrips.length > 0) ? remoteTrips
-    : (localCache && localCache.length > 0) ? localCache
-    : remoteTrips ?? localCache ?? [];
+  const trips = useMemo(() => {
+    if (remoteTrips && remoteTrips.length > 0) return remoteTrips;
+    if (localCache && localCache.length > 0) return localCache;
+    return remoteTrips ?? localCache ?? [];
+  }, [remoteTrips, localCache]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
+
+  // Ensure displayed trips are always persisted for offline cold start
+  const lastSaved = useRef("");
+  useEffect(() => {
+    if (trips.length === 0) return;
+    const json = JSON.stringify(trips);
+    if (json !== lastSaved.current) {
+      lastSaved.current = json;
+      AsyncStorage.setItem(CACHE_KEY, json).catch(() => {});
+    }
+  }, [trips]);
 
   const addTrip = useCallback((trip: Trip) => {
     const update = (prev: Trip[]) => {

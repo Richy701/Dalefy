@@ -30,7 +30,7 @@ export async function fetchTrips(): Promise<Trip[]> {
   // Get trip IDs this device has joined (timeout prevents hanging when offline)
   const memberSnap = await withTimeout(
     getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
-    8000,
+    5000,
   );
   const tripIds = [...new Set(memberSnap.docs.map(d => d.data().trip_id as string))];
   if (tripIds.length === 0) return [];
@@ -41,7 +41,7 @@ export async function fetchTrips(): Promise<Trip[]> {
     const batch = tripIds.slice(i, i + 30);
     const snap = await withTimeout(
       getDocs(query(collection(firebaseDb(), TRIPS), where("__name__", "in", batch))),
-      8000,
+      5000,
     );
     for (const d of snap.docs) {
       trips.push(docToTrip(d.id, d.data()));
@@ -67,7 +67,7 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
       const deviceId = await getDeviceId();
       const memberSnap = await withTimeout(
         getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
-        8000,
+        5000,
       );
       const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
 
