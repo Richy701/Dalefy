@@ -1175,8 +1175,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       if (ev.type !== "hotel") continue;
       const hotelQuery = ev.title + (destination ? ` hotel ${destination}` : " hotel");
       try {
-        const params = new URLSearchParams({ q: hotelQuery, check_in: parsed.start || "2026-01-01", check_out: parsed.end || "2026-01-02" });
-        const resp = await fetch("/api/hotels?" + params);
+        const params = new URLSearchParams({ type: "hotels", q: hotelQuery, check_in: parsed.start || "2026-01-01", check_out: parsed.end || "2026-01-02" });
+        const resp = await fetch("/api/places?" + params);
         if (!resp.ok) continue;
         const data = await resp.json();
         const match = (data.hotels ?? [])[0];

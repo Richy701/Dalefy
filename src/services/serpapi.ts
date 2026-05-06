@@ -75,8 +75,8 @@ export interface DiningResult {
 export async function searchActivities(
   q: string
 ): Promise<ActivityResult[]> {
-  const params = new URLSearchParams({ q });
-  const res = await fetch(`/api/activities?${params}`);
+  const params = new URLSearchParams({ type: "activities", q });
+  const res = await fetch(`/api/places?${params}`);
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   return data.activities ?? [];
@@ -85,8 +85,8 @@ export async function searchActivities(
 export async function searchDining(
   q: string
 ): Promise<DiningResult[]> {
-  const params = new URLSearchParams({ q });
-  const res = await fetch(`/api/dining?${params}`);
+  const params = new URLSearchParams({ type: "dining", q });
+  const res = await fetch(`/api/places?${params}`);
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   return data.restaurants ?? [];
@@ -113,8 +113,8 @@ export async function searchHotels(
     apiCheckIn = futureIn.toISOString().slice(0, 10);
     apiCheckOut = futureOut.toISOString().slice(0, 10);
   }
-  const params = new URLSearchParams({ q, check_in: apiCheckIn, check_out: apiCheckOut, adults: String(adults) });
-  const res = await fetch(`/api/hotels?${params}`);
+  const params = new URLSearchParams({ type: "hotels", q, check_in: apiCheckIn, check_out: apiCheckOut });
+  const res = await fetch(`/api/places?${params}`);
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();
   return data.hotels ?? [];
