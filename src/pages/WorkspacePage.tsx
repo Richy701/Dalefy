@@ -889,27 +889,43 @@ export function WorkspacePage() {
           </div>
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
-              {groupedEvents.map(([date], i) => (
-                <button
-                  key={date}
-                  onClick={() => {
-                    setActiveDayIdx(i);
-                    document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                  className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-brand/10 text-brand" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
-                >
-                  <div className="flex items-center gap-3 relative z-10 leading-none">
-                    <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter ${i === activeDayIdx ? "bg-brand text-slate-900 dark:text-black shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-                      <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
-                      <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
+              {groupedEvents.map(([date, dayEvents], i) => {
+                const flights = dayEvents.filter(e => e.type === "flight");
+                const hotels = dayEvents.filter(e => e.type === "hotel");
+                const highlight = flights[0]?.title || hotels[0]?.title || dayEvents[0]?.title || "";
+                const typeIcons = [
+                  ...new Set(dayEvents.map(e => e.type)),
+                ].slice(0, 4);
+                const TypeIcon = (t: string) => t === "flight" ? Plane : t === "hotel" ? Hotel : t === "dining" ? Utensils : t === "transfer" ? Car : Compass;
+                return (
+                  <button
+                    key={date}
+                    onClick={() => {
+                      setActiveDayIdx(i);
+                      document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-brand/10 text-brand" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
+                  >
+                    <div className="flex items-center gap-3 relative z-10 leading-none">
+                      <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter shrink-0 ${i === activeDayIdx ? "bg-brand text-slate-900 dark:text-black shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+                        <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
+                        <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
+                      </div>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className="text-[11px] font-bold truncate leading-none mt-1">{highlight}</span>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {typeIcons.map(t => {
+                            const IC = TypeIcon(t);
+                            return <IC key={t} className="h-3 w-3 opacity-40" />;
+                          })}
+                          <span className="text-[9px] font-semibold opacity-50 ml-auto">{dayEvents.length}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
-                      <span className="text-xs font-bold truncate leading-none mt-1 uppercase tracking-tighter">{groupedEvents[i][1].length} {groupedEvents[i][1].length === 1 ? "event" : "events"}</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </ScrollArea>
         </aside>
