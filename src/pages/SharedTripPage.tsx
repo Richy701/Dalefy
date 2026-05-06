@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Users, Compass, Clock, Loader2, Check, ChevronDown } from "lucide-react";
+import { CalendarDays, MapPin, Users, Compass, Clock, Loader2, Check, ChevronDown, Plane, Terminal, DoorOpen, Info } from "lucide-react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { Trip, TravelEvent } from "@/types";
@@ -28,30 +28,117 @@ function rowToTrip(row: Record<string, unknown>): Trip {
 }
 
 function EventRow({ ev }: { ev: TravelEvent }) {
+  const [open, setOpen] = useState(false);
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
   const color = EVENT_HEX[ev.type] ?? "#0bd2b5";
+  const hasDetail = !!(ev.description || ev.notes || ev.image || ev.airline || ev.terminal || ev.arrTerminal || ev.status || ev.flightNum || ev.confNumber || ev.roomType);
 
   return (
-    <div className="flex items-start gap-3 p-3 sm:p-4">
-      <div
-        className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border"
-        style={{ backgroundColor: `${color}15`, borderColor: `${color}30` }}
-      >
-        <Icon className="h-4 w-4" style={{ color }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
-          {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}</span>}
-          {ev.endTime && <span className="text-slate-400 dark:text-[#666]">-</span>}
-          {ev.endTime && <span>{ev.endTime}</span>}
-          {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
-          {ev.duration && <span>{ev.duration}</span>}
+    <div
+      className={`transition-colors ${hasDetail ? "cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02]" : ""}`}
+      onClick={() => hasDetail && setOpen(!open)}
+    >
+      <div className="flex items-start gap-3 p-3 sm:p-4">
+        <div
+          className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border"
+          style={{ backgroundColor: `${color}15`, borderColor: `${color}30` }}
+        >
+          <Icon className="h-4 w-4" style={{ color }} />
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
+            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}</span>}
+            {ev.endTime && <span className="text-slate-400 dark:text-[#666]">-</span>}
+            {ev.endTime && <span>{ev.endTime}</span>}
+            {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
+            {ev.duration && <span>{ev.duration}</span>}
+          </div>
+        </div>
+        {hasDetail && (
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-slate-300 dark:text-[#444] shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
+        )}
       </div>
-      {ev.image && (
-        <img src={ev.image} alt={ev.title} className="h-14 w-20 rounded-lg object-cover shrink-0 hidden sm:block" />
+
+      {open && (
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 ml-12 space-y-3">
+          {ev.image && (
+            <img src={ev.image} alt={ev.title} className="w-full h-40 sm:h-48 rounded-xl object-cover" />
+          )}
+
+          {(ev.airline || ev.flightNum || ev.terminal || ev.arrTerminal || ev.status) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
+              {ev.airline && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Plane className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
+              {ev.terminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><DoorOpen className="h-3 w-3" />Dep T{ev.terminal}</span>}
+              {ev.arrTerminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><DoorOpen className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
+              {ev.status && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Info className="h-3 w-3" />{ev.status}</span>}
+            </div>
+          )}
+
+          {(ev.confNumber || ev.roomType) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
+              {ev.roomType && <span className="text-slate-600 dark:text-[#aaa]">{ev.roomType}</span>}
+              {ev.confNumber && <span className="text-slate-500 dark:text-[#777] font-mono">Ref: {ev.confNumber}</span>}
+            </div>
+          )}
+
+          {ev.description && (
+            <p className="text-[12px] leading-relaxed text-slate-600 dark:text-[#aaa]">{ev.description}</p>
+          )}
+
+          {ev.notes && (
+            <p className="text-[11px] leading-relaxed text-slate-400 dark:text-[#666] italic">{ev.notes}</p>
+          )}
+        </div>
       )}
+    </div>
+  );
+}
+
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function DaySection({ date, events, dayIdx }: { date: string; events: TravelEvent[]; dayIdx: number }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const d = new Date(date + "T12:00:00");
+
+  return (
+    <div>
+      <div className="bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-3 w-full text-left cursor-pointer px-4 py-3"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-brand">
+                Day {dayIdx + 1}
+              </span>
+              <span className="w-px h-3.5 bg-slate-300 dark:bg-[#333]" />
+              <span className="text-[13px] font-bold text-slate-900 dark:text-white">
+                {d.toLocaleDateString("en-GB", { weekday: "long" })} {ordinal(d.getDate())} {d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </span>
+            </div>
+            <p className="text-[10px] font-semibold text-slate-400 dark:text-[#666] uppercase tracking-wider mt-1">
+              {events.length} event{events.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <ChevronDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
+        </button>
+        {!collapsed && (
+          <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
+            {events.map(ev => (
+              <EventRow key={ev.id} ev={ev} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -156,7 +243,7 @@ export function SharedTripPage() {
             {brand.logoUrl && (
               <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
             )}
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand">
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/80">
               {brand.name} · Itinerary
             </p>
           </div>
@@ -165,7 +252,7 @@ export function SharedTripPage() {
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-              <CalendarDays className="h-3 w-3 text-brand" />
+              <CalendarDays className="h-3 w-3 text-white/70" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
                 {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 {" - "}
@@ -175,13 +262,13 @@ export function SharedTripPage() {
             </div>
             {trip.destination && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <MapPin className="h-3 w-3 text-brand" />
+                <MapPin className="h-3 w-3 text-white/70" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
               </div>
             )}
             {trip.attendees && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <Users className="h-3 w-3 text-brand" />
+                <Users className="h-3 w-3 text-white/70" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
               </div>
             )}
@@ -190,8 +277,8 @@ export function SharedTripPage() {
       </div>
 
       {/* Itinerary */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
-        <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm">
+      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
+        <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
           {/* Traveler picker */}
           {hasTravelers && (
             <div className="mb-6">
@@ -258,42 +345,10 @@ export function SharedTripPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mb-6">
-            <Compass className="h-4 w-4 text-brand" />
-            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
-              {filteredEvents.length} events · {grouped.length} days
-            </span>
-          </div>
-
-          <div className="space-y-8">
-            {grouped.map(([date, events], dayIdx) => {
-              const d = new Date(date + "T12:00:00");
-              return (
-                <div key={date}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-lg bg-brand/10 border border-brand/20 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-[10px] font-black text-brand leading-none">
-                        {d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}
-                      </span>
-                      <span className="text-xs font-black text-brand leading-none mt-0.5">{d.getDate()}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                        Day {dayIdx + 1} · {d.toLocaleDateString("en-US", { weekday: "long" })}
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-[#888]">
-                        {events.length} event{events.length !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-[#1a1a1a]">
-                    {events.map(ev => (
-                      <EventRow key={ev.id} ev={ev} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-6">
+            {grouped.map(([date, events], dayIdx) => (
+              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} />
+            ))}
           </div>
         </div>
 
