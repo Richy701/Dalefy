@@ -351,7 +351,7 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
           <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
             <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">{event.time}</span>
             {event.endTime && (
-              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888]">→ {event.endTime}</span>
+              <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white">→ {event.endTime}</span>
             )}
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />
