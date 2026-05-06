@@ -41,7 +41,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const { showToast } = useNotifications();
   const { currentOrg, orgMembers } = useOrg();
   const { user } = useAuth();
-  const { resolvedAccent: accentColor } = usePreferences();
+  const { resolvedAccent: accentColor, accentFg } = usePreferences();
   const { brand } = useBrand();
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-100 dark:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-3xl p-0 gap-0 max-h-[85vh] overflow-y-auto"
+        className="w-full h-full max-w-none rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Invite people to {orgName}</DialogTitle>
@@ -126,7 +126,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               <Button
                 onClick={handleInvite}
                 disabled={sending || !email.trim()}
-                className="h-11 w-11 rounded-xl bg-brand hover:opacity-90 text-black p-0 shadow-lg shadow-brand/20"
+                className="h-11 w-11 rounded-xl bg-brand hover:opacity-90 p-0 shadow-lg shadow-brand/20"
+                style={{ color: accentFg }}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
               </Button>
@@ -138,9 +139,10 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   onClick={() => setRole(r)}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
                     role === r
-                      ? "bg-brand text-black"
+                      ? "bg-brand"
                       : "bg-white dark:bg-[#0f0f0f] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f]"
                   }`}
+                  style={role === r ? { color: accentFg } : undefined}
                 >
                   {r}
                 </button>
@@ -160,7 +162,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded-full object-contain shrink-0" />
                 ) : (
                   <div className="h-4 w-4 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: accentColor }}>
-                    <Users className="h-2.5 w-2.5 text-black" strokeWidth={2.5} />
+                    <Users className="h-2.5 w-2.5" style={{ color: accentFg }} strokeWidth={2.5} />
                   </div>
                 )}
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] truncate" style={{ color: accentColor }}>
@@ -177,8 +179,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   {inviterName} has invited <strong className="text-slate-900 dark:text-white">{lastInvite.email}</strong> to join <strong className="text-slate-900 dark:text-white">{orgName}</strong> as {ROLE_LABEL[lastInvite.role] || lastInvite.role}.
                 </p>
                 <div
-                  className="mt-4 inline-block px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-black"
-                  style={{ backgroundColor: accentColor }}
+                  className="mt-4 inline-block px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: accentColor, color: accentFg }}
                 >
                   Accept Invitation
                 </div>
@@ -258,7 +260,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               </Label>
               {orgMembers.map(m => (
                 <div key={m.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-white dark:hover:bg-[#0f0f0f] transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[10px] shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center font-black text-[10px] shrink-0" style={{ color: accentFg }}>
                     {m.profile?.initials || m.userId.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
