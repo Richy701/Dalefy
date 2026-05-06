@@ -1363,7 +1363,7 @@ export function WorkspacePage() {
                       value={editingEvent?.title || ""}
                       onChange={e => setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null)}
                       placeholder="e.g., Private Maasai Mara Flight"
-                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-brand focus:outline-none text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
+                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-brand focus:outline-none text-xl font-extrabold tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
                     />
                   </div>
 
