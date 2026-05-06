@@ -87,7 +87,10 @@ export function AcceptInvitePage() {
             <h1 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Sign In Required</h1>
             <p className="text-sm text-slate-600 dark:text-[#aaa]">{message}</p>
             <Button
-              onClick={() => navigate(`/login?redirect=/invite/${token}`)}
+              onClick={() => {
+                sessionStorage.setItem("daf-pending-invite", token || "");
+                navigate("/login");
+              }}
               className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
             >
               Sign In

@@ -288,6 +288,16 @@ export function LoginPage() {
       });
   }, [pendingAgency, user, createOrg, navigate]);
 
+  const goPostLogin = () => {
+    const pending = sessionStorage.getItem("daf-pending-invite");
+    if (pending) {
+      sessionStorage.removeItem("daf-pending-invite");
+      navigate(`/invite/${pending}`);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
   // ── Handlers ──────────────────────────────────────────────────────────
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -297,7 +307,7 @@ export function LoginPage() {
     try {
       const err = await signIn(email, password);
       if (err) setError(err);
-      else navigate("/dashboard");
+      else goPostLogin();
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : "Sign in failed");
     } finally {
@@ -335,7 +345,7 @@ export function LoginPage() {
         setError(err);
         return;
       }
-      if (!wantsOrg) navigate("/dashboard");
+      if (!wantsOrg) goPostLogin();
     } catch (ex) {
       sessionStorage.removeItem(STORAGE.PENDING_BRANDING);
       setPendingAgency(null);
@@ -349,7 +359,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await demoLogin();
-      navigate("/dashboard");
+      goPostLogin();
     } catch {
       setError("Demo login failed");
     } finally {
@@ -363,7 +373,7 @@ export function LoginPage() {
     try {
       const { error: err } = await signInWithGoogle();
       if (err) setError(err);
-      else navigate("/dashboard");
+      else goPostLogin();
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : "Google sign-in failed");
     } finally {

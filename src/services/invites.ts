@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { firebaseDb, firebaseAuth } from "./firebase";
 import type { OrgRole } from "@/types";
 
@@ -76,14 +76,14 @@ export async function revokeInvite(inviteId: string): Promise<void> {
 }
 
 export async function acceptInvite(token: string): Promise<{ orgId: string; orgName: string } | { error: string }> {
-  const snap = await getDocs(
-    query(collection(firebaseDb(), "org_invites"), where("token", "==", token), where("status", "==", "pending")),
-  );
+  const inviteRef = doc(firebaseDb(), "org_invites", token);
+  const inviteSnap = await getDoc(inviteRef);
 
-  if (snap.empty) return { error: "Invite not found or already used" };
+  if (!inviteSnap.exists()) return { error: "Invite not found" };
 
-  const inviteDoc = snap.docs[0];
-  const data = inviteDoc.data();
+  const data = inviteSnap.data();
+
+  if (data.status !== "pending") return { error: "This invite has already been used" };
 
   if (new Date(data.expires_at) < new Date()) {
     return { error: "This invitation has expired" };
@@ -96,7 +96,6 @@ export async function acceptInvite(token: string): Promise<{ orgId: string; orgN
   const orgId = data.organization_id;
   const role = data.role as OrgRole;
 
-  // Create org_members record
   const { setDoc } = await import("firebase/firestore");
   const memberId = `${user.uid}_${orgId}`;
   await setDoc(doc(firebaseDb(), "org_members", memberId), {
@@ -106,8 +105,7 @@ export async function acceptInvite(token: string): Promise<{ orgId: string; orgN
     joined_at: new Date().toISOString(),
   });
 
-  // Mark invite as accepted
-  await updateDoc(inviteDoc.ref, { status: "accepted", accepted_at: new Date().toISOString() });
+  await updateDoc(inviteRef, { status: "accepted", accepted_at: new Date().toISOString() });
 
   return { orgId, orgName: data.org_name };
 }
