@@ -1,12 +1,11 @@
 import { Resend } from "resend";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 
-const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID ?? "";
-const API_KEY = process.env.VITE_FIREBASE_API_KEY ?? "";
+const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || "dalefy-d87c9";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 const RESEND_KEY = process.env.RESEND_API_KEY ?? "";
-const APP_URL = process.env.VITE_APP_URL || "https://dalefy.com";
+const APP_URL = process.env.VITE_APP_URL || "https://dalefy.vercel.app";
 
 interface InviteRequest {
   email: string;
@@ -63,8 +62,8 @@ export default async function handler(req: any, res: any) {
 
   if (!firestoreResp.ok) {
     const errText = await firestoreResp.text();
-    console.error("Firestore write failed:", firestoreResp.status, errText);
-    return res.status(500).json({ error: "Failed to create invite" });
+    console.error("Firestore write failed:", firestoreResp.status, errText, "URL:", `${BASE}/org_invites/${inviteToken}`);
+    return res.status(500).json({ error: "Failed to create invite", detail: errText });
   }
 
   const acceptUrl = `${APP_URL}/#/invite/${inviteToken}`;
