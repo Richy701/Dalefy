@@ -101,25 +101,14 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="w-full h-full max-w-none rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] sm:overflow-hidden"
+        className="max-w-[calc(100vw-2rem)] sm:max-w-md bg-slate-100 dark:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-3xl p-0 gap-0 max-h-[85vh] overflow-y-auto"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Invite people to {orgName}</DialogTitle>
           <DialogDescription>Send team invitations</DialogDescription>
         </DialogHeader>
 
-        {/* Mobile close */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2 sm:hidden">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Invite People</p>
-          <button
-            onClick={handleClose}
-            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] active:scale-95 transition-transform"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="p-5 pt-2 sm:pt-5 space-y-4">
+        <div className="p-5 space-y-4">
           {/* Email + role input */}
           <div className="space-y-3">
             <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Email Address</Label>
@@ -281,8 +270,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             </div>
           )}
 
-          {/* Desktop close */}
-          <div className="hidden sm:flex justify-end pt-2 pb-1">
+          <div className="flex justify-end pt-2 pb-1">
             <Button variant="ghost" onClick={handleClose} className="rounded-xl h-10 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
               Close
             </Button>
