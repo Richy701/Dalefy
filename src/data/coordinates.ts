@@ -5,6 +5,9 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "DOH": [25.2731, 51.6080],
   "NBO": [-1.3192, 36.9278],
   "LHR": [51.4700, -0.4543],
+  "London Heathrow": [51.4700, -0.4543],
+  "Heathrow": [51.4700, -0.4543],
+  "Heathrow Airport": [51.4700, -0.4543],
   "NRT": [35.7720, 140.3929],
   "HND": [35.5494, 139.7798],
   "KIX": [34.4347, 135.2440],
@@ -13,6 +16,9 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "NAP": [40.8860, 14.2908],
   "KEF": [63.9850, -22.6056],
   "SIN": [1.3644, 103.9915],
+  "Singapore Changi": [1.3644, 103.9915],
+  "Changi Airport": [1.3644, 103.9915],
+  "Changi": [1.3644, 103.9915],
   "DPS": [-8.7467, 115.1670],
   "ZRH": [47.4647, 8.5492],
   "JFK": [40.6413, -73.7781],
@@ -143,6 +149,14 @@ export function resolveCoords(location: string): [number, number] | null {
   const codeMatch = location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/);
   if (codeMatch) {
     return LOCATION_COORDS[codeMatch[1]] || LOCATION_COORDS[codeMatch[2]] || null;
+  }
+
+  // Try extracting a standalone IATA code from the string (e.g. "SQ321 - LHR to SIN")
+  const iataMatch = location.match(/\b([A-Z]{3})\b/g);
+  if (iataMatch) {
+    for (const code of iataMatch) {
+      if (LOCATION_COORDS[code]) return LOCATION_COORDS[code];
+    }
   }
 
   // Case-insensitive exact match

@@ -63,7 +63,23 @@ export async function signIn(
 
   try {
     const { user: fbUser } = await signInWithEmailAndPassword(firebaseAuth(), email, password);
-    const profile = await fetchProfile(fbUser.uid);
+    let profile = await fetchProfile(fbUser.uid);
+    if (!profile) {
+      const name = fbUser.displayName ?? email.split("@")[0] ?? "User";
+      profile = {
+        id: fbUser.uid,
+        name,
+        email: fbUser.email ?? email,
+        role: "Trip Manager",
+        avatar: fbUser.photoURL ?? "",
+        initials: initialsFrom(name),
+        status: "Active",
+      };
+      await setDoc(doc(firebaseDb(), "profiles", fbUser.uid), {
+        ...profile,
+        created_at: new Date().toISOString(),
+      });
+    }
     return { user: profile, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Sign in failed";

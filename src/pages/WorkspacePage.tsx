@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO } from "date-fns";
@@ -59,6 +60,7 @@ import { upsertTrip } from "@/services/firebaseTrips";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
+import { usePresence } from "@/hooks/usePresence";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, KEYWORD_MAP, getEventImageCategory, generateEventImage } from "@/data/images";
@@ -124,6 +126,7 @@ export function WorkspacePage() {
   const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
+  const { others: presenceUsers, updateActivity } = usePresence(tripId);
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
 
@@ -394,6 +397,7 @@ export function WorkspacePage() {
     setImageSearchSource(null);
     setEditingEvent({ ...event });
     setIsEditPanelOpen(true);
+    if (event.date) updateActivity(event.date, event.id);
   };
 
   const handleSaveEvent = (e: React.FormEvent) => {
@@ -742,6 +746,42 @@ export function WorkspacePage() {
             </div>
           </div>
         </div>
+
+        {/* Presence avatars */}
+        {presenceUsers.length > 0 && (
+          <div className="hidden sm:flex items-center -space-x-2 mr-2">
+            {presenceUsers.slice(0, 5).map((p) => (
+              <Tooltip key={p.userId}>
+                <TooltipTrigger asChild>
+                  <div className="relative">
+                    {p.avatar ? (
+                      <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] bg-brand/15 flex items-center justify-center text-[9px] font-black text-brand uppercase">
+                        {p.initials}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-[#111111]" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <span className="font-bold">{p.name || "Team member"}</span>
+                  {p.activeDay && (
+                    <span className="text-slate-400 ml-1">
+                      · Day {groupedEvents.findIndex(([d]) => d === p.activeDay) + 1 || "?"}
+                    </span>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+            {presenceUsers.length > 5 && (
+              <div className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-[9px] font-bold text-slate-500">
+                +{presenceUsers.length - 5}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 shrink-0">
           {/* View As dropdown */}
           {tripTravelers.length > 0 && (
@@ -888,38 +928,55 @@ export function WorkspacePage() {
             {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>}
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1">
               {groupedEvents.map(([date, dayEvents], i) => {
                 const flights = dayEvents.filter(e => e.type === "flight");
                 const hotels = dayEvents.filter(e => e.type === "hotel");
-                const highlight = flights[0]?.title || hotels[0]?.title || dayEvents[0]?.title || "";
+                const highlight = (flights[0]?.title || hotels[0]?.title || dayEvents[0]?.title || "").replace(/\s*[—–]\s*/g, " - ");
                 const typeIcons = [
                   ...new Set(dayEvents.map(e => e.type)),
                 ].slice(0, 4);
                 const TypeIcon = (t: string) => t === "flight" ? Plane : t === "hotel" ? Hotel : t === "dining" ? Utensils : t === "transfer" ? Car : Compass;
+                const isActive = i === activeDayIdx;
+                const dayPeers = presenceUsers.filter(p => p.activeDay === date);
                 return (
                   <button
                     key={date}
                     onClick={() => {
                       setActiveDayIdx(i);
+                      updateActivity(date);
                       document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
-                    className={`w-full text-left p-3 rounded-xl group relative transition-all duration-300 ${i === activeDayIdx ? "bg-brand/10 text-brand" : "hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white"}`}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl group relative transition-all duration-200 ${isActive ? "bg-brand/10 ring-1 ring-brand/25" : "hover:bg-slate-100 dark:hover:bg-white/[0.03]"}`}
                   >
-                    <div className="flex items-center gap-3 relative z-10 leading-none">
-                      <div className={`h-10 w-10 rounded-lg flex flex-col items-center justify-center font-black text-[11px] uppercase tracking-tighter shrink-0 ${i === activeDayIdx ? "bg-brand text-slate-900 dark:text-black shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-                        <span className="opacity-70">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
-                        <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
+                    <div className="flex items-center gap-2.5 relative z-10 leading-none">
+                      <div className="relative shrink-0">
+                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#666]"}`}>
+                          <span className="text-[8px] font-bold uppercase leading-none">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
+                          <span className="text-sm font-black leading-none mt-0.5">{new Date(date).getDate()}</span>
+                        </div>
+                        {dayPeers.length > 0 && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-white">
+                            {dayPeers.length}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className="text-[11px] font-bold truncate leading-none mt-1">{highlight}</span>
-                        <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-400 dark:text-[#555]"}`}>Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-[#999]"}`}>{highlight}</span>
+                        <div className="flex items-center gap-1 mt-1">
                           {typeIcons.map(t => {
                             const IC = TypeIcon(t);
-                            return <IC key={t} className="h-3 w-3 opacity-40" />;
+                            return <IC key={t} className={`h-2.5 w-2.5 ${isActive ? "text-brand/60" : "opacity-30"}`} />;
                           })}
-                          <span className="text-[9px] font-semibold opacity-50 ml-auto">{dayEvents.length}</span>
+                          {dayPeers.length > 0 && (
+                            <div className="flex -space-x-1 ml-auto">
+                              {dayPeers.slice(0, 3).map(p => (
+                                <div key={p.userId} className="h-4 w-4 rounded-full bg-brand/15 border border-white dark:border-[#111111] flex items-center justify-center text-[6px] font-black text-brand uppercase">{p.initials.slice(0, 1)}</div>
+                              ))}
+                            </div>
+                          )}
+                          {dayPeers.length === 0 && dayEvents.length > 1 && <span className={`text-[8px] font-bold ml-auto ${isActive ? "text-brand/60" : "opacity-30"}`}>{dayEvents.length}</span>}
                         </div>
                       </div>
                     </div>
@@ -2224,12 +2281,12 @@ export function WorkspacePage() {
 
       {/* ── Information mini-dialog ── */}
       <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
-          <form onSubmit={handleSaveInfo}>
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+        <DialogContent className="w-full h-full max-w-none rounded-none border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
+          <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
+            <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
                     <FileText className="h-4 w-4 text-brand" />
                   </div>
                   <div>
@@ -2246,19 +2303,19 @@ export function WorkspacePage() {
                 </button>
               </div>
             </DialogHeader>
-            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {editInfoData.length === 0 && (
-                <div className="text-center py-10 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
-                  <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
-                    <FileText className="h-5 w-5 text-brand/50" />
+                <div className="text-center py-14 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
+                  <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
+                    <FileText className="h-6 w-6 text-brand/50" />
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-[#666] font-bold">No pages yet</p>
-                  <p className="text-[10px] text-slate-400 dark:text-[#444] mt-1">Add travel tips, visa info, packing lists</p>
+                  <p className="text-sm text-slate-500 dark:text-[#666] font-bold">No pages yet</p>
+                  <p className="text-xs text-slate-400 dark:text-[#444] mt-1">Add travel tips, visa info, packing lists</p>
                 </div>
               )}
               {editInfoData.map((item, idx) => (
-                <div key={item.id} className="group rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 px-4 py-3">
+                <div key={item.id} className="group rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden transition-shadow hover:shadow-md">
+                  <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-[#1a1a1a]">
                     <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
                       <span className="text-[11px] font-black text-brand">{idx + 1}</span>
                     </div>
@@ -2269,18 +2326,18 @@ export function WorkspacePage() {
                         updated[idx] = { ...updated[idx], title: e.target.value };
                         setEditInfoData(updated);
                       }}
-                      placeholder="Page title — e.g., Visa Requirements"
-                      className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                      placeholder="Page title, e.g. Visa Requirements"
+                      className="h-9 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                     />
                     <button
                       type="button"
                       onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
-                      className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                      className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="px-4 pb-4">
+                  <div className="p-4 sm:p-5">
                     <Textarea
                       value={item.body}
                       onChange={e => {
@@ -2289,13 +2346,14 @@ export function WorkspacePage() {
                         setEditInfoData(updated);
                       }}
                       placeholder="Write content that travelers will see..."
-                      className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                      rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
+                      className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] text-slate-700 dark:text-[#ccc] resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                     />
                   </div>
                 </div>
               ))}
             </div>
-            <DialogFooter className="px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
+            <DialogFooter className="px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>

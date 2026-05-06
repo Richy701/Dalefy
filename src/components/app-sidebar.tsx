@@ -165,7 +165,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap block">
                   {brand.name}
                 </span>
-                {currentOrg && (
+                {currentOrg && currentOrg.name.toLowerCase() !== brand.name.toLowerCase() && (
                   <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 whitespace-nowrap block">
                     {currentOrg.name}
                   </span>
