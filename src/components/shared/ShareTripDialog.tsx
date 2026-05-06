@@ -56,7 +56,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
 
   const webUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}${window.location.pathname}#/shared/${tripId}`
+      ? `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${tripId}`
       : "";
   const deepLink = `dalefy://shared/${tripId}`;
 

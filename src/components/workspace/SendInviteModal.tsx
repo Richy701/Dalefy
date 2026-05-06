@@ -62,7 +62,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   const resolvedSubject = useMemo(() => replaceVars(subject, vars), [subject, vars]);
   const resolvedBody = useMemo(() => replaceVars(body, vars), [body, vars]);
 
-  const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/${trip.id}`;
+  const shareUrl = `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${trip.id}`;
   const { resolvedAccent, accentFg } = usePreferences();
   const accentColor = resolvedAccent;
 
