@@ -352,6 +352,19 @@ function resolveFlightCity(raw: string): string {
   return AIRPORT_CITIES[raw] ?? raw;
 }
 
+const TITLE_CASE_LOWER = new Set(["a","an","and","as","at","but","by","for","from","if","in","into","nor","of","on","or","so","the","to","up","via","with","yet"]);
+
+function toTitleCase(str: string): string {
+  if (!str) return str;
+  const allUpper = str === str.toUpperCase() && str.length > 3;
+  const src = allUpper ? str.toLowerCase() : str;
+  return src.replace(/\S+/g, (word, idx) => {
+    if (/^[A-Z]{2,4}$/.test(word)) return word;
+    if (idx > 0 && TITLE_CASE_LOWER.has(word.toLowerCase())) return word.toLowerCase();
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+}
+
 // ─── Heuristic parser ──────────────────────────────────────────────────────────
 
 const MONTH = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
@@ -868,6 +881,8 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         .trim()
         .slice(0, 100) || "Event";
 
+      const titleClean = toTitleCase(title);
+
       // Flight-specific location: extract "ORIGIN to DESTINATION" from depart/arrive patterns
       let location = "";
       if (type === "flight") {
@@ -895,10 +910,10 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         location = locMatch ? locMatch[1].trim() : "";
       }
 
-      if (title.length > 2) {
+      if (titleClean.length > 2) {
         events.push({
           id: `imp-${Date.now()}-${events.length}`,
-          type, date: currentDate, time: time || "TBD", title, location,
+          type, date: currentDate, time: time || "TBD", title: titleClean, location,
         });
       }
     }
@@ -943,7 +958,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     }
 
     if (bodyLines.length > 0) {
-      info.push({ title: titleRaw, body: bodyLines.join("\n") });
+      info.push({ title: toTitleCase(titleRaw), body: bodyLines.join("\n") });
     }
   }
 
@@ -991,7 +1006,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     type: ev.type as EventType,
     date: ev.date ?? "",
     time: ev.time ?? "TBD",
-    title: (ev.title ?? "Event").slice(0, 100),
+    title: toTitleCase((ev.title ?? "Event").slice(0, 100)),
     location: ev.location ?? "",
     description: ev.description ?? "",
     notes: ev.notes ?? "",
@@ -1002,7 +1017,7 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     : undefined;
 
   const info: ParsedInfo[] = (data.info ?? []).map((i: any) => ({
-    title: i.title ?? "",
+    title: toTitleCase(i.title ?? ""),
     body: i.body ?? "",
   }));
 
