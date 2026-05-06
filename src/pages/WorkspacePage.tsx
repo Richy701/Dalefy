@@ -66,6 +66,42 @@ import { IMAGE_BANK, COVER_IMAGES, KEYWORD_MAP, getEventImageCategory, generateE
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+function formatTimeInput(raw: string): string {
+  const s = raw.trim();
+  if (!s) return "";
+  // Already formatted like "9:30 AM"
+  if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(s)) return s.toUpperCase().replace(/(AM|PM)/, " $1").replace(/\s+/g, " ");
+  // "9:30am" / "9:30 pm"
+  const colonAmPm = s.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (colonAmPm) return `${colonAmPm[1]}:${colonAmPm[2]} ${colonAmPm[3].toUpperCase()}`;
+  // "930am" / "1430pm" (rare but handle)
+  const noColonAmPm = s.match(/^(\d{1,2})(\d{2})\s*(am|pm)$/i);
+  if (noColonAmPm) return `${noColonAmPm[1]}:${noColonAmPm[2]} ${noColonAmPm[3].toUpperCase()}`;
+  // "9am" / "2pm"
+  const hourAmPm = s.match(/^(\d{1,2})\s*(am|pm)$/i);
+  if (hourAmPm) return `${hourAmPm[1]}:00 ${hourAmPm[2].toUpperCase()}`;
+  // 24h: "0930" / "1430" / "930"
+  const mil = s.match(/^(\d{1,2}):?(\d{2})$/);
+  if (mil) {
+    let h = parseInt(mil[1]);
+    const m = mil[2];
+    if (h === 0) return `12:${m} AM`;
+    if (h < 12) return `${h}:${m} AM`;
+    if (h === 12) return `12:${m} PM`;
+    return `${h - 12}:${m} PM`;
+  }
+  // Bare hour: "9" / "14"
+  const bare = s.match(/^(\d{1,2})$/);
+  if (bare) {
+    let h = parseInt(bare[1]);
+    if (h === 0) return "12:00 AM";
+    if (h < 12) return `${h}:00 AM`;
+    if (h === 12) return "12:00 PM";
+    if (h <= 23) return `${h - 12}:00 PM`;
+  }
+  return s;
+}
+
 function timeToMinutes(t: string): number {
   const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!m) return 720;
@@ -1391,7 +1427,7 @@ export function WorkspacePage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Time</label>
-                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} placeholder="10:30 AM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); }} placeholder="10:30 AM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
@@ -1400,7 +1436,7 @@ export function WorkspacePage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Time</label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} placeholder="2:00 PM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="2:00 PM" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</label>
@@ -1469,12 +1505,12 @@ export function WorkspacePage() {
                         ) : (
                           <>
                             {[
-                              { key: "checkin", label: "Check-in" }, { key: "checkout", label: "Check-out" },
-                              { key: "roomType", label: "Room Type" },
+                              { key: "checkin", label: "Check-in", isTime: true }, { key: "checkout", label: "Check-out", isTime: true },
+                              { key: "roomType", label: "Room Type", isTime: false },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} onBlur={f.isTime ? (e => { const fmt = formatTimeInput(e.target.value); if (fmt !== e.target.value) setEditingEvent(prev => prev ? { ...prev, [f.key]: fmt } : null); }) : undefined} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                           </>
