@@ -864,8 +864,8 @@ export function WorkspacePage() {
                       <span className="text-xs mt-0.5">{new Date(date).getDate()}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">DAY {i + 1}</span>
-                      <span className="text-xs font-bold truncate leading-none mt-1 uppercase tracking-tighter ">Scheduled</span>
+                      <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                      <span className="text-xs font-bold truncate leading-none mt-1 uppercase tracking-tighter">{groupedEvents[i][1].length} {groupedEvents[i][1].length === 1 ? "event" : "events"}</span>
                     </div>
                   </div>
                 </button>

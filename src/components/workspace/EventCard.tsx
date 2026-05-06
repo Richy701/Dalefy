@@ -123,7 +123,7 @@ function CompactCard({
         <div className="flex items-center gap-1.5 mb-0.5">
           <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">{label}</span>
         </div>
-        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">{event.title}</h4>
+        <h4 className="text-sm font-bold uppercase text-slate-900 dark:text-white truncate leading-tight">{event.title}</h4>
       </div>
       <StatusChip status={event.status} />
       <MediaBadge media={event.media} documents={event.documents} />
@@ -192,7 +192,7 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{event.title}</p>
+            <p className="text-sm font-bold uppercase text-slate-800 dark:text-slate-200 truncate">{event.title}</p>
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />
             <AssignedDots people={assignedPeople} />
@@ -250,7 +250,7 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
                 <Hotel className="h-3 w-3 text-brand shrink-0" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Accommodation</span>
               </div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-brand transition-colors">{event.title}</h4>
+              <h4 className="text-base font-bold uppercase text-slate-900 dark:text-white leading-tight group-hover:text-brand transition-colors">{event.title}</h4>
               {event.location && (
                 <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 shrink-0" />{event.location}
@@ -335,7 +335,7 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
                   {isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
                 </span>
               </div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand">{event.title}</h4>
+              <h4 className="text-base font-bold uppercase text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand">{event.title}</h4>
               {event.location && (
                 <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 shrink-0" />{event.location}
