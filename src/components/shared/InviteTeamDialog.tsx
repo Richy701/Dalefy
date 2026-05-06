@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Mail, Copy, Check, X, Loader2, Link2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { UserPlus, Mail, Copy, Check, X, Loader2, Link2, Users } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNotifications } from "@/context/NotificationContext";
 import { useOrg } from "@/context/OrgContext";
 import { useAuth } from "@/context/AuthContext";
+import { usePreferences } from "@/context/PreferencesContext";
+import { useBrand } from "@/context/BrandContext";
 import { sendInvite, fetchPendingInvites, revokeInvite, type OrgInvite } from "@/services/invites";
 
 interface InviteTeamDialogProps {
@@ -21,17 +25,24 @@ function inviteUrl(token: string) {
   return `${base}#/invite/${token}`;
 }
 
+const ROLE_LABEL: Record<string, string> = {
+  admin: "an Admin",
+  agent: "an Agent",
+  viewer: "a Viewer",
+};
+
 export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "agent" | "viewer">("agent");
   const [sending, setSending] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [lastLink, setLastLink] = useState<string | null>(null);
-  const [lastLinkCopied, setLastLinkCopied] = useState(false);
+  const [lastInvite, setLastInvite] = useState<{ email: string; role: string; link: string } | null>(null);
   const [pendingInvites, setPendingInvites] = useState<OrgInvite[]>([]);
   const { showToast } = useNotifications();
   const { currentOrg, orgMembers } = useOrg();
   const { user } = useAuth();
+  const { resolvedAccent: accentColor } = usePreferences();
+  const { brand } = useBrand();
 
   useEffect(() => {
     if (open && currentOrg) {
@@ -42,8 +53,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const handleInvite = async () => {
     if (!email.trim() || !currentOrg) return;
     setSending(true);
-    setLastLink(null);
-    setLastLinkCopied(false);
+    setLastInvite(null);
 
     const result = await sendInvite({
       email: email.trim(),
@@ -60,17 +70,15 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       return;
     }
 
-    setLastLink(result.acceptUrl || null);
-    showToast("Invite created - copy the link to share");
+    setLastInvite({ email: email.trim(), role, link: result.acceptUrl || "" });
     setEmail("");
     fetchPendingInvites(currentOrg.id).then(setPendingInvites).catch(() => {});
   };
 
-  const handleCopyLink = (invite: OrgInvite) => {
-    const url = inviteUrl(invite.token);
-    navigator.clipboard.writeText(url);
-    setCopiedId(invite.id);
-    showToast("Invite link copied");
+  const handleCopy = (key: string, value: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedId(key);
+    showToast("Copied to clipboard");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -80,179 +88,206 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
     showToast("Invite revoked");
   };
 
-  const handleCopyLastLink = () => {
-    if (!lastLink) return;
-    navigator.clipboard.writeText(lastLink);
-    setLastLinkCopied(true);
-    showToast("Invite link copied");
-    setTimeout(() => setLastLinkCopied(false), 2000);
-  };
-
   const handleClose = () => {
     setEmail("");
-    setLastLink(null);
-    setLastLinkCopied(false);
+    setLastInvite(null);
     setCopiedId(null);
     onOpenChange(false);
   };
 
+  const orgName = currentOrg?.name || "your organization";
+  const inviterName = user?.name || "A team member";
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
-      <DialogContent className="max-w-lg bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-10 shadow-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="space-y-2 mb-6 text-left">
-          <DialogTitle className="text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">INVITE PEOPLE</DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-[#888888] font-medium uppercase text-xs tracking-[0.2em]">
-            Invite team members to {currentOrg?.name || "your organization"}.
-          </DialogDescription>
+      <DialogContent
+        className="w-full h-full max-w-none rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] sm:overflow-hidden"
+      >
+        <DialogHeader className="sr-only">
+          <DialogTitle>Invite people to {orgName}</DialogTitle>
+          <DialogDescription>Send team invitations</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        {/* Mobile close */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-2 sm:hidden">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Invite People</p>
+          <button
+            onClick={handleClose}
+            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] active:scale-95 transition-transform"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5 pt-2 sm:pt-5 space-y-4">
+          {/* Email + role input */}
           <div className="space-y-3">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Email Address</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Email Address</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888888]" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#888]" />
                 <Input
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="team@company.com"
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
-                  className="h-12 pl-12 bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl font-semibold text-slate-900 dark:text-white"
+                  className="h-11 pl-10 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
                 />
               </div>
               <Button
                 onClick={handleInvite}
                 disabled={sending || !email.trim()}
-                className="h-12 px-6 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider shadow-lg shadow-brand/20"
+                className="h-11 w-11 rounded-xl bg-brand hover:opacity-90 text-black p-0 shadow-lg shadow-brand/20"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
               </Button>
             </div>
-          </div>
-
-          {/* Role picker */}
-          <div className="space-y-3">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Role</Label>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {(["viewer", "agent", "admin"] as const).map(r => (
                 <button
                   key={r}
                   onClick={() => setRole(r)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
                     role === r
                       ? "bg-brand text-black"
-                      : "bg-slate-100 dark:bg-[#050505] text-slate-600 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f]"
+                      : "bg-white dark:bg-[#0f0f0f] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f]"
                   }`}
                 >
                   {r}
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-[#666]">
-              {role === "admin" ? "Can manage team, trips, and settings" : role === "agent" ? "Can create and edit trips" : "Read-only access to trips"}
-            </p>
           </div>
 
-          {/* Just-created invite link */}
-          {lastLink && (
-            <div
-              className="flex items-center gap-2 bg-white dark:bg-[#0a0a0a] border border-brand/20 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-brand/5 transition-colors"
-              onClick={handleCopyLastLink}
-            >
-              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                <Link2 className="h-3.5 w-3.5 text-brand" />
+          {/* Email preview card — shown after creating an invite */}
+          {lastInvite && (
+            <div className="relative bg-white dark:bg-[#0f0f0f] rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
+              {/* Accent bar */}
+              <div
+                className="px-4 py-2.5 flex items-center justify-center gap-2 border-b"
+                style={{ backgroundColor: `${accentColor}14`, borderColor: `${accentColor}30` }}
+              >
+                {brand.logoUrl ? (
+                  <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded-full object-contain shrink-0" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: accentColor }}>
+                    <Users className="h-2.5 w-2.5 text-black" strokeWidth={2.5} />
+                  </div>
+                )}
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] truncate" style={{ color: accentColor }}>
+                  {brand.name} · Team Invite
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">Invite Link</p>
-                <p className="text-[10px] font-mono text-slate-500 dark:text-[#888] truncate">{lastLink}</p>
+
+              {/* Email body preview */}
+              <div className="px-5 py-5">
+                <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                  You're Invited
+                </h3>
+                <p className="mt-2 text-xs text-slate-500 dark:text-[#888] leading-relaxed">
+                  {inviterName} has invited <strong className="text-slate-900 dark:text-white">{lastInvite.email}</strong> to join <strong className="text-slate-900 dark:text-white">{orgName}</strong> as {ROLE_LABEL[lastInvite.role] || lastInvite.role}.
+                </p>
+                <div
+                  className="mt-4 inline-block px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-black"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  Accept Invitation
+                </div>
+                <p className="mt-4 text-[10px] text-slate-400 dark:text-[#555]">
+                  This invitation expires in 7 days.
+                </p>
               </div>
-              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                {lastLinkCopied
-                  ? <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
-                  : <Copy className="h-3.5 w-3.5 text-brand" />}
+
+              {/* Perforation */}
+              <div className="relative h-5">
+                <div className="absolute left-4 right-4 top-1/2 border-t-[1.5px] border-dashed border-slate-200 dark:border-[#2a2a2a]" />
+                <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 dark:bg-[#050505]" />
+                <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 dark:bg-[#050505]" />
+              </div>
+
+              {/* Copy link row */}
+              <div
+                className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-[#111] transition-colors"
+                onClick={() => handleCopy("last", lastInvite.link)}
+              >
+                <Link2 className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
+                <p className="text-[10px] font-mono text-slate-400 dark:text-[#666] truncate flex-1">
+                  {lastInvite.link}
+                </p>
+                <span className="text-[9px] font-bold uppercase tracking-[0.15em] shrink-0" style={{ color: copiedId === "last" ? accentColor : undefined }}>
+                  {copiedId === "last" ? "Copied" : "Copy"}
+                </span>
               </div>
             </div>
           )}
 
-          {/* Pending invites with copy link */}
+          {/* Pending invites */}
           {pendingInvites.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">
-                Pending Invites ({pendingInvites.length})
+              <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
+                Pending ({pendingInvites.length})
               </Label>
-              <div className="space-y-2">
-                {pendingInvites.map(invite => {
-                  const isCopied = copiedId === invite.id;
-                  return (
-                    <div key={invite.id} className="bg-white dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden">
-                      <div className="flex items-center gap-3 px-3 py-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                          <Mail className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{invite.email}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-[#666] uppercase tracking-wider">{invite.role}</p>
-                        </div>
-                        <button
-                          onClick={() => handleCopyLink(invite)}
-                          className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center shrink-0 hover:bg-slate-200 dark:hover:bg-[#2a2a2a] transition-colors"
-                          title="Copy invite link"
-                        >
-                          {isCopied
-                            ? <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
-                            : <Link2 className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
-                        </button>
-                        <button
-                          onClick={() => handleRevoke(invite)}
-                          className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
-                          title="Revoke invite"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {/* Invite link row */}
-                      <div
-                        className="flex items-center gap-2 px-3 py-2 border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer hover:bg-slate-50 dark:hover:bg-[#111] transition-colors"
-                        onClick={() => handleCopyLink(invite)}
-                      >
-                        <p className="text-[10px] font-mono text-slate-400 dark:text-[#555] truncate flex-1">
-                          {inviteUrl(invite.token)}
-                        </p>
-                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-[#555] shrink-0">
-                          {isCopied ? "Copied" : "Copy"}
-                        </span>
-                      </div>
+              {pendingInvites.map(invite => {
+                const isCopied = copiedId === invite.id;
+                const link = inviteUrl(invite.token);
+                return (
+                  <div key={invite.id} className="flex items-center gap-2 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-3 py-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                      <Mail className="h-3.5 w-3.5" />
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{invite.email}</p>
+                      <p className="text-[9px] text-slate-400 dark:text-[#666] uppercase tracking-wider">{invite.role}</p>
+                    </div>
+                    <button
+                      onClick={() => handleCopy(invite.id, link)}
+                      className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center shrink-0 hover:bg-slate-200 dark:hover:bg-[#2a2a2a] transition-colors"
+                      title="Copy invite link"
+                    >
+                      {isCopied
+                        ? <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
+                        : <Link2 className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
+                    </button>
+                    <button
+                      onClick={() => handleRevoke(invite)}
+                      className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+                      title="Revoke invite"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {/* Current members */}
           {orgMembers.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Team ({orgMembers.length})</Label>
-              <div className="space-y-1">
-                {orgMembers.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
-                    <div className="h-9 w-9 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs">
-                      {m.profile?.initials || m.userId.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">{m.profile?.name || "Team Member"}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-[#666] uppercase tracking-wider">{m.role}</p>
-                    </div>
+              <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
+                Team ({orgMembers.length})
+              </Label>
+              {orgMembers.map(m => (
+                <div key={m.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-white dark:hover:bg-[#0f0f0f] transition-colors">
+                  <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[10px] shrink-0">
+                    {m.profile?.initials || m.userId.slice(0, 2).toUpperCase()}
                   </div>
-                ))}
-              </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-900 dark:text-white">{m.profile?.name || "Team Member"}</p>
+                    <p className="text-[9px] text-slate-400 dark:text-[#666] uppercase tracking-wider">{m.role}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
 
-        <DialogFooter className="pt-4">
-          <Button variant="ghost" onClick={handleClose} className="rounded-2xl h-12 px-8 font-bold text-slate-500 dark:text-[#888888]">CLOSE</Button>
-        </DialogFooter>
+          {/* Desktop close */}
+          <div className="hidden sm:flex justify-end pt-2 pb-1">
+            <Button variant="ghost" onClick={handleClose} className="rounded-xl h-10 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+              Close
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
