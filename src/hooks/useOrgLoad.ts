@@ -88,16 +88,20 @@ export function useOrgLoad() {
         );
 
         if (mounted) {
-          setOrgMembers(membersSnap.docs.map(d => {
+          const members = await Promise.all(membersSnap.docs.map(async d => {
             const m = d.data();
+            const profileSnap = await getDoc(doc(db, "profiles", m.user_id)).catch(() => null);
+            const p = profileSnap?.data();
             return {
               id: d.id,
               organizationId: m.organization_id,
               userId: m.user_id,
               role: m.role as OrgRole,
               joinedAt: m.joined_at,
+              profile: p ? { id: m.user_id, name: p.name || "", email: p.email || "", initials: p.initials || "", avatar: p.avatar || "", role: p.role || "", status: p.status || "Active" } : undefined,
             };
           }));
+          setOrgMembers(members);
           setIsLoading(false);
         }
       } catch (err) {

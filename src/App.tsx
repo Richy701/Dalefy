@@ -47,8 +47,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   // Wait briefly for org check, but don't block forever
   if (isRealUser && orgLoading) return <AuthLoadingScreen />;
-  // Real auth users without an org → create one first (only if org tables are migrated)
-  if (isRealUser && tablesReady && !hasOrg) return <Navigate to="/create-org" replace />;
+  // Real auth users without an org → create one first (skip if accepting an invite)
+  if (isRealUser && tablesReady && !hasOrg && !sessionStorage.getItem("daf-pending-invite")) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
 }
 

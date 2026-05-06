@@ -30,6 +30,7 @@ export function AcceptInvitePage() {
     }
 
     acceptInvite(token).then(result => {
+      sessionStorage.removeItem("daf-pending-invite");
       if ("error" in result) {
         setStatus("error");
         setMessage(result.error);

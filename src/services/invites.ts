@@ -105,6 +105,7 @@ export async function acceptInvite(token: string): Promise<{ orgId: string; orgN
     joined_at: new Date().toISOString(),
   });
 
+  await updateDoc(doc(firebaseDb(), "profiles", user.uid), { current_org_id: orgId }).catch(() => {});
   await updateDoc(inviteRef, { status: "accepted", accepted_at: new Date().toISOString() });
 
   return { orgId, orgName: data.org_name };
