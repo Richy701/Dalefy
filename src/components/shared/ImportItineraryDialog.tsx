@@ -1249,8 +1249,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
       if (importMode === "merge" && existing) {
         // Merge: add new events/travelers/info alongside existing ones
-        const existingTitles = new Set(existing.events.map(e => `${e.date}|${e.title.toLowerCase()}`));
-        const newEvents = events.filter(e => !existingTitles.has(`${e.date}|${e.title.toLowerCase()}`));
+        const normalizeKey = (e: { date: string; title: string; time?: string }) =>
+          `${e.date}|${e.title.toLowerCase().replace(/\s+/g, " ").trim()}`;
+        const normalizeKeyWithTime = (e: { date: string; title: string; time?: string }) =>
+          `${e.date}|${e.time || ""}|${e.title.toLowerCase().replace(/\s+/g, " ").trim()}`;
+        const existingKeys = new Set(existing.events.flatMap(e => [normalizeKey(e), normalizeKeyWithTime(e)]));
+        const newEvents = events.filter(e => !existingKeys.has(normalizeKey(e)) && !existingKeys.has(normalizeKeyWithTime(e)));
         const mergedEvents = [...existing.events, ...newEvents];
 
         const existingTravelerIds = new Set(existing.travelerIds ?? []);
