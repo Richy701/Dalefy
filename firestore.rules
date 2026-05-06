@@ -61,6 +61,10 @@ service cloud.firestore {
           ||
           // Existing admin/owner is adding a member
           isOrgAdmin(request.resource.data.organization_id)
+          ||
+          // Accepting an invite: user is adding themselves
+          (request.resource.data.user_id == request.auth.uid
+           && request.resource.data.role in ["admin", "agent", "viewer"])
         );
 
       // Only org admins/owners can update roles; users can remove themselves
