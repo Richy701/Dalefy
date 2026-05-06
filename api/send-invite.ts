@@ -99,7 +99,7 @@ function buildInviteEmail(orgName: string, inviterName: string, role: string, ac
         You're Invited
       </h1>
       <p style="color: #666; font-size: 14px; margin: 0 0 24px;">
-        ${inviterName || "A team member"} has invited you to join <strong>${orgName}</strong> as ${role === "admin" ? "an admin" : "an agent"}.
+        ${inviterName || "A team member"} has invited you to join <strong>${orgName}</strong> as ${role === "admin" ? "an admin" : role === "viewer" ? "a viewer" : "an agent"}.
       </p>
       <a href="${acceptUrl}" style="display: inline-block; background: #0bd2b5; color: #000; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 13px; padding: 14px 28px; border-radius: 12px; text-decoration: none;">
         Accept Invitation

@@ -78,7 +78,7 @@ export async function backfillOrgId(orgId: string): Promise<number> {
   for (const d of snap.docs) {
     if (DEMO_IDS.has(d.id)) continue;
     const data = d.data();
-    if (data.organization_id && data.organization_id === orgId) continue;
+    if (data.organization_id) continue;
     await setDoc(d.ref, { organization_id: orgId }, { merge: true });
     count++;
   }

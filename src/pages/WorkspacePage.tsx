@@ -1440,7 +1440,7 @@ export function WorkspacePage() {
                 {/* Live search — flight */}
                 {editingEvent?.type === "flight" && (
                   <FlightSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
                     defaultDate={editingEvent?.date}
                   />
                 )}
@@ -1448,7 +1448,7 @@ export function WorkspacePage() {
                 {/* Live search — hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
                     defaultCheckin={trip.start}
                     defaultCheckout={trip.end}
                   />

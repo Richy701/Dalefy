@@ -56,16 +56,21 @@ service cloud.firestore {
         && request.resource.data.user_id is string
         && request.resource.data.organization_id is string
         && (
-          // Bootstrap: the user is creating their own owner membership
+          // Bootstrap: the user is creating their own owner membership AND they created the org
           (request.resource.data.user_id == request.auth.uid
-           && request.resource.data.role == "owner")
+           && request.resource.data.role == "owner"
+           && get(/databases/$(database)/documents/organizations/$(request.resource.data.organization_id)).data.created_by == request.auth.uid)
           ||
           // Existing admin/owner is adding a member
           isOrgAdmin(request.resource.data.organization_id)
           ||
-          // Accepting an invite: user is adding themselves
+          // Accepting an invite: user is adding themselves AND a pending invite exists for their email
           (request.resource.data.user_id == request.auth.uid
-           && request.resource.data.role in ["admin", "agent", "viewer"])
+           && request.resource.data.role in ["admin", "agent", "viewer"]
+           && request.resource.data.invite_token is string
+           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.status == "pending"
+           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.email == request.auth.token.email
+           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.organization_id == request.resource.data.organization_id)
         );
 
       // Only org admins/owners can update roles; users can remove themselves

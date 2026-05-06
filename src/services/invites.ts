@@ -48,27 +48,26 @@ export async function fetchPendingInvites(orgId: string): Promise<OrgInvite[]> {
     query(
       collection(firebaseDb(), "org_invites"),
       where("organization_id", "==", orgId),
+      where("status", "==", "pending"),
     ),
   );
 
-  return snap.docs
-    .map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        email: data.email,
-        role: data.role,
-        organizationId: data.organization_id,
-        orgName: data.org_name,
-        invitedBy: data.invited_by,
-        inviterName: data.inviter_name,
-        token: data.token,
-        status: data.status,
-        createdAt: data.created_at,
-        expiresAt: data.expires_at,
-      };
-    })
-    .filter(i => i.status === "pending");
+  return snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      email: data.email,
+      role: data.role,
+      organizationId: data.organization_id,
+      orgName: data.org_name,
+      invitedBy: data.invited_by,
+      inviterName: data.inviter_name,
+      token: data.token,
+      status: data.status,
+      createdAt: data.created_at,
+      expiresAt: data.expires_at,
+    };
+  });
 }
 
 export async function revokeInvite(inviteId: string): Promise<void> {
@@ -93,6 +92,10 @@ export async function acceptInvite(token: string): Promise<{ orgId: string; orgN
   const user = auth.currentUser;
   if (!user) return { error: "Please sign in first" };
 
+  if (user.email?.toLowerCase() !== data.email?.toLowerCase()) {
+    return { error: "This invite was sent to a different email address" };
+  }
+
   const orgId = data.organization_id;
   const role = data.role as OrgRole;
 
@@ -102,6 +105,7 @@ export async function acceptInvite(token: string): Promise<{ orgId: string; orgN
     organization_id: orgId,
     user_id: user.uid,
     role,
+    invite_token: token,
     joined_at: new Date().toISOString(),
   });
 
