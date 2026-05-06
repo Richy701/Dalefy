@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationToast } from "@/components/shared/NotificationToast";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
@@ -35,6 +37,8 @@ function PageErrorFallback({ error, resetErrorBoundary }: { error: Error; resetE
 }
 
 export function AppLayout() {
+  const [inviteOpen, setInviteOpen] = useState(false);
+
   return (
     <TooltipProvider>
       <SidebarProvider
@@ -50,7 +54,8 @@ export function AppLayout() {
           </div>
         </SidebarInset>
         <NotificationToast />
-        <CommandPalette />
+        <CommandPalette onInvite={() => setInviteOpen(true)} />
+        <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
         <GlobalShortcuts />
       </SidebarProvider>
     </TooltipProvider>

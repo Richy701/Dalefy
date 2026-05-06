@@ -88,7 +88,6 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
     >
       {/* Airline strip + status badge */}
       <View style={fs.strip}>
-        <Plane size={13} color={C.textTertiary} strokeWidth={2} />
         <Text style={[fs.airline, { color: C.textSecondary }]} numberOfLines={1}>
           {ev.airline ?? "Flight"}{ev.flightNum ? ` · ${ev.flightNum}` : ""}
         </Text>
@@ -113,11 +112,7 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
             {depTime ? <Text style={[fs.time, { color: C.flight }]}>{depTime}</Text> : null}
           </View>
           <View style={fs.connector}>
-            <View style={fs.flightPath}>
-              <View style={[fs.pathLine, { backgroundColor: C.border }]} />
-              <Plane size={16} color={C.textSecondary} strokeWidth={1.8} style={{ transform: [{ rotate: "90deg" }] }} />
-              <View style={[fs.pathLine, { backgroundColor: C.border }]} />
-            </View>
+            <Text style={{ color: C.flight, fontSize: 18, textAlign: "center" }}>✈</Text>
             {ev.duration && (
               <Text style={[fs.duration, { color: C.textTertiary }]}>{ev.duration}</Text>
             )}
@@ -137,11 +132,7 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
             {depTime ? <Text style={[fs.time, { color: C.flight }]}>{depTime}</Text> : null}
           </View>
           <View style={fs.connector}>
-            <View style={fs.flightPath}>
-              <View style={[fs.pathLine, { backgroundColor: C.border }]} />
-              <Plane size={16} color={C.textSecondary} strokeWidth={1.8} style={{ transform: [{ rotate: "90deg" }] }} />
-              <View style={[fs.pathLine, { backgroundColor: C.border }]} />
-            </View>
+            <Text style={{ color: C.flight, fontSize: 18, textAlign: "center" }}>✈</Text>
             {ev.duration && (
               <Text style={[fs.duration, { color: C.textTertiary }]}>{ev.duration}</Text>
             )}
@@ -216,7 +207,10 @@ const fs = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     width: "100%", gap: 6, paddingHorizontal: 4,
   },
-  pathLine: { flex: 1, height: 1 },
+  pathDash: { flex: 1, height: 0, borderTopWidth: 1.5, borderStyle: "dashed" },
+  planeWrap: {
+    width: 22, height: 22, alignItems: "center", justifyContent: "center",
+  },
   duration: { fontSize: 12, fontWeight: T.medium, marginTop: 4 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: S.xs, marginBottom: S.xs },
   chip: {

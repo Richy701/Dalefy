@@ -27,12 +27,16 @@ function waitForAuth(): Promise<string | null> {
   });
 }
 
-export async function fetchTrips(): Promise<Trip[]> {
+export async function fetchTrips(orgId?: string | null): Promise<Trip[]> {
   const uid = await waitForAuth();
   if (!uid) return [];
 
+  const constraint = orgId
+    ? where("organization_id", "==", orgId)
+    : where("user_id", "==", uid);
+
   const snap = await getDocs(
-    query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc")),
+    query(collection(firebaseDb(), TRIPS), constraint, orderBy("start", "desc")),
   );
   const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
   const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
@@ -41,13 +45,15 @@ export async function fetchTrips(): Promise<Trip[]> {
   return filtered;
 }
 
-export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe {
+export function subscribeToTrips(onChange: (trips: Trip[]) => void, orgId?: string | null): Unsubscribe {
   let innerUnsub: Unsubscribe | null = null;
 
-  // Wait for auth then set up the real listener
   waitForAuth().then((uid) => {
     if (!uid) { onChange([]); return; }
-    const q = query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid), orderBy("start", "desc"));
+    const constraint = orgId
+      ? where("organization_id", "==", orgId)
+      : where("user_id", "==", uid);
+    const q = query(collection(firebaseDb(), TRIPS), constraint, orderBy("start", "desc"));
     innerUnsub = onSnapshot(q, (snap) => {
       const all = snap.docs.map((d) => docToTrip(d.id, d.data()));
       const filtered = all.filter((t) => !DEMO_IDS.has(t.id));
@@ -60,18 +66,37 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
   return () => { innerUnsub?.(); };
 }
 
-export async function upsertTrip(trip: Trip): Promise<Trip> {
+export async function backfillOrgId(orgId: string): Promise<number> {
+  const uid = await waitForAuth();
+  if (!uid) return 0;
+
+  const snap = await getDocs(
+    query(collection(firebaseDb(), TRIPS), where("user_id", "==", uid)),
+  );
+
+  let count = 0;
+  for (const d of snap.docs) {
+    if (DEMO_IDS.has(d.id)) continue;
+    const data = d.data();
+    if (data.organization_id && data.organization_id === orgId) continue;
+    await setDoc(d.ref, { organization_id: orgId }, { merge: true });
+    count++;
+  }
+  if (count > 0) logger.log("backfillOrgId", `stamped ${count} trips with org ${orgId}`);
+  return count;
+}
+
+export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Trip> {
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
-  // Upload base64 images to Firebase Storage, replace with download URLs.
-  // Firestore has a 1MB doc limit — base64 images easily exceed that.
   const cleanTrip = await uploadTripImages(trip);
 
   const data = tripToDoc(cleanTrip);
   if (userId) data.user_id = userId;
+  if (orgId) data.organization_id = orgId;
 
-  logger.log("upsertTrip", "saving:", trip.id, trip.name);
+  logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org");
   await setDoc(doc(firebaseDb(), TRIPS, trip.id), data, { merge: true });
   return cleanTrip;
 }

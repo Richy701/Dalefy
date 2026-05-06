@@ -8,17 +8,23 @@ import { useTrips } from "@/context/TripsContext";
 import {
   LayoutDashboard, Users, Globe, BarChart2, Sun, Moon,
   Plane, MapPin, Search, ArrowRight, Command as CmdIcon, Settings,
+  UserPlus, Shield,
 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useOrg } from "@/context/OrgContext";
 
 interface CommandPaletteProps {
   onNewTrip?: () => void;
+  onInvite?: () => void;
 }
 
-export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
+export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { trips } = useTrips();
+  const { canInviteMembers, isOrgMember } = usePermissions();
+  const { currentOrg } = useOrg();
 
   useHotkeys(
     "meta+k,ctrl+k",
@@ -130,6 +136,30 @@ export function CommandPalette({ onNewTrip }: CommandPaletteProps) {
               </div>
               Toggle {theme === "dark" ? "Light" : "Dark"} Mode
             </Command.Item>
+            {canInviteMembers && onInvite && (
+              <Command.Item
+                value="invite team member"
+                onSelect={() => run(onInvite)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
+              >
+                <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">
+                  <UserPlus className="h-3.5 w-3.5" />
+                </div>
+                Invite Team Member
+              </Command.Item>
+            )}
+            {isOrgMember && (
+              <Command.Item
+                value="manage team members roles"
+                onSelect={() => run(() => navigate("/settings"))}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
+              >
+                <div className="h-8 w-8 rounded-lg bg-[#1a1a1a] text-[#888] flex items-center justify-center shrink-0">
+                  <Shield className="h-3.5 w-3.5" />
+                </div>
+                Manage Team
+              </Command.Item>
+            )}
           </Command.Group>
 
           {/* Recent Trips */}

@@ -19,6 +19,7 @@ export function useCloudSync(
   cloudTrips: Trip[],
   localTrips: Trip[],
   setCloudTrips: React.Dispatch<React.SetStateAction<Trip[]>>,
+  orgId?: string | null,
 ) {
   const seeded = useRef(false);
   const cleaned = useRef(false);
@@ -51,12 +52,12 @@ export function useCloudSync(
     const userTrips = localTrips.filter(t => !DEMO_IDS.has(t.id));
     if (cloudTrips.length === 0 && userTrips.length > 0) {
       logger.log("CloudSync", "seeding cloud from localStorage (excluding demo):", userTrips.map(t => t.name));
-      Promise.all(userTrips.map(upsertTrip))
+      Promise.all(userTrips.map(t => upsertTrip(t, orgId)))
         .then(() => {
           logger.log("CloudSync", "seed complete");
           subscribeToTrips((incoming) => {
             if (incoming.length > 0) setCloudTrips(incoming);
-          });
+          }, orgId);
         })
         .catch(err => logger.error("CloudSync", "seed failed:", err));
       return;
@@ -73,11 +74,11 @@ export function useCloudSync(
       }
     }
     if (toRecover.length > 0) {
-      Promise.all(toRecover.map(upsertTrip)).then(() => {
+      Promise.all(toRecover.map(t => upsertTrip(t, orgId))).then(() => {
         logger.log("CloudSync", "recovery complete, refreshing...");
         subscribeToTrips((incoming) => {
           if (incoming.length > 0) setCloudTrips(incoming);
-        });
+        }, orgId);
       });
     }
   }, [useCloud, cloudReady, cloudTrips.length, localTrips, isLocalOnly]);

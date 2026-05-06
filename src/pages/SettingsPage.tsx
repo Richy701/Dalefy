@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash2, Lock, Building2, Upload,
+  Sun, Moon, Download, Trash2, Lock, Building2, Upload, Users,
 } from "lucide-react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -23,6 +23,8 @@ import { useBrand } from "@/context/BrandContext";
 import { usePreferences, ACCENT_PRESETS } from "@/context/PreferencesContext";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
+import { TeamManagement } from "@/components/shared/TeamManagement";
+import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { playChime } from "@/lib/sound";
 
 interface SectionProps {
@@ -139,6 +141,7 @@ export function SettingsPage() {
   const [agencyCodeEdit, setAgencyCodeEdit] = useState(currentOrg?.agencyCode ?? "");
   const [savingAgencyCode, setSavingAgencyCode] = useState(false);
   const canSetupOrg = realAuth && !currentOrg && tablesReady;
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // Sync form state when orgBranding loads asynchronously
   useEffect(() => {
@@ -548,6 +551,17 @@ export function SettingsPage() {
             </Section>
           )}
 
+          {/* ── Team ── */}
+          {canManageOrg && (
+            <Section
+              icon={Users}
+              title="Team"
+              description="Manage members, roles, and access to your organization."
+            >
+              <TeamManagement onInvite={() => setInviteOpen(true)} />
+            </Section>
+          )}
+
           {/* ── Appearance ── */}
           <Section
             icon={Palette}
@@ -688,6 +702,7 @@ export function SettingsPage() {
         destructive
       />
       <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
     </>
   );
 }

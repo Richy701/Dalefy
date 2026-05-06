@@ -84,7 +84,7 @@ export interface OrgMember {
   id: string;
   organizationId: string;
   userId: string;
-  role: "owner" | "admin" | "agent";
+  role: "owner" | "admin" | "agent" | "viewer";
   joinedAt: string;
   profile?: User;
 }

@@ -4,7 +4,7 @@ import type { Trip, TravelEvent } from "@/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips } from "@/services/firebaseTrips";
+import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId } from "@/services/firebaseTrips";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { useOrg } from "@/context/OrgContext";
@@ -42,39 +42,38 @@ const TripsContext = createContext<TripsContextType>({
 
 // ── Data source hooks ─────────────────────────────────────────────────────────
 
-function useCloudTrips(uid: string | null) {
+function useCloudTrips(uid: string | null, orgId?: string | null) {
   const qc = useQueryClient();
   const skipNextSnapshot = useRef(false);
+  const queryKey = ["trips", orgId || uid];
 
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
-    queryKey: ["trips", uid],
-    queryFn: fetchTrips,
+    queryKey,
+    queryFn: () => fetchTrips(orgId),
     staleTime: 1000 * 60 * 5,
     retry: 2,
     enabled: !!uid,
   });
 
-  // Firestore realtime listener — re-subscribe when user changes
   useEffect(() => {
     if (!uid) return;
     const unsub = subscribeToTrips((updated) => {
-      // Skip the echo from our own write to prevent overwriting local edits
       if (skipNextSnapshot.current) {
         skipNextSnapshot.current = false;
         return;
       }
-      qc.setQueryData<Trip[]>(["trips", uid], updated);
-    });
+      qc.setQueryData<Trip[]>(queryKey, updated);
+    }, orgId);
     return () => unsub();
-  }, [qc, uid]);
+  }, [qc, uid, orgId]);
 
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
-    const prev = qc.getQueryData<Trip[]>(["trips", uid]) ?? [];
+    const prev = qc.getQueryData<Trip[]>(queryKey) ?? [];
     const next = typeof action === "function" ? action(prev) : action;
-    qc.setQueryData<Trip[]>(["trips", uid], next);
+    qc.setQueryData<Trip[]>(queryKey, next);
     skipNextSnapshot.current = true;
-    syncToCloud(prev, next);
-  }, [qc, uid]);
+    syncToCloud(prev, next, orgId);
+  }, [qc, uid, orgId]);
 
   return { trips, setTrips, ready: isSuccess };
 }
@@ -123,7 +122,7 @@ function detectTripChanges(old: Trip, next: Trip): string[] {
   return changes;
 }
 
-function syncToCloud(prev: Trip[], next: Trip[]) {
+function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
   const prevIds = new Set(prev.map(t => t.id));
   const nextIds = new Set(next.map(t => t.id));
 
@@ -132,7 +131,7 @@ function syncToCloud(prev: Trip[], next: Trip[]) {
     const old = prev.find(t => t.id === trip.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
       logger.log("syncToCloud", "upserting trip:", trip.id, trip.name, "events:", trip.events.length);
-      upsertTrip(trip).then((cleaned) => {
+      upsertTrip(trip, orgId).then((cleaned) => {
         // Write download URLs back to localStorage so images survive refresh
         if (JSON.stringify(cleaned) !== JSON.stringify(trip)) {
           try {
@@ -265,8 +264,9 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
   const useCloud = firebaseOn && !isDemoUser;
   const local = useLocalTrips(isDemoUser && !authLoading);
-  const cloud = useCloudTrips(useCloud ? (user?.id ?? null) : null);
   const { currentOrg } = useOrg();
+  const orgId = currentOrg?.id ?? null;
+  const cloud = useCloudTrips(useCloud ? (user?.id ?? null) : null, orgId);
   const isLocalOnly = !useCloud;
 
   const { setTrips } = useCloud ? cloud : local;
@@ -274,8 +274,16 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   const trips = useMergedTrips(useCloud, isLocalOnly, cloud.trips, local.trips);
 
+  // One-time backfill: stamp existing user trips with org ID
+  const backfillRan = useRef(false);
+  useEffect(() => {
+    if (!useCloud || !orgId || !cloud.ready || backfillRan.current) return;
+    backfillRan.current = true;
+    backfillOrgId(orgId).catch(err => logger.error("TripsProvider", "org backfill failed:", err));
+  }, [useCloud, orgId, cloud.ready]);
+
   // Side-effect hooks (extracted)
-  useCloudSync(useCloud, isLocalOnly, cloud.ready, cloud.trips, local.trips, cloud.setTrips);
+  useCloudSync(useCloud, isLocalOnly, cloud.ready, cloud.trips, local.trips, cloud.setTrips, orgId);
   useTravelerMigration(trips, ready, setTrips, useCloud, local.setTrips);
 
   // Flush updater to localStorage synchronously

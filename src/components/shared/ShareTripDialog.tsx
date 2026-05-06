@@ -161,7 +161,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                   value={deepLink}
                   size={72}
                   bgColor="#ffffff"
-                  fgColor={accentColor}
+                  fgColor={accentColor === "#ffffff" ? "#000000" : accentColor}
                   level="M"
                   marginSize={0}
                 />

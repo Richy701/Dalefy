@@ -26,6 +26,7 @@ import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, updateTripMember
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
+import { usePermissions } from "@/hooks/usePermissions";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
@@ -52,6 +53,7 @@ export function TravelersPage() {
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
   const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
+  const { isViewer } = usePermissions();
   const brandHex = resolvedAccent;
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -399,11 +401,11 @@ export function TravelersPage() {
             <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search..." className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
         ) : undefined}
-        cta={
+        cta={!isViewer ? (
           <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-full bg-brand hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
             <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">ADD TRAVELER</span>
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -458,12 +460,14 @@ export function TravelersPage() {
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
               </div>
-              <button
-                onClick={() => { if (!demoGate()) setInviteOpen(true); }}
-                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
-              >
-                Add Traveler
-              </button>
+              {!isViewer && (
+                <button
+                  onClick={() => { if (!demoGate()) setInviteOpen(true); }}
+                  className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                >
+                  Add Traveler
+                </button>
+              )}
             </div>
           )}
           {tab === "travelers" && travelers.length > 0 && (

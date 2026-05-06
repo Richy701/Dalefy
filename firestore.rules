@@ -13,6 +13,11 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
     }
 
+    function isOrgEditor(orgId) {
+      let mem = get(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
+      return mem != null && mem.data.role in ["owner", "admin", "agent"];
+    }
+
     // ── System cron user (flight status checker) ──────────────────────────
     function isCronUser() {
       return request.auth != null
@@ -67,6 +72,22 @@ service cloud.firestore {
             || isOrgAdmin(resource.data.organization_id));
     }
 
+    // ── Org invites ─────────────────────────────────────────────────────────
+    match /org_invites/{inviteId} {
+      // Anyone authenticated can read (needed to validate token on accept page)
+      allow read: if request.auth != null;
+      // Only org admins/owners can create invites
+      allow create: if request.auth != null
+                    && request.resource.data.organization_id is string
+                    && isOrgAdmin(request.resource.data.organization_id);
+      // Org admins can update (revoke), or the invited user can update (accept)
+      allow update: if request.auth != null
+                    && (isOrgAdmin(resource.data.organization_id)
+                        || resource.data.email == request.auth.token.email);
+      allow delete: if request.auth != null
+                    && isOrgAdmin(resource.data.organization_id);
+    }
+
     // ── Org branding ───────────────────────────────────────────────────────
     match /org_branding/{orgId} {
       // Anyone can read (needed for shared/public trip pages)
@@ -91,14 +112,14 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.resource.data.user_id == request.auth.uid;
 
-      // The creator, org admin, cron user, or trip member can update;
+      // The creator, org editor (not viewer), cron user, or trip member can update;
       // only creator/org admin/cron can delete
       allow update: if request.auth != null
                     && (resource.data.user_id == request.auth.uid
                         || isCronUser()
                         || isTripMember(tripId)
                         || (resource.data.organization_id != null
-                            && isOrgAdmin(resource.data.organization_id)));
+                            && isOrgEditor(resource.data.organization_id)));
       allow delete: if request.auth != null
                     && (resource.data.user_id == request.auth.uid
                         || isCronUser()

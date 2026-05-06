@@ -85,7 +85,7 @@ export function WorkspacePage() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast, addNotification } = useNotifications();
-  const { canDeleteTrip, isOrgMember } = usePermissions();
+  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
 
@@ -326,6 +326,7 @@ export function WorkspacePage() {
   };
 
   const handleAddEvent = (type: TravelEvent["type"] = "activity") => {
+    if (isViewer) return;
     if (demoGate()) return;
     setImageSeed(0);
     setImageIsAuto(true);
@@ -345,7 +346,7 @@ export function WorkspacePage() {
   };
 
   const handleEditEvent = (event: TravelEvent) => {
-    if (demoGate()) return;
+    if (isViewer || demoGate()) return;
     setImageSeed(0);
     setImageIsAuto(!event.image);
     setImageSearch("");
@@ -844,7 +845,7 @@ export function WorkspacePage() {
         <aside className="w-64 border-r border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] flex flex-col hidden lg:flex shadow-sm relative z-30">
           <div className="p-5 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between bg-slate-50/30 dark:bg-[#050505]/30">
             <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">ITINERARY</span>
-            <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>
+            {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>}
           </div>
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
@@ -1088,17 +1089,18 @@ export function WorkspacePage() {
                       ))}
                     </DndContext>
                   ) : (
-                      <div className="flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] hover:border-brand transition-colors cursor-pointer group" onClick={() => handleAddEvent()}>
-                        <Plus className="h-12 w-12 mb-4 opacity-20 group-hover:scale-110 group-hover:text-brand transition-all" />
-                        <p className="font-bold text-xs uppercase tracking-[0.3em]">ADD YOUR FIRST EVENT</p>
+                      <div className={`flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-[2rem] text-slate-500 dark:text-[#888888] transition-colors ${isViewer ? "" : "hover:border-brand cursor-pointer group"}`} onClick={isViewer ? undefined : () => handleAddEvent()}>
+                        <Plus className={`h-12 w-12 mb-4 opacity-20 ${isViewer ? "" : "group-hover:scale-110 group-hover:text-brand"} transition-all`} />
+                        <p className="font-bold text-xs uppercase tracking-[0.3em]">{isViewer ? "NO EVENTS YET" : "ADD YOUR FIRST EVENT"}</p>
                       </div>
                     )}
                   </div>
                 </div>
-                {/* Hide DockBar on mobile when map is fullscreen */}
-                <div className={showMap || showTasks ? "hidden lg:block" : ""}>
-                  <DockBar onAddEvent={handleAddEvent} />
-                </div>
+                {!isViewer && (
+                  <div className={showMap || showTasks ? "hidden lg:block" : ""}>
+                    <DockBar onAddEvent={handleAddEvent} />
+                  </div>
+                )}
               </>
             )}
 

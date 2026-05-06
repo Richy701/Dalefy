@@ -109,7 +109,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
   const { resolvedAccent: accentColor } = usePreferences();
-  const { canDeleteTrip, isOrgMember } = usePermissions();
+  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
   const hexToRgbCss = (hex: string) => {
@@ -402,8 +402,8 @@ export function DashboardPage() {
           </div>
         }
         cta={
-          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="rounded-full bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0">
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Trip</span>
+          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-full bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{isViewer ? "View Only" : "New Trip"}</span>
           </Button>
         }
       />

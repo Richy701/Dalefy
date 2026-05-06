@@ -11,9 +11,11 @@ import {
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/AuthContext";
+import { useOrg } from "@/context/OrgContext";
 
 export function NavUser() {
   const { user, logout } = useAuth();
+  const { orgRole } = useOrg();
   const navigate = useNavigate();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -43,7 +45,14 @@ export function NavUser() {
               {!collapsed && (
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[11px] font-bold text-sidebar-foreground truncate leading-none">{displayName}</p>
-                  <p className="text-[9px] text-sidebar-foreground/40 leading-none mt-0.5 truncate uppercase tracking-wider">{displayRole}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[9px] text-sidebar-foreground/40 leading-none truncate uppercase tracking-wider">{displayRole}</p>
+                    {orgRole && (
+                      <span className="text-[8px] font-bold uppercase tracking-wider leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
+                        {orgRole}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </button>

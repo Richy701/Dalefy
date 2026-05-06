@@ -8,6 +8,7 @@ import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
 import { useBrand } from "@/context/BrandContext";
+import { useOrg } from "@/context/OrgContext";
 import {
   Sidebar,
   SidebarContent,
@@ -134,6 +135,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { brand } = useBrand();
+  const { currentOrg } = useOrg();
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -159,9 +161,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Logo className="text-black h-[18px] w-[18px]" />
                 </div>
               )}
-              <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap">
-                {brand.name}
-              </span>
+              <div className="min-w-0">
+                <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap block">
+                  {brand.name}
+                </span>
+                {currentOrg && (
+                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 whitespace-nowrap block">
+                    {currentOrg.name}
+                  </span>
+                )}
+              </div>
             </>
           )}
         </button>

@@ -34,6 +34,7 @@ import { MediaPage } from "@/pages/MediaPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SharedTripPage } from "@/pages/SharedTripPage";
 import { CreateOrgPage } from "@/pages/CreateOrgPage";
+import { AcceptInvitePage } from "@/pages/AcceptInvitePage";
 import { LandingPage } from "@/pages/LandingPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -103,6 +104,7 @@ function AppRoutes() {
         }
       />
       <Route path="/create-org" element={<CreateOrgPage />} />
+      <Route path="/invite/:token" element={<AcceptInvitePage />} />
       <Route path="/shared/:tripId" element={<SharedTripPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
