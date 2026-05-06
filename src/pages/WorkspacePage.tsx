@@ -200,11 +200,14 @@ export function WorkspacePage() {
     const newIndex = dayEvents.findIndex(e => e.id === overId);
     const reorderedDayEvents = arrayMove(dayEvents, oldIndex, newIndex);
 
-    // Swap times so the time-based sort preserves the new order
-    const sortedTimes = reorderedDayEvents
-      .map(e => e.time)
-      .sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
-    const finalEvents = reorderedDayEvents.map((e, i) => ({ ...e, time: sortedTimes[i] }));
+    // Swap only the two affected events' times so the time-based sort preserves the new order
+    const timeA = dayEvents[oldIndex].time;
+    const timeB = dayEvents[newIndex].time;
+    const finalEvents = reorderedDayEvents.map(e => {
+      if (e.id === activeId) return { ...e, time: timeB };
+      if (e.id === overId) return { ...e, time: timeA };
+      return e;
+    });
 
     updateTrip(trip.id, { events: [...otherEvents, ...finalEvents] });
     toast.success("Events reordered");
@@ -333,10 +336,11 @@ export function WorkspacePage() {
     setImageSearch("");
     setImageResults([]);
     setImageSearchSource(null);
+    const activeDate = groupedEvents[activeDayIdx]?.[0] || trip.start || new Date().toISOString().split("T")[0];
     setEditingEvent({
       id: Date.now().toString(),
       type,
-      date: trip.start || new Date().toISOString().split("T")[0],
+      date: activeDate,
       title: "",
       time: "12:00 PM",
       location: "",

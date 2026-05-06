@@ -233,12 +233,12 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
-          <div className="w-full h-40 sm:w-36 lg:w-44 sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
+          <div className="w-full h-40 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
             <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-transparent to-black/10" />
           </div>
         ) : (
-          <div className="w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">
+          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">
             <Hotel className="h-7 w-7 text-brand/30" />
           </div>
         )}
@@ -317,11 +317,11 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
-          <div className="w-full h-40 sm:w-36 lg:w-44 sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
+          <div className="w-full h-40 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
             <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           </div>
         ) : (
-          <div className="w-full h-24 sm:w-36 lg:w-44 sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch bg-brand/5">
+          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch bg-brand/5">
             <Icon className="h-7 w-7 opacity-20 text-brand" />
           </div>
         )}
