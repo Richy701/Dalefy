@@ -26,6 +26,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const [role, setRole] = useState<"admin" | "agent" | "viewer">("agent");
   const [sending, setSending] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [lastLink, setLastLink] = useState<string | null>(null);
+  const [lastLinkCopied, setLastLinkCopied] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<OrgInvite[]>([]);
   const { showToast } = useNotifications();
   const { currentOrg, orgMembers } = useOrg();
@@ -40,6 +42,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const handleInvite = async () => {
     if (!email.trim() || !currentOrg) return;
     setSending(true);
+    setLastLink(null);
+    setLastLinkCopied(false);
 
     const result = await sendInvite({
       email: email.trim(),
@@ -56,7 +60,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       return;
     }
 
-    showToast("Invite created");
+    setLastLink(result.acceptUrl || null);
+    showToast("Invite created - copy the link to share");
     setEmail("");
     fetchPendingInvites(currentOrg.id).then(setPendingInvites).catch(() => {});
   };
@@ -75,8 +80,18 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
     showToast("Invite revoked");
   };
 
+  const handleCopyLastLink = () => {
+    if (!lastLink) return;
+    navigator.clipboard.writeText(lastLink);
+    setLastLinkCopied(true);
+    showToast("Invite link copied");
+    setTimeout(() => setLastLinkCopied(false), 2000);
+  };
+
   const handleClose = () => {
     setEmail("");
+    setLastLink(null);
+    setLastLinkCopied(false);
     setCopiedId(null);
     onOpenChange(false);
   };
@@ -137,6 +152,27 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               {role === "admin" ? "Can manage team, trips, and settings" : role === "agent" ? "Can create and edit trips" : "Read-only access to trips"}
             </p>
           </div>
+
+          {/* Just-created invite link */}
+          {lastLink && (
+            <div
+              className="flex items-center gap-2 bg-white dark:bg-[#0a0a0a] border border-brand/20 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-brand/5 transition-colors"
+              onClick={handleCopyLastLink}
+            >
+              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                <Link2 className="h-3.5 w-3.5 text-brand" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">Invite Link</p>
+                <p className="text-[10px] font-mono text-slate-500 dark:text-[#888] truncate">{lastLink}</p>
+              </div>
+              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                {lastLinkCopied
+                  ? <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
+                  : <Copy className="h-3.5 w-3.5 text-brand" />}
+              </div>
+            </div>
+          )}
 
           {/* Pending invites with copy link */}
           {pendingInvites.length > 0 && (
