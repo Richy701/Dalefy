@@ -29,8 +29,10 @@ export default async function handler(req: any, res: any) {
       const arr = f.arrival ?? {};
       const depTime = dep.scheduledTime?.local ?? "";
       const arrTime = arr.scheduledTime?.local ?? "";
-      const depMins = timeToMins(depTime);
-      const arrMins = timeToMins(arrTime);
+      const depUtc = dep.scheduledTime?.utc ?? "";
+      const arrUtc = arr.scheduledTime?.utc ?? "";
+      const depMins = timeToMins(depUtc);
+      const arrMins = timeToMins(arrUtc);
       const duration = arrMins >= depMins ? arrMins - depMins : arrMins + 1440 - depMins;
 
       return {
