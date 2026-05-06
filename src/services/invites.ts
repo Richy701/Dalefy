@@ -48,26 +48,27 @@ export async function fetchPendingInvites(orgId: string): Promise<OrgInvite[]> {
     query(
       collection(firebaseDb(), "org_invites"),
       where("organization_id", "==", orgId),
-      where("status", "==", "pending"),
     ),
   );
 
-  return snap.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      email: data.email,
-      role: data.role,
-      organizationId: data.organization_id,
-      orgName: data.org_name,
-      invitedBy: data.invited_by,
-      inviterName: data.inviter_name,
-      token: data.token,
-      status: data.status,
-      createdAt: data.created_at,
-      expiresAt: data.expires_at,
-    };
-  });
+  return snap.docs
+    .map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        email: data.email,
+        role: data.role,
+        organizationId: data.organization_id,
+        orgName: data.org_name,
+        invitedBy: data.invited_by,
+        inviterName: data.inviter_name,
+        token: data.token,
+        status: data.status,
+        createdAt: data.created_at,
+        expiresAt: data.expires_at,
+      };
+    })
+    .filter(i => i.status === "pending");
 }
 
 export async function revokeInvite(inviteId: string): Promise<void> {
