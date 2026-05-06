@@ -468,7 +468,7 @@ export function DashboardPage() {
                   className="group mt-5 block text-left"
                 >
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">
-                    Countdown to Departure
+                    Next Trip
                   </p>
                   <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
                     {[
@@ -492,10 +492,10 @@ export function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
-                    <MapPin className="h-3 w-3 text-brand" />
+                  <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-brand/80 group-hover:text-brand transition-colors">
+                    <Plane className="h-3 w-3" />
                     {upcomingCards[0].destination || upcomingCards[0].name}
-                    <ArrowUpRight className="h-3 w-3" />
+                    <ArrowUpRight className="h-2.5 w-2.5 opacity-40" />
                   </p>
                 </button>
               ) : upcomingCards[0] && new Date(upcomingCards[0].end) >= new Date() ? (
