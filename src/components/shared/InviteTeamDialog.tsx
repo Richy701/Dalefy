@@ -51,12 +51,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       return;
     }
 
-    if (result.emailSent) {
-      showToast(`Invitation sent to ${email.trim()}`);
-    } else {
-      setLastLink(result.acceptUrl || null);
-      showToast("Invite created - share the link below");
-    }
+    setLastLink(result.acceptUrl || null);
+    showToast("Invite created - copy the link below to share");
 
     setEmail("");
     fetchPendingInvites(currentOrg.id).then(setPendingInvites).catch(() => {});
