@@ -60,6 +60,8 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
       airline: f.airline,
       flightNum: f.flightNum,
       location: `${f.fromCode} to ${f.toCode}`,
+      depAirport: f.fromCode,
+      arrAirport: f.toCode,
       time: f.departTime,
       endTime: f.arriveTime || undefined,
       duration: f.durationMins > 0 ? fmtDuration(f.durationMins) : undefined,

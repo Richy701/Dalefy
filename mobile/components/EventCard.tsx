@@ -62,12 +62,24 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
 
   let depCode = ev.depAirport?.toUpperCase() || "";
   let arrCode = ev.arrAirport?.toUpperCase() || "";
-  if ((!depCode || !arrCode) && ev.location) {
-    const locMatch = ev.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/i);
-    if (locMatch) {
-      if (!depCode) depCode = locMatch[1].toUpperCase();
-      if (!arrCode) arrCode = locMatch[2].toUpperCase();
+  const tryExtractCodes = (text: string) => {
+    const m = text.match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
+    if (m) {
+      if (!depCode) depCode = m[1].toUpperCase();
+      if (!arrCode) arrCode = m[2].toUpperCase();
     }
+  };
+  if (!depCode || !arrCode) {
+    if (ev.location) tryExtractCodes(ev.location);
+    if (!depCode || !arrCode) {
+      const titleCodes = (ev.title ?? "").match(/\b([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})\b/i);
+      if (titleCodes) {
+        if (!depCode) depCode = titleCodes[1].toUpperCase();
+        if (!arrCode) arrCode = titleCodes[2].toUpperCase();
+      }
+    }
+    if (!depCode && /^[A-Z]{3}$/i.test(cities.from)) depCode = cities.from.toUpperCase();
+    if (!arrCode && /^[A-Z]{3}$/i.test(cities.to)) arrCode = cities.to.toUpperCase();
   }
   const hasCodes = depCode.length >= 3 && arrCode.length >= 3;
 
