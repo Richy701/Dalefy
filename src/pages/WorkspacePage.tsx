@@ -57,6 +57,8 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
+import { isFirebaseConfigured, firebaseStorage } from "@/services/firebase";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
@@ -421,43 +423,53 @@ export function WorkspacePage() {
     toast.success("Event deleted");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingEvent) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setEditingEvent(prev => prev ? { ...prev, image: ev.target?.result as string } : null);
-    };
-    reader.readAsDataURL(file);
+  const uploadToStorage = async (file: File, path: string): Promise<string> => {
+    if (isFirebaseConfigured() && user?.id !== "demo") {
+      const sRef = storageRef(firebaseStorage(), path);
+      await uploadBytes(sRef, file, { contentType: file.type });
+      return getDownloadURL(sRef);
+    }
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => resolve(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingEvent) return;
+    const path = `trips/${tripId}/events/${editingEvent.id}/cover-${Date.now()}.${file.name.split(".").pop()}`;
+    try {
+      const url = await uploadToStorage(file, path);
+      setEditingEvent(prev => prev ? { ...prev, image: url } : null);
+    } catch { toast.error("Image upload failed"); }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setEditingTrip(prev => ({ ...prev, image: ev.target?.result as string }));
-    };
-    reader.readAsDataURL(file);
+    const path = `trips/${tripId}/cover-${Date.now()}.${file.name.split(".").pop()}`;
+    try {
+      const url = await uploadToStorage(file, path);
+      setEditingTrip(prev => ({ ...prev, image: url }));
+    } catch { toast.error("Cover upload failed"); }
     e.target.value = "";
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !editingEvent) return;
-    const readers = files.map(file => new Promise<{ type: "image" | "video"; url: string; name: string }>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => resolve({
-        type: file.type.startsWith("video/") ? "video" : "image",
-        url: ev.target?.result as string,
-        name: file.name,
-      });
-      reader.readAsDataURL(file);
-    }));
-    Promise.all(readers).then(newMedia => {
-      setEditingEvent(prev => prev ? { ...prev, media: [...(prev.media || []), ...newMedia] } : null);
+    const uploads = files.map(async (file) => {
+      const ext = file.name.split(".").pop();
+      const path = `trips/${tripId}/events/${editingEvent.id}/media-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const url = await uploadToStorage(file, path);
+      return { type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video", url, name: file.name };
     });
-    // Reset input so same file can be re-added if needed
+    try {
+      const newMedia = await Promise.all(uploads);
+      setEditingEvent(prev => prev ? { ...prev, media: [...(prev.media || []), ...newMedia] } : null);
+    } catch { toast.error("Media upload failed"); }
     e.target.value = "";
   };
 
@@ -467,29 +479,32 @@ export function WorkspacePage() {
 
   const MAX_DOC_BYTES = 8 * 1024 * 1024; // 8MB per doc — keeps localStorage viable
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !editingEvent) return;
-    const oversized = files.filter(f => f.size > MAX_DOC_BYTES);
+    const MAX_SIZE = isFirebaseConfigured() && user?.id !== "demo" ? 50 * 1024 * 1024 : MAX_DOC_BYTES;
+    const oversized = files.filter(f => f.size > MAX_SIZE);
     if (oversized.length) {
-      toast.error(`${oversized.length} file(s) over 8MB were skipped`);
+      toast.error(`${oversized.length} file(s) over ${MAX_SIZE >= 50 * 1024 * 1024 ? "50MB" : "8MB"} were skipped`);
     }
-    const accepted = files.filter(f => f.size <= MAX_DOC_BYTES);
-    const readers = accepted.map(file => new Promise<{ id: string; name: string; mimeType: string; url: string; size: number; uploadedAt: string }>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => resolve({
+    const accepted = files.filter(f => f.size <= MAX_SIZE);
+    const uploads = accepted.map(async (file) => {
+      const ext = file.name.split(".").pop();
+      const path = `trips/${tripId}/events/${editingEvent.id}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const url = await uploadToStorage(file, path);
+      return {
         id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: file.name,
         mimeType: file.type || "application/octet-stream",
-        url: ev.target?.result as string,
+        url,
         size: file.size,
         uploadedAt: new Date().toISOString(),
-      });
-      reader.readAsDataURL(file);
-    }));
-    Promise.all(readers).then(newDocs => {
-      setEditingEvent(prev => prev ? { ...prev, documents: [...(prev.documents || []), ...newDocs] } : null);
+      };
     });
+    try {
+      const newDocs = await Promise.all(uploads);
+      setEditingEvent(prev => prev ? { ...prev, documents: [...(prev.documents || []), ...newDocs] } : null);
+    } catch { toast.error("Document upload failed"); }
     e.target.value = "";
   };
 
@@ -1448,7 +1463,10 @@ export function WorkspacePage() {
                 {/* Live search — hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
+                    onSelect={({ checkin: ci, checkout: co, ...data }) => setEditingEvent(prev => {
+                      if (!prev) return null;
+                      return { ...prev, ...data, title: prev.title || data.title || "", checkin: prev.checkin || ci || "", checkout: prev.checkout || co || "" };
+                    })}
                     defaultCheckin={trip.start}
                     defaultCheckout={trip.end}
                   />
@@ -1577,15 +1595,33 @@ export function WorkspacePage() {
                           </>
                         ) : (
                           <>
-                            {[
-                              { key: "checkin", label: "Check-in", isTime: false }, { key: "checkout", label: "Check-out", isTime: false },
-                              { key: "roomType", label: "Room Type", isTime: false },
-                            ].map(f => (
-                              <div key={f.key} className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} onBlur={f.isTime ? (e => { const fmt = formatTimeInput(e.target.value); if (fmt !== e.target.value) setEditingEvent(prev => prev ? { ...prev, [f.key]: fmt } : null); }) : undefined} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
-                              </div>
-                            ))}
+                            {[{ key: "checkin", label: "Check-in" }, { key: "checkout", label: "Check-out" }].map(f => {
+                              const val = (editingEvent as Record<string, string>)[f.key] || "";
+                              const parsed = val ? (() => { try { return parseISO(val); } catch { return null; } })() : null;
+                              const isValid = parsed && !isNaN(parsed.getTime());
+                              return (
+                                <div key={f.key} className="space-y-1.5">
+                                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
+                                  <Popover>
+                                    <PopoverTrigger className={cn(
+                                      "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/50 transition-colors text-left",
+                                      isValid ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-[#888888]"
+                                    )}>
+                                      <CalendarDots className="h-3.5 w-3.5 text-brand shrink-0" />
+                                      <span className="text-sm truncate">{isValid ? format(parsed!, "MMM d, yyyy") : "Pick a date..."}</span>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
+                                      <Calendar mode="single" selected={isValid ? parsed! : undefined}
+                                        onSelect={(day) => day && setEditingEvent(prev => prev ? { ...prev, [f.key]: format(day, "yyyy-MM-dd") } : null)} initialFocus />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              );
+                            })}
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Room Type</label>
+                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                            </div>
                           </>
                         )}
                       </div>

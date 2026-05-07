@@ -491,13 +491,12 @@ function guessEventType(line: string): EventType {
   // "transfer to airport" / "meet at lobby for airport" = transfer, not flight
   const isTransfer = /\b(transfer|meet|pickup|pick.?up|collect|lobby|driver|shuttle|coach)\b/.test(l);
   const isTransferToAirport = isTransfer && /\bairport\b/.test(l);
-  if (!isTransferToAirport && /\b(flight|fly|depart\b|arrive\b|airline|airways|boarding|gate\s+\d|xq\d|ba\d|lh\d|ek\d|kq\d|safarilink)\b/.test(l)) return "flight";
-  // Also catch flight numbers like "XQ524", "BA123" even without other keywords
-  if (!isTransferToAirport && /\b[A-Z]{2}\d{2,4}\b/i.test(line) && /\b(depart|arrive|airport)\b/.test(l)) return "flight";
+  if (!isTransferToAirport && /\b(flight|fly|depart\b|arrive\b|airline|airways|boarding|gate\s+\d|xq\d|ba\d|lh\d|ek\d|kq\d|sq\d|safarilink)\b/.test(l)) return "flight";
+  if (!isTransferToAirport && /\b[A-Z]{2}\d{2,4}\b/i.test(line) && /\b(depart|arrive|airport|eta|etd)\b/.test(l)) return "flight";
   // Airport transfers/meetups are transfers
   if (isTransferToAirport) return "transfer";
-  if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx|camp|overnight|fullboard|half.?board|all.?inclusive|panafric|marjani|norfolk)\b/.test(l)) return "hotel";
-  if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail|bbq|fish\s*market|seafood)\b/.test(l)) return "dining";
+  if (/\b(hotel|resort|lodge|inn|accommodation|check.?in|check.?out|room|suite|villa|stay|regnum|crown|maxx|camp|overnight|fullboard|half.?board|all.?inclusive|panafric|marjani|norfolk|mandai|shangri.?la|oasia|fullerton|copthorne|mandarin\s+oriental|banyan\s+tree)\b/.test(l)) return "hotel";
+  if (/\b(dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|dining|meal|eat|drinks|cocktail|bbq|fish\s*market|seafood|hawker|buffet)\b/.test(l)) return "dining";
   // General transfers (not to airport)
   if (isTransfer && /\b(to|from|between)\b/.test(l)) return "transfer";
   return "activity";
@@ -563,7 +562,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s/i.test(raw) || // day-of-week headers
       /^(?:breakfast|lunch|dinner|brunch|meet\b|depart\b|arrive\b|transfer\b|check.?in\b|check.?out\b|access\b|free\s+time)\b/i.test(raw) || // event-starter words
       /^\d{1,2}[.:]\d{2}\s*(?:am|pm)?/i.test(raw) || // starts with time
-      /^\d{4}(?:hrs?\b|am\b|pm\b)/i.test(raw);        // starts with military time
+      /^\d{3,4}(?:hrs?|am|pm)/i.test(raw);              // starts with military time (inc. concatenated like "1930hrsPrivate")
     // Merge if clearly a continuation: starts with lowercase, OR previous line
     // ended mid-sentence (no terminating punctuation) and this isn't a new block.
     // Never merge into date-only headers like "07 NOV" or very short lines.
@@ -579,6 +578,15 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     } else {
       lines.push(raw);
     }
+  }
+
+  // Pre-process: split concatenated military time + text ("1930hrsPrivate transfer" → "1930hrs Private transfer")
+  // and fix 3-digit time typos ("110hrs" → "1100hrs")
+  for (let i = 0; i < lines.length; i++) {
+    lines[i] = lines[i]
+      .replace(/^(\d{3})(hrs?)\b/i, (_m, d, s) => `${d}0${s}`)
+      .replace(/(\d{3,4}hrs?)([A-Z])/g, "$1 $2")
+      .replace(/\b(ETA|ETD)(\d{3,4})/gi, "$1 $2");
   }
 
   // Trip name: first meaningful line that looks like a title (short, not starting
@@ -779,7 +787,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   let currentDate = start;
   const DAY_SECTION = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d/i;
   // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" — extract date from "Day N:" headers
-  const DAY_N_HEADER = /^day\s+\d+\s*:\s*/i;
+  const DAY_N_HEADER = /^day\s+\d+\s*[:|]\s*/i;
   const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|passenger\s+details?|additional activities|notes?|rooming\s+list|emergency\s+contact|single\s+[A-Z]|twin\s+[A-Z]|double\s+[A-Z]|flight\s+details?|guide\s+contact|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|visa\s+info)/i;
 
   for (let i = 0; i < lines.length; i++) {
@@ -818,7 +826,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     const TIME_RE = /\b\d{1,2}[.:]\d{2}\s*(?:am|pm|md)?\b|\b\d{1,2}\s*(?:am|pm)\b|\b\d{4}\s*(?:hrs?|am|pm)\b|\b(?:etd|eta|at|pickup|depart(?:ing|ure|s)?|arriv(?:ing|al|e)?)\s+\d{4}\b|\b\d{4}\s+(?:depart(?:ing|ure|s)?|arriv(?:ing|al|e)?|flight)\b/i;
     const hasTime = TIME_RE.test(line);
 
-    const hasEventKeyword = /\b(flight|fly|depart|arrive|airport|hotel|resort|check.?in|check.?out|dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|tour|visit|transfer|excursion|safari|cruise|museum|drive|hike|boat|spa|golf|meeting|welcome|drinks|cocktail|experience|beach club|aquapark|camp|lodge|overnight|balloon|snorkell?ing|diving|spice|game\s*drive|bush|sunrise|sunset|inspection|lounge)\b/i.test(line);
+    const hasEventKeyword = /\b(flight|fly|depart|arrive|airport|hotel|resort|check.?in|check.?out|dinner|lunch|breakfast|brunch|restaurant|bistro|caf[eé]|tour|visit|transfer|excursion|safari|cruise|museum|drive|hike|boat|bumboat|spa|golf|meeting|welcome|drinks|cocktail|experience|beach club|aquapark|camp|lodge|overnight|balloon|snorkell?ing|diving|spice|game\s*drive|bush|sunrise|sunset|inspection|site\s+inspection|lounge|gardens|hawker|buffet|eta\b|etd\b)\b/i.test(line);
 
     // Standalone meal lines (e.g. just "Breakfast" on its own line)
     const mealOnly = line.match(/^(breakfast|lunch|dinner|brunch)$/i);
@@ -911,9 +919,16 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       }
 
       if (titleClean.length > 2) {
+        const noteParts: string[] = [];
+        for (let j = i + 1; j < lines.length && j <= i + 4; j++) {
+          const next = lines[j];
+          if (TIME_RE.test(next) || DAY_N_HEADER.test(next)) break;
+          if (/^(?:hosted\s+by|service\s+provided\s+by|local\s+host)/i.test(next)) noteParts.push(next);
+        }
         events.push({
           id: `imp-${Date.now()}-${events.length}`,
           type, date: currentDate, time: time || "TBD", title: titleClean, location,
+          ...(noteParts.length > 0 ? { notes: noteParts.join(" | ") } : {}),
         });
       }
     }
@@ -929,7 +944,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Emergency Contact, Important Information etc. as info cards.
   const info: ParsedInfo[] = [];
   const INFO_SECTION_RE = /^(accommodation|additional\s+activit|important\s+info|emergency\s+contact|notes?\b|special\s+requirements?|what\s+to\s+(?:bring|pack)|inclusions?|exclusions?|travel\s+(?:insurance|tips)|visa\s+(?:info|requirements?)|health\s+(?:info|requirements?)|luggage|baggage|dress\s+code|weather|currency|tips?\s+&?\s*gratuities?|our\s+services)/i;
-  const DAY_HEADER_RE = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d|^day\s+\d+\s*:/i;
+  const DAY_HEADER_RE = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d|^day\s+\d+\s*[:|]/i;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
