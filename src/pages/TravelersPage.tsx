@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,7 +11,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -22,7 +23,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
-import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
+import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
@@ -32,6 +33,13 @@ import type { ComplianceDoc, User as UserType } from "@/types";
 
 type Tab = "travelers" | "hr" | "app-users";
 
+
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return <>{text.slice(0, idx)}<mark className="bg-brand/25 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
+}
 
 const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
   Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileText, bar: "bg-brand" },
@@ -71,8 +79,35 @@ export function TravelersPage() {
   const HR_PER_PAGE = 6;
   const [appUsers, setAppUsers] = useState<TripMember[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
-  const [expandedAppUser, setExpandedAppUser] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [appUserSort, setAppUserSort] = useState<"name" | "recent" | "trips">("recent");
+  const [appUserTripFilter, setAppUserTripFilter] = useState<string>("all");
+  const [detailPanelUser, setDetailPanelUser] = useState<string | null>(null);
+  const [renamingUser, setRenamingUser] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [sendingPush, setSendingPush] = useState(false);
+  const [pushMessage, setPushMessage] = useState("");
+  const [appUserPage, setAppUserPage] = useState(0);
+  const APP_USERS_PER_PAGE = 10;
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState(false);
+
+  useEffect(() => {
+    if (!showSortMenu && !showFilterMenu && !showActionsMenu) return;
+    const close = () => { setShowSortMenu(false); setShowFilterMenu(false); setShowActionsMenu(false); };
+    const timer = setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
+    return () => { clearTimeout(timer); document.removeEventListener("click", close); };
+  }, [showSortMenu, showFilterMenu, showActionsMenu]);
+
+  useEffect(() => {
+    if (!detailPanelUser) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setDetailPanelUser(null); setRenamingUser(null); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [detailPanelUser]);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -88,7 +123,7 @@ export function TravelersPage() {
     try {
       const count = await deleteAllTripMembers();
       setAppUsers([]);
-      setExpandedAppUser(null);
+      setDetailPanelUser(null);
       showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
     } catch (err) {
       console.error("Clear app users failed:", err);
@@ -103,7 +138,7 @@ export function TravelersPage() {
     try {
       const count = await deleteAppUser(deviceId);
       setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
-      setExpandedAppUser(null);
+      setDetailPanelUser(null);
       showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
     } catch (err) {
       console.error("Delete app user failed:", err);
@@ -124,6 +159,55 @@ export function TravelersPage() {
       showToast("Failed to update role");
     }
   }, [showToast]);
+
+  const handleRenameUser = useCallback(async (deviceId: string, newName: string) => {
+    if (!newName.trim()) return;
+    try {
+      const count = await renameAppUser(deviceId, newName.trim());
+      setAppUsers(prev => prev.map(m =>
+        m.device_id === deviceId ? { ...m, name: newName.trim() } : m
+      ));
+      setRenamingUser(null);
+      showToast(`Renamed to "${newName.trim()}" (${count} record${count === 1 ? "" : "s"})`);
+    } catch (err) {
+      console.error("Rename failed:", err);
+      showToast("Failed to rename user");
+    }
+  }, [showToast]);
+
+  const handleRemoveFromTrip = useCallback(async (deviceId: string, tripId: string, tripName: string) => {
+    if (!confirm(`Remove this user from ${tripName}?`)) return;
+    try {
+      await removeUserFromTrip(deviceId, tripId);
+      setAppUsers(prev => prev.filter(m => !(m.device_id === deviceId && m.trip_id === tripId)));
+      showToast(`Removed from ${tripName}`);
+    } catch (err) {
+      console.error("Remove from trip failed:", err);
+      showToast("Failed to remove from trip");
+    }
+  }, [showToast]);
+
+  const toggleSelectUser = useCallback((deviceId: string) => {
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(deviceId)) next.delete(deviceId); else next.add(deviceId);
+      return next;
+    });
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedUsers.size === 0) return;
+    if (!confirm(`Remove ${selectedUsers.size} user${selectedUsers.size === 1 ? "" : "s"}? This deletes all their trip membership records.`)) return;
+    let removed = 0;
+    for (const deviceId of selectedUsers) {
+      try { await deleteAppUser(deviceId); removed++; } catch { /* skip */ }
+    }
+    setAppUsers(prev => prev.filter(m => !selectedUsers.has(m.device_id)));
+    setSelectedUsers(new Set());
+    setBulkAction(false);
+    setDetailPanelUser(null);
+    showToast(`Removed ${removed} user${removed === 1 ? "" : "s"}`);
+  }, [selectedUsers, showToast]);
 
   // Group app users by device_id (unique person)
   const groupedAppUsers = useMemo(() => {
@@ -149,14 +233,62 @@ export function TravelersPage() {
     return Array.from(map.entries()).map(([deviceId, data]) => ({ deviceId, ...data }));
   }, [appUsers]);
 
+  const uniqueAppTrips = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of appUsers) map.set(m.trip_id, m.trip_name);
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [appUsers]);
+
   const filteredAppUsers = useMemo(() => {
-    if (!search) return groupedAppUsers;
-    const q = search.toLowerCase();
-    return groupedAppUsers.filter(u =>
-      u.name.toLowerCase().includes(q) ||
-      u.trips.some(t => t.name.toLowerCase().includes(q))
-    );
-  }, [groupedAppUsers, search]);
+    let result = groupedAppUsers;
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        u.trips.some(t => t.name.toLowerCase().includes(q))
+      );
+    }
+    if (appUserTripFilter !== "all") {
+      result = result.filter(u => u.trips.some(t => t.id === appUserTripFilter));
+    }
+    result = [...result].sort((a, b) => {
+      if (appUserSort === "name") return a.name.localeCompare(b.name);
+      if (appUserSort === "trips") return b.trips.length - a.trips.length;
+      const latestA = Math.max(...a.trips.map(t => new Date(t.joinedAt).getTime()));
+      const latestB = Math.max(...b.trips.map(t => new Date(t.joinedAt).getTime()));
+      return latestB - latestA;
+    });
+    return result;
+  }, [groupedAppUsers, search, appUserSort, appUserTripFilter]);
+
+  const appUserTotalPages = Math.max(1, Math.ceil(filteredAppUsers.length / APP_USERS_PER_PAGE));
+  const safeAppUserPage = Math.min(appUserPage, appUserTotalPages - 1);
+  const paginatedAppUsers = filteredAppUsers.slice(safeAppUserPage * APP_USERS_PER_PAGE, (safeAppUserPage + 1) * APP_USERS_PER_PAGE);
+
+  useEffect(() => { setAppUserPage(0); }, [search, appUserSort, appUserTripFilter]);
+
+  const exportAppUsersCSV = useCallback(() => {
+    if (filteredAppUsers.length === 0) return;
+    const rows = [["Name", "Device ID", "Trips", "Last Active"]];
+    for (const u of filteredAppUsers) {
+      const latest = u.trips.reduce((a, b) => new Date(a.joinedAt) > new Date(b.joinedAt) ? a : b);
+      rows.push([
+        u.name || "Unknown",
+        u.deviceId,
+        u.trips.map(t => t.name).join("; "),
+        new Date(latest.joinedAt).toLocaleDateString("en-GB"),
+      ]);
+    }
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `app-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${filteredAppUsers.length} users`);
+  }, [filteredAppUsers, showToast]);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetDoc, setSheetDoc] = useState<ComplianceDoc | null>(null);
@@ -441,7 +573,9 @@ export function TravelersPage() {
                           <DeviceMobile className="h-3 w-3" />
                           App Users
                           {groupedAppUsers.length > 0 && (
-                            <span className="ml-0.5 text-[9px] font-black bg-brand/15 text-brand px-1.5 py-0.5 rounded-full">{groupedAppUsers.length}</span>
+                            <span className={`ml-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                              active ? "bg-black/15 text-black" : "bg-brand/15 text-brand"
+                            }`}>{groupedAppUsers.length}</span>
                           )}
                         </span>
                       )}
@@ -928,16 +1062,151 @@ export function TravelersPage() {
                 ))}
               </div>
 
-              {/* Clear all button */}
+              {/* Toolbar: sort, filter, actions */}
               {groupedAppUsers.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">All Users</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mr-auto">
+                    {filteredAppUsers.length} User{filteredAppUsers.length === 1 ? "" : "s"}
+                    {appUserTripFilter !== "all" && <span className="text-brand ml-1">· Filtered</span>}
+                  </p>
+
+                  {/* Sort dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); setShowActionsMenu(false); }}
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
+                    >
+                      <ArrowsDownUp className="h-3.5 w-3.5" />
+                      {appUserSort === "name" ? "Name" : appUserSort === "trips" ? "Trips" : "Recent"}
+                    </button>
+                    {showSortMenu && (
+                      <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                        {([["recent", "Most Recent"], ["name", "Name A-Z"], ["trips", "Most Trips"]] as const).map(([key, label]) => (
+                          <button
+                            key={key}
+                            onClick={() => { setAppUserSort(key); setShowSortMenu(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                              appUserSort === key
+                                ? "text-brand bg-brand/5"
+                                : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                            }`}
+                          >
+                            {label}
+                            {appUserSort === key && <Check className="h-3 w-3 inline ml-2" weight="bold" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Filter by trip dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); setShowActionsMenu(false); }}
+                      className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                        appUserTripFilter !== "all"
+                          ? "bg-brand/10 border-brand/30 text-brand"
+                          : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30"
+                      }`}
+                    >
+                      <FunnelSimple className="h-3.5 w-3.5" />
+                      {appUserTripFilter !== "all" ? "Filtered" : "Trip"}
+                    </button>
+                    {showFilterMenu && (
+                      <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
+                        <button
+                          onClick={() => { setAppUserTripFilter("all"); setShowFilterMenu(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                            appUserTripFilter === "all"
+                              ? "text-brand bg-brand/5"
+                              : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                          }`}
+                        >
+                          All Trips
+                        </button>
+                        {uniqueAppTrips.map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => { setAppUserTripFilter(t.id); setShowFilterMenu(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider truncate transition-colors ${
+                              appUserTripFilter === t.id
+                                ? "text-brand bg-brand/5"
+                                : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setShowActionsMenu(!showActionsMenu); setShowSortMenu(false); setShowFilterMenu(false); }}
+                      className="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
+                    >
+                      <DotsThree className="h-4 w-4" weight="bold" />
+                    </button>
+                    {showActionsMenu && (
+                      <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                        <button
+                          onClick={() => { setShowActionsMenu(false); exportAppUsersCSV(); }}
+                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center gap-2"
+                        >
+                          <DownloadSimple className="h-3.5 w-3.5" /> Export CSV
+                        </button>
+                        <button
+                          onClick={() => { setShowActionsMenu(false); setBulkAction(!bulkAction); setSelectedUsers(new Set()); }}
+                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center gap-2"
+                        >
+                          <CheckSquare className="h-3.5 w-3.5" /> {bulkAction ? "Exit Select Mode" : "Select Mode"}
+                        </button>
+                        <div className="border-t border-slate-100 dark:border-[#1a1a1a]" />
+                        <button
+                          onClick={() => { setShowActionsMenu(false); handleClearAppUsers(); }}
+                          disabled={clearing}
+                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-red-500 hover:bg-red-500/5 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Trash className="h-3.5 w-3.5" />
+                          {clearing ? "Clearing..." : "Clear All Users"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Bulk action bar */}
+              {bulkAction && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand/5 border border-brand/20">
                   <button
-                    onClick={handleClearAppUsers}
-                    disabled={clearing}
-                    className="flex items-center gap-2 h-9 px-4 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    onClick={() => {
+                      if (selectedUsers.size === paginatedAppUsers.length) setSelectedUsers(new Set());
+                      else setSelectedUsers(new Set(paginatedAppUsers.map(u => u.deviceId)));
+                    }}
+                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-brand"
                   >
-                    <Trash className="h-3.5 w-3.5" /> {clearing ? "Clearing..." : "Clear All"}
+                    {selectedUsers.size === paginatedAppUsers.length && paginatedAppUsers.length > 0
+                      ? <CheckSquare className="h-3.5 w-3.5" weight="fill" />
+                      : <Square className="h-3.5 w-3.5" />}
+                    {selectedUsers.size > 0 ? `${selectedUsers.size} Selected` : "Select All"}
+                  </button>
+                  <div className="flex-1" />
+                  {selectedUsers.size > 0 && (
+                    <button
+                      onClick={handleBulkDelete}
+                      className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
+                    >
+                      <Trash className="h-3 w-3" /> Remove {selectedUsers.size}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setBulkAction(false); setSelectedUsers(new Set()); }}
+                    className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
+                  >
+                    Cancel
                   </button>
                 </div>
               )}
@@ -946,6 +1215,7 @@ export function TravelersPage() {
               <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
                 {/* Header — hidden on mobile */}
                 <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] items-center">
+                  {bulkAction && <div className="w-10" />}
                   <div className="w-14" />
                   <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Name</div>
                   <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trips Joined</div>
@@ -956,79 +1226,97 @@ export function TravelersPage() {
                   <div className="flex items-center justify-center py-16">
                     <div className="h-6 w-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
                   </div>
-                ) : filteredAppUsers.length === 0 ? (
+                ) : paginatedAppUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
                       <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">
-                      {search ? "No matching users" : "No app users yet"}
+                      {search || appUserTripFilter !== "all" ? "No matching users" : "No app users yet"}
                     </p>
                     <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">
-                      {search ? "Try a different search" : "Users will appear here when they join a trip via the mobile app"}
+                      {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
+                    {appUserTripFilter !== "all" && (
+                      <button onClick={() => setAppUserTripFilter("all")} className="text-[10px] font-black uppercase tracking-widest text-brand hover:underline mt-1">
+                        Clear Filter
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
-                    {filteredAppUsers.map((user) => {
-                      const initials = user.name
-                        ? user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+                    {paginatedAppUsers.map((appUser) => {
+                      const initials = appUser.name
+                        ? appUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
                         : "?";
-                      const latestJoin = user.trips.reduce((a, b) =>
+                      const latestJoin = appUser.trips.reduce((a, b) =>
                         new Date(a.joinedAt) > new Date(b.joinedAt) ? a : b
                       );
-                      const isExpanded = expandedAppUser === user.deviceId;
                       return (
-                        <div key={user.deviceId}>
+                        <div key={appUser.deviceId}>
                           {/* ── Mobile card layout ── */}
                           <div className="sm:hidden">
                             <button
-                              onClick={() => setExpandedAppUser(isExpanded ? null : user.deviceId)}
+                              onClick={() => bulkAction ? toggleSelectUser(appUser.deviceId) : setDetailPanelUser(appUser.deviceId)}
                               className="w-full text-left p-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors"
                             >
                               <div className="flex items-center gap-3">
+                                {bulkAction && (
+                                  <div className="shrink-0">
+                                    {selectedUsers.has(appUser.deviceId)
+                                      ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
+                                      : <Square className="h-5 w-5 text-slate-400 dark:text-[#555]" />}
+                                  </div>
+                                )}
                                 <div className="shrink-0">
-                                  {user.avatar ? (
-                                    <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                                  {appUser.avatar ? (
+                                    <img src={appUser.avatar} alt={appUser.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
                                   ) : null}
-                                  <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>{initials}</div>
+                                  <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name || "Unknown"}</div>
-                                  <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{user.trips.length} trip{user.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                  <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                                  <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
-                                <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                                {!bulkAction && <PgRight className="h-4 w-4 text-slate-400 dark:text-[#555] shrink-0" />}
                               </div>
                             </button>
                           </div>
 
                           {/* ── Desktop row ── */}
                           <button
-                            onClick={() => setExpandedAppUser(isExpanded ? null : user.deviceId)}
+                            onClick={() => bulkAction ? toggleSelectUser(appUser.deviceId) : setDetailPanelUser(detailPanelUser === appUser.deviceId ? null : appUser.deviceId)}
                             className="hidden sm:flex w-full items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group text-left"
                           >
+                            {bulkAction && (
+                              <div className="w-10 shrink-0">
+                                {selectedUsers.has(appUser.deviceId)
+                                  ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
+                                  : <Square className="h-5 w-5 text-slate-300 dark:text-[#444] group-hover:text-slate-400 dark:group-hover:text-[#666] transition-colors" />}
+                              </div>
+                            )}
                             <div className="w-14 shrink-0">
-                              {user.avatar ? (
-                                <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                              {appUser.avatar ? (
+                                <img src={appUser.avatar} alt={appUser.name} className="h-10 w-10 rounded-xl object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
                               ) : null}
-                              <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${user.avatar ? "hidden" : ""}`}>{initials}</div>
+                              <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name || "Unknown"}</div>
+                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                               <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
                                 <DeviceMobile className="h-3 w-3" /> Mobile app user
                               </div>
                             </div>
                             <div className="w-48">
                               <div className="flex flex-wrap gap-1.5">
-                                {user.trips.slice(0, 3).map(t => (
+                                {appUser.trips.slice(0, 3).map(t => (
                                   <span key={t.id} className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-brand/10 text-brand">
                                     <MapPin className="h-2.5 w-2.5" />
-                                    {t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "…" : t.name}
+                                    <HighlightText text={t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "..." : t.name} query={search} />
                                   </span>
                                 ))}
-                                {user.trips.length > 3 && (
-                                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">+{user.trips.length - 3}</span>
+                                {appUser.trips.length > 3 && (
+                                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">+{appUser.trips.length - 3}</span>
                                 )}
                               </div>
                             </div>
@@ -1036,73 +1324,266 @@ export function TravelersPage() {
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                                 {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
-                              <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                              {!bulkAction && <PgRight className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
                             </div>
                           </button>
-
-                          {/* ── Expanded detail panel ── */}
-                          {isExpanded && (
-                            <div className="px-4 sm:px-6 pb-5 pt-3 bg-slate-50/50 dark:bg-[#0a0a0a]/50 border-t border-slate-100 dark:border-[#1a1a1a] animate-fade-in">
-                              {/* User profile header */}
-                              <div className="flex items-center gap-4 mb-5">
-                                {user.avatar ? (
-                                  <img src={user.avatar} alt={user.name} className="h-14 w-14 rounded-2xl object-cover ring-2 ring-brand/20" />
-                                ) : (
-                                  <div className="h-14 w-14 rounded-2xl bg-brand text-black flex items-center justify-center font-black text-sm">{initials}</div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">{user.name || "Unknown"}</p>
-                                  <p className="text-[10px] font-bold text-slate-500 dark:text-[#666] mt-0.5 flex items-center gap-1 font-mono">
-                                    <Fingerprint className="h-3 w-3" />
-                                    {user.deviceId.slice(0, 12)}…
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() => handleDeleteAppUser(user.deviceId, user.name)}
-                                  className="shrink-0 h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] text-red-500 bg-red-500/10 ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-1.5"
-                                >
-                                  <Trash className="h-3 w-3" /> Remove
-                                </button>
-                              </div>
-
-                              {/* Trip permissions */}
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-2.5">Trip Permissions</p>
-                              <div className="space-y-2">
-                                {[...user.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
-                                  <div key={t.id} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                                    <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                                      <MapPin className="h-3.5 w-3.5 text-brand" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
-                                      <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider mt-0.5">
-                                        Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                                      </p>
-                                    </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleToggleRole(user.deviceId, t.id, t.role); }}
-                                      className={`shrink-0 h-8 px-3.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-1.5 ${
-                                        t.role === "leader"
-                                          ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
-                                          : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
-                                      }`}
-                                    >
-                                      <ShieldCheck className="h-3 w-3" />
-                                      {t.role === "leader" ? "Leader" : "Traveler"}
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
+
+              {/* Pagination */}
+              {appUserTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">
+                    {safeAppUserPage * APP_USERS_PER_PAGE + 1}-{Math.min((safeAppUserPage + 1) * APP_USERS_PER_PAGE, filteredAppUsers.length)} of {filteredAppUsers.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setAppUserPage(p => Math.max(0, p - 1))}
+                      disabled={safeAppUserPage <= 0}
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <PgLeft className="h-4 w-4" />
+                    </button>
+                    {Array.from({ length: appUserTotalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setAppUserPage(i)}
+                        className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                          safeAppUserPage === i
+                            ? "bg-brand text-black shadow-sm"
+                            : "text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setAppUserPage(p => Math.min(appUserTotalPages - 1, p + 1))}
+                      disabled={safeAppUserPage >= appUserTotalPages - 1}
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <PgRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
+          {/* ───────── APP USER DETAIL SLIDE-OUT PANEL ───────── */}
+          {detailPanelUser && (() => {
+            const panelUser = groupedAppUsers.find(u => u.deviceId === detailPanelUser);
+            if (!panelUser) return null;
+            const initials = panelUser.name
+              ? panelUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+              : "?";
+            const isRenaming = renamingUser === panelUser.deviceId;
+            return createPortal(
+              <div className="fixed inset-0 z-50 flex justify-end" onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}>
+                <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+                <div
+                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-[#0a0a0a] sm:border-l border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-y-auto animate-slide-in-right"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Panel header */}
+                  <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-[#1f1f1f]">
+                    <div className="flex items-center justify-between p-5">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">User Details</p>
+                      <button
+                        onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}
+                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-6">
+                    {/* Profile section */}
+                    <div className="flex items-start gap-4">
+                      <div className="shrink-0">
+                        {panelUser.avatar ? (
+                          <img src={panelUser.avatar} alt={panelUser.name} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-brand/20" onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                        ) : null}
+                        <div className={`h-16 w-16 rounded-2xl bg-brand text-black flex items-center justify-center font-black text-lg ${panelUser.avatar ? "hidden" : ""}`}>{initials}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {isRenaming ? (
+                          <div className="flex gap-2">
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={e => setRenameValue(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") handleRenameUser(panelUser.deviceId, renameValue); if (e.key === "Escape") setRenamingUser(null); }}
+                              className="flex-1 h-9 px-3 bg-slate-50 dark:bg-[#111111] border border-brand/40 rounded-lg text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand/30"
+                            />
+                            <button
+                              onClick={() => handleRenameUser(panelUser.deviceId, renameValue)}
+                              className="h-9 w-9 rounded-lg bg-brand flex items-center justify-center shrink-0"
+                            >
+                              <Check className="h-3.5 w-3.5 text-black" weight="bold" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{panelUser.name || "Unknown"}</p>
+                            <button
+                              onClick={() => { setRenamingUser(panelUser.deviceId); setRenameValue(panelUser.name); }}
+                              className="h-6 w-6 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-brand transition-colors shrink-0"
+                              title="Rename user"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-[#666] mt-1 flex items-center gap-1 font-mono">
+                          <Fingerprint className="h-3 w-3" />
+                          {panelUser.deviceId}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Trips</p>
+                        <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1">{panelUser.trips.length}</p>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Role</p>
+                        <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1 capitalize">
+                          {panelUser.trips.some(t => t.role === "leader") ? "Leader" : "Traveler"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Trip memberships */}
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Trip Memberships</p>
+                      <div className="space-y-2.5">
+                        {[...panelUser.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
+                          <div key={t.id} className="rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden">
+                            <div className="flex items-center gap-3 px-4 py-3">
+                              <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                <MapPin className="h-4 w-4 text-brand" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
+                                <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider mt-0.5">
+                                  Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => handleToggleRole(panelUser.deviceId, t.id, t.role)}
+                                  className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-1.5 ${
+                                    t.role === "leader"
+                                      ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
+                                      : "bg-white dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
+                                  }`}
+                                >
+                                  <ShieldCheck className="h-3 w-3" />
+                                  {t.role === "leader" ? "Leader" : "Traveler"}
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveFromTrip(panelUser.deviceId, t.id, t.name)}
+                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                  title={`Remove from ${t.name}`}
+                                >
+                                  <SignOut className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Activity timeline */}
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Activity Timeline</p>
+                      <div className="relative pl-5">
+                        <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-[#1f1f1f]" />
+                        {[...panelUser.trips]
+                          .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime())
+                          .map((t, i) => (
+                          <div key={t.id} className="relative pb-4 last:pb-0">
+                            <div className="absolute -left-5 top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#0a0a0a] bg-brand flex items-center justify-center">
+                              {i === 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                            </div>
+                            <div className="ml-1">
+                              <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">
+                                {new Date(t.joinedAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })}
+                              </p>
+                              <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
+                                Joined <span className="text-brand">{t.name}</span>
+                                {t.role === "leader" && <span className="text-amber-500 ml-1">as Leader</span>}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Push notification */}
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Push Notification</p>
+                      <div className="space-y-2">
+                        <input
+                          value={pushMessage}
+                          onChange={e => setPushMessage(e.target.value)}
+                          placeholder="Type a message to send..."
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && pushMessage.trim()) {
+                              e.preventDefault();
+                              setSendingPush(true);
+                              setTimeout(() => {
+                                setSendingPush(false);
+                                setPushMessage("");
+                                showToast(`Notification sent to ${panelUser.name || "user"}: "${pushMessage.trim()}"`);
+                              }, 800);
+                            }
+                          }}
+                          className="w-full h-10 px-3.5 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand/40 focus:ring-1 focus:ring-brand/20 transition-all"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!pushMessage.trim()) return;
+                            setSendingPush(true);
+                            await new Promise(r => setTimeout(r, 800));
+                            setSendingPush(false);
+                            showToast(`Notification sent to ${panelUser.name || "user"}: "${pushMessage.trim()}"`);
+                            setPushMessage("");
+                          }}
+                          disabled={sendingPush || !pushMessage.trim()}
+                          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-brand/10 text-brand text-[10px] font-black uppercase tracking-widest ring-1 ring-brand/20 hover:bg-brand/20 transition-colors disabled:opacity-50"
+                        >
+                          <Bell className="h-3.5 w-3.5" />
+                          {sendingPush ? "Sending..." : "Send Notification"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Danger zone */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Danger Zone</p>
+                      <button
+                        onClick={() => { handleDeleteAppUser(panelUser.deviceId, panelUser.name); setDetailPanelUser(null); }}
+                        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
+                      >
+                        <Trash className="h-3.5 w-3.5" /> Remove User Completely
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            );
+          })()}
         </div>
       </div>
 

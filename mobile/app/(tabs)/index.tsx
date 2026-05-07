@@ -51,7 +51,11 @@ try {
 } catch { /* native module not in this build */ }
 
 function daysUntil(dateStr: string) {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const a = new Date(todayStr + "T00:00:00");
+  const b = new Date(dateStr + "T00:00:00");
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
 }
 
 
@@ -152,7 +156,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
                 paddingHorizontal: 8, paddingVertical: 3,
               }}>
                 <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal }}>
-                  {days === 1 ? "Tomorrow" : `${days} days`}
+                  {days === 1 ? "Tomorrow" : `${days - 1} days`}
                 </Text>
               </View>
             )}
@@ -717,7 +721,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           ) : countdown ? (
             <LiveCountdownDisplay countdown={countdown} C={C} />
           ) : (
-            <Text style={styles.countdownNumber}>{days}</Text>
+            <Text style={styles.countdownNumber}>{days === 1 ? 1 : days - 1}</Text>
           )}
           <View style={styles.countdownMeta}>
             <MapPin size={11} color={C.teal} weight="regular" />
@@ -935,6 +939,7 @@ function UpcomingCard({ trip }: { trip: Trip }) {
   const styles = useMemo(() => makeUpcomingCardStyles(C), [C]);
   const days  = daysUntil(trip.start);
   const start = new Date(trip.start);
+  const end   = new Date(trip.end);
 
   return (
     <ContextMenu
@@ -956,18 +961,16 @@ function UpcomingCard({ trip }: { trip: Trip }) {
         <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
       </Link.AppleZoom>
       <View style={styles.body}>
+        {trip.destination ? (
+          <Text style={styles.dest}>{trip.destination.toUpperCase()}</Text>
+        ) : null}
         <Text style={styles.name} numberOfLines={1}>{trip.name}</Text>
         <View style={styles.meta}>
-          {trip.destination ? (
-            <>
-              <MapPin size={9} color={C.teal} weight="regular" />
-              <Text style={styles.metaText}>{trip.destination}</Text>
-              <Text style={styles.metaDot}>·</Text>
-            </>
-          ) : null}
           <CalendarDots size={9} color={C.textTertiary} weight="regular" />
           <Text style={styles.metaText}>
             {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {" – "}
+            {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </Text>
           {trip.paxCount ? (
             <>
@@ -979,7 +982,7 @@ function UpcomingCard({ trip }: { trip: Trip }) {
         </View>
       </View>
       <View style={styles.daysPill}>
-        <Text style={styles.daysText}>{days <= 0 ? "Today" : `${days}d`}</Text>
+        <Text style={styles.daysText}>{days <= 0 ? "Today" : days === 1 ? "1d" : `${days - 1}d`}</Text>
       </View>
       <ArrowUpRight size={14} color={C.textTertiary} weight="light" />
     </ScalePress>
@@ -999,11 +1002,15 @@ function makeUpcomingCardStyles(C: ThemeColors) {
     },
     thumb: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.elevated },
     body: { flex: 1 },
+    dest: {
+      fontSize: 9, fontWeight: T.bold, letterSpacing: 1,
+      color: C.teal, marginBottom: 2,
+    },
     name: {
       fontSize: T.base, fontWeight: T.bold,
       color: C.textPrimary, marginBottom: 4,
     },
-    meta: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
+    meta: { flexDirection: "row", alignItems: "center", gap: 5 },
     metaText: {
       fontSize: T.xs, fontWeight: T.bold,
       color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5,
@@ -1189,7 +1196,7 @@ function TripRow({ trip }: { trip: Trip }) {
       </View>
       {!isPast && days > 0 ? (
         <View style={styles.daysBadge}>
-          <Text style={styles.daysBadgeNum}>{days}d</Text>
+          <Text style={styles.daysBadgeNum}>{days === 1 ? "1d" : `${days - 1}d`}</Text>
         </View>
       ) : isPast ? (
         <View style={styles.pastChip}>

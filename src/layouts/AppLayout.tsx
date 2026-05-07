@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
+import { Flask } from "@phosphor-icons/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationToast } from "@/components/shared/NotificationToast";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
+import { EmailVerificationBanner } from "@/components/shared/EmailVerificationBanner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useAuth } from "@/context/AuthContext";
 
 function GlobalShortcuts() {
   useGlobalShortcuts();
@@ -36,6 +39,22 @@ function PageErrorFallback({ error, resetErrorBoundary }: { error: Error; resetE
   );
 }
 
+function DemoBadge() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  if (user?.id !== "demo") return null;
+
+  return (
+    <button
+      onClick={() => navigate("/login")}
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 hover:bg-amber-400 transition-colors cursor-pointer"
+    >
+      <Flask className="h-3.5 w-3.5" weight="bold" />
+      Demo Mode
+    </button>
+  );
+}
+
 export function AppLayout() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -47,6 +66,7 @@ export function AppLayout() {
       >
         <AppSidebar />
         <SidebarInset className="bg-slate-50 dark:bg-[#050505] h-dvh overflow-hidden flex flex-col">
+          <EmailVerificationBanner />
           <div className="flex-1 flex flex-col overflow-hidden">
             <ErrorBoundary FallbackComponent={PageErrorFallback}>
               <Outlet />
@@ -57,6 +77,7 @@ export function AppLayout() {
         <CommandPalette onInvite={() => setInviteOpen(true)} />
         <InviteTeamDialog open={inviteOpen} onOpenChange={setInviteOpen} />
         <GlobalShortcuts />
+        <DemoBadge />
       </SidebarProvider>
     </TooltipProvider>
   );

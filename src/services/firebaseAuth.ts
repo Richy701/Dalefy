@@ -8,6 +8,7 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   updatePassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   type User as FbUser,
 } from "firebase/auth";
@@ -40,17 +41,50 @@ export async function signUp(
       status: "Active",
     };
 
-    // Create profile document
     await setDoc(doc(firebaseDb(), "profiles", fbUser.uid), {
       ...profile,
       created_at: new Date().toISOString(),
     });
+
+    sendEmailVerification(fbUser).catch(() => {});
 
     return { user: profile, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Signup failed";
     return { user: null, error: msg.replace("Firebase: ", "") };
   }
+}
+
+// ── Email Verification ──────────────────────────────────────────────────────
+
+export async function resendVerificationEmail(): Promise<{ error: string | null }> {
+  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
+  const user = firebaseAuth().currentUser;
+  if (!user) return { error: "Not signed in" };
+  if (user.emailVerified) return { error: null };
+  try {
+    await sendEmailVerification(user);
+    return { error: null };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? "";
+    if (code === "auth/too-many-requests") return { error: "Too many attempts - try again later" };
+    return { error: err instanceof Error ? err.message : "Failed to send verification email" };
+  }
+}
+
+export function isCurrentUserEmailVerified(): boolean {
+  if (!isFirebaseConfigured()) return true;
+  const user = firebaseAuth().currentUser;
+  if (!user) return false;
+  return user.emailVerified;
+}
+
+export async function reloadCurrentUser(): Promise<boolean> {
+  if (!isFirebaseConfigured()) return true;
+  const user = firebaseAuth().currentUser;
+  if (!user) return false;
+  await user.reload();
+  return user.emailVerified;
 }
 
 // ── Sign In ─────────────────────────────────────────────────────────────────
@@ -234,17 +268,6 @@ export async function updateProfile(
 
 // ── Password ────────────────────────────────────────────────────────────────
 
-export async function resetPassword(email: string): Promise<{ error: string | null }> {
-  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
-
-  try {
-    await sendPasswordResetEmail(firebaseAuth(), email);
-    return { error: null };
-  } catch (err: unknown) {
-    return { error: err instanceof Error ? err.message : "Failed" };
-  }
-}
-
 export async function changePassword(newPassword: string): Promise<{ error: string | null }> {
   if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
 
@@ -255,6 +278,20 @@ export async function changePassword(newPassword: string): Promise<{ error: stri
     await updatePassword(user, newPassword);
     return { error: null };
   } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : "Failed" };
+  }
+}
+
+export async function resetPassword(email: string): Promise<{ error: string | null }> {
+  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
+
+  try {
+    await sendPasswordResetEmail(firebaseAuth(), email);
+    return { error: null };
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code ?? "";
+    if (code === "auth/user-not-found") return { error: "No account found with that email" };
+    if (code === "auth/too-many-requests") return { error: "Too many attempts - try again later" };
     return { error: err instanceof Error ? err.message : "Failed" };
   }
 }

@@ -7,13 +7,21 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { usePermissions } from "@/hooks/usePermissions";
 
-const NAV_ITEMS = [
+type NavItem = {
+  icon: typeof SquaresFour;
+  label: string;
+  path: string;
+  requireEdit?: boolean;
+};
+
+const NAV_ITEMS: NavItem[] = [
   { icon: SquaresFour, label: "Dashboard", path: "/" },
-  { icon: Users,           label: "Travelers",   path: "/travelers" },
-  { icon: Globe,           label: "Destinations", path: "/destinations" },
-  { icon: Images,          label: "Media",        path: "/media" },
-  { icon: ChartPie,        label: "Reports",      path: "/reports" },
+  { icon: Users,       label: "Travelers",   path: "/travelers", requireEdit: true },
+  { icon: Globe,       label: "Destinations", path: "/destinations" },
+  { icon: Images,      label: "Media",        path: "/media", requireEdit: true },
+  { icon: ChartPie,    label: "Reports",      path: "/reports", requireEdit: true },
   { icon: Gear,        label: "Settings",     path: "/settings" },
 ];
 
@@ -22,6 +30,13 @@ export function NavMain() {
   const location    = useLocation();
   const currentPath = location.pathname;
   const isActive    = (path: string) => path === "/" ? currentPath === "/" : currentPath === path;
+  const { isViewer, isOrgMember } = usePermissions();
+
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (!item.requireEdit) return true;
+    if (!isOrgMember) return true;
+    return !isViewer;
+  });
 
   return (
     <SidebarGroup>
@@ -29,7 +44,7 @@ export function NavMain() {
         Menu
       </SidebarGroupLabel>
       <SidebarMenu className="gap-0.5">
-        {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
+        {visibleItems.map(({ icon: Icon, label, path }) => {
           const active = isActive(path);
           return (
             <SidebarMenuItem key={label}>

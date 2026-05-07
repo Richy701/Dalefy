@@ -10,7 +10,7 @@ import { PreferencesProvider, usePreferences } from "@/context/PreferencesContex
 import { OrgProvider, useOrg } from "@/context/OrgContext";
 import { BrandProvider } from "@/context/BrandContext";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { STORAGE } from "@/config/storageKeys";
+
 import { Logo } from "@/components/shared/Logo";
 import { BRAND } from "@/config/brand";
 import { repairTripOwnership, repairTripsForUser } from "@/services/firebaseTrips";
@@ -80,13 +80,11 @@ function AuthLoadingScreen() {
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
-  // During onboarding step 3 (branding), user is authenticated but should stay on login
-  const pendingBranding = typeof sessionStorage !== "undefined" && sessionStorage.getItem(STORAGE.PENDING_BRANDING);
 
   return (
     <Routes>
       <Route path="/" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
-      <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : (isAuthenticated && !pendingBranding) ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
       <Route
         element={
           <ProtectedRoute>

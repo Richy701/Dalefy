@@ -9,6 +9,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Live Search** -- Search flights (AeroDataBox), hotels (Booking.com), restaurants (Local Business Data), and activities (Local Business Data) directly in the workspace
 - **Flight Status Notifications** -- Automated cron checks flight status every 30 minutes and pushes updates (delays, gate changes, cancellations) to travelers
 - **Image Search** -- Multi-source image search (Google, Unsplash, Pexels) with provider picker
+- **Invite-only Team System** -- Admin sends invites, team members join via link. Google OAuth and email/password sign-in supported
+- **Email Verification** -- New email/password signups receive verification emails with resend and status check in-app
+- **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
@@ -20,12 +23,14 @@ Trip planning without the mess. A modern travel management platform for organize
 for today's flights and updates live via the flight status cron
 - **Push Notifications** -- Trip update and flight status alerts for travelers via Expo push notifications
 - **PWA Support** -- Installable as a progressive web app with offline caching
+- **Password Reset** -- Forgot password flow with email reset link from the login page
+- **Demo Mode** -- Full-featured demo with floating indicator badge, localStorage-only data
 
 ## Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS
 - **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12)
-- **Backend:** Firebase Auth, Firestore, Firebase Storage
+- **Backend:** Firebase Auth (Google OAuth + email/password), Firestore, Firebase Storage
 - **AI:** Anthropic Claude Haiku 4.5 (itinerary parsing)
 - **APIs:** RapidAPI (AeroDataBox, Booking.com, Local Business Data), Unsplash, Pexels
 - **Maps:** Mapbox GL JS via react-map-gl
@@ -60,7 +65,16 @@ Travelers can upload photos and videos from the mobile gallery. Uploads sync to 
 
 ### App Users
 
-The web Travelers page shows all mobile users who have joined trips via PIN. Admins can view user details, trip history, and remove individual users or clear all. Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
+The web Travelers page shows all mobile users who have joined trips via PIN. Admins can:
+
+- **Sort and filter** by name, device count, or trip
+- **Search** with highlighted matches
+- **Detail panel** with profile, trip memberships, activity timeline, and push notifications
+- **Rename** users, **remove** from individual trips, and bulk-select for batch operations
+- **Export** the user list as CSV
+- **Paginate** (10 per page) with keyboard nav
+
+Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
 
 ### Live Activities & Dynamic Island
 
@@ -98,6 +112,8 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 - **Push auth** — `/api/push` requires bearer token (cron secret or Firebase ID token)
 - **Firestore rules** — scoped reads/writes per user, org admin checks, trip member verification, cron user allowlist
 - **Storage rules** — org admin required for logo uploads, image types only (no SVG)
+- **Email verification** — new email/password signups receive verification emails, banner shown until verified
+- **Password reset** — secure reset via Firebase sendPasswordResetEmail with rate-limit handling
 - **Trip PINs** — 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I)
 - **SVG sanitization** — DOMPurify with filters disabled to prevent external resource loading
 

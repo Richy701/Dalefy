@@ -196,6 +196,14 @@ html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important
   animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0.8; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Stagger delays (50ms increments) */
 .stagger-1 { animation-delay: 50ms; }
 .stagger-2 { animation-delay: 100ms; }
@@ -275,7 +283,8 @@ html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important
   }
   .animate-fade-up,
   .animate-fade-in,
-  .animate-scale-in {
+  .animate-scale-in,
+  .animate-slide-in-right {
     animation: none !important;
   }
   .logo-shimmer::after {

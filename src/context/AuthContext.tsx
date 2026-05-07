@@ -33,6 +33,9 @@ import {
   onAuthStateChange,
   fetchProfile,
   updateProfile as authUpdateProfile,
+  resendVerificationEmail as authResendVerification,
+  isCurrentUserEmailVerified,
+  reloadCurrentUser,
 } from "@/services/firebaseAuth";
 
 // ── Demo user (for development / when Firebase not configured) ──────────────
@@ -58,22 +61,18 @@ function clearUserData() {
 
 // ── Context types ───────────────────────────────────────────────────────────
 
-export interface OnboardingData {
-  name: string;
-  email?: string;
-  password?: string;
-  role?: string;
-}
-
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  completeOnboarding: (data: OnboardingData) => Promise<string | null>;
+  emailVerified: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
+  signUp: (data: { name: string; email: string; password: string; role?: string }) => Promise<string | null>;
   signInWithGoogle: () => Promise<{ error: string | null; isNewUser: boolean }>;
   demoLogin: () => Promise<void>;
   updateProfile: (patch: Partial<User>) => void;
+  resendVerification: () => Promise<string | null>;
+  refreshEmailVerified: () => Promise<boolean>;
   logout: () => void;
 }
 
@@ -81,11 +80,14 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  completeOnboarding: async () => null,
+  emailVerified: true,
   signIn: async () => null,
+  signUp: async () => null,
   signInWithGoogle: async () => ({ error: null, isNewUser: false }),
   demoLogin: async () => {},
   updateProfile: () => {},
+  resendVerification: async () => null,
+  refreshEmailVerified: async () => true,
   logout: () => {},
 });
 
@@ -104,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem(STORAGE.AUTH);
     return !saved; // only show loading when there's no cached user
   });
+  const [emailVerified, setEmailVerified] = useState(true);
   const useFirebase = isFirebaseConfigured();
 
   // ── Boot: validate session with Firebase (background) ──────────────────
@@ -236,43 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { subscription.unsubscribe(); };
   }, [useFirebase]);
 
-  // ── Sign up (onboarding) ────────────────────────────────────────────────
-
-  const completeOnboarding = useCallback(async (data: OnboardingData): Promise<string | null> => {
-    const name = data.name.trim();
-    const email = (data.email ?? "").trim();
-    const role = (data.role ?? "Trip Manager").trim();
-
-    if (useFirebase && data.password) {
-      // Clear stale localStorage so new account starts clean
-      clearUserData();
-      localStorage.removeItem(STORAGE.AUTH);
-
-      const { user: newUser, error } = await authSignUp(email, data.password, name, role);
-      if (error) return error;
-      if (newUser) {
-        setUser(newUser);
-        localStorage.setItem(STORAGE.AUTH, JSON.stringify(newUser));
-      }
-      return null;
-    }
-
-    // Fallback: localStorage-only (no Firebase or no password)
-    const next: User = {
-      id: `user-${Date.now()}`,
-      name,
-      email,
-      role,
-      avatar: "",
-      initials: initialsFrom(name),
-      status: "Active",
-    };
-    setUser(next);
-    localStorage.setItem(STORAGE.AUTH, JSON.stringify(next));
-    return null;
-  }, [useFirebase]);
-
-  // ── Sign in ─────────────────────────────────────────────────────────────
+  // ── Email/password sign in ───────────────────────────────────────────────
 
   const handleSignIn = useCallback(async (email: string, password: string): Promise<string | null> => {
     if (!useFirebase) return "Firebase not configured";
@@ -280,7 +247,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { user: signedInUser, error } = await authSignIn(email, password);
     if (error) return error;
     if (signedInUser) {
-      // Only clear data when switching to a different user (not re-logging in as same user)
       const prevAuth = localStorage.getItem(STORAGE.AUTH);
       const prevId = prevAuth ? JSON.parse(prevAuth)?.id : null;
       if (prevId && prevId !== signedInUser.id) {
@@ -288,6 +254,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       loggedSetUser(setUser, signedInUser, "signIn");
       localStorage.setItem(STORAGE.AUTH, JSON.stringify(signedInUser));
+      setEmailVerified(isCurrentUserEmailVerified());
+    }
+    return null;
+  }, [useFirebase]);
+
+  // ── Email/password sign up ──────────────────────────────────────────────
+
+  const handleSignUp = useCallback(async (data: { name: string; email: string; password: string; role?: string }): Promise<string | null> => {
+    if (!useFirebase) return "Firebase not configured";
+
+    clearUserData();
+    localStorage.removeItem(STORAGE.AUTH);
+
+    const { user: newUser, error } = await authSignUp(data.email, data.password, data.name, data.role ?? "Trip Manager");
+    if (error) return error;
+    if (newUser) {
+      loggedSetUser(setUser, newUser, "signUp");
+      localStorage.setItem(STORAGE.AUTH, JSON.stringify(newUser));
+      setEmailVerified(false);
     }
     return null;
   }, [useFirebase]);
@@ -308,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       loggedSetUser(setUser, googleUser, "googleSignIn");
       localStorage.setItem(STORAGE.AUTH, JSON.stringify(googleUser));
+      setEmailVerified(true);
       // If the profile was just created, it's a new user
       const isNewUser = !!(googleUser as User & { _isNew?: boolean })._isNew;
       return { error: null, isNewUser };
@@ -340,6 +326,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, [useFirebase]);
 
+  // ── Email verification ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!useFirebase || !user) {
+      setEmailVerified(true);
+      return;
+    }
+    if (user.id === "demo" || (user.id?.length ?? 0) < 20) {
+      setEmailVerified(true);
+      return;
+    }
+    setEmailVerified(isCurrentUserEmailVerified());
+  }, [user, useFirebase]);
+
+  const handleResendVerification = useCallback(async (): Promise<string | null> => {
+    const { error } = await authResendVerification();
+    return error;
+  }, []);
+
+  const handleRefreshEmailVerified = useCallback(async (): Promise<boolean> => {
+    const verified = await reloadCurrentUser();
+    setEmailVerified(verified);
+    return verified;
+  }, []);
+
   // ── Logout ──────────────────────────────────────────────────────────────
 
   const logout = useCallback(() => {
@@ -357,11 +368,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
-        completeOnboarding,
+        emailVerified,
         signIn: handleSignIn,
+        signUp: handleSignUp,
         signInWithGoogle: handleGoogleSignIn,
         demoLogin,
         updateProfile: handleUpdateProfile,
+        resendVerification: handleResendVerification,
+        refreshEmailVerified: handleRefreshEmailVerified,
         logout,
       }}
     >

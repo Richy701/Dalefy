@@ -232,6 +232,45 @@ export async function updateTripMemberRole(
   }
 }
 
+/** Remove a user from a single trip (both device-keyed and uid-keyed docs) */
+export async function removeUserFromTrip(deviceId: string, tripId: string): Promise<number> {
+  const snap = await getDocs(
+    query(
+      collection(firebaseDb(), TRIP_MEMBERS),
+      where("device_id", "==", deviceId),
+      where("trip_id", "==", tripId),
+    ),
+  );
+  let deleted = 0;
+  for (const d of snap.docs) {
+    try { await deleteDoc(d.ref); deleted++; } catch { /* skip */ }
+  }
+  // Also check uid-keyed docs
+  const allForTrip = await getDocs(
+    query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", tripId)),
+  );
+  for (const d of allForTrip.docs) {
+    if (d.data().device_id === deviceId && !snap.docs.find(s => s.id === d.id)) {
+      try { await deleteDoc(d.ref); deleted++; } catch { /* skip */ }
+    }
+  }
+  logger.log("removeUserFromTrip", `removed ${deleted} docs for device ${deviceId} from trip ${tripId}`);
+  return deleted;
+}
+
+/** Rename an app user across all their trip_members docs */
+export async function renameAppUser(deviceId: string, newName: string): Promise<number> {
+  const snap = await getDocs(
+    query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
+  );
+  let updated = 0;
+  for (const d of snap.docs) {
+    try { await setDoc(d.ref, { name: newName }, { merge: true }); updated++; } catch { /* skip */ }
+  }
+  logger.log("renameAppUser", `renamed ${updated} docs for device ${deviceId} to "${newName}"`);
+  return updated;
+}
+
 export async function deleteAllTripMembers(): Promise<number> {
   const snap = await getDocs(collection(firebaseDb(), TRIP_MEMBERS));
   if (snap.empty) return 0;

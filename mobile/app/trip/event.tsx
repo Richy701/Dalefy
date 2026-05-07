@@ -8,7 +8,7 @@ import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  AirplaneTilt, Bed, Compass, ForkKnife, Car,
+  Airplane, AirplaneTilt, Bed, Compass, ForkKnife, Car,
   MapPin, Clock, Hash, FileText, NavigationArrow,
   Calendar, Users, ArrowRight, Copy, CaretRight, CaretLeft,
   AirplaneTakeoff, AirplaneLanding, Timer, Armchair, Door,
@@ -374,27 +374,39 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
         )}
       </View>
 
-      {/* Route — Tripsy style: city, IATA, time | line + plane | city, IATA, time */}
+      {/* Route — Tripsy style */}
       <View style={frs.routeRow}>
         <View style={frs.endpoint}>
-          <Text style={[frs.cityName, { color: C.textSecondary }]} numberOfLines={1}>{cities.from}</Text>
-          {hasIata && <Text style={[frs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>}
+          {hasIata ? (
+            <>
+              <Text style={[frs.cityName, { color: C.textSecondary }]} numberOfLines={1}>{cities.from}</Text>
+              <Text style={[frs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>
+            </>
+          ) : (
+            <Text style={[frs.iata, { color: C.textPrimary, fontSize: 24 }]} numberOfLines={1}>{cities.from}</Text>
+          )}
           {ev.time && <Text style={[frs.time, { color: C.textTertiary }]}>{ev.time}</Text>}
         </View>
 
         <View style={frs.connector}>
           {flightLabel ? <Text style={[frs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
           <View style={frs.lineRow}>
-            <View style={[frs.line, { backgroundColor: C.flight + "30" }]} />
-            <AirplaneTilt size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
-            <View style={[frs.line, { backgroundColor: C.flight + "30" }]} />
+            <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
+            <Airplane size={20} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+            <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
           </View>
           {ev.duration && <Text style={[frs.durationText, { color: C.textTertiary }]}>{ev.duration}</Text>}
         </View>
 
         <View style={[frs.endpoint, { alignItems: "flex-end" }]}>
-          <Text style={[frs.cityName, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{cities.to}</Text>
-          {hasIata && <Text style={[frs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>}
+          {hasIata ? (
+            <>
+              <Text style={[frs.cityName, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{cities.to}</Text>
+              <Text style={[frs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>
+            </>
+          ) : (
+            <Text style={[frs.iata, { color: C.textPrimary, fontSize: 24, textAlign: "right" }]} numberOfLines={1}>{cities.to}</Text>
+          )}
           {ev.endTime && <Text style={[frs.time, { color: C.textTertiary }]}>{ev.endTime}</Text>}
         </View>
       </View>
@@ -439,20 +451,20 @@ const frs = StyleSheet.create({
     marginBottom: 4,
   },
   endpoint: { flex: 1 },
-  cityName: { fontSize: T.sm, fontWeight: "400", letterSpacing: 0.2, marginBottom: 2 },
-  iata: { fontSize: 32, fontWeight: "800", letterSpacing: -0.5, lineHeight: 36 },
+  cityName: { fontSize: T.base, fontWeight: "400", marginBottom: 2 },
+  iata: { fontSize: 34, fontWeight: "800", letterSpacing: -0.5, lineHeight: 38 },
   time: { fontSize: T.base, fontWeight: "500", marginTop: 6 },
   connector: {
-    flex: 1, alignItems: "center", justifyContent: "center",
+    flex: 1.1, alignItems: "center", justifyContent: "center",
     paddingTop: S.xl,
   },
-  flightNum: { fontSize: T.xs, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
+  flightNum: { fontSize: T.sm, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
   lineRow: {
     flexDirection: "row", alignItems: "center",
-    width: "100%", paddingHorizontal: 2,
+    width: "100%", gap: 4,
   },
-  line: { flex: 1, height: 1.5, borderRadius: 1 },
-  durationText: { fontSize: T.xs, fontWeight: "500", marginTop: 8 },
+  line: { flex: 1, height: 3, borderRadius: 2 },
+  durationText: { fontSize: T.sm, fontWeight: "500", marginTop: 8 },
   detailGrid: {
     flexDirection: "row", flexWrap: "wrap",
     borderTopWidth: StyleSheet.hairlineWidth,
