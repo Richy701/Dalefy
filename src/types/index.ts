@@ -70,6 +70,7 @@ export interface TripInfo {
   id: string;
   title: string;
   body: string;
+  leaderOnly?: boolean;
 }
 
 export interface Organization {

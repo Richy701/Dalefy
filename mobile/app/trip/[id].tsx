@@ -342,13 +342,12 @@ export default function TripScreen() {
 
         {/* ── Information & Documents ── */}
         {trip.info && trip.info.length > 0 && (() => {
-          const SENSITIVE = /price|cost|budget|pnr|supplier|booking\s*ref|payment|invoice|conf|rate|tariff|margin|commission/i;
-          const visibleInfo = isLeader ? trip.info : trip.info.filter(i => !SENSITIVE.test(i.title) && !SENSITIVE.test(i.body));
+          const visibleInfo = isLeader ? trip.info : trip.info.filter(i => !i.leaderOnly);
           return visibleInfo.length > 0 ? (
             <InfoDocsRow
               count={visibleInfo.length}
               C={C}
-              onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id, leaderOnly: isLeader ? "1" : "0" } })}
+              onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
             />
           ) : null;
         })()}

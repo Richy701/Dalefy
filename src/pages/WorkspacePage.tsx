@@ -13,7 +13,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -2293,6 +2293,18 @@ export function WorkspacePage() {
                             />
                             <button
                               type="button"
+                              title={item.leaderOnly ? "Leader only — hidden from travelers" : "Visible to everyone"}
+                              onClick={() => {
+                                const updated = [...(editingTrip.info ?? [])];
+                                updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
+                                setEditingTrip(prev => ({ ...prev, info: updated }));
+                              }}
+                              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-300 dark:text-[#333] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                            >
+                              {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => {
                                 const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
@@ -2453,6 +2465,18 @@ export function WorkspacePage() {
                             placeholder="Page title, e.g. Visa Requirements"
                             className="h-9 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                           />
+                          <button
+                            type="button"
+                            title={item.leaderOnly ? "Leader only — hidden from travelers" : "Visible to everyone"}
+                            onClick={() => {
+                              const updated = [...editInfoData];
+                              updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
+                              setEditInfoData(updated);
+                            }}
+                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-300 dark:text-[#333] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                          >
+                            {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
                           <button
                             type="button"
                             onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}

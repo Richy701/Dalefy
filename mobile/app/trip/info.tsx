@@ -28,10 +28,9 @@ export default function InfoScreen() {
 
   const { isLeader } = useTripRole(tripId);
   const trip = trips.find(t => t.id === tripId);
-  const SENSITIVE = /price|cost|budget|pnr|supplier|booking\s*ref|payment|invoice|conf|rate|tariff|margin|commission/i;
   const infoItems = (() => {
     const all = trip?.info ?? [];
-    return isLeader ? all : all.filter(i => !SENSITIVE.test(i.title) && !SENSITIVE.test(i.body));
+    return isLeader ? all : all.filter(i => !i.leaderOnly);
   })();
 
   // Start with first item expanded

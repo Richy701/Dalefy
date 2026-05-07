@@ -12,11 +12,14 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Invite-only Team System** -- Admin sends invites, team members join via link. Google OAuth and email/password sign-in supported
 - **Email Verification** -- New email/password signups receive verification emails with resend and status check in-app
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
+- **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
+- **Drag-to-Reorder** -- Reorder trip info pages and event documents via drag handles in the workspace editor
+- **Clickable URLs** -- URLs typed in info page body text auto-render as clickable hyperlinks
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
 - **Unified Theming** -- Single brand accent color across all event types, light and dark modes
 - **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts 
