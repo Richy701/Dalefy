@@ -474,7 +474,7 @@ export function SettingsPage() {
                             try {
                               const db = firebaseDb();
                               const existing = await getDocs(
-                                query(collection(db, "org_branding"), where("agency_code", "==", agencyCodeEdit.trim())),
+                                query(collection(db, "org_branding"), where("agency_code", "==", agencyCodeEdit.trim().toLowerCase())),
                               );
                               if (!existing.empty && existing.docs[0].id !== currentOrg.id) {
                                 toast.error("That code is already taken");
@@ -484,7 +484,7 @@ export function SettingsPage() {
                               // Save to org_branding (org doc has stricter rules)
                               const { setDoc } = await import("firebase/firestore");
                               await setDoc(doc(db, "org_branding", currentOrg.id), {
-                                agency_code: agencyCodeEdit.trim(),
+                                agency_code: agencyCodeEdit.trim().toLowerCase(),
                               }, { merge: true });
                               toast.success("Agency code saved! Share it with your travelers.");
                             } catch (err) {
