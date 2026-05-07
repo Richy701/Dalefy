@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info } from "@phosphor-icons/react";
+import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText } from "@phosphor-icons/react";
+import { Linkify } from "@/lib/linkify";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { Trip, TravelEvent } from "@/types";
@@ -24,6 +25,7 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     media: (row.media as Trip["media"]) ?? undefined,
     travelerIds: (row.traveler_ids as string[]) ?? undefined,
     travelers: (row.travelers as Trip["travelers"]) ?? undefined,
+    info: ((row.info as Trip["info"]) ?? [])?.filter(i => !i.leaderOnly),
   };
 }
 
@@ -342,6 +344,25 @@ export function SharedTripPage() {
                   Showing {filteredEvents.length} of {trip.events.length} events for {viewAsTraveler.name}
                 </p>
               )}
+            </div>
+          )}
+
+          {trip.info && trip.info.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-3.5 w-3.5 text-brand" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {trip.info.map(item => (
+                  <div key={item.id} className="rounded-xl p-3.5 bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a]">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-1">{item.title}</p>
+                    {item.body && (
+                      <p className="text-[11px] leading-relaxed text-slate-600 dark:text-[#999] whitespace-pre-wrap"><Linkify text={item.body} /></p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

@@ -1222,7 +1222,14 @@ export function WorkspacePage() {
                                       <FileText className="h-3.5 w-3.5 text-brand" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-bold text-slate-900 dark:text-white">{item.title || "Untitled"}</p>
+                                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {item.title || "Untitled"}
+                                        {item.leaderOnly && (
+                                          <span className="inline-flex items-center gap-1 ml-2 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded align-middle">
+                                            <EyeSlash className="h-2.5 w-2.5" /> Leader only
+                                          </span>
+                                        )}
+                                      </p>
                                       {item.body && (
                                         <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed"><Linkify text={item.body} /></p>
                                       )}

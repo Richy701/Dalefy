@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { doc, setDoc, deleteDoc, onSnapshot, query, collection, where } from "firebase/firestore";
 import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
+import { waitForAuth } from "@/services/firebaseTrips";
 import { useAuth } from "@/context/AuthContext";
 
 export interface PresenceUser {
@@ -50,9 +51,8 @@ export function usePresence(tripId: string | undefined) {
   useEffect(() => {
     if (!tripId || !user || !isFirebaseConfigured()) return;
 
-    writePresence();
-
-    heartbeatRef.current = setInterval(() => writePresence(), HEARTBEAT_MS);
+    let cancelled = false;
+    let unsub: (() => void) | null = null;
 
     const handleUnload = () => {
       if (docIdRef.current) {
@@ -60,31 +60,39 @@ export function usePresence(tripId: string | undefined) {
         deleteDoc(doc(firebaseDb(), "trip_presence", docIdRef.current)).catch(() => {});
       }
     };
-    window.addEventListener("beforeunload", handleUnload);
 
-    const q = query(collection(firebaseDb(), "trip_presence"), where("trip_id", "==", tripId));
-    const unsub = onSnapshot(q, (snap) => {
-      const now = Date.now();
-      const peers: PresenceUser[] = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        if (data.user_id === user.id) return;
-        if (now - (data.last_seen || 0) > STALE_MS) return;
-        peers.push({
-          userId: data.user_id,
-          name: data.name || "",
-          initials: data.initials || data.user_id.slice(0, 2).toUpperCase(),
-          avatar: data.avatar || "",
-          activeDay: data.active_day || null,
-          activeEventId: data.active_event_id || null,
-          lastSeen: data.last_seen || 0,
+    waitForAuth().then((uid) => {
+      if (cancelled || !uid) return;
+
+      writePresence();
+      heartbeatRef.current = setInterval(() => writePresence(), HEARTBEAT_MS);
+      window.addEventListener("beforeunload", handleUnload);
+
+      const q = query(collection(firebaseDb(), "trip_presence"), where("trip_id", "==", tripId));
+      unsub = onSnapshot(q, (snap) => {
+        const now = Date.now();
+        const peers: PresenceUser[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          if (data.user_id === user.id) return;
+          if (now - (data.last_seen || 0) > STALE_MS) return;
+          peers.push({
+            userId: data.user_id,
+            name: data.name || "",
+            initials: data.initials || data.user_id.slice(0, 2).toUpperCase(),
+            avatar: data.avatar || "",
+            activeDay: data.active_day || null,
+            activeEventId: data.active_event_id || null,
+            lastSeen: data.last_seen || 0,
+          });
         });
+        setOthers(peers);
       });
-      setOthers(peers);
     });
 
     return () => {
-      unsub();
+      cancelled = true;
+      unsub?.();
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       window.removeEventListener("beforeunload", handleUnload);
       clearPresence();

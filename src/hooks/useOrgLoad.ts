@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
+import { waitForAuth } from "@/services/firebaseTrips";
 import { useAuth } from "@/context/AuthContext";
 import type { Organization, OrgMember, OrgRole } from "@/types";
 import { logger } from "@/lib/logger";
@@ -46,6 +47,8 @@ export function useOrgLoad() {
 
     async function load() {
       try {
+        const uid = await waitForAuth();
+        if (!uid || !mounted) return;
         logger.log("OrgLoad", "loading org for user:", user!.id);
         const db = firebaseDb();
 

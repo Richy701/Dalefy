@@ -17,7 +17,7 @@ const DEMO_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
 /** Wait for Firebase Auth to resolve AND ensure the ID token is ready.
  *  currentUser is null until the SDK restores from IndexedDB, and the
  *  Firestore SDK needs a valid token before queries will succeed. */
-function waitForAuth(): Promise<string | null> {
+export function waitForAuth(): Promise<string | null> {
   const auth = firebaseAuth();
   const ensureToken = async (user: import("firebase/auth").User) => {
     await user.getIdToken();

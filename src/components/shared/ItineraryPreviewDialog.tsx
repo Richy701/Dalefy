@@ -44,7 +44,8 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
   }, [trip.start, trip.end]);
 
   const hasMeta = trip.paxCount || trip.budget || trip.tripType || trip.organizer?.name;
-  const hasInfo = trip.info && trip.info.length > 0;
+  const travelerInfo = trip.info?.filter(i => !i.leaderOnly) ?? [];
+  const hasInfo = travelerInfo.length > 0;
   const totalDocs = trip.events.reduce((n, ev) => n + (ev.documents?.length ?? 0), 0);
 
   return (
@@ -123,7 +124,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
             </div>
             <div className={cn("grid gap-3", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
-              {trip.info!.map(item => (
+              {travelerInfo.map(item => (
                 <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-slate-50 border-slate-100" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-100 dark:border-[#1a1a1a]")}>
                   <p className={cn("text-xs font-bold uppercase tracking-tight mb-1", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{item.title}</p>
                   <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#999]")}><Linkify text={item.body} /></p>
