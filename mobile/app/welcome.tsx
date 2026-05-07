@@ -99,6 +99,8 @@ export default function WelcomeScreen() {
     setAgencyLoading(true);
     setAgencyError("");
     try {
+      const { waitForAuth } = require("@/services/firebase");
+      await waitForAuth();
       const branding = await fetchOrgByCode(code);
       if (!branding || !branding.organizationId) {
         setAgencyError("Agency not found. Check the code and try again.");

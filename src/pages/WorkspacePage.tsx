@@ -587,8 +587,6 @@ export function WorkspacePage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
-
   const handleExportPdf = async () => {
     if (!pdfRef.current) return;
     setExporting(true);

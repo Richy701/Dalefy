@@ -68,7 +68,8 @@ export async function fetchBranding(orgId: string): Promise<OrgBranding | null> 
 /** Look up an organization by its agency code and return its branding */
 export async function fetchOrgByCode(code: string): Promise<OrgBranding | null> {
   try {
-    if (!isFirebaseConfigured?.() || !firebaseDb || !getDocsFn || !collectionFn || !queryFn || !whereFn)
+    const configured = isFirebaseConfigured?.();
+    if (!configured || !firebaseDb || !getDocsFn || !collectionFn || !queryFn || !whereFn)
       return null;
 
     // agency_code is stored on org_branding (open read rules)

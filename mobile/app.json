@@ -37,7 +37,7 @@
       "statusBarColor": "#00000000",
       "statusBarStyle": "light-content",
       "statusBarTranslucent": true,
-      "versionCode": 2
+      "versionCode": 3
     },
     "extra": {
       "router": {},
