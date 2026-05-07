@@ -99,11 +99,17 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   // Use remote data when available, fall back to local cache.
   // Prefer local cache when remote returns empty but cache has data (offline scenario).
   // Always wait for AsyncStorage before declaring ready — it's our offline safety net.
-  const trips = useMemo(() => {
+  const rawTrips = useMemo(() => {
     if (remoteTrips && remoteTrips.length > 0) return remoteTrips;
     if (localCache && localCache.length > 0) return localCache;
     return remoteTrips ?? localCache ?? [];
   }, [remoteTrips, localCache]);
+
+  const trips = useMemo(() => rawTrips.map(t => {
+    const snap = t.publishedSnapshot;
+    if (!snap) return t;
+    return { ...t, events: snap.events, info: snap.info, organizer: snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
+  }), [rawTrips]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
   const offline = (isSuccess || isError) && (!remoteTrips || remoteTrips.length === 0) && trips.length > 0;
 

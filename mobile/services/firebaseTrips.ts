@@ -293,6 +293,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     travelers: trip.travelers ?? null,
     organizer: trip.organizer ?? null,
     info: trip.info ?? null,
+    published_snapshot: trip.publishedSnapshot ?? null,
   };
 }
 
@@ -318,5 +319,6 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     organizer: (data.organizer as Trip["organizer"]) ?? undefined,
     info: (data.info as Trip["info"]) ?? undefined,
     organizationId: (data.organization_id as string) ?? undefined,
+    publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
   };
 }

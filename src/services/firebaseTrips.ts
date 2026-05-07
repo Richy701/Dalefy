@@ -232,7 +232,12 @@ export async function updateTripMemberRole(
     ),
   );
   for (const d of snap.docs) {
-    await setDoc(d.ref, { role }, { merge: true });
+    try {
+      await setDoc(d.ref, { role }, { merge: true });
+    } catch (err) {
+      logger.error("updateTripMemberRole", `failed on doc ${d.id}:`, err);
+      throw err;
+    }
   }
   // Also update UID-keyed docs if they exist
   const uidSnap = await getDocs(
@@ -244,7 +249,11 @@ export async function updateTripMemberRole(
   for (const d of uidSnap.docs) {
     const data = d.data();
     if (data.device_id === deviceId && d.id !== `${deviceId}_${tripId}`) {
-      await setDoc(d.ref, { role }, { merge: true });
+      try {
+        await setDoc(d.ref, { role }, { merge: true });
+      } catch (err) {
+        logger.error("updateTripMemberRole", `failed on uid-keyed doc ${d.id}:`, err);
+      }
     }
   }
 }
@@ -529,6 +538,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     travelers: trip.travelers ?? null,
     organizer: trip.organizer ?? null,
     info: trip.info ?? null,
+    published_snapshot: trip.publishedSnapshot ?? null,
   });
 }
 
@@ -554,5 +564,6 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     organizer: (data.organizer as Trip["organizer"]) ?? undefined,
     info: (data.info as Trip["info"]) ?? undefined,
     organizationId: (data.organization_id as string) ?? undefined,
+    publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
   };
 }

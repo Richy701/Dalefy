@@ -13,9 +13,10 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { MobilePreview } from "@/components/workspace/MobilePreview";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -187,6 +188,7 @@ export function WorkspacePage() {
 
   const [showMap, setShowMap] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
@@ -397,10 +399,20 @@ export function WorkspacePage() {
     if (publishing) return;
     setPublishing(true);
     await new Promise(r => setTimeout(r, 1500));
-    const published = { ...trip, status: "Published" as const };
-    updateTrip(trip.id, { status: "Published" });
-    // Explicitly sync to Firestore — the cloud sync only covers trips already
-    // in the cloud cache; local-only trips would otherwise never get pushed.
+    const snapshot = {
+      events: trip.events,
+      info: trip.info,
+      organizer: trip.organizer,
+      image: trip.image,
+      name: trip.name,
+      destination: trip.destination,
+      start: trip.start,
+      end: trip.end,
+      paxCount: trip.paxCount,
+      publishedAt: new Date().toISOString(),
+    };
+    const published = { ...trip, status: "Published" as const, publishedSnapshot: snapshot };
+    updateTrip(trip.id, { status: "Published", publishedSnapshot: snapshot });
     try { await upsertTrip(published); } catch { /* cloud sync will retry */ }
     setPublishing(false);
     showToast("Trip published successfully");
@@ -904,11 +916,14 @@ export function WorkspacePage() {
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
             <Trash className="h-4 w-4" />
           </button>
-          <button onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showTasks ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+          <button onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showTasks ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">{showTasks ? "HIDE TASKS" : "TASKS"}</span>
           </button>
-          <button onClick={() => { setShowMap(!showMap); if (!showMap) setShowTasks(false); }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+          <button onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">{showMap ? "HIDE MAP" : "SHOW MAP"}</span>
+          </button>
+          <button onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMobilePreview ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
+            <DeviceMobileCamera className="h-4 w-4" /> <span className="hidden lg:inline">{showMobilePreview ? "HIDE PREVIEW" : "MOBILE"}</span>
           </button>
           <button
             aria-label="Share trip link"
@@ -941,11 +956,14 @@ export function WorkspacePage() {
                 <DotsThreeVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
-              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <ListChecks className="h-4 w-4 text-brand" /> {showTasks ? "Hide Tasks" : "Tasks"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) setShowTasks(false); }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <MapIcon className="h-4 w-4 text-brand" /> {showMap ? "Hide Map" : "Show Map"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                <DeviceMobileCamera className="h-4 w-4 text-brand" /> {showMobilePreview ? "Hide Mobile" : "Mobile Preview"}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <Eye className="h-4 w-4" /> Preview
@@ -981,8 +999,11 @@ export function WorkspacePage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
+          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
             {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
+            {trip.publishedSnapshot && (JSON.stringify(trip.events) !== JSON.stringify(trip.publishedSnapshot.events) || JSON.stringify(trip.info) !== JSON.stringify(trip.publishedSnapshot.info) || trip.name !== trip.publishedSnapshot.name || trip.image !== trip.publishedSnapshot.image) && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-amber-400 border-2 border-white dark:border-[#111111] animate-pulse" />
+            )}
           </Button>
         </div>
       </header>
@@ -1056,7 +1077,7 @@ export function WorkspacePage() {
         </aside>
 
         <div className="flex-1 flex flex-row overflow-hidden relative">
-          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap || showTasks ? "lg:w-[60%]" : "w-full"}`}>
+          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
@@ -1291,7 +1312,7 @@ export function WorkspacePage() {
                   </div>
                 </div>
                 {!isViewer && (
-                  <div className={showMap || showTasks ? "hidden lg:block" : ""}>
+                  <div className={showMap || showTasks || showMobilePreview ? "hidden lg:block" : ""}>
                     <DockBar onAddEvent={handleAddEvent} />
                   </div>
                 )}
@@ -1462,6 +1483,11 @@ export function WorkspacePage() {
                 onUpdate={(tasks) => updateTrip(trip.id, { tasks })}
                 travelers={trip.travelers}
               />
+            </aside>
+          )}
+          {showMobilePreview && (
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+              <MobilePreview trip={trip} onClose={() => setShowMobilePreview(false)} />
             </aside>
           )}
         </div>

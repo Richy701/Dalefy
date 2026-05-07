@@ -102,6 +102,19 @@ export interface TripTask {
   createdAt: string;
 }
 
+export interface PublishedSnapshot {
+  events: TravelEvent[];
+  info?: TripInfo[];
+  organizer?: TripOrganizer;
+  image: string;
+  name: string;
+  destination?: string;
+  start: string;
+  end: string;
+  paxCount?: string;
+  publishedAt: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -126,6 +139,7 @@ export interface Trip {
   organizer?: TripOrganizer;
   info?: TripInfo[];
   tasks?: TripTask[];
+  publishedSnapshot?: PublishedSnapshot;
 }
 
 export interface ComplianceDoc {
