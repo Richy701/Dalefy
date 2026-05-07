@@ -518,12 +518,12 @@ function DayList({ grouped, trip, C, isLeader }: {
             >
               <View style={{
                 width: 38, height: 38, borderRadius: R.md,
-                backgroundColor: isToday ? C.teal : C.elevated,
+                backgroundColor: isToday ? C.teal : `${C.teal}15`,
                 alignItems: "center", justifyContent: "center",
               }}>
                 <Text style={{
                   fontSize: T.lg, fontWeight: "800",
-                  color: isToday ? "#000" : C.textPrimary,
+                  color: isToday ? "#000" : C.teal,
                 }}>{dayIdx + 1}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -536,12 +536,14 @@ function DayList({ grouped, trip, C, isLeader }: {
                     fontSize: T.xs, fontWeight: "500",
                     color: C.textTertiary,
                   }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
-                  <View style={{ flexDirection: "row", gap: 3 }}>
+                  <View style={{ flexDirection: "row", gap: 4 }}>
                     {typeIcons.map(key => {
+                      const baseType = key.startsWith("transfer:") ? "transfer" : key;
+                      const iconColor = (C as Record<string, string>)[baseType] ?? C.teal;
                       const Icon = key.startsWith("transfer:")
                         ? (TRANSFER_ICONS[key.split(":")[1]] || Car)
                         : (DAY_TYPE_ICONS[key] || Compass);
-                      return <Icon key={key} size={11} color={C.textTertiary} weight="regular" />;
+                      return <Icon key={key} size={12} color={iconColor} weight="fill" />;
                     })}
                   </View>
                 </View>
