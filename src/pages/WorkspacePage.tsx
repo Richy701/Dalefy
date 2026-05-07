@@ -13,7 +13,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera,
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
@@ -1609,10 +1609,73 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Time</label>
-                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); }} placeholder="10:30" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</label>
+                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
+
+                  {/* Overnight toggle for hotel */}
+                  {editingEvent?.type === "hotel" && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingEvent(prev => prev ? { ...prev, isOvernight: !prev.isOvernight } : null)}
+                      className="flex items-center gap-2.5 group/toggle"
+                    >
+                      <div className={cn(
+                        "h-5 w-9 rounded-full relative transition-colors duration-200",
+                        editingEvent.isOvernight ? "bg-brand" : "bg-slate-200 dark:bg-[#252525]"
+                      )}>
+                        <div className={cn(
+                          "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200",
+                          editingEvent.isOvernight ? "translate-x-4" : "translate-x-0.5"
+                        )} />
+                      </div>
+                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-slate-400 dark:text-[#555]")} />
+                      <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Overnight</span>
+                    </button>
+                  )}
+
+                  {/* Transfer type selector */}
+                  {editingEvent?.type === "transfer" && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Transport Type</label>
+                      <div className="flex gap-2">
+                        {([
+                          { value: "car", label: "Car", Icon: Car },
+                          { value: "train", label: "Train", Icon: Train },
+                          { value: "bus", label: "Bus", Icon: Bus },
+                          { value: "ferry", label: "Ferry", Icon: Boat },
+                          { value: "cruise", label: "Cruise", Icon: Anchor },
+                          { value: "other", label: "Other", Icon: Compass },
+                        ] as const).map(({ value, label, Icon }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setEditingEvent(prev => prev ? { ...prev, transferType: value } : null)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all",
+                              (editingEvent.transferType || "car") === value
+                                ? "border-brand bg-brand/10 text-brand"
+                                : "border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#666] hover:border-brand/30 hover:text-brand/70"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Check-out Time for hotel (non-overnight) */}
+                  {editingEvent?.type === "hotel" && !editingEvent?.isOvernight && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Check-out Time</label>
+                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* End Time + Duration for activity/dining */}
                   {(editingEvent?.type === "activity" || editingEvent?.type === "dining" || editingEvent?.type === "transfer") && (

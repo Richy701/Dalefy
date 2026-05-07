@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Clock, DotsThreeVertical, Gear, Trash, Copy, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor, MapPin, Clock, DotsThreeVertical, Gear, Trash, Copy, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -264,26 +264,23 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { 
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
-            {event.checkin ? (
-              <>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
-                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.checkin}</p>
-                </div>
-                {event.checkout && <ArrowRight className="h-3.5 w-3.5 text-brand shrink-0" />}
-                {event.checkout && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
-                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.checkout}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{event.time}</span>
-                <StatusChip status={event.status} />
+            {!event.isOvernight && event.time && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time}</p>
               </div>
             )}
+            {!event.isOvernight && event.time && event.endTime && <ArrowRight className="h-3.5 w-3.5 text-brand shrink-0" />}
+            {!event.isOvernight && event.endTime && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.endTime}</p>
+              </div>
+            )}
+            {event.isOvernight && (
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Overnight</span>
+            )}
+            <StatusChip status={event.status} />
             {event.roomType && (
               <span className="ml-auto text-[11px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full shrink-0">{event.roomType}</span>
             )}
@@ -300,14 +297,17 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { 
 function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isDining = event.type === "dining";
   const isTransfer = event.type === "transfer";
-  const Icon = isTransfer ? Car : isDining ? ForkKnife : Compass;
+  const transferIcons: Record<string, React.ComponentType<{ className?: string }>> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
+  const transferLabels: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
+  const Icon = isTransfer ? (transferIcons[event.transferType || "car"] || Car) : isDining ? ForkKnife : Compass;
+  const typeLabel = isTransfer ? (transferLabels[event.transferType || "car"] || "Transfer") : isDining ? "Dining" : "Activity";
 
   const isSparse = !event.notes && !event.endTime && !event.location;
   if (isSparse) {
     return (
       <CompactCard
         event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
-        Icon={Icon} label={isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
+        Icon={Icon} label={typeLabel}
       />
     );
   }
@@ -334,7 +334,7 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }:
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Icon className="h-3 w-3 shrink-0 text-brand" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
-                  {isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
+                  {typeLabel}
                 </span>
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand">{event.title}</h4>

@@ -238,8 +238,8 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
           <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
             <Bed size={13} color={C.hotel} weight="regular" />
           </View>
-          <Text style={[cs.smallLabel, { color: C.hotel, flex: 1 }]}>Stay</Text>
-          {ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
+          <Text style={[cs.smallLabel, { color: C.hotel, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
+          {!ev.isOvernight && ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
         </View>
 
         <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{ev.title}</Text>
@@ -251,24 +251,21 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
           </View>
         )}
 
-        {/* Check-in / Check-out */}
-        {(ev.checkin || ev.checkout) && (
+        {!ev.isOvernight && (ev.checkin || ev.checkout) && (ev.time || ev.endTime) && (
           <View style={[cs.checkRow, { backgroundColor: C.elevated }]}>
-            {ev.checkin && (
+            {ev.time && (
               <View style={{ flex: 1 }}>
                 <Text style={[cs.checkLabel, { color: C.textTertiary }]}>Check in</Text>
-                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.checkin)}</Text>
-                {ev.date && <Text style={[cs.checkDate, { color: C.textTertiary }]}>{formatDate(ev.date)}</Text>}
+                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.time)}</Text>
               </View>
             )}
-            {ev.checkin && ev.checkout && (
+            {ev.time && ev.endTime && (
               <ArrowRight size={14} color={C.hotel} weight="regular" />
             )}
-            {ev.checkout && (
-              <View style={{ flex: 1, alignItems: ev.checkin ? "flex-end" : "flex-start" }}>
+            {ev.endTime && (
+              <View style={{ flex: 1, alignItems: ev.time ? "flex-end" : "flex-start" }}>
                 <Text style={[cs.checkLabel, { color: C.textTertiary }]}>Check out</Text>
-                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.checkout)}</Text>
-                {(ev.endDate || ev.date) && <Text style={[cs.checkDate, { color: C.textTertiary }]}>{formatDate(ev.endDate ?? nextDay(ev.date))}</Text>}
+                <Text style={[cs.checkVal, { color: C.textPrimary }]}>{formatTimeTo24h(ev.endTime)}</Text>
               </View>
             )}
           </View>

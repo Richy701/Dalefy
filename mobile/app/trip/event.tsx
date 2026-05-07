@@ -89,11 +89,12 @@ export default function EventDetailScreen() {
   };
 
   const isFlight = ev.type === "flight";
+  const isHotel = ev.type === "hotel";
 
   // Build compact detail chips (skip flight-specific ones - handled in FlightRoute)
   const chips: Array<{ icon: React.ComponentType<any>; text: string }> = [];
   if (ev.date) chips.push({ icon: Calendar, text: formatDate(ev.date) });
-  if (!isFlight && ev.time) chips.push({ icon: Clock, text: ev.time + (ev.endTime ? ` - ${ev.endTime}` : "") });
+  if (!isFlight && !(isHotel && ev.isOvernight) && ev.time) chips.push({ icon: Clock, text: ev.time + (ev.endTime ? ` - ${ev.endTime}` : "") });
   if (!isFlight && ev.duration) chips.push({ icon: Clock, text: ev.duration });
   if (isLeader && ev.supplier) chips.push({ icon: Users, text: ev.supplier });
   if (!isFlight && ev.terminal) chips.push({ icon: NavigationArrow, text: `Terminal ${ev.terminal}` });
@@ -211,22 +212,22 @@ export default function EventDetailScreen() {
           </Pressable>
         )}
 
-        {/* ── Check-in / Check-out ── */}
-        {(ev.checkin || ev.checkout) && (
+        {/* ── Check-in / Check-out times ── */}
+        {isHotel && !ev.isOvernight && (ev.checkin || ev.checkout) && (ev.time || ev.endTime) && (
           <View style={[styles.checkCard, { backgroundColor: C.card }]}>
-            {ev.checkin && (
+            {ev.time && (
               <View style={{ flex: 1 }}>
                 <Text style={[styles.checkLabel, { color: C.textTertiary }]}>CHECK IN</Text>
-                <Text style={[styles.checkValue, { color: C.textPrimary }]}>{formatDate(ev.checkin)}</Text>
+                <Text style={[styles.checkValue, { color: C.textPrimary }]}>{ev.time}</Text>
               </View>
             )}
-            {ev.checkin && ev.checkout && (
+            {ev.time && ev.endTime && (
               <ArrowRight size={16} color={color} weight="regular" />
             )}
-            {ev.checkout && (
-              <View style={{ flex: 1, alignItems: ev.checkin ? "flex-end" as const : "flex-start" as const }}>
+            {ev.endTime && (
+              <View style={{ flex: 1, alignItems: ev.time ? "flex-end" as const : "flex-start" as const }}>
                 <Text style={[styles.checkLabel, { color: C.textTertiary }]}>CHECK OUT</Text>
-                <Text style={[styles.checkValue, { color: C.textPrimary }]}>{formatDate(ev.checkout)}</Text>
+                <Text style={[styles.checkValue, { color: C.textPrimary }]}>{ev.endTime}</Text>
               </View>
             )}
           </View>

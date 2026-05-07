@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
   CaretLeft, Compass, MapPin, Users, Moon, MapTrifold, CaretDown,
+  Airplane, Bed, ForkKnife, Car,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -17,6 +18,7 @@ import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
+import { EventCard } from "@/components/EventCard";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { useTripRole } from "@/hooks/useTripRole";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
@@ -451,7 +453,7 @@ export default function TripScreen() {
             <Text style={styles.sectionEyebrow}>ITINERARY</Text>
           </View>
 
-          <DayList grouped={grouped} tripId={trip.id} C={C} />
+          <DayList grouped={grouped} trip={trip} C={C} isLeader={isLeader} />
         </View>
 
         {/* Terminal element clearance */}
@@ -461,14 +463,24 @@ export default function TripScreen() {
   );
 }
 
-function DayList({ grouped, tripId, C }: {
+const DAY_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
+  flight: Airplane, hotel: Bed, activity: Compass, dining: ForkKnife, transport: Car,
+};
+
+function DayList({ grouped, trip, C, isLeader }: {
   grouped: Record<string, any[]>;
-  tripId: string;
+  trip: { id: string; events: any[] };
   C: ThemeColors;
+  isLeader: boolean;
 }) {
-  const router = useRouter();
   const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   const todayStr = new Date().toISOString().split("T")[0];
+  const [openDay, setOpenDay] = useState<string | null>(null);
+
+  const toggle = (date: string) => {
+    Haptics.selectionAsync();
+    setOpenDay(prev => prev === date ? null : date);
+  };
 
   return (
     <View style={{ paddingHorizontal: S.md }}>
@@ -477,52 +489,69 @@ function DayList({ grouped, tripId, C }: {
         const isToday = date === todayStr;
         const weekday = dt.toLocaleDateString("en-US", { weekday: "long" });
         const fullDate = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const isOpen = openDay === date;
+
+        const typeSet = new Set(events.map((e: any) => e.type));
+        const typeIcons = [...typeSet].slice(0, 4);
 
         return (
-          <Pressable
-            key={date}
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.push({ pathname: "/trip/day", params: { tripId, date } });
-            }}
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: C.card,
-              borderRadius: R.xl,
-              padding: S.sm,
-              marginBottom: S.sm,
-              gap: S.sm,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <View style={{
-              width: 38, height: 38, borderRadius: R.md,
-              backgroundColor: isToday ? C.teal : C.elevated,
-              alignItems: "center", justifyContent: "center",
-            }}>
-              <Text style={{
-                fontSize: T.lg, fontWeight: "800",
-                color: isToday ? "#000" : C.textPrimary,
-              }}>{dayIdx + 1}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{
-                fontSize: T.base, fontWeight: "700",
-                color: isToday ? C.teal : C.textPrimary,
-              }}>{weekday}</Text>
-              <Text style={{
-                fontSize: T.xs, fontWeight: "500",
-                color: C.textTertiary, marginTop: 1,
-              }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
-            </View>
-            <CaretDown
-              size={14}
-              color={C.textTertiary}
-              weight="regular"
-              style={{ transform: [{ rotate: "-90deg" }] }}
-            />
-          </Pressable>
+          <View key={date} style={{ marginBottom: S.sm }}>
+            <Pressable
+              onPress={() => toggle(date)}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: isOpen ? C.elevated : C.card,
+                borderRadius: R.xl,
+                padding: S.sm,
+                gap: S.sm,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <View style={{
+                width: 38, height: 38, borderRadius: R.md,
+                backgroundColor: isToday ? C.teal : C.elevated,
+                alignItems: "center", justifyContent: "center",
+              }}>
+                <Text style={{
+                  fontSize: T.lg, fontWeight: "800",
+                  color: isToday ? "#000" : C.textPrimary,
+                }}>{dayIdx + 1}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: T.base, fontWeight: "700",
+                  color: isToday ? C.teal : C.textPrimary,
+                }}>{weekday}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, gap: 6 }}>
+                  <Text style={{
+                    fontSize: T.xs, fontWeight: "500",
+                    color: C.textTertiary,
+                  }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
+                  <View style={{ flexDirection: "row", gap: 3 }}>
+                    {typeIcons.map(type => {
+                      const Icon = DAY_TYPE_ICONS[type] || Compass;
+                      return <Icon key={type} size={11} color={C.textTertiary} weight="regular" />;
+                    })}
+                  </View>
+                </View>
+              </View>
+              <CaretDown
+                size={14}
+                color={C.textTertiary}
+                weight="regular"
+                style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}
+              />
+            </Pressable>
+
+            {isOpen && (
+              <View style={{ gap: S.sm, paddingTop: S.sm }}>
+                {events.map((ev: any) => (
+                  <EventCard key={ev.id} ev={ev} C={C} tripId={trip.id} isLeader={isLeader} />
+                ))}
+              </View>
+            )}
+          </View>
         );
       })}
     </View>

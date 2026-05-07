@@ -38,6 +38,8 @@ export interface TravelEvent {
   arrAirport?: string;
   checkin?: string;
   checkout?: string;
+  isOvernight?: boolean;
+  transferType?: "car" | "train" | "bus" | "ferry" | "cruise" | "other";
   endDate?: string;
   notes?: string;
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;

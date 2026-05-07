@@ -20,6 +20,8 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
+- **Transport Types** -- Transfer events support sub-types (Car, Train, Bus, Ferry, Cruise) with matching icons and labels
+- **Overnight Toggle** -- Hotel events can be marked as overnight stays, hiding check-in/check-out time fields
 - **Drag-to-Reorder** -- Reorder trip info pages and event documents via drag handles in the workspace editor
 - **Clickable URLs** -- URLs typed in info page body text auto-render as clickable hyperlinks
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
