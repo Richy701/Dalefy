@@ -225,7 +225,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { 
     return (
       <CompactCard
         event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
-        Icon={Hotel} label="Accommodation"
+        Icon={Bed} label="Accommodation"
       />
     );
   }
