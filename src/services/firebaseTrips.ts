@@ -47,9 +47,10 @@ export async function fetchTrips(orgId?: string | null): Promise<Trip[]> {
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void, orgId?: string | null): Unsubscribe {
   let innerUnsub: Unsubscribe | null = null;
+  let cancelled = false;
 
-  waitForAuth().then((uid) => {
-    if (!uid) { onChange([]); return; }
+  const startListener = (uid: string, attempt = 1) => {
+    if (cancelled) return;
     const constraint = orgId
       ? where("organization_id", "==", orgId)
       : where("user_id", "==", uid);
@@ -60,10 +61,20 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void, orgId?: stri
       const blocked = all.length - filtered.length;
       if (blocked > 0) logger.log("subscribeToTrips", `filtered out ${blocked} demo trips from ${all.length} total`);
       onChange(filtered);
+    }, (err) => {
+      logger.log("subscribeToTrips", `snapshot error (attempt ${attempt}):`, err.message);
+      if (attempt < 3 && !cancelled) {
+        setTimeout(() => startListener(uid, attempt + 1), attempt * 1500);
+      }
     });
+  };
+
+  waitForAuth().then((uid) => {
+    if (!uid || cancelled) { onChange([]); return; }
+    startListener(uid);
   });
 
-  return () => { innerUnsub?.(); };
+  return () => { cancelled = true; innerUnsub?.(); };
 }
 
 export async function backfillOrgId(orgId: string): Promise<number> {

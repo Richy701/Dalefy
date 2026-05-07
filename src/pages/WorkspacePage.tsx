@@ -1456,7 +1456,7 @@ export function WorkspacePage() {
                 {/* Live search — flight */}
                 {editingEvent?.type === "flight" && (
                   <FlightSearch
-                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null); }}
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
                     defaultDate={editingEvent?.date}
                   />
                 )}
@@ -1464,7 +1464,7 @@ export function WorkspacePage() {
                 {/* Live search — hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
-                    onSelect={({ checkin: ci, checkout: co, ...data }) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => {
+                    onSelect={({ checkin: ci, checkout: co, ...data }) => { setEditingEvent(prev => {
                       if (!prev) return null;
                       return { ...prev, ...data, title: prev.title || data.title || "", checkin: prev.checkin || ci || "", checkout: prev.checkout || co || "" };
                     }); }}
@@ -1476,14 +1476,14 @@ export function WorkspacePage() {
                 {/* Live search — activity */}
                 {editingEvent?.type === "activity" && (
                   <ActivitySearch
-                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data } : null); }}
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
                   />
                 )}
 
                 {/* Live search — dining */}
                 {editingEvent?.type === "dining" && (
                   <DiningSearch
-                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data } : null); }}
+                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
                   />
                 )}
 
