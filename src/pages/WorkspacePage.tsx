@@ -7,12 +7,13 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EnvelopeOpen, DotsThreeVertical, ListChecks
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
+import { Linkify } from "@/lib/linkify";
 import { usePresence } from "@/hooks/usePresence";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
@@ -134,6 +136,25 @@ function timeToMinutes(t: string): number {
   const h24 = t.match(/^(\d{1,2}):(\d{2})$/);
   if (h24) return parseInt(h24[1]) * 60 + parseInt(h24[2]);
   return 720;
+}
+
+function SortableItem({ id, children, handleClass }: { id: string; children: React.ReactNode; handleClass?: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : undefined, position: "relative" };
+  return (
+    <div ref={setNodeRef} style={style} className="group/sort">
+      {handleClass ? (
+        <>
+          <div {...attributes} {...listeners} className={handleClass}>
+            <DotsSixVertical className="h-3.5 w-3.5" />
+          </div>
+          {children}
+        </>
+      ) : (
+        <div {...attributes} {...listeners}>{children}</div>
+      )}
+    </div>
+  );
 }
 
 export function WorkspacePage() {
@@ -1203,7 +1224,7 @@ export function WorkspacePage() {
                                     <div className="min-w-0 flex-1">
                                       <p className="text-sm font-bold text-slate-900 dark:text-white">{item.title || "Untitled"}</p>
                                       {item.body && (
-                                        <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed">{item.body}</p>
+                                        <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed"><Linkify text={item.body} /></p>
                                       )}
                                     </div>
                                     <CaretRight className="h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1" />
@@ -1839,23 +1860,36 @@ export function WorkspacePage() {
                     <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,image/*" multiple className="hidden" onChange={handleDocumentUpload} />
                   </div>
                   {(editingEvent?.documents?.length ?? 0) > 0 ? (
-                    <div className="space-y-1.5">
-                      {editingEvent!.documents!.map((doc, i) => (
-                        <div key={doc.id} className="group flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/40 transition-colors">
-                          <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center shrink-0">
-                            <FileText className="h-3.5 w-3.5 text-brand" />
-                          </div>
-                          <button type="button" onClick={() => handleOpenDocument(doc.url)} className="flex-1 min-w-0 text-left">
-                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
-                            <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] uppercase tracking-wider">{formatFileSize(doc.size)}</p>
-                          </button>
-                          <button type="button" onClick={() => handleRemoveDocument(i)}
-                            className="h-6 w-6 rounded-md text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                            <Trash className="h-3 w-3" />
-                          </button>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
+                      const { active, over } = e;
+                      if (!over || active.id === over.id || !editingEvent?.documents) return;
+                      const oldIdx = editingEvent.documents.findIndex(d => d.id === active.id);
+                      const newIdx = editingEvent.documents.findIndex(d => d.id === over.id);
+                      if (oldIdx === -1 || newIdx === -1) return;
+                      setEditingEvent(prev => prev ? { ...prev, documents: arrayMove([...prev.documents!], oldIdx, newIdx) } : null);
+                    }}>
+                      <SortableContext items={editingEvent!.documents!.map(d => d.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-1.5">
+                          {editingEvent!.documents!.map((doc, i) => (
+                            <SortableItem key={doc.id} id={doc.id} handleClass="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 h-6 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                              <div className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/40 transition-colors">
+                                <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center shrink-0">
+                                  <FileText className="h-3.5 w-3.5 text-brand" />
+                                </div>
+                                <button type="button" onClick={() => handleOpenDocument(doc.url)} className="flex-1 min-w-0 text-left">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] uppercase tracking-wider">{formatFileSize(doc.size)}</p>
+                                </button>
+                                <button type="button" onClick={() => handleRemoveDocument(i)}
+                                  className="h-6 w-6 rounded-md text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover/sort:opacity-100 shrink-0">
+                                  <Trash className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </SortableItem>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   ) : (
                     <button type="button" onClick={() => documentInputRef.current?.click()}
                       className="w-full h-10 sm:h-14 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-brand/50 hover:text-brand transition-colors">
@@ -2230,49 +2264,61 @@ export function WorkspacePage() {
                     <p className="text-[10px] text-slate-400 dark:text-[#444] mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
                   </div>
                 )}
-                {(editingTrip.info ?? []).map((item, idx) => (
-                  <div key={item.id} className="mb-3 group rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    {/* Card header with number badge + title + delete */}
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
-                        <span className="text-[11px] font-black text-brand">{idx + 1}</span>
-                      </div>
-                      <Input
-                        value={item.title}
-                        onChange={e => {
-                          const updated = [...(editingTrip.info ?? [])];
-                          updated[idx] = { ...updated[idx], title: e.target.value };
-                          setEditingTrip(prev => ({ ...prev, info: updated }));
-                        }}
-                        placeholder="Page title — e.g., Visa Requirements"
-                        className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
-                          setEditingTrip(prev => ({ ...prev, info: updated }));
-                        }}
-                        className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    {/* Body textarea */}
-                    <div className="px-4 pb-4">
-                      <Textarea
-                        value={item.body}
-                        onChange={e => {
-                          const updated = [...(editingTrip.info ?? [])];
-                          updated[idx] = { ...updated[idx], body: e.target.value };
-                          setEditingTrip(prev => ({ ...prev, info: updated }));
-                        }}
-                        placeholder="Write content that travelers will see..."
-                        className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
-                      />
-                    </div>
-                  </div>
-                ))}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
+                  const { active, over } = e;
+                  if (!over || active.id === over.id) return;
+                  const items = editingTrip.info ?? [];
+                  const oldIdx = items.findIndex(i => i.id === active.id);
+                  const newIdx = items.findIndex(i => i.id === over.id);
+                  if (oldIdx === -1 || newIdx === -1) return;
+                  setEditingTrip(prev => ({ ...prev, info: arrayMove([...(prev.info ?? [])], oldIdx, newIdx) }));
+                }}>
+                  <SortableContext items={(editingTrip.info ?? []).map(i => i.id)} strategy={verticalListSortingStrategy}>
+                    {(editingTrip.info ?? []).map((item, idx) => (
+                      <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3 z-10 h-7 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                        <div className="mb-3 rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                              <span className="text-[11px] font-black text-brand">{idx + 1}</span>
+                            </div>
+                            <Input
+                              value={item.title}
+                              onChange={e => {
+                                const updated = [...(editingTrip.info ?? [])];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setEditingTrip(prev => ({ ...prev, info: updated }));
+                              }}
+                              placeholder="Page title — e.g., Visa Requirements"
+                              className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
+                                setEditingTrip(prev => ({ ...prev, info: updated }));
+                              }}
+                              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="px-4 pb-4">
+                            <Textarea
+                              value={item.body}
+                              onChange={e => {
+                                const updated = [...(editingTrip.info ?? [])];
+                                updated[idx] = { ...updated[idx], body: e.target.value };
+                                setEditingTrip(prev => ({ ...prev, info: updated }));
+                              }}
+                              placeholder="Write content that travelers will see... URLs become clickable links automatically."
+                              className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                            />
+                          </div>
+                        </div>
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </div>
 
               {/* ── Section: Status ── */}
@@ -2381,45 +2427,58 @@ export function WorkspacePage() {
                   <p className="text-xs text-slate-400 dark:text-[#444] mt-1">Add travel tips, visa info, packing lists</p>
                 </div>
               )}
-              {editInfoData.map((item, idx) => (
-                <div key={item.id} className="group rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden transition-shadow hover:shadow-md">
-                  <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-[#1a1a1a]">
-                    <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
-                      <span className="text-[11px] font-black text-brand">{idx + 1}</span>
-                    </div>
-                    <Input
-                      value={item.title}
-                      onChange={e => {
-                        const updated = [...editInfoData];
-                        updated[idx] = { ...updated[idx], title: e.target.value };
-                        setEditInfoData(updated);
-                      }}
-                      placeholder="Page title, e.g. Visa Requirements"
-                      className="h-9 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
-                      className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Trash className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="p-4 sm:p-5">
-                    <Textarea
-                      value={item.body}
-                      onChange={e => {
-                        const updated = [...editInfoData];
-                        updated[idx] = { ...updated[idx], body: e.target.value };
-                        setEditInfoData(updated);
-                      }}
-                      placeholder="Write content that travelers will see..."
-                      rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
-                      className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] text-slate-700 dark:text-[#ccc] resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
-                    />
-                  </div>
-                </div>
-              ))}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
+                const { active, over } = e;
+                if (!over || active.id === over.id) return;
+                const oldIdx = editInfoData.findIndex(i => i.id === active.id);
+                const newIdx = editInfoData.findIndex(i => i.id === over.id);
+                if (oldIdx === -1 || newIdx === -1) return;
+                setEditInfoData(prev => arrayMove([...prev], oldIdx, newIdx));
+              }}>
+                <SortableContext items={editInfoData.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                  {editInfoData.map((item, idx) => (
+                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                      <div className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-[#1a1a1a]">
+                          <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                            <span className="text-[11px] font-black text-brand">{idx + 1}</span>
+                          </div>
+                          <Input
+                            value={item.title}
+                            onChange={e => {
+                              const updated = [...editInfoData];
+                              updated[idx] = { ...updated[idx], title: e.target.value };
+                              setEditInfoData(updated);
+                            }}
+                            placeholder="Page title, e.g. Visa Requirements"
+                            className="h-9 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
+                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                          >
+                            <Trash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="p-4 sm:p-5">
+                          <Textarea
+                            value={item.body}
+                            onChange={e => {
+                              const updated = [...editInfoData];
+                              updated[idx] = { ...updated[idx], body: e.target.value };
+                              setEditInfoData(updated);
+                            }}
+                            placeholder="Write content that travelers will see... URLs become clickable links automatically."
+                            rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
+                            className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] text-slate-700 dark:text-[#ccc] resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                          />
+                        </div>
+                      </div>
+                    </SortableItem>
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>

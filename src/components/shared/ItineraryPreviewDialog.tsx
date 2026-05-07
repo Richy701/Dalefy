@@ -11,6 +11,7 @@ import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
+import { Linkify } from "@/lib/linkify";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -125,7 +126,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
               {trip.info!.map(item => (
                 <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-slate-50 border-slate-100" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-100 dark:border-[#1a1a1a]")}>
                   <p className={cn("text-xs font-bold uppercase tracking-tight mb-1", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{item.title}</p>
-                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#999]")}>{item.body}</p>
+                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#999]")}><Linkify text={item.body} /></p>
                 </div>
               ))}
             </div>

@@ -36,7 +36,8 @@
       "navigationBarStyle": "light-content",
       "statusBarColor": "#00000000",
       "statusBarStyle": "light-content",
-      "statusBarTranslucent": true
+      "statusBarTranslucent": true,
+      "versionCode": 2
     },
     "extra": {
       "router": {},
