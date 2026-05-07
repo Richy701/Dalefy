@@ -201,20 +201,35 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
 
 /** Delete all trip_members docs for a given device_id (both device-keyed and uid-keyed) */
 export async function deleteAppUser(deviceId: string): Promise<number> {
-  const snap = await getDocs(
+  const refs = new Map<string, import("firebase/firestore").DocumentReference>();
+
+  const byDevice = await getDocs(
     query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
   );
-  if (snap.empty) return 0;
+  for (const d of byDevice.docs) refs.set(d.id, d.ref);
+
+  // Also find UID-keyed docs that share the same device_id
+  const byUid = await getDocs(
+    query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", deviceId)),
+  );
+  for (const d of byUid.docs) refs.set(d.id, d.ref);
+
+  if (refs.size === 0) return 0;
   let deleted = 0;
-  for (const d of snap.docs) {
+  let lastErr: unknown = null;
+  for (const [id, ref] of refs) {
     try {
-      await deleteDoc(d.ref);
+      await deleteDoc(ref);
       deleted++;
     } catch (err) {
-      logger.log("deleteAppUser", `failed to delete ${d.id}:`, err);
+      lastErr = err;
+      logger.log("deleteAppUser", `failed to delete ${id}:`, err);
     }
   }
-  logger.log("deleteAppUser", `deleted ${deleted}/${snap.size} docs for device ${deviceId}`);
+  if (deleted === 0 && lastErr) {
+    throw new Error(`Permission denied: could not delete trip member records. ${lastErr}`);
+  }
+  logger.log("deleteAppUser", `deleted ${deleted}/${refs.size} docs for device ${deviceId}`);
   return deleted;
 }
 

@@ -159,6 +159,8 @@ service cloud.firestore {
             || exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + resource.data.trip_id))
             || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
                 && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.user_id == request.auth.uid)
+            || (resource.data.organization_id != null
+                && isOrgEditor(resource.data.organization_id))
             || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
                 && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
                 && isOrgEditor(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id)));
