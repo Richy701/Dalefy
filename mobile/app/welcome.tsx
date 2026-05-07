@@ -6,13 +6,17 @@ import {
 } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, ArrowLeft, Camera, User, Buildings, Check } from "phosphor-react-native";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import { ArrowRight, ArrowLeft, Camera, User, Buildings, Check, AirplaneTilt } from "phosphor-react-native";
+import Animated, {
+  FadeIn, FadeInUp, FadeInDown,
+  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+} from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useBrand } from "@/context/BrandContext";
@@ -25,25 +29,10 @@ import { Illustration } from "@/components/Illustration";
 
 type Step = "welcome" | "agency" | "profile";
 
-const { width: SCREEN_W } = Dimensions.get("window");
-
-// ── Step indicator ──────────────────────────────────────────────────────────
-function StepDots({ current, C }: { current: 1 | 2; C: ThemeColors }) {
-  return (
-    <View style={dotStyles.row}>
-      <View style={[dotStyles.dot, { backgroundColor: current === 1 ? C.teal : C.elevated }]} />
-      <View style={[dotStyles.dot, { backgroundColor: current === 2 ? C.teal : C.elevated }]} />
-    </View>
-  );
-}
-
-const dotStyles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 6, marginBottom: S.lg },
-  dot: { width: 24, height: 4, borderRadius: 2 },
-});
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const { brand, refreshBranding } = useBrand();
   const { prefs, setPref } = usePreferences();
   const router = useRouter();
@@ -61,6 +50,7 @@ export default function WelcomeScreen() {
   const [agencyCode, setAgencyCode] = useState(prefs.orgSlug || "");
   const [agencyLoading, setAgencyLoading] = useState(false);
   const [agencyError, setAgencyError] = useState("");
+  const [agencySuccess, setAgencySuccess] = useState(false);
 
   const [name, setName] = useState(prefs.name);
   const [avatar, setAvatar] = useState(prefs.avatar || "");
@@ -68,20 +58,14 @@ export default function WelcomeScreen() {
   const [uploading, setUploading] = useState(false);
   const agencyRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0;
 
-  // ── Navigation ──
   const goToAgency = useCallback(() => {
     haptic.selection();
     setStep("agency");
-  }, [haptic]);
-
-  const goToProfile = useCallback(() => {
-    haptic.selection();
-    setStep("profile");
   }, [haptic]);
 
   const goBackToAgency = useCallback(() => {
@@ -111,7 +95,8 @@ export default function WelcomeScreen() {
       setPref("orgId", branding.organizationId);
       setPref("orgSlug", code);
       refreshBranding();
-      setStep("profile");
+      setAgencySuccess(true);
+      setTimeout(() => setStep("profile"), 800);
     } catch {
       setAgencyError("Something went wrong. Try again.");
     } finally {
@@ -148,7 +133,6 @@ export default function WelcomeScreen() {
         const ext = tempUri.split(".").pop()?.toLowerCase() || "jpg";
         const localPath = `${FileSystem.documentDirectory}avatar.${ext}`;
 
-        // Copy to persistent local storage first (survives app restart)
         FileSystem.copyAsync({ from: tempUri, to: localPath })
           .then(() => {
             if (!uploadedUrlRef.current) {
@@ -156,9 +140,7 @@ export default function WelcomeScreen() {
               setAvatar(localPath);
             }
           })
-          .catch(() => {
-            // Local copy failed - don't save temp URI, wait for upload
-          });
+          .catch(() => {});
 
         uploadAvatar(tempUri).then((url) => {
           if (url) {
@@ -198,8 +180,6 @@ export default function WelcomeScreen() {
     const finalAvatar = uploadedUrlRef.current || avatar;
     if (finalAvatar) setPref("avatar", finalAvatar);
 
-    // Sync name/avatar to all existing trip_members docs in Firebase
-    console.log("[welcome] submit isEdit:", isEdit, "name:", trimmed);
     if (isEdit) updateMemberProfile(trimmed, finalAvatar || null);
 
     if (isEdit && router.canGoBack()) {
@@ -215,39 +195,56 @@ export default function WelcomeScreen() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "welcome") {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.splashContainer}>
-          {/* Illustration */}
-          <Animated.View entering={FadeIn.duration(600)} style={styles.illusWrap}>
-            <Illustration name="together" width={SCREEN_W * 0.7} height={SCREEN_W * 0.55} />
-          </Animated.View>
+      <View style={styles.safe}>
+        {/* Background glow */}
+        <LinearGradient
+          colors={[`${C.teal}12`, "transparent"]}
+          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-          {/* Copy */}
-          <Animated.View entering={FadeInUp.duration(500).delay(200)} style={styles.splashCopy}>
-            <View style={styles.splashBrandRow}>
-              <Logo size={20} color={C.teal} />
-              <Text style={styles.splashBrandName}>Dalefy</Text>
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.welcomeContainer}>
+            {/* Top — brand mark */}
+            <Animated.View entering={FadeIn.duration(600)} style={styles.welcomeTop}>
+              <Logo size={24} color={C.teal} />
+            </Animated.View>
+
+            {/* Center — illustration */}
+            <Animated.View entering={FadeIn.duration(800).delay(200)} style={styles.welcomeCenter}>
+              <Illustration name="together" width={SCREEN_W * 0.65} height={SCREEN_W * 0.5} />
+            </Animated.View>
+
+            {/* Bottom — big type + CTA */}
+            <View style={styles.welcomeBottom}>
+              <Animated.Text
+                entering={FadeInUp.duration(500).delay(400)}
+                style={styles.heroTitle}
+              >
+                Your trips,{"\n"}organised
+              </Animated.Text>
+              <Animated.Text
+                entering={FadeInUp.duration(500).delay(550)}
+                style={styles.heroSub}
+              >
+                Flights, hotels, activities - everything in one place.
+              </Animated.Text>
+
+              <Animated.View entering={FadeInUp.duration(400).delay(700)} style={styles.ctaWrap}>
+                <Pressable
+                  onPress={goToAgency}
+                  accessibilityRole="button"
+                  accessibilityLabel="Get started"
+                  style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+                >
+                  <Text style={styles.ctaText}>Get Started</Text>
+                  <ArrowRight size={16} color="#000" weight="bold" />
+                </Pressable>
+              </Animated.View>
             </View>
-            <Text style={styles.splashTitle}>Your trips, organised</Text>
-            <Text style={styles.splashSub}>
-              Flights, hotels, activities and more. All your travel details in one place.
-            </Text>
-          </Animated.View>
-
-          {/* CTA */}
-          <Animated.View entering={FadeInUp.duration(400).delay(500)} style={styles.footer}>
-            <Pressable
-              onPress={goToAgency}
-              accessibilityRole="button"
-              accessibilityLabel="Get started"
-              style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]}
-            >
-              <Text style={styles.ctaText}>Get Started</Text>
-              <ArrowRight size={16} color="#000" weight="bold" />
-            </Pressable>
-          </Animated.View>
-        </View>
-      </SafeAreaView>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
@@ -256,85 +253,102 @@ export default function WelcomeScreen() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "agency") {
     return (
-      <SafeAreaView style={styles.safe}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{ flex: 1 }}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+      <View style={styles.safe}>
+        <LinearGradient
+          colors={[`${C.teal}08`, "transparent"]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <SafeAreaView style={{ flex: 1 }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
           >
-            <Animated.View entering={FadeIn.duration(300)}>
-              <StepDots current={1} C={C} />
-            </Animated.View>
-
-            {/* Icon */}
-            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.avatarSection}>
-              <View style={[styles.iconCircle, { backgroundColor: C.tealDim }]}>
-                <Buildings size={32} color={C.teal} weight="thin" />
-              </View>
-            </Animated.View>
-
-            {/* Copy */}
-            <Animated.View entering={FadeInUp.duration(400).delay(200)} style={styles.copy}>
-              <Text style={styles.title}>Enter your agency code</Text>
-              <Text style={styles.sub}>
-                Your travel agent will have given you a code to connect to their agency.
-              </Text>
-            </Animated.View>
-
-            {/* Input */}
-            <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.field}>
-              <TextInput
-                ref={agencyRef}
-                value={agencyCode}
-                onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); }}
-                placeholder="e.g. dalefy"
-                placeholderTextColor={C.textTertiary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="go"
-                onSubmitEditing={validateAgency}
-                maxLength={60}
-                clearButtonMode="while-editing"
-                style={styles.input}
-              />
-              {agencyError ? (
-                <Text style={styles.errorText}>{agencyError}</Text>
-              ) : null}
-            </Animated.View>
-          </ScrollView>
-
-          {/* Footer */}
-          <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.footer}>
-            <Pressable
-              onPress={validateAgency}
-              disabled={agencyLoading || !agencyCode.trim()}
-              accessibilityRole="button"
-              accessibilityLabel="Continue"
-              style={({ pressed }) => [
-                styles.cta,
-                (agencyLoading || !agencyCode.trim()) && styles.ctaDisabled,
-                pressed && { opacity: 0.9 },
-              ]}
+            <ScrollView
+              contentContainerStyle={styles.stepScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
-                Connect
-              </Text>
-              <ArrowRight
-                size={16}
-                color={agencyCode.trim() ? "#000" : C.textTertiary}
-                weight="bold"
-              />
-            </Pressable>
-            <Pressable onPress={skipAgency} style={styles.skipBtn}>
-              <Text style={styles.skipText}>I don't have a code</Text>
-            </Pressable>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+              {/* Step label */}
+              <Animated.View entering={FadeIn.duration(300)} style={styles.stepLabel}>
+                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
+                <View style={[styles.stepDot, { backgroundColor: C.elevated }]} />
+              </Animated.View>
+
+              {/* Big heading */}
+              <Animated.Text
+                entering={FadeInUp.duration(400).delay(100)}
+                style={styles.stepTitle}
+              >
+                Connect to{"\n"}your agency
+              </Animated.Text>
+
+              <Animated.Text
+                entering={FadeInUp.duration(400).delay(200)}
+                style={styles.stepSub}
+              >
+                Your travel agent will have given you a code.
+              </Animated.Text>
+
+              {/* Input */}
+              <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
+                <View style={styles.inputRow}>
+                  <Buildings size={18} color={C.textTertiary} weight="light" />
+                  <TextInput
+                    ref={agencyRef}
+                    value={agencyCode}
+                    onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); setAgencySuccess(false); }}
+                    placeholder="Agency code"
+                    placeholderTextColor={C.textDim}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="go"
+                    onSubmitEditing={validateAgency}
+                    maxLength={60}
+                    style={styles.input}
+                  />
+                  {agencySuccess && (
+                    <View style={[styles.checkBadge, { backgroundColor: C.teal }]}>
+                      <Check size={12} color="#000" weight="bold" />
+                    </View>
+                  )}
+                </View>
+                {agencyError ? (
+                  <Text style={styles.errorText}>{agencyError}</Text>
+                ) : null}
+              </Animated.View>
+            </ScrollView>
+
+            {/* Footer */}
+            <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.footer}>
+              <Pressable
+                onPress={validateAgency}
+                disabled={agencyLoading || !agencyCode.trim()}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.cta,
+                  (agencyLoading || !agencyCode.trim()) && styles.ctaDisabled,
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                ]}
+              >
+                <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
+                  {agencyLoading ? "Connecting..." : "Connect"}
+                </Text>
+                {!agencyLoading && (
+                  <ArrowRight
+                    size={16}
+                    color={agencyCode.trim() ? "#000" : C.textTertiary}
+                    weight="bold"
+                  />
+                )}
+              </Pressable>
+              <Pressable onPress={skipAgency} style={styles.skipBtn}>
+                <Text style={styles.skipText}>I don't have a code</Text>
+              </Pressable>
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
     );
   }
 
@@ -342,275 +356,271 @@ export default function WelcomeScreen() {
   // STEP 2 — Profile (name + avatar)
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <View style={styles.safe}>
+      <LinearGradient
+        colors={[`${C.teal}08`, "transparent"]}
+        start={{ x: 1, y: 0 }} end={{ x: 0, y: 0.6 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
         >
-          {!isEdit && (
-            <Animated.View entering={FadeIn.duration(300)}>
-              <StepDots current={2} C={C} />
-            </Animated.View>
-          )}
+          <ScrollView
+            contentContainerStyle={styles.stepScroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Step label */}
+            {!isEdit && (
+              <Animated.View entering={FadeIn.duration(300)} style={styles.stepLabel}>
+                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
+                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
+              </Animated.View>
+            )}
 
-          {/* Brand badge (shows connected agency on profile step) */}
-          {prefs.orgId ? (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.brandRow}>
-              <View style={styles.logoBadge}>
-                {brand.logoUrl ? (
-                  <Image source={{ uri: brand.logoUrl }} style={{ width: 16, height: 16, borderRadius: 3 }} />
-                ) : (
-                  <Logo size={16} color={C.teal} />
-                )}
-              </View>
-              <Text style={styles.brandName}>{brand.name}</Text>
-            </Animated.View>
-          ) : null}
+            {/* Brand badge */}
+            {prefs.orgId ? (
+              <Animated.View entering={FadeIn.duration(400)} style={styles.brandBadge}>
+                <View style={styles.brandBadgeIcon}>
+                  {brand.logoUrl ? (
+                    <Image source={{ uri: brand.logoUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
+                  ) : (
+                    <Logo size={14} color={C.teal} />
+                  )}
+                </View>
+                <Text style={styles.brandBadgeText}>{brand.name}</Text>
+                <Check size={10} color={C.teal} weight="bold" />
+              </Animated.View>
+            ) : null}
 
-          {/* Avatar picker */}
-          <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.avatarSection}>
-            <Pressable
-              onPress={pickAvatar}
-              style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Add profile photo"
+            {/* Avatar */}
+            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.avatarSection}>
+              <Pressable
+                onPress={pickAvatar}
+                style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+                accessibilityRole="button"
+                accessibilityLabel="Add profile photo"
+              >
+                <View style={styles.avatarCircle}>
+                  {avatar ? (
+                    <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
+                  ) : (
+                    <User size={32} color={C.textDim} weight="thin" />
+                  )}
+                </View>
+                <View style={styles.cameraBadge}>
+                  <Camera size={11} color="#000" weight="bold" />
+                </View>
+              </Pressable>
+            </Animated.View>
+
+            {/* Big heading */}
+            <Animated.Text
+              entering={FadeInUp.duration(400).delay(200)}
+              style={styles.stepTitle}
             >
-              <View style={styles.avatarCircle}>
-                {avatar ? (
-                  <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
-                ) : (
-                  <User size={36} color={C.textTertiary} weight="thin" />
-                )}
-              </View>
-              <View style={styles.cameraBadge}>
-                <Camera size={12} color="#fff" weight="regular" />
-              </View>
-            </Pressable>
-            <Text style={styles.avatarHint}>
-              {avatar ? "Tap to change" : "Add a photo"}
-            </Text>
-          </Animated.View>
+              {isEdit ? "Edit your\nprofile" : "What should\nwe call you?"}
+            </Animated.Text>
 
-          {/* Copy */}
-          <Animated.View entering={FadeInUp.duration(400).delay(200)} style={styles.copy}>
-            <Text style={styles.title}>
-              {isEdit ? "Edit your profile" : "What should we call you?"}
-            </Text>
-            <Text style={styles.sub}>
+            <Animated.Text
+              entering={FadeInUp.duration(400).delay(300)}
+              style={styles.stepSub}
+            >
               {isEdit
                 ? "Update your name and photo."
-                : "Your name appears on trips you share with others."}
-            </Text>
-          </Animated.View>
+                : "This is how you'll appear on shared trips."}
+            </Animated.Text>
 
-          {/* Name input */}
-          <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.field}>
-            <TextInput
-              ref={nameRef}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={C.textTertiary}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={submit}
-              maxLength={40}
-              clearButtonMode="while-editing"
-              style={styles.input}
-            />
-          </Animated.View>
-        </ScrollView>
+            {/* Name input */}
+            <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.inputWrap}>
+              <View style={styles.inputRow}>
+                <User size={18} color={C.textTertiary} weight="light" />
+                <TextInput
+                  ref={nameRef}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor={C.textDim}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={submit}
+                  maxLength={40}
+                  style={styles.input}
+                />
+              </View>
+            </Animated.View>
+          </ScrollView>
 
-        {/* CTA */}
-        <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.footer}>
-          {!isEdit && (
-            <Pressable
-              onPress={goBackToAgency}
-              style={styles.backRow}
-              accessibilityRole="button"
-            >
-              <ArrowLeft size={14} color={C.textTertiary} weight="regular" />
-              <Text style={styles.skipText}>Back</Text>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={submit}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-            accessibilityLabel={isEdit ? "Save" : "Continue"}
-            style={({ pressed }) => [
-              styles.cta,
-              !canSubmit && styles.ctaDisabled,
-              pressed && canSubmit && { opacity: 0.9 },
-            ]}
-          >
-            <Text style={[styles.ctaText, !canSubmit && { color: C.textTertiary }]}>
-              {isEdit ? "Save" : "Get Started"}
-            </Text>
+          {/* CTA */}
+          <Animated.View entering={FadeInUp.duration(400).delay(500)} style={styles.footer}>
             {!isEdit && (
-              <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
+              <Pressable
+                onPress={goBackToAgency}
+                style={styles.backRow}
+                accessibilityRole="button"
+              >
+                <ArrowLeft size={14} color={C.textTertiary} weight="regular" />
+                <Text style={styles.skipText}>Back</Text>
+              </Pressable>
             )}
-          </Pressable>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Pressable
+              onPress={submit}
+              disabled={!canSubmit}
+              accessibilityRole="button"
+              accessibilityLabel={isEdit ? "Save" : "Continue"}
+              style={({ pressed }) => [
+                styles.cta,
+                !canSubmit && styles.ctaDisabled,
+                pressed && canSubmit && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+              ]}
+            >
+              <Text style={[styles.ctaText, !canSubmit && { color: C.textTertiary }]}>
+                {isEdit ? "Save" : "Let's Go"}
+              </Text>
+              {!isEdit && (
+                <AirplaneTilt size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
+              )}
+            </Pressable>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingHorizontal: S.lg, paddingTop: S.lg, flexGrow: 1 },
 
-    // ── Splash (step 0) ──
-    splashContainer: { flex: 1, paddingHorizontal: S.lg },
-    illusWrap: {
+    // ── Welcome splash ──
+    welcomeContainer: { flex: 1, justifyContent: "space-between" },
+    welcomeTop: {
+      paddingHorizontal: S.xl, paddingTop: S.lg,
+    },
+    welcomeCenter: {
+      alignItems: "center", justifyContent: "center",
       flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
     },
-    splashCopy: {
-      paddingBottom: S.xl,
+    welcomeBottom: {
+      paddingHorizontal: S.xl, paddingBottom: S.md,
     },
-    splashBrandRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: S.md,
-    },
-    splashBrandName: {
-      fontSize: T.md,
-      fontFamily: F.bold,
-      fontWeight: T.bold,
-      color: C.teal,
-      letterSpacing: 2,
-      textTransform: "uppercase",
-    },
-    splashTitle: {
-      fontSize: T["4xl"],
-      fontWeight: "700",
+    heroTitle: {
+      fontSize: 42, fontWeight: "800",
       color: C.textPrimary,
-      letterSpacing: -0.3,
-      lineHeight: T["4xl"] + 6,
-      marginBottom: S.xs,
+      letterSpacing: -1, lineHeight: 46,
+      marginBottom: S.sm,
     },
-    splashSub: {
-      fontSize: T.base,
-      color: C.textSecondary,
-      fontWeight: T.regular,
-      lineHeight: T.base + 8,
+    heroSub: {
+      fontSize: T.base, color: C.textSecondary,
+      fontWeight: T.regular, lineHeight: T.base + 8,
+      marginBottom: S.xl,
+    },
+
+    // ── Step screens ──
+    stepScroll: {
+      paddingHorizontal: S.xl, paddingTop: S.lg, flexGrow: 1,
+    },
+    stepLabel: {
+      flexDirection: "row", gap: 6, marginBottom: S.xl,
+    },
+    stepDot: {
+      width: 20, height: 3, borderRadius: 1.5,
+    },
+    stepTitle: {
+      fontSize: 36, fontWeight: "800",
+      color: C.textPrimary,
+      letterSpacing: -0.8, lineHeight: 40,
+      marginBottom: S.sm,
+    },
+    stepSub: {
+      fontSize: T.base, color: C.textSecondary,
+      fontWeight: T.regular, lineHeight: T.base + 8,
+      marginBottom: S.xl,
     },
 
     // ── Brand badge ──
-    brandRow: {
-      flexDirection: "row", alignItems: "center", gap: 10,
-      marginBottom: S.xl,
-    },
-    logoBadge: {
-      width: 32, height: 32, borderRadius: R.md,
+    brandBadge: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      alignSelf: "flex-start",
       backgroundColor: C.tealDim,
+      borderRadius: R.full,
+      paddingHorizontal: S.sm, paddingVertical: 6,
+      marginBottom: S.lg,
+    },
+    brandBadgeIcon: {
+      width: 22, height: 22, borderRadius: 6,
+      backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
       alignItems: "center", justifyContent: "center",
     },
-    brandName: {
+    brandBadgeText: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 2, textTransform: "uppercase",
-    },
-
-    // ── Avatar / icon ──
-    avatarSection: {
-      alignItems: "center",
-      marginBottom: S.xl,
-    },
-    iconCircle: {
-      width: 80, height: 80, borderRadius: 40,
-      alignItems: "center", justifyContent: "center",
-    },
-    avatarWrap: {
-      width: 100,
-      height: 100,
-    },
-    avatarCircle: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: C.card,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-    },
-    avatarImage: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-    },
-    cameraBadge: {
-      position: "absolute",
-      bottom: 0,
-      right: 0,
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: C.teal,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 3,
-      borderColor: C.bg,
-    },
-    avatarHint: {
-      fontSize: T.xs,
-      fontWeight: T.medium,
-      color: C.textTertiary,
-      marginTop: S.xs,
-    },
-
-    // ── Copy ──
-    copy: { marginBottom: S.lg },
-    title: {
-      fontSize: T["3xl"], fontWeight: "700",
-      color: C.textPrimary, letterSpacing: -0.3, lineHeight: T["3xl"] + 6,
-      marginBottom: S.xs,
-    },
-    sub: {
-      fontSize: T.base, color: C.textSecondary, fontWeight: T.regular,
-      lineHeight: T.base + 8,
+      letterSpacing: 1, textTransform: "uppercase",
     },
 
     // ── Input ──
-    field: { marginBottom: S.lg },
-    input: {
+    inputWrap: { marginBottom: S.lg },
+    inputRow: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
       height: 56,
       backgroundColor: C.card,
-      borderRadius: R.lg,
+      borderRadius: R.xl,
       paddingHorizontal: S.md,
-      fontSize: T.lg,
-      fontWeight: T.semibold,
+      borderWidth: 1, borderColor: C.borderLight,
+    },
+    input: {
+      flex: 1, height: 56,
+      fontSize: T.lg, fontWeight: T.medium,
       color: C.textPrimary,
+    },
+    checkBadge: {
+      width: 22, height: 22, borderRadius: 11,
+      alignItems: "center", justifyContent: "center",
+    },
+
+    // ── Avatar ──
+    avatarSection: {
+      alignItems: "flex-start",
+      marginBottom: S.xl,
+    },
+    avatarWrap: {
+      width: 88, height: 88,
+    },
+    avatarCircle: {
+      width: 88, height: 88, borderRadius: 44,
+      backgroundColor: C.card,
+      borderWidth: 1, borderColor: C.borderLight,
+      alignItems: "center", justifyContent: "center",
+      overflow: "hidden",
+    },
+    avatarImage: {
+      width: 88, height: 88, borderRadius: 44,
+    },
+    cameraBadge: {
+      position: "absolute", bottom: 0, right: -2,
+      width: 28, height: 28, borderRadius: 14,
+      backgroundColor: C.teal,
+      alignItems: "center", justifyContent: "center",
+      borderWidth: 3, borderColor: C.bg,
     },
 
     // ── Error ──
     errorText: {
-      fontSize: T.xs,
-      color: "#ef4444",
-      fontWeight: T.medium,
-      marginTop: S.xs,
+      fontSize: T.xs, color: "#ef4444",
+      fontWeight: T.medium, marginTop: S.xs,
       paddingHorizontal: S.xs,
     },
 
-    // ── Footer ──
+    // ── Footer / CTA ──
     footer: {
-      paddingHorizontal: S.lg,
-      paddingTop: S.sm,
-      paddingBottom: S.md,
+      paddingHorizontal: S.xl,
+      paddingTop: S.sm, paddingBottom: S.md,
     },
+    ctaWrap: {},
     cta: {
-      height: 54,
-      borderRadius: R.full,
+      height: 54, borderRadius: R.full,
       backgroundColor: C.teal,
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: S.xs,
@@ -624,21 +634,15 @@ function makeStyles(C: ThemeColors) {
     },
     skipBtn: {
       alignItems: "center",
-      paddingVertical: S.sm,
-      marginTop: S.xs,
+      paddingVertical: S.sm, marginTop: S.xs,
     },
     skipText: {
-      fontSize: T.sm,
-      fontWeight: T.medium,
+      fontSize: T.sm, fontWeight: T.medium,
       color: C.textTertiary,
     },
     backRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      paddingVertical: S.sm,
-      marginBottom: S.xs,
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 6, paddingVertical: S.sm, marginBottom: S.xs,
     },
   });
 }

@@ -57,114 +57,138 @@ function daysUntil(dateStr: string) {
 
 // ── Trip Found Reveal ────────────────────────────────────────────────────────
 function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
-  const scale = useSharedValue(0.3);
-  const opacity = useSharedValue(0);
+  const containerScale = useSharedValue(0.85);
+  const containerOpacity = useSharedValue(0);
   const checkScale = useSharedValue(0);
   const checkRotate = useSharedValue(-45);
   const shimmer = useSharedValue(0);
+  const titleY = useSharedValue(20);
+  const titleOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Card scales in
-    scale.value = withSpring(1, { damping: 14, stiffness: 100, mass: 0.8 });
-    opacity.value = withTiming(1, { duration: 300 });
-    // Checkmark pops after card settles
-    checkScale.value = withDelay(400, withSpring(1, { damping: 12, stiffness: 200 }));
-    checkRotate.value = withDelay(400, withSpring(0, { damping: 14, stiffness: 120 }));
-    // Shimmer sweep across card
-    shimmer.value = withDelay(200, withTiming(1, { duration: 800, easing: Easing.out(Easing.ease) }));
+    containerScale.value = withSpring(1, { damping: 16, stiffness: 90, mass: 0.8 });
+    containerOpacity.value = withTiming(1, { duration: 400 });
+    checkScale.value = withDelay(500, withSpring(1, { damping: 12, stiffness: 200 }));
+    checkRotate.value = withDelay(500, withSpring(0, { damping: 14, stiffness: 120 }));
+    shimmer.value = withDelay(300, withTiming(1, { duration: 900, easing: Easing.out(Easing.ease) }));
+    titleY.value = withDelay(600, withSpring(0, { damping: 14, stiffness: 100 }));
+    titleOpacity.value = withDelay(600, withTiming(1, { duration: 300 }));
   }, []);
 
   const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    transform: [{ scale: containerScale.value }],
+    opacity: containerOpacity.value,
   }));
 
   const checkStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: checkScale.value },
-      { rotate: `${checkRotate.value}deg` },
-    ],
+    transform: [{ scale: checkScale.value }, { rotate: `${checkRotate.value}deg` }],
   }));
 
   const shimmerStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(shimmer.value, [0, 0.5, 1], [0, 0.4, 0]),
-    transform: [{ translateX: interpolate(shimmer.value, [0, 1], [-200, 300]) }],
+    opacity: interpolate(shimmer.value, [0, 0.5, 1], [0, 0.3, 0]),
+    transform: [{ translateX: interpolate(shimmer.value, [0, 1], [-200, 400]) }],
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: titleY.value }],
+    opacity: titleOpacity.value,
   }));
 
   const days = Math.max(0, Math.ceil((new Date(trip.start).getTime() - Date.now()) / 86400000));
   const startDate = new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const endDate = new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <View style={{ alignItems: "center", paddingVertical: S.lg, paddingHorizontal: S.md }}>
+    <View style={{ alignItems: "center", paddingVertical: S.xl, paddingHorizontal: S.md }}>
+      {/* Check circle */}
+      <Animated.View style={[{
+        width: 52, height: 52, borderRadius: 26,
+        backgroundColor: C.teal,
+        alignItems: "center", justifyContent: "center",
+        marginBottom: S.lg,
+        shadowColor: C.teal, shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35, shadowRadius: 16,
+      }, checkStyle]}>
+        <Check size={24} color="#000" weight="bold" />
+      </Animated.View>
+
+      {/* Title */}
+      <Animated.View style={[{ alignItems: "center", marginBottom: S.xl }, titleStyle]}>
+        <Text style={{
+          fontSize: T["2xl"], fontWeight: "700",
+          color: C.textPrimary, letterSpacing: -0.3, marginBottom: 4,
+        }}>Trip Found</Text>
+        <Text style={{ fontSize: T.sm, color: C.textTertiary }}>
+          You're all set
+        </Text>
+      </Animated.View>
+
+      {/* Card */}
       <Animated.View style={[{
         width: "100%", borderRadius: R["2xl"], overflow: "hidden",
-        backgroundColor: C.elevated,
+        backgroundColor: C.card,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12, shadowRadius: 24, elevation: 5,
       }, cardStyle]}>
-        {/* Trip image */}
-        <View style={{ height: 160, overflow: "hidden" }}>
+        {/* Image */}
+        <View style={{ height: 180, overflow: "hidden" }}>
           <CachedImage uri={trip.image} style={{ width: "100%", height: "100%" }} />
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.7)"]}
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80 }}
+            colors={["transparent", "rgba(0,0,0,0.6)"]}
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100 }}
           />
-          {/* Shimmer sweep */}
           <Animated.View style={[{
-            position: "absolute", top: 0, bottom: 0, width: 120,
-            backgroundColor: "rgba(255,255,255,0.3)",
+            position: "absolute", top: 0, bottom: 0, width: 140,
+            backgroundColor: "rgba(255,255,255,0.2)",
             transform: [{ skewX: "-20deg" }],
           }, shimmerStyle]} />
-          {/* Checkmark badge */}
-          <Animated.View style={[{
-            position: "absolute", top: 14, right: 14,
-            width: 36, height: 36, borderRadius: 18,
-            backgroundColor: C.teal,
-            alignItems: "center", justifyContent: "center",
-            shadowColor: C.teal, shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4, shadowRadius: 8,
-          }, checkStyle]}>
-            <Check size={20} color="#000" weight="bold" />
-          </Animated.View>
-        </View>
 
-        {/* Trip info */}
-        <View style={{ padding: S.md, gap: 6 }}>
+          {/* Destination overlay */}
           {trip.destination && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <MapPin size={11} color={C.teal} weight="regular" />
+            <View style={{
+              position: "absolute", bottom: S.md, left: S.md,
+              flexDirection: "row", alignItems: "center", gap: 5,
+            }}>
+              <MapPin size={12} color="#fff" weight="fill" />
               <Text style={{
-                fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+                fontSize: T.xs, fontWeight: T.bold, color: "#fff",
                 letterSpacing: 1.5, textTransform: "uppercase",
               }}>{trip.destination}</Text>
             </View>
           )}
+        </View>
+
+        {/* Info */}
+        <View style={{ padding: S.md, gap: S.sm }}>
           <Text style={{
-            fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary,
-            letterSpacing: -0.3,
+            fontSize: T.xl, fontWeight: T.bold,
+            color: C.textPrimary, letterSpacing: -0.3,
           }} numberOfLines={1}>{trip.name}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm, marginTop: 2 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <CalendarDots size={11} color={C.textTertiary} weight="regular" />
-              <Text style={{ fontSize: T.sm, color: C.textSecondary, fontWeight: T.medium }}>{startDate}</Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" }}>
+            <View style={{
+              flexDirection: "row", alignItems: "center", gap: 5,
+              backgroundColor: C.elevated, borderRadius: R.full,
+              paddingHorizontal: 10, paddingVertical: 5,
+            }}>
+              <CalendarDots size={12} color={C.textTertiary} weight="regular" />
+              <Text style={{ fontSize: T.xs, color: C.textSecondary, fontWeight: T.semibold }}>
+                {startDate} - {endDate}
+              </Text>
             </View>
             {days > 0 && (
               <View style={{
                 backgroundColor: C.tealDim, borderRadius: R.full,
-                paddingHorizontal: 8, paddingVertical: 3,
+                paddingHorizontal: 10, paddingVertical: 5,
               }}>
                 <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal }}>
-                  {days === 1 ? "Tomorrow" : `${days} days`}
+                  {days === 1 ? "Tomorrow" : `In ${days} days`}
                 </Text>
               </View>
             )}
           </View>
         </View>
       </Animated.View>
-
-      <Text style={{
-        fontSize: T.sm, fontWeight: T.bold, color: C.teal,
-        letterSpacing: 1.5, textTransform: "uppercase",
-        marginTop: S.lg,
-      }}>Trip Found</Text>
     </View>
   );
 }
