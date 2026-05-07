@@ -8,7 +8,7 @@ import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  Airplane, AirplaneTilt, Bed, Compass, ForkKnife, Car,
+  Airplane, AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   MapPin, Clock, Hash, FileText, NavigationArrow,
   Calendar, Users, ArrowRight, Copy, CaretRight, CaretLeft,
   AirplaneTakeoff, AirplaneLanding, Timer, Armchair, Door,
@@ -77,9 +77,11 @@ export default function EventDetailScreen() {
     );
   }
 
+  const transferIcons: Record<string, React.ComponentType<any>> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
+  const transferLabels: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
   const color = eventColor(ev.type, C);
-  const Icon = TYPE_ICONS[ev.type] ?? Compass;
-  const typeLabel = TYPE_LABELS[ev.type] ?? "Event";
+  const Icon = ev.type === "transfer" ? (transferIcons[ev.transferType || "car"] || Car) : (TYPE_ICONS[ev.type] ?? Compass);
+  const typeLabel = ev.type === "transfer" ? (transferLabels[ev.transferType || "car"] || "Transfer") : (TYPE_LABELS[ev.type] ?? "Event");
 
   const copyConf = () => {
     if (ev.confNumber) {

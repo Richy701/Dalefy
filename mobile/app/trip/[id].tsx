@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
   CaretLeft, Compass, MapPin, Users, Moon, MapTrifold, CaretDown,
-  Airplane, Bed, ForkKnife, Car,
+  Airplane, Bed, ForkKnife, Car, Train, Bus, Boat, Anchor,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -464,7 +464,11 @@ export default function TripScreen() {
 }
 
 const DAY_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: Airplane, hotel: Bed, activity: Compass, dining: ForkKnife, transport: Car,
+  flight: Airplane, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
+};
+
+const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
+  car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass,
 };
 
 function DayList({ grouped, trip, C, isLeader }: {
@@ -491,8 +495,12 @@ function DayList({ grouped, trip, C, isLeader }: {
         const fullDate = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         const isOpen = openDay === date;
 
-        const typeSet = new Set(events.map((e: any) => e.type));
-        const typeIcons = [...typeSet].slice(0, 4);
+        const iconKeys = new Set<string>();
+        events.forEach((e: any) => {
+          if (e.type === "transfer" && e.transferType) iconKeys.add(`transfer:${e.transferType}`);
+          else iconKeys.add(e.type);
+        });
+        const typeIcons = [...iconKeys].slice(0, 4);
 
         return (
           <View key={date} style={{ marginBottom: S.sm }}>
@@ -529,9 +537,11 @@ function DayList({ grouped, trip, C, isLeader }: {
                     color: C.textTertiary,
                   }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
                   <View style={{ flexDirection: "row", gap: 3 }}>
-                    {typeIcons.map(type => {
-                      const Icon = DAY_TYPE_ICONS[type] || Compass;
-                      return <Icon key={type} size={11} color={C.textTertiary} weight="regular" />;
+                    {typeIcons.map(key => {
+                      const Icon = key.startsWith("transfer:")
+                        ? (TRANSFER_ICONS[key.split(":")[1]] || Car)
+                        : (DAY_TYPE_ICONS[key] || Compass);
+                      return <Icon key={key} size={11} color={C.textTertiary} weight="regular" />;
                     })}
                   </View>
                 </View>

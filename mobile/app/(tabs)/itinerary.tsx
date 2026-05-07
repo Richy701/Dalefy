@@ -8,7 +8,7 @@ import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
   CalendarDots, MapPin, CaretRight,
-  AirplaneTilt, Bed, Compass, ForkKnife, Car,
+  AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useMemo, useState, useCallback } from "react";
@@ -115,7 +115,8 @@ function EventRow({ item, C, onPress }: {
   onPress: () => void;
 }) {
   const { event: ev, trip } = item;
-  const Icon = EVENT_ICON[ev.type] ?? Compass;
+  const TRANSFER_ICONS: Record<string, typeof Car> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
+  const Icon = ev.type === "transfer" ? (TRANSFER_ICONS[ev.transferType || "car"] || Car) : (EVENT_ICON[ev.type] ?? Compass);
   const colorKey = EVENT_COLOR_KEY[ev.type] ?? "teal";
   const color = (C as Record<string, string>)[colorKey] ?? C.teal;
 

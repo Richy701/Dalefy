@@ -231,7 +231,8 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
 }) {
   const color = eventColor(ev.type, C);
   const Icon = TYPE_ICONS[ev.type] ?? Compass;
-  const typeLabel = TYPE_LABELS[ev.type] ?? "Event";
+  const transferLabels: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
+  const typeLabel = ev.type === "transfer" ? (transferLabels[ev.transferType || "car"] || "Transfer") : (TYPE_LABELS[ev.type] ?? "Event");
 
   return (
     <View style={[ss.container, { backgroundColor: C.bg }]}>

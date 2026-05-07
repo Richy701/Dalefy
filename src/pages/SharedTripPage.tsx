@@ -58,7 +58,7 @@ function EventRow({ ev }: { ev: TravelEvent }) {
           </div>
         </div>
         {hasDetail && (
-          <ChevronDown
+          <CaretDown
             className={`h-3.5 w-3.5 text-slate-300 dark:text-[#444] shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         )}

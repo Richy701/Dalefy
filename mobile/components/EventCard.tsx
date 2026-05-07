@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import {
-  Airplane, Bed, Compass, ForkKnife, Car,
+  Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   MapPin, ArrowRight, Hash, FileText,
 } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
@@ -297,9 +297,11 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
 function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
   const isDining = ev.type === "dining";
   const isTransfer = ev.type === "transfer";
+  const transferIcons: Record<string, typeof Car> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
+  const transferLabels: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
   const color = isDining ? C.dining : isTransfer ? (C as any).transfer ?? C.activity : C.activity;
-  const Icon = isTransfer ? Car : isDining ? ForkKnife : Compass;
-  const label = isTransfer ? "Transfer" : isDining ? "Dining" : "Activity";
+  const Icon = isTransfer ? (transferIcons[ev.transferType || "car"] || Car) : isDining ? ForkKnife : Compass;
+  const label = isTransfer ? (transferLabels[ev.transferType || "car"] || "Transfer") : isDining ? "Dining" : "Activity";
 
   const router = useRouter();
   const handlePress = () => {
