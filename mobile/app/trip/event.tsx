@@ -396,7 +396,7 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
           <View style={frs.lineRow}>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
             <View style={frs.planeWrap}>
-              <Airplane size={20} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }], marginTop: -2 }} />
+              <Airplane size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }], marginTop: -4 }} />
             </View>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
           </View>
