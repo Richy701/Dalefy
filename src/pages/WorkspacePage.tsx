@@ -442,6 +442,7 @@ export function WorkspacePage() {
     const path = `trips/${tripId}/events/${editingEvent.id}/cover-${Date.now()}.${file.name.split(".").pop()}`;
     try {
       const url = await uploadToStorage(file, path);
+      setImageIsAuto(false);
       setEditingEvent(prev => prev ? { ...prev, image: url } : null);
     } catch { toast.error("Image upload failed"); }
   };
@@ -1455,7 +1456,7 @@ export function WorkspacePage() {
                 {/* Live search — flight */}
                 {editingEvent?.type === "flight" && (
                   <FlightSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
+                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null); }}
                     defaultDate={editingEvent?.date}
                   />
                 )}
@@ -1463,10 +1464,10 @@ export function WorkspacePage() {
                 {/* Live search — hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
-                    onSelect={({ checkin: ci, checkout: co, ...data }) => setEditingEvent(prev => {
+                    onSelect={({ checkin: ci, checkout: co, ...data }) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => {
                       if (!prev) return null;
                       return { ...prev, ...data, title: prev.title || data.title || "", checkin: prev.checkin || ci || "", checkout: prev.checkout || co || "" };
-                    })}
+                    }); }}
                     defaultCheckin={trip.start}
                     defaultCheckout={trip.end}
                   />
@@ -1475,14 +1476,14 @@ export function WorkspacePage() {
                 {/* Live search — activity */}
                 {editingEvent?.type === "activity" && (
                   <ActivitySearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data } : null); }}
                   />
                 )}
 
                 {/* Live search — dining */}
                 {editingEvent?.type === "dining" && (
                   <DiningSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={(data) => { if (data.image) setImageIsAuto(false); setEditingEvent(prev => prev ? { ...prev, ...data } : null); }}
                   />
                 )}
 
