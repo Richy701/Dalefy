@@ -256,6 +256,7 @@ export function WorkspacePage() {
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
+  const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
