@@ -99,7 +99,13 @@ export default function WelcomeScreen() {
     setAgencyLoading(true);
     setAgencyError("");
     try {
-      const { waitForAuth } = require("@/services/firebase");
+      const { waitForAuth, isFirebaseConfigured } = require("@/services/firebase");
+      const configured = isFirebaseConfigured();
+      if (!configured) {
+        setAgencyError("Firebase not configured. Update may not have applied.");
+        setAgencyLoading(false);
+        return;
+      }
       await waitForAuth();
       const branding = await fetchOrgByCode(code);
       if (!branding || !branding.organizationId) {
@@ -332,6 +338,7 @@ export default function WelcomeScreen() {
             <Pressable onPress={skipAgency} style={styles.skipBtn}>
               <Text style={styles.skipText}>I don't have a code</Text>
             </Pressable>
+            <Text style={{ fontSize: 9, color: C.textTertiary, textAlign: "center", marginTop: 4, opacity: 0.4 }}>v2.1</Text>
           </Animated.View>
         </KeyboardAvoidingView>
       </SafeAreaView>
