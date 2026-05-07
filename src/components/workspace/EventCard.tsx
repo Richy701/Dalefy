@@ -144,7 +144,7 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
     return (
       <CompactCard
         event={event} onClick={onClick} onDelete={onDelete}
-        Icon={Plane} label="Flight"
+        Icon={AirplaneTilt} label="Flight"
         assignedPeople={assignedPeople}
       />
     );
