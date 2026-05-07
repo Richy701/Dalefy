@@ -14,15 +14,21 @@ const TRIP_MEMBERS = "trip_members";
 /** Demo/seed trip IDs — never return these from cloud queries */
 const DEMO_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
 
-/** Wait for Firebase Auth to resolve — currentUser is null until the SDK
- *  restores the session from IndexedDB (takes a few hundred ms on refresh). */
+/** Wait for Firebase Auth to resolve AND ensure the ID token is ready.
+ *  currentUser is null until the SDK restores from IndexedDB, and the
+ *  Firestore SDK needs a valid token before queries will succeed. */
 function waitForAuth(): Promise<string | null> {
   const auth = firebaseAuth();
-  if (auth.currentUser) return Promise.resolve(auth.currentUser.uid);
+  const ensureToken = async (user: import("firebase/auth").User) => {
+    await user.getIdToken();
+    return user.uid;
+  };
+  if (auth.currentUser) return ensureToken(auth.currentUser);
   return new Promise((resolve) => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       unsub();
-      resolve(user?.uid ?? null);
+      if (!user) { resolve(null); return; }
+      resolve(await ensureToken(user));
     });
   });
 }
