@@ -721,7 +721,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           ) : countdown ? (
             <LiveCountdownDisplay countdown={countdown} C={C} />
           ) : (
-            <Text style={styles.countdownNumber}>{days === 1 ? 1 : days - 1}</Text>
+            <Text style={styles.countdownNumber}>{days}</Text>
           )}
           <View style={styles.countdownMeta}>
             <MapPin size={11} color={C.teal} weight="regular" />
