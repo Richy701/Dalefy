@@ -157,8 +157,10 @@ service cloud.firestore {
             || resource.data.uid == request.auth.uid
             || resource.data.device_id == request.auth.uid
             || exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + resource.data.trip_id))
-            || get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.user_id == request.auth.uid
-            || (get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
+            || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
+                && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.user_id == request.auth.uid)
+            || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
+                && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
                 && isOrgEditor(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id)));
     }
 
