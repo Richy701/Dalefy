@@ -51,7 +51,7 @@ try {
 } catch { /* native module not in this build */ }
 
 function daysUntil(dateStr: string) {
-  return Math.max(0, Math.ceil((new Date(dateStr + "T00:00:00").getTime() - Date.now()) / 86400000));
+  return Math.max(0, Math.round((new Date(dateStr + "T00:00:00").getTime() - Date.now()) / 86400000));
 }
 
 
