@@ -151,6 +151,12 @@ export function useOrgLoad() {
         created_at: new Date().toISOString(),
       });
 
+      // Mirror agency_code to org_branding so mobile can look it up
+      await setDoc(doc(db, "org_branding", orgId), {
+        agency_code: code,
+        company_name: name,
+      }, { merge: true });
+
       // Create membership — ID must be ${uid}_${orgId} to match isOrgAdmin rule
       const memberId = `${user.id}_${orgId}`;
       await setDoc(doc(db, "org_members", memberId), {
