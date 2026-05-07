@@ -395,10 +395,10 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
           {flightLabel ? <Text style={[frs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
           <View style={frs.lineRow}>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
-            <View style={frs.planeWrap}>
-              <Airplane size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }], marginTop: -4 }} />
-            </View>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
+            <View style={frs.planeAbsolute}>
+              <Airplane size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+            </View>
           </View>
           {ev.duration && <Text style={[frs.durationText, { color: C.textTertiary }]}>{ev.duration}</Text>}
         </View>
@@ -466,10 +466,13 @@ const frs = StyleSheet.create({
   flightNum: { fontSize: T.sm, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
   lineRow: {
     flexDirection: "row", alignItems: "center",
-    width: "100%", gap: 4,
+    width: "100%", gap: 4, position: "relative" as const,
   },
   line: { flex: 1, height: 3, borderRadius: 2 },
-  planeWrap: { width: 24, alignItems: "center", justifyContent: "center" },
+  planeAbsolute: {
+    position: "absolute" as const, left: 0, right: 0, top: 0, bottom: 0,
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
   durationText: { fontSize: T.sm, fontWeight: "500", marginTop: 8 },
   detailGrid: {
     flexDirection: "row", flexWrap: "wrap",
