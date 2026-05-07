@@ -550,7 +550,6 @@ export function DashboardPage() {
                 {upcomingCards.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {upcomingCards.map(trip => {
-                      const d = daysUntil(trip.start);
                       return (
                         <button
                           key={trip.id}
@@ -574,9 +573,6 @@ export function DashboardPage() {
                               )}
                             </div>
                           </div>
-                          <span className="shrink-0 text-[10px] font-black bg-brand text-black px-2.5 py-1 rounded-full leading-none tracking-wide">
-                            {d === 0 ? "Today" : `${d}d`}
-                          </span>
                           <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
                         </button>
                       );

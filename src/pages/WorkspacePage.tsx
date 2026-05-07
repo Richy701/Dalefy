@@ -253,6 +253,7 @@ export function WorkspacePage() {
   const [editOrgData, setEditOrgData] = useState<Partial<NonNullable<Trip["organizer"]>>>({});
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
+  const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -1215,29 +1216,34 @@ export function WorkspacePage() {
                               </button>
                             </div>
                             <div className="space-y-2">
-                              {trip.info.map(item => (
-                                <button key={item.id} type="button" onClick={handleOpenEditInfo} className="w-full text-left rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden hover:border-brand/30 transition-colors cursor-pointer">
-                                  <div className="flex items-start gap-3 p-3.5">
-                                    <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
-                                      <FileText className="h-3.5 w-3.5 text-brand" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                        {item.title || "Untitled"}
-                                        {item.leaderOnly && (
-                                          <span className="inline-flex items-center gap-1 ml-2 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded align-middle">
-                                            <EyeSlash className="h-2.5 w-2.5" /> Leader only
-                                          </span>
+                              {trip.info.map(item => {
+                                const isExpanded = expandedInfoIds.has(item.id);
+                                return (
+                                <div key={item.id} className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden hover:border-brand/30 transition-colors">
+                                  <button type="button" onClick={() => setExpandedInfoIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} className="w-full text-left cursor-pointer">
+                                    <div className="flex items-start gap-3 p-3.5">
+                                      <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
+                                        <FileText className="h-3.5 w-3.5 text-brand" />
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                          {item.title || "Untitled"}
+                                          {item.leaderOnly && (
+                                            <span className="inline-flex items-center gap-1 ml-2 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded align-middle">
+                                              <EyeSlash className="h-2.5 w-2.5" /> Leader only
+                                            </span>
+                                          )}
+                                        </p>
+                                        {item.body && (
+                                          <p className={`text-xs text-slate-500 dark:text-[#888] font-medium mt-1 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
                                         )}
-                                      </p>
-                                      {item.body && (
-                                        <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed"><Linkify text={item.body} /></p>
-                                      )}
+                                      </div>
+                                      <CaretRight className={`h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                                     </div>
-                                    <CaretRight className="h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1" />
-                                  </div>
-                                </button>
-                              ))}
+                                  </button>
+                                </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -1648,9 +1654,17 @@ export function WorkspacePage() {
                                 <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Arrival Time</label>
+                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</label>
+                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                            </div>
                             <div className="col-span-2 space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Seat / Ticket Details</label>
-                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B — Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         ) : (
