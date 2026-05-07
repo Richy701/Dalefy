@@ -395,7 +395,9 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
           {flightLabel ? <Text style={[frs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
           <View style={frs.lineRow}>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
-            <Airplane size={20} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+            <View style={frs.planeWrap}>
+              <Airplane size={20} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+            </View>
             <View style={[frs.line, { backgroundColor: C.flight + "55" }]} />
           </View>
           {ev.duration && <Text style={[frs.durationText, { color: C.textTertiary }]}>{ev.duration}</Text>}
@@ -467,6 +469,7 @@ const frs = StyleSheet.create({
     width: "100%", gap: 4,
   },
   line: { flex: 1, height: 3, borderRadius: 2 },
+  planeWrap: { width: 24, alignItems: "center", justifyContent: "center" },
   durationText: { fontSize: T.sm, fontWeight: "500", marginTop: 8 },
   detailGrid: {
     flexDirection: "row", flexWrap: "wrap",
