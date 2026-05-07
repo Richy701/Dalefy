@@ -13,6 +13,8 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Email Verification** -- New email/password signups receive verification emails with resend and status check in-app
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
 - **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
+- **Draft/Publish System** -- Edits stay as drafts until explicitly published. Mobile travelers only see the last published version, not work-in-progress changes. Amber indicator shows when unpublished changes exist
+- **Mobile Preview** -- Live phone-frame preview in the workspace showing how the trip looks on mobile. Supports independent dark/light theme toggle and updates in real-time as you edit
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
