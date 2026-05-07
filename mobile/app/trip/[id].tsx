@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, Image,
-  StyleSheet, Platform, Linking, Share, ScrollView as RNScrollView,
+  StyleSheet, Platform, Linking, Share,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  CaretLeft, Compass, MapPin, Users, Moon, MapTrifold,
+  CaretLeft, Compass, MapPin, Users, Moon, MapTrifold, CaretDown,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -17,7 +17,7 @@ import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
-import { DaySummaryRow } from "@/components/DaySummaryRow";
+import { EventCard } from "@/components/EventCard";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { useTripRole } from "@/hooks/useTripRole";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
@@ -447,89 +447,96 @@ export default function TripScreen() {
         )}
 
 
-        {/* ── Itinerary ── */}
+        {/* ── Itinerary — inline days with events ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionEyebrow}>ITINERARY</Text>
           </View>
 
-          {/* Quick-jump day pills */}
-          {(() => {
-            const sortedDates = Object.keys(grouped).sort();
-            if (sortedDates.length <= 1) return null;
-            const todayStr = new Date().toISOString().split("T")[0];
-            return (
-              <RNScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.dayPillScroll}
-              >
-                {sortedDates.map((d, i) => {
-                  const dt = new Date(d + "T12:00:00");
-                  const isToday = d === todayStr;
-                  const dayLabel = dt.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 3);
-                  const dayNum = dt.getDate();
-                  return (
-                    <Pressable
-                      key={d}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        router.push({ pathname: "/trip/day", params: { tripId: trip.id, date: d } });
-                      }}
-                      style={[
-                        styles.dayPill,
-                        { backgroundColor: isToday ? C.teal : C.elevated },
-                      ]}
-                    >
-                      <Text style={[styles.dayPillWeekday, { color: isToday ? "#000" : C.textTertiary }]}>{dayLabel}</Text>
-                      <Text style={[styles.dayPillNum, { color: isToday ? "#000" : C.textPrimary }]}>{dayNum}</Text>
-                    </Pressable>
-                  );
-                })}
-              </RNScrollView>
-            );
-          })()}
-
-          <View style={styles.dayRows}>
-            {(() => {
-              const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-              const todayStr = new Date().toISOString().split("T")[0];
-              return sortedDays.map(([date, events], dayIdx) => (
-                <ContextMenu
-                  key={date}
-                  actions={[
-                    { title: "View Day", systemIcon: "calendar" },
-                    { title: "Share Day", systemIcon: "square.and.arrow.up" },
-                  ]}
-                  onPress={(e: any) => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    if (e.nativeEvent.index === 0) router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } });
-                    else if (e.nativeEvent.index === 1) {
-                      const dayLabel = new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-                      Share.share({ message: `${trip.name} — ${dayLabel}: ${events.map(e => e.title).join(", ")}` });
-                    }
-                  }}
-                >
-                  <DaySummaryRow
-                    dayIndex={dayIdx + 1}
-                    date={date}
-                    events={events}
-                    C={C}
-                    isToday={date === todayStr}
-                    isFirst={dayIdx === 0}
-                    isLast={dayIdx === sortedDays.length - 1}
-                    onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } }); }}
-                  />
-                </ContextMenu>
-              ));
-            })()}
-          </View>
+          <ExpandableDays grouped={grouped} trip={trip} C={C} isLeader={isLeader} />
         </View>
 
         {/* Terminal element clearance */}
         <View style={{ height: 16 }} />
       </Animated.ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ExpandableDays({ grouped, trip, C, isLeader }: {
+  grouped: Record<string, typeof trip.events>;
+  trip: { id: string; events: any[] };
+  C: ThemeColors;
+  isLeader: boolean;
+}) {
+  const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const toggle = (date: string) => {
+    Haptics.selectionAsync();
+    setCollapsed(prev => ({ ...prev, [date]: !prev[date] }));
+  };
+
+  return (
+    <View style={{ paddingHorizontal: S.md }}>
+      {sortedDays.map(([date, events], dayIdx) => {
+        const dt = new Date(date + "T12:00:00");
+        const isToday = date === todayStr;
+        const weekday = dt.toLocaleDateString("en-US", { weekday: "long" });
+        const fullDate = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const isOpen = !collapsed[date];
+
+        return (
+          <View key={date} style={{ marginBottom: S.md }}>
+            <Pressable
+              onPress={() => toggle(date)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: S.sm,
+                gap: 8,
+              }}
+            >
+              <View style={{
+                width: 32, height: 32, borderRadius: R.md,
+                backgroundColor: isToday ? C.teal : C.elevated,
+                alignItems: "center", justifyContent: "center",
+              }}>
+                <Text style={{
+                  fontSize: T.lg, fontWeight: "700",
+                  color: isToday ? "#000" : C.textPrimary,
+                }}>{dayIdx + 1}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: T.base, fontWeight: "700",
+                  color: isToday ? C.teal : C.textPrimary,
+                }}>{weekday}</Text>
+                <Text style={{
+                  fontSize: T.xs, fontWeight: "500",
+                  color: C.textTertiary, marginTop: 1,
+                }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
+              </View>
+              <CaretDown
+                size={16}
+                color={C.textTertiary}
+                weight="regular"
+                style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}
+              />
+            </Pressable>
+
+            {isOpen && (
+              <View style={{ gap: S.sm, paddingTop: 4 }}>
+                {events.map(ev => (
+                  <EventCard key={ev.id} ev={ev} C={C} tripId={trip.id} isLeader={isLeader} />
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -672,31 +679,6 @@ function makeStyles(C: ThemeColors) {
 
     // Itinerary
     section: { paddingBottom: S.lg },
-    dayRows: { paddingHorizontal: S.md },
-
-    // Day quick-jump pills
-    dayPillScroll: {
-      paddingHorizontal: S.md,
-      gap: 8,
-      paddingBottom: S.sm,
-    },
-    dayPill: {
-      alignItems: "center",
-      justifyContent: "center",
-      width: 44,
-      height: 52,
-      borderRadius: R.lg,
-    },
-    dayPillWeekday: {
-      fontSize: 10,
-      fontWeight: "600",
-      letterSpacing: 0.3,
-    },
-    dayPillNum: {
-      fontSize: T.lg,
-      fontWeight: "700",
-      marginTop: 1,
-    },
 
   });
 }
