@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef } from "react";
-import { Appearance, Platform, View } from "react-native";
+import { Appearance, Platform, View, AppState } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -103,6 +103,25 @@ function AppStack() {
 
   useEffect(() => {
     registerForPushNotifications();
+  }, []);
+
+  useEffect(() => {
+    let Updates: typeof import("expo-updates") | null = null;
+    try { Updates = require("expo-updates"); } catch { return; }
+    if (!Updates || Updates.isEmbeddedLaunch === undefined) return;
+
+    const check = async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (result.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          Updates.reloadAsync();
+        }
+      } catch { /* dev or no network */ }
+    };
+    check();
+    const sub = AppState.addEventListener("change", (s) => { if (s === "active") check(); });
+    return () => sub.remove();
   }, []);
 
   // Sync native root background with theme (status bar area)
