@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
-import { Plane, Hotel, Compass, Utensils, Car, MapPin } from "lucide-react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin } from "@phosphor-icons/react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
@@ -11,10 +11,10 @@ import { geocode } from "@/services/geocode";
 import { usePreferences } from "@/context/PreferencesContext";
 
 const TYPE_ICONS = {
-  flight:   Plane,
-  hotel:    Hotel,
+  flight:   AirplaneTilt,
+  hotel:    Bed,
   activity: Compass,
-  dining:   Utensils,
+  dining:   ForkKnife,
   transfer: Car,
 } as const;
 
@@ -329,7 +329,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
               filter: `drop-shadow(0 0 6px ${ACCENT}88)`,
               transition: "transform 0.05s linear",
             }}>
-              <Plane size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
+              <AirplaneTilt size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
             </div>
           </Marker>
         ))}
@@ -392,7 +392,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   position: "relative", zIndex: 2,
                 }}>
-                  <Icon size={iconSize} color={color} strokeWidth={2.5} />
+                  <Icon size={iconSize} color={color} weight="bold" />
                 </div>
 
                 {/* Number badge */}
@@ -484,7 +484,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                           border: `1.5px solid ${isFirst ? ACCENT : color}`,
                         }}
                       >
-                        <Icon size={11} color={isFirst ? "#000" : color} strokeWidth={2.5} />
+                        <Icon size={11} color={isFirst ? "#000" : color} weight="bold" />
                       </div>
                       <div className="flex items-baseline gap-1.5">
                         <span
@@ -505,7 +505,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                       <div className="flex items-center shrink-0 px-1">
                         <div style={{ width: 6, height: 1.5, background: isDark ? "#1f1f1f" : "#e2e8f0" }} />
                         {pt.type === "flight" ? (
-                          <Plane size={10} color={TYPE_COLORS.flight} style={{ opacity: 0.7, margin: "0 1px" }} />
+                          <AirplaneTilt size={10} color={TYPE_COLORS.flight} style={{ opacity: 0.7, margin: "0 1px" }} />
                         ) : (
                           <div style={{ width: 3, height: 3, borderRadius: "50%", background: isDark ? "#2a2a2a" : "#cbd5e1", margin: "0 2px" }} />
                         )}

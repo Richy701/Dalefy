@@ -6,7 +6,7 @@ import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { ChevronDown } from "lucide-react-native";
+import { CaretDown } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
@@ -105,7 +105,7 @@ export default function InfoScreen() {
                       {item.title || "Untitled"}
                     </Text>
                     <View style={[styles.chevronWrap, isOpen && styles.chevronOpen]}>
-                      <ChevronDown size={16} color={isOpen ? C.textPrimary : C.textTertiary} strokeWidth={2} />
+                      <CaretDown size={16} color={isOpen ? C.textPrimary : C.textTertiary} weight="regular" />
                     </View>
                   </Pressable>
 

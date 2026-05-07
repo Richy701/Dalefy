@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, Loader2, CircleCheck, CircleAlert, ChevronRight, X, Plane, Hotel, Compass, Utensils } from "lucide-react";
+import { Upload, FileText, SpinnerGap, CheckCircle, WarningCircle, CaretRight, X, AirplaneTilt, Bed, Compass, ForkKnife } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTrips } from "@/context/TripsContext";
@@ -1425,7 +1425,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
             {error && (
               <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <CircleAlert className="h-4 w-4 text-red-400 shrink-0" />
+                <WarningCircle className="h-4 w-4 text-red-400 shrink-0" />
                 <p className="text-xs font-bold text-red-400">{error}</p>
               </div>
             )}
@@ -1458,7 +1458,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 disabled={!rawText.trim()}
                 className="w-full h-12 rounded-2xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
               >
-                Parse Text <ChevronRight className="h-4 w-4 ml-1" />
+                Parse Text <CaretRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -1467,14 +1467,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {/* ── STEP 2: EXTRACTING ── */}
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="h-10 w-10 text-brand animate-spin" />
+            <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">Extracting text, images &amp; attachments...</p>
           </div>
         )}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <Loader2 className="h-10 w-10 text-brand animate-spin" />
+            <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">
               Matching images {importProgress.done}/{importProgress.total}
             </p>
@@ -1613,7 +1613,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
-                <CircleAlert className="h-5 w-5 text-amber-400" />
+                <WarningCircle className="h-5 w-5 text-amber-400" />
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
                 <p className="text-[10px] text-slate-500 dark:text-[#888888] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
               </div>
@@ -1672,7 +1672,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   onClick={handleImport}
                   className={`flex-1 rounded-2xl h-12 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
                 >
-                  <CircleCheck className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" />
                   {isReimport
                     ? importMode === "merge"
                       ? `Merge ${parsed.events.length} Events`
@@ -1689,7 +1689,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "done" && (
           <div className="flex flex-col items-center justify-center py-12 gap-5">
             <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-              <CircleCheck className="h-7 w-7 text-brand" />
+              <CheckCircle className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-bold uppercase tracking-widest text-slate-900 dark:text-white">Trip Updated</p>

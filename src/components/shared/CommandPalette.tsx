@@ -6,10 +6,10 @@ import { OPEN_COMMAND_PALETTE_EVENT } from "@/hooks/useGlobalShortcuts";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import {
-  LayoutDashboard, Users, Globe, BarChart2, Sun, Moon,
-  Plane, MapPin, Search, ArrowRight, Command as CmdIcon, Settings,
+  SquaresFour, Users, Globe, ChartBar, Sun, Moon,
+  AirplaneTilt, MapPin, MagnifyingGlass, ArrowRight, Command as CmdIcon, Gear,
   UserPlus, Shield,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useOrg } from "@/context/OrgContext";
 
@@ -65,7 +65,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
       >
         {/* Search bar */}
         <div className="flex items-center gap-3 px-5 border-b border-[#1f1f1f]">
-          <Search className="h-4 w-4 text-[#555] shrink-0" />
+          <MagnifyingGlass className="h-4 w-4 text-[#555] shrink-0" />
           <Command.Input
             autoFocus
             placeholder="Type a command or search..."
@@ -87,11 +87,11 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
             className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-[#444]"
           >
             {[
-              { label: "Dashboard", icon: LayoutDashboard, path: "/" },
+              { label: "Dashboard", icon: SquaresFour, path: "/" },
               { label: "Travelers", icon: Users, path: "/travelers" },
               { label: "Destinations", icon: Globe, path: "/destinations" },
-              { label: "Reports", icon: BarChart2, path: "/reports" },
-              { label: "Settings", icon: Settings, path: "/settings" },
+              { label: "Reports", icon: ChartBar, path: "/reports" },
+              { label: "Settings", icon: Gear, path: "/settings" },
             ].map(({ label, icon: Icon, path }) => (
               <Command.Item
                 key={path}
@@ -120,7 +120,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
               >
                 <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">
-                  <Plane className="h-3.5 w-3.5" />
+                  <AirplaneTilt className="h-3.5 w-3.5" />
                 </div>
                 New Trip
                 <span className="ml-auto text-[10px] font-bold text-[#555] bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-md uppercase tracking-wider">⌘N</span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Settings } from "lucide-react";
+import { SignOut, Gear } from "@phosphor-icons/react";
 import { BRAND } from "@/config/brand";
 import {
   SidebarMenu,
@@ -63,7 +63,7 @@ export function NavUser() {
                   onClick={() => setSignOutOpen(true)}
                   className="h-7 w-7 rounded-lg flex items-center justify-center text-sidebar-foreground/30 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
                 >
-                  <LogOut className="h-3 w-3" />
+                  <SignOut className="h-3 w-3" />
                 </TooltipTrigger>
                 <TooltipContent side="top">Sign out</TooltipContent>
               </Tooltip>

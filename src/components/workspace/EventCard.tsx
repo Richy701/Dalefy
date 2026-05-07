@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Plane, Hotel, Compass, Utensils, Car, MapPin, Clock, EllipsisVertical, Settings, Trash2, ArrowRight, Image as ImageIcon, Video, Paperclip } from "lucide-react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Clock, DotsThreeVertical, Gear, Trash, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -73,15 +73,15 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
         <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#888888] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
-          <EllipsisVertical className="h-3.5 w-3.5" />
+          <DotsThreeVertical className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
           <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
-            <Settings className="h-3.5 w-3.5 text-brand" /> Edit Event
+            <Gear className="h-3.5 w-3.5 text-brand" /> Edit Event
           </DropdownMenuItem>
           <div className="my-1 h-px bg-slate-100 dark:bg-[#1f1f1f]" />
           <DropdownMenuItem onClick={onDelete} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-red-500 hover:bg-red-500/5">
-            <Trash2 className="h-3.5 w-3.5" /> Delete
+            <Trash className="h-3.5 w-3.5" /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -165,7 +165,7 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
         {/* Departure time */}
         <div className="flex flex-col items-center shrink-0 w-12 sm:w-14 text-center">
           <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center mb-2">
-            <Plane className="h-3.5 w-3.5" />
+            <AirplaneTilt className="h-3.5 w-3.5" />
           </div>
           <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time.split(" ")[0]}</span>
           <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
@@ -180,7 +180,7 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
-              <Plane className="h-3 w-3 text-brand shrink-0" />
+              <AirplaneTilt className="h-3 w-3 text-brand shrink-0" />
               <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
             </div>
             {to && (
@@ -239,7 +239,7 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
           </div>
         ) : (
           <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">
-            <Hotel className="h-7 w-7 text-brand/30" />
+            <Bed className="h-7 w-7 text-brand/30" />
           </div>
         )}
 
@@ -247,7 +247,7 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <Hotel className="h-3 w-3 text-brand shrink-0" />
+                <Bed className="h-3 w-3 text-brand shrink-0" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Accommodation</span>
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-brand transition-colors">{event.title}</h4>
@@ -297,7 +297,7 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
 function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isDining = event.type === "dining";
   const isTransfer = event.type === "transfer";
-  const Icon = isTransfer ? Car : isDining ? Utensils : Compass;
+  const Icon = isTransfer ? Car : isDining ? ForkKnife : Compass;
 
   // Sparse: no notes, no endTime, no location → collapse to compact row.
   const isSparse = !event.notes && !event.endTime && !event.location;

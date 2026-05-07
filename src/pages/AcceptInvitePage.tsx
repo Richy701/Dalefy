@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { SpinnerGap, CheckCircle, XCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { acceptInvite } from "@/services/invites";
@@ -49,14 +49,14 @@ export function AcceptInvitePage() {
 
         {status === "loading" && (
           <div className="space-y-4">
-            <Loader2 className="h-10 w-10 animate-spin text-brand mx-auto" />
+            <SpinnerGap className="h-10 w-10 animate-spin text-brand mx-auto" />
             <p className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">Accepting invite...</p>
           </div>
         )}
 
         {status === "success" && (
           <div className="space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-brand mx-auto" />
+            <CheckCircle className="h-12 w-12 text-brand mx-auto" />
             <h1 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Welcome!</h1>
             <p className="text-sm text-slate-600 dark:text-[#aaa]">{message}</p>
             <Button

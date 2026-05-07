@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 export function DaySection({ date, dayNumber, children, onAddEvent }: { date: string; dayNumber?: number; children: ReactNode; onAddEvent: () => void }) {

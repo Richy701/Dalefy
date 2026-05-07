@@ -10,8 +10,8 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { COMPLIANCE_DOC_CONTENT } from "@/shared/compliance-docs";
 import {
-  FileCheck, FileClock, FileX, ShieldCheck, Info,
-} from "lucide-react-native";
+  FileText as FileCheckIconIcon, FileDashed, FileX, ShieldCheck, Info,
+} from "phosphor-react-native";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 
 export default function DocumentScreen() {
@@ -47,7 +47,7 @@ export default function DocumentScreen() {
     );
   }
 
-  const StatusIcon = isSigned ? FileCheck : doc.status === "Expired" ? FileX : FileClock;
+  const StatusIcon = isSigned ? FileCheckIcon : doc.status === "Expired" ? FileX : FileDashed;
   const statusColor = isSigned ? C.green : doc.status === "Expired" ? C.red : C.amber;
   const statusBg = isSigned ? C.greenDim : doc.status === "Expired" ? C.redDim : C.amberDim;
 
@@ -66,7 +66,7 @@ export default function DocumentScreen() {
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
         headerRight: () => (
           <View style={[s.statusPill, { backgroundColor: statusBg }]}>
-            <StatusIcon size={12} color={statusColor} strokeWidth={2} />
+            <StatusIcon size={12} color={statusColor} weight="regular" />
             <Text style={[s.statusText, { color: statusColor }]}>{doc.status}</Text>
           </View>
         ),
@@ -108,7 +108,7 @@ export default function DocumentScreen() {
         {isSigned && doc.date && (
           <View style={[s.signedCard, { backgroundColor: C.tealDim, borderColor: C.tealMid }]}>
             <View style={[s.signedIcon, { backgroundColor: C.tealDim }]}>
-              <ShieldCheck size={20} color={C.teal} strokeWidth={1.5} />
+              <ShieldCheck size={20} color={C.teal} weight="light" />
             </View>
             <View style={s.signedTextWrap}>
               <Text style={[s.signedLabel, { color: C.teal }]}>Signed & Verified</Text>
@@ -132,7 +132,7 @@ export default function DocumentScreen() {
         <SafeAreaView edges={["bottom"]} style={s.footerSafe}>
           <View style={s.footer}>
             <View style={s.disclaimerRow}>
-              <Info size={12} color={C.textTertiary} strokeWidth={1.5} />
+              <Info size={12} color={C.textTertiary} weight="light" />
               <Text style={s.disclaimer}>
                 By signing, you confirm you have read and accept all terms above.
               </Text>

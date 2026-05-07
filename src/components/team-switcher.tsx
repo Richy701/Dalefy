@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, PlusIcon } from "lucide-react"
+import { CaretUpDown as CaretUpDownIcon, Plus as PlusIcon } from "@phosphor-icons/react"
 
 export function TeamSwitcher({
   teams,
@@ -53,7 +53,7 @@ export function TeamSwitcher({
               <span className="truncate font-medium">{activeTeam.name}</span>
               <span className="truncate text-xs">{activeTeam.plan}</span>
             </div>
-            <ChevronsUpDownIcon className="ml-auto" />
+            <CaretUpDownIcon className="ml-auto" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="min-w-56 rounded-lg"

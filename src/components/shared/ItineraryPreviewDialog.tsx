@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import {
-  CalendarDays, MapPin, Users, Plane, Hotel, Compass, Utensils,
-  Clock, X, DollarSign, Briefcase, Hash, ArrowRight, User,
+  CalendarDots, MapPin, Users, AirplaneTilt, Bed, Compass, ForkKnife,
+  Clock, X, CurrencyDollar, Briefcase, Hash, ArrowRight, User,
   Tag, FileText, Paperclip, Info,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -100,7 +100,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
             <MetaChip icon={Users} label="Pax" value={trip.paxCount} forPrint={forPrint} />
           )}
           {trip.budget && (
-            <MetaChip icon={DollarSign} label="Budget" value={`${trip.currency ?? "USD"} ${trip.budget}`} forPrint={forPrint} />
+            <MetaChip icon={CurrencyDollar} label="Budget" value={`${trip.currency ?? "USD"} ${trip.budget}`} forPrint={forPrint} />
           )}
           {trip.organizer?.name && (
             <MetaChip icon={User} label="Organizer" value={[trip.organizer.name, trip.organizer.company].filter(Boolean).join(" · ")} forPrint={forPrint} />
@@ -241,7 +241,7 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
 function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")} strokeWidth={1.8} />
+      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")} weight="regular" />
       <div className="min-w-0">
         <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>{label}</p>
         <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-[#ccc]")}>{value}</p>
@@ -260,7 +260,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
       <div className="flex items-start gap-3 flex-1 min-w-0">
         {/* Icon */}
         <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-[#1a1a1a]")}>
-          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} strokeWidth={1.8} />
+          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} weight="regular" />
         </div>
 
         {/* Details */}
@@ -277,20 +277,20 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
           <div className={cn("flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] flex-wrap", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
-                <Clock className="h-3 w-3" strokeWidth={1.8} />
+                <Clock className="h-3 w-3" weight="regular" />
                 {ev.time}
                 {ev.endTime && <> — {ev.endTime}</>}
               </span>
             )}
             {ev.location && (
               <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" strokeWidth={1.8} />
+                <MapPin className="h-3 w-3" weight="regular" />
                 <span className={forPrint ? "" : "truncate max-w-[180px] sm:max-w-[200px]"}>{ev.location}</span>
               </span>
             )}
             {ev.duration && (
               <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3 opacity-60" strokeWidth={1.8} />
+                <Clock className="h-3 w-3 opacity-60" weight="regular" />
                 {ev.duration}
               </span>
             )}
@@ -358,7 +358,7 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
                   rel="noopener noreferrer"
                   className={cn("inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded border transition-colors", forPrint ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#aaa] hover:text-brand hover:border-brand/30")}
                 >
-                  <Paperclip className="h-2.5 w-2.5 shrink-0" strokeWidth={1.8} />
+                  <Paperclip className="h-2.5 w-2.5 shrink-0" weight="regular" />
                   <span className={forPrint ? "" : "truncate max-w-[120px] sm:max-w-[160px]"}>{doc.name}</span>
                 </a>
               ))}

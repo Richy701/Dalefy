@@ -12,8 +12,8 @@ import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, Share2, Plus, Check, ChevronDown,
-} from "lucide-react-native";
+  ArrowLeft, Compass, MapPin, Users, Moon, ShareNetwork, Plus, Check, CaretDown,
+} from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
@@ -185,7 +185,7 @@ export default function SharedTripScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <ArrowLeft size={18} color="#fff" strokeWidth={2} />
+            <ArrowLeft size={18} color="#fff" weight="regular" />
           </Pressable>
 
           <Pressable
@@ -197,7 +197,7 @@ export default function SharedTripScreen() {
             accessibilityRole="button"
             accessibilityLabel="Share trip"
           >
-            <Share2 size={16} color="#fff" strokeWidth={2} />
+            <ShareNetwork size={16} color="#fff" weight="regular" />
           </Pressable>
 
           <View style={styles.heroContent}>
@@ -206,12 +206,12 @@ export default function SharedTripScreen() {
             <View style={styles.chipsRow}>
               {trip.attendees ? (
                 <View style={styles.chip}>
-                  <Users size={10} color={C.teal} strokeWidth={2} />
+                  <Users size={10} color={C.teal} weight="regular" />
                   <Text style={styles.chipText}>{trip.attendees}</Text>
                 </View>
               ) : null}
               <View style={styles.chip}>
-                <Moon size={10} color={C.teal} strokeWidth={2} />
+                <Moon size={10} color={C.teal} weight="regular" />
                 <Text style={styles.chipText}>
                   {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   {" — "}
@@ -220,7 +220,7 @@ export default function SharedTripScreen() {
               </View>
               {trip.destination ? (
                 <View style={styles.chip}>
-                  <MapPin size={10} color={C.teal} strokeWidth={2} />
+                  <MapPin size={10} color={C.teal} weight="regular" />
                   <Text style={styles.chipText}>{trip.destination}</Text>
                 </View>
               ) : null}
@@ -238,7 +238,7 @@ export default function SharedTripScreen() {
               <View style={[styles.pickerAvatar, viewAsId ? styles.pickerAvatarActive : null]}>
                 {viewAsTraveler
                   ? <Text style={styles.pickerAvatarText}>{viewAsTraveler.initials}</Text>
-                  : <Users size={14} color={C.textSecondary} strokeWidth={2} />
+                  : <Users size={14} color={C.textSecondary} weight="regular" />
                 }
               </View>
               <View style={styles.pickerTextWrap}>
@@ -249,10 +249,10 @@ export default function SharedTripScreen() {
                   {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
                 </Text>
               </View>
-              <ChevronDown
+              <CaretDown
                 size={16}
                 color={C.textTertiary}
-                strokeWidth={2}
+                weight="regular"
                 style={{ transform: [{ rotate: pickerOpen ? "180deg" : "0deg" }] }}
               />
             </Pressable>
@@ -267,7 +267,7 @@ export default function SharedTripScreen() {
                     <Text style={styles.pickerOptionAvatarText}>ALL</Text>
                   </View>
                   <Text style={styles.pickerOptionName}>Everyone — Full itinerary</Text>
-                  {!viewAsId && <Check size={14} color={C.teal} strokeWidth={2.5} />}
+                  {!viewAsId && <Check size={14} color={C.teal} weight="bold" />}
                 </Pressable>
 
                 <View style={[styles.pickerDivider, { backgroundColor: C.border }]} />
@@ -282,7 +282,7 @@ export default function SharedTripScreen() {
                       <Text style={[styles.pickerOptionAvatarText, { color: C.teal }]}>{t.initials}</Text>
                     </View>
                     <Text style={styles.pickerOptionName}>{t.name}</Text>
-                    {viewAsId === t.id && <Check size={14} color={C.teal} strokeWidth={2.5} />}
+                    {viewAsId === t.id && <Check size={14} color={C.teal} weight="bold" />}
                   </Pressable>
                 ))}
               </View>
@@ -311,7 +311,7 @@ export default function SharedTripScreen() {
         {/* Itinerary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Compass size={13} color={C.teal} strokeWidth={1.8} />
+            <Compass size={13} color={C.teal} weight="regular" />
             <Text style={styles.sectionEyebrow}>ITINERARY</Text>
           </View>
 
@@ -350,10 +350,10 @@ export default function SharedTripScreen() {
           >
             {(alreadyInMyTrips || justAdded) ? (
               <Animated.View style={checkStyle}>
-                <Check size={18} color={C.teal} strokeWidth={2.5} />
+                <Check size={18} color={C.teal} weight="bold" />
               </Animated.View>
             ) : (
-              <Plus size={16} color="#000" strokeWidth={2.5} />
+              <Plus size={16} color="#000" weight="bold" />
             )}
             <Text style={[
               styles.addCtaText,

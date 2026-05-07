@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
-import { Plane, Hotel, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, ChartColumn, FileCheck, TriangleAlert, CircleAlert, CircleCheck, Clock4, Download, TrendingUp, MapPin, Zap } from "lucide-react";
+import { AirplaneTilt, Bed, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download, TrendUp, MapPin, Lightning } from "@phosphor-icons/react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
@@ -211,7 +211,7 @@ export function ReportsPage() {
                   <div className="hidden lg:block w-px h-20 bg-slate-200 dark:bg-[#1f1f1f]" />
                   <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
                     {[
-                      { label: "Active", value: stats.activeTrips.toString(), sub: "In progress", icon: <Plane className="h-4 w-4" /> },
+                      { label: "Active", value: stats.activeTrips.toString(), sub: "In progress", icon: <AirplaneTilt className="h-4 w-4" /> },
                       { label: "Upcoming", value: stats.upcomingTrips.length.toString(), sub: "Next 30 days", icon: <LucideCalendar className="h-4 w-4" /> },
                       { label: "Events", value: stats.totalEvents.toString(), sub: `${stats.avgEventsPerTrip} per trip`, icon: <Briefcase className="h-4 w-4" /> },
                     ].map((kpi, i, arr) => (
@@ -242,7 +242,7 @@ export function ReportsPage() {
                 {pipelineData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
                     <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                      <Plane className="h-5 w-5 text-brand opacity-60" />
+                      <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips in pipeline</p>
                     <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
@@ -329,9 +329,9 @@ export function ReportsPage() {
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {hasIssue ? (
-                                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                                  <Warning className="h-3.5 w-3.5 text-amber-500" />
                                 ) : reqDocs.length > 0 ? (
-                                  <CircleCheck className="h-3.5 w-3.5 text-emerald-400" />
+                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : null}
                                 <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums">{signedDocs}/{reqDocs.length}</span>
                               </div>
@@ -357,7 +357,7 @@ export function ReportsPage() {
                   {stats.tripsByMonth.length === 0 ? (
                     <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
                       <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                        <ChartColumn className="h-5 w-5 text-brand opacity-60" />
+                        <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
                       <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
                       <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
@@ -383,7 +383,7 @@ export function ReportsPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
-                      <Plane className="h-4 w-4" />
+                      <AirplaneTilt className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
@@ -420,7 +420,7 @@ export function ReportsPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
-                        <Plane className="h-5 w-5 text-brand/30" />
+                        <AirplaneTilt className="h-5 w-5 text-brand/30" />
                       </div>
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No airline data</p>
                     </div>
@@ -501,8 +501,8 @@ export function ReportsPage() {
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<ShieldCheck className="h-5 w-5" />} /></div>
-                <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub="All done" icon={<FileCheck className="h-5 w-5" />} accent="text-emerald-400" /></div>
-                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<TriangleAlert className="h-5 w-5" />} accent="text-amber-500" /></div>
+                <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub="All done" icon={<FileText className="h-5 w-5" />} accent="text-emerald-400" /></div>
+                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<Warning className="h-5 w-5" />} accent="text-amber-500" /></div>
                 <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={complianceData.travelers.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>
               </div>
 
@@ -538,9 +538,9 @@ export function ReportsPage() {
                   {/* Status breakdown bars */}
                   <div className="flex-1 w-full space-y-5">
                     {[
-                      { name: "Signed", value: complianceData.signed, color: "#34d399", icon: <CircleCheck className="h-4 w-4" />, desc: "Signed & done" },
-                      { name: "Pending", value: complianceData.pending, color: "#fbbf24", icon: <Clock4 className="h-4 w-4" />, desc: "Needs signing" },
-                      { name: "Expired", value: complianceData.expired, color: "#f87171", icon: <CircleAlert className="h-4 w-4" />, desc: "Needs renewal" },
+                      { name: "Signed", value: complianceData.signed, color: "#34d399", icon: <CheckCircle className="h-4 w-4" />, desc: "Signed & done" },
+                      { name: "Pending", value: complianceData.pending, color: "#fbbf24", icon: <Clock className="h-4 w-4" />, desc: "Needs signing" },
+                      { name: "Expired", value: complianceData.expired, color: "#f87171", icon: <WarningCircle className="h-4 w-4" />, desc: "Needs renewal" },
                     ].map(s => {
                       const pct = complianceData.total > 0 ? Math.round((s.value / complianceData.total) * 100) : 0;
                       return (
@@ -616,7 +616,7 @@ export function ReportsPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                      <FileCheck className="h-4 w-4" />
+                      <FileText className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
@@ -627,7 +627,7 @@ export function ReportsPage() {
                     {complianceData.recentActivity.map((a, i) => (
                       <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors">
                         <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                          <CircleCheck className="h-4 w-4" />
+                          <CheckCircle className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</div>
@@ -646,7 +646,7 @@ export function ReportsPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                      <TriangleAlert className="h-4 w-4" />
+                      <Warning className="h-4 w-4" />
                     </div>
                     <div>
                       <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
@@ -673,12 +673,12 @@ export function ReportsPage() {
                           <div className="flex items-center gap-2 shrink-0">
                             {t.pend > 0 && (
                               <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
-                                <Clock4 className="h-3 w-3" />{t.pend}
+                                <Clock className="h-3 w-3" />{t.pend}
                               </span>
                             )}
                             {t.exp > 0 && (
                               <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
-                                <CircleAlert className="h-3 w-3" />{t.exp}
+                                <WarningCircle className="h-3 w-3" />{t.exp}
                               </span>
                             )}
                           </div>
@@ -712,9 +712,9 @@ export function ReportsPage() {
                       {complianceData.travelers.map(t => {
                         const docNames = ["Passport", "Travel Insurance", "Behavioural Agreement", "Code of Conduct Review", "Risk Assessment"];
                         const statusIcons: Record<string, React.ReactNode> = {
-                          Signed: <CircleCheck className="h-4 w-4 text-emerald-400" />,
-                          Pending: <Clock4 className="h-4 w-4 text-amber-400" />,
-                          Expired: <CircleAlert className="h-4 w-4 text-red-400" />,
+                          Signed: <CheckCircle className="h-4 w-4 text-emerald-400" />,
+                          Pending: <Clock className="h-4 w-4 text-amber-400" />,
+                          Expired: <WarningCircle className="h-4 w-4 text-red-400" />,
                           "Not Required": <div className="h-4 w-4 rounded-full bg-slate-200 dark:bg-[#1f1f1f]" />,
                         };
                         const allSigned = docNames.every(dn => {
@@ -757,9 +757,9 @@ export function ReportsPage() {
                 </div>
                 <div className="flex items-center gap-6 mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
                   {[
-                    { l: "Signed", icon: <CircleCheck className="h-3.5 w-3.5 text-emerald-400" /> },
-                    { l: "Pending", icon: <Clock4 className="h-3.5 w-3.5 text-amber-400" /> },
-                    { l: "Expired", icon: <CircleAlert className="h-3.5 w-3.5 text-red-400" /> },
+                    { l: "Signed", icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> },
+                    { l: "Pending", icon: <Clock className="h-3.5 w-3.5 text-amber-400" /> },
+                    { l: "Expired", icon: <WarningCircle className="h-3.5 w-3.5 text-red-400" /> },
                     { l: "N/A", icon: <div className="h-3.5 w-3.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f]" /> },
                   ].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">

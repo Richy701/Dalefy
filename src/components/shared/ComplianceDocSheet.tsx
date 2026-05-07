@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileCheck, FileClock, FileX, Loader2, CircleCheck, ShieldCheck, ArrowRight, Info } from "lucide-react";
+import { FileText, FileDashed, FileX, SpinnerGap, CheckCircle, ShieldCheck, ArrowRight, Info } from "@phosphor-icons/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,8 @@ interface ComplianceDocSheetProps {
 }
 
 const STATUS_STYLE: Record<string, { color: string; bg: string; icon: typeof FileCheck }> = {
-  Signed: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileCheck },
-  Pending: { color: "text-amber-500", bg: "bg-amber-500/10", icon: FileClock },
+  Signed: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileText },
+  Pending: { color: "text-amber-500", bg: "bg-amber-500/10", icon: FileDashed },
   Expired: { color: "text-red-400", bg: "bg-red-500/10", icon: FileX },
 };
 
@@ -148,7 +148,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 className="w-full h-16 rounded-2xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-[0_15px_40px_rgba(11,210,181,0.25)] disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
               >
                 {signing ? (
-                  <><Loader2 className="h-5 w-5 animate-spin mr-3" /> Signing...</>
+                  <><SpinnerGap className="h-5 w-5 animate-spin mr-3" /> Signing...</>
                 ) : (
                   <span className="flex items-center justify-center gap-3">
                     Sign Document

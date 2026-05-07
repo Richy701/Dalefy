@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Hotel, Flame, CircleCheck, Calendar as CalendarIcon } from "lucide-react";
+import { SpinnerGap, Bed, Flame, CheckCircle, Calendar as CalendarIcon } from "@phosphor-icons/react";
 import { searchHotels, type HotelResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -97,7 +97,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             disabled={loading || !query || !checkin || !checkout}
             className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:bg-brand/80 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shrink-0"
           >
-            {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Hotel className="h-4 w-4 sm:h-3 sm:w-3" />}
+            {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Bed className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search
           </button>
         </div>
@@ -122,7 +122,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                 <img src={h.image} alt={h.name} className="h-10 w-14 object-cover rounded-lg shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="h-10 w-14 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                  <Hotel className="h-4 w-4 text-brand" />
+                  <Bed className="h-4 w-4 text-brand" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -138,7 +138,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                 </div>
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-                {selected === h.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
+                {selected === h.name && <CheckCircle className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

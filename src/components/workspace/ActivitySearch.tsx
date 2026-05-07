@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Compass, Star, CircleCheck } from "lucide-react";
+import { SpinnerGap, Compass, Star, CheckCircle } from "@phosphor-icons/react";
 import { searchActivities, type ActivityResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 
@@ -59,7 +59,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
             disabled={loading || !query}
             className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0"
           >
-            {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Compass className="h-4 w-4 sm:h-3 sm:w-3" />}
+            {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Compass className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search
           </button>
         </div>
@@ -100,7 +100,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                {selected === a.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
+                {selected === a.name && <CheckCircle className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

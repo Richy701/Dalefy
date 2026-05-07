@@ -25,6 +25,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * 2. Fetch those trips from the trips collection
  */
 export async function fetchTrips(): Promise<Trip[]> {
+  await waitForAuth();
   const deviceId = await getDeviceId();
 
   // Get trip IDs this device has joined (timeout prevents hanging when offline)
@@ -64,6 +65,7 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
 
   async function setupListeners() {
     try {
+      await waitForAuth();
       const deviceId = await getDeviceId();
       const memberSnap = await withTimeout(
         getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
@@ -71,22 +73,19 @@ export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe
       );
       const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
 
-      // Backfill UID-keyed member docs for Firestore rule checks
-      try {
-        await waitForAuth();
-        const uid = firebaseAuth().currentUser?.uid;
-        if (uid) {
-          for (const memberDoc of memberSnap.docs) {
-            const data = memberDoc.data();
-            const uidKey = `${uid}_${data.trip_id}`;
-            // Only create if it doesn't exist yet (merge: true is safe)
-            setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidKey), {
-              ...data,
-              uid,
-            }, { merge: true }).catch(() => {});
-          }
-        }
-      } catch { /* auth not ready — skip backfill */ }
+      // Backfill UID-keyed member docs so Firestore rules can verify membership
+      const uid = firebaseAuth().currentUser?.uid;
+      if (uid) {
+        const backfills = memberSnap.docs.map((memberDoc) => {
+          const data = memberDoc.data();
+          const uidKey = `${uid}_${data.trip_id}`;
+          return setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidKey), {
+            ...data,
+            uid,
+          }, { merge: true }).catch(() => {});
+        });
+        await Promise.all(backfills);
+      }
 
       // Clean up any previous listeners
       innerUnsubs.forEach(u => u());

@@ -1,13 +1,13 @@
-import { Plane, Hotel, Compass, Utensils, Car } from "lucide-react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car } from "@phosphor-icons/react";
 
 export type EventType = "flight" | "hotel" | "activity" | "dining" | "transfer";
 
 /** Icons per event type. */
 export const EVENT_ICONS = {
-  flight:   Plane,
-  hotel:    Hotel,
+  flight:   AirplaneTilt,
+  hotel:    Bed,
   activity: Compass,
-  dining:   Utensils,
+  dining:   ForkKnife,
   transfer: Car,
 } as const;
 

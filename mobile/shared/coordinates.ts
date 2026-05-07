@@ -13,6 +13,8 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "NAP": [40.8860, 14.2908],
   "KEF": [63.9850, -22.6056],
   "SIN": [1.3644, 103.9915],
+  "Singapore": [1.3521, 103.8198],
+  "Singapore, Singapore": [1.3521, 103.8198],
   "DPS": [-8.7467, 115.1670],
   "ZRH": [47.4647, 8.5492],
   "JFK": [40.6413, -73.7781],

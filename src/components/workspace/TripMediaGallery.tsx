@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Trash2, ZoomIn, Play, ImageIcon, VideoIcon, Download } from "lucide-react";
+import { Upload, Trash, MagnifyingGlassPlus, Play, Image as ImageIcon, Video as VideoIcon, Download } from "@phosphor-icons/react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
@@ -229,7 +229,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                           onClick={() => setLightboxIndex(imgIdx)}
                           className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
                         >
-                          <ZoomIn className="h-4 w-4" />
+                          <MagnifyingGlassPlus className="h-4 w-4" />
                         </button>
                       )}
                       <a
@@ -245,7 +245,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                         onClick={() => handleDelete(item.id)}
                         className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </button>
                     </div>
 

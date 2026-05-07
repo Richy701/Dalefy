@@ -10,7 +10,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { Search, UserPlus, FileCheck, FileExclamationPoint, FileClock, FileX, Send, Eye, ShieldAlert, ShieldCheck, Clock, ChartColumn, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft as PgLeft, ChevronRight as PgRight, X, User, Mail, Briefcase, Smartphone, MapPin, CalendarDays, Upload, FileText, Check, Trash2, Fingerprint } from "lucide-react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -34,10 +34,10 @@ type Tab = "travelers" | "hr" | "app-users";
 
 
 const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
-  Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileCheck, bar: "bg-brand" },
-  Pending: { color: "text-brand", bg: "bg-brand/10", icon: FileClock, bar: "bg-brand" },
+  Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileText, bar: "bg-brand" },
+  Pending: { color: "text-brand", bg: "bg-brand/10", icon: FileDashed, bar: "bg-brand" },
   Expired: { color: "text-brand", bg: "bg-brand/10", icon: FileX, bar: "bg-brand" },
-  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileExclamationPoint, bar: "bg-slate-300 dark:bg-[#333]" },
+  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -396,7 +396,7 @@ export function TravelersPage() {
       <PageHeader
         left={travelers.length > 0 ? (
           <div className="max-w-[140px] sm:max-w-md w-full relative group">
-            <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
             <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search..." className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner" />
           </div>
@@ -438,7 +438,7 @@ export function TravelersPage() {
                     >
                       {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
                         <span className="flex items-center gap-1.5">
-                          <Smartphone className="h-3 w-3" />
+                          <DeviceMobile className="h-3 w-3" />
                           App Users
                           {groupedAppUsers.length > 0 && (
                             <span className="ml-0.5 text-[9px] font-black bg-brand/15 text-brand px-1.5 py-0.5 rounded-full">{groupedAppUsers.length}</span>
@@ -554,11 +554,11 @@ export function TravelersPage() {
                               {canSort && (
                                 <span className={isSorted ? "text-brand" : "opacity-40"}>
                                   {isSorted === "asc" ? (
-                                    <ChevronUp className="h-3.5 w-3.5" />
+                                    <CaretUp className="h-3.5 w-3.5" />
                                   ) : isSorted === "desc" ? (
-                                    <ChevronDown className="h-3.5 w-3.5" />
+                                    <CaretDown className="h-3.5 w-3.5" />
                                   ) : (
-                                    <ChevronsUpDown className="h-3.5 w-3.5" />
+                                    <CaretUpDown className="h-3.5 w-3.5" />
                                   )}
                                 </span>
                               )}
@@ -727,8 +727,8 @@ export function TravelersPage() {
                 {[
                   { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <ShieldCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldAlert className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartColumn className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldWarning className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                 ].map(card => (
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
                     <div className="p-5 flex flex-col">
@@ -760,7 +760,7 @@ export function TravelersPage() {
                 <div className="bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-                      <FileCheck className="h-6 w-6 text-brand opacity-60" />
+                      <FileText className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No documents yet</p>
                     <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add team members to track compliance</p>
@@ -831,7 +831,7 @@ export function TravelersPage() {
                                       Sign
                                     </button>
                                     <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#777] hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
-                                      <Send className="h-3 w-3" />
+                                      <PaperPlaneTilt className="h-3 w-3" />
                                     </button>
                                   </div>
                                 )}
@@ -851,7 +851,7 @@ export function TravelersPage() {
                             })}
                             className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[#555] hover:text-brand transition-colors border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer"
                           >
-                            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            <CaretDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                             {isExpanded ? "Show less" : `${hiddenCount} more`}
                           </button>
                         )}
@@ -910,9 +910,9 @@ export function TravelersPage() {
               {/* Stats row */}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 {[
-                  { label: "App Users", value: groupedAppUsers.length.toString(), icon: <Smartphone className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "App Users", value: groupedAppUsers.length.toString(), icon: <DeviceMobile className="h-4 w-4" />, accent: "text-brand" },
                   { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
-                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDays className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDots className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
                   <div key={card.label} className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl">
                     <div className="p-5 flex flex-col">
@@ -937,7 +937,7 @@ export function TravelersPage() {
                     disabled={clearing}
                     className="flex items-center gap-2 h-9 px-4 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors disabled:opacity-50"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> {clearing ? "Clearing..." : "Clear All"}
+                    <Trash className="h-3.5 w-3.5" /> {clearing ? "Clearing..." : "Clear All"}
                   </button>
                 </div>
               )}
@@ -959,7 +959,7 @@ export function TravelersPage() {
                 ) : filteredAppUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
-                      <Smartphone className="h-6 w-6 text-brand opacity-60" />
+                      <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">
                       {search ? "No matching users" : "No app users yet"}
@@ -997,7 +997,7 @@ export function TravelersPage() {
                                   <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name || "Unknown"}</div>
                                   <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{user.trips.length} trip{user.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
-                                <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                                <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                               </div>
                             </button>
                           </div>
@@ -1016,7 +1016,7 @@ export function TravelersPage() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name || "Unknown"}</div>
                               <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
-                                <Smartphone className="h-3 w-3" /> Mobile app user
+                                <DeviceMobile className="h-3 w-3" /> Mobile app user
                               </div>
                             </div>
                             <div className="w-48">
@@ -1036,7 +1036,7 @@ export function TravelersPage() {
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                                 {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
-                              <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                              <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                             </div>
                           </button>
 
@@ -1061,7 +1061,7 @@ export function TravelersPage() {
                                   onClick={() => handleDeleteAppUser(user.deviceId, user.name)}
                                   className="shrink-0 h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] text-red-500 bg-red-500/10 ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center gap-1.5"
                                 >
-                                  <Trash2 className="h-3 w-3" /> Remove
+                                  <Trash className="h-3 w-3" /> Remove
                                 </button>
                               </div>
 
@@ -1143,7 +1143,7 @@ export function TravelersPage() {
                 {/* Email */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
-                    <Mail className="h-3 w-3" /> Email Address
+                    <Envelope className="h-3 w-3" /> Email Address
                   </label>
                   <input
                     required

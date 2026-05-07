@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Check, CircleCheck, Info, TriangleAlert, X } from "lucide-react";
+import { Bell, Check, CheckCircle, Info, Warning, X } from "@phosphor-icons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/context/NotificationContext";
@@ -7,8 +7,8 @@ import type { Notification } from "@/types";
 
 const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: string; bg: string }> = {
   info: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
-  success: { icon: CircleCheck, color: "text-brand", bg: "bg-brand/10" },
-  warning: { icon: TriangleAlert, color: "text-amber-400", bg: "bg-amber-500/10" },
+  success: { icon: CheckCircle, color: "text-brand", bg: "bg-brand/10" },
+  warning: { icon: Warning, color: "text-amber-400", bg: "bg-amber-500/10" },
 };
 
 function NotificationList({ onClose }: { onClose?: () => void }) {

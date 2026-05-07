@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Copy, Check, ChevronDown, Users, FileText } from "lucide-react";
+import { Copy, Check, CaretDown, Users, FileText } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
@@ -269,7 +269,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc] cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
                     {template.label}
-                    <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-[#666]" />
+                    <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-[#666]" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="min-w-[200px] rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-xl">

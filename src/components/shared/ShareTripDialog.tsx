@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Check, Link2, Smartphone, Plane, MapPin, CalendarDays, X } from "lucide-react";
+import { Copy, Check, Link, DeviceMobile, AirplaneTilt, MapPin, CalendarDots, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -108,7 +108,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                   className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
                   style={{ backgroundColor: accentColor }}
                 >
-                  <Plane className="h-3 w-3" style={{ color: accentFg }} strokeWidth={2.5} />
+                  <AirplaneTilt className="h-3 w-3" style={{ color: accentFg }} weight="bold" />
                 </div>
               )}
               <span
@@ -130,7 +130,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 </h3>
                 {trip?.destination && (
                   <div className="mt-2 flex items-center gap-1.5 min-w-0">
-                    <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: accentColor }} strokeWidth={2.5} />
+                    <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: accentColor }} weight="bold" />
                     <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:text-[#cccccc] truncate">
                       {trip.destination}
                     </span>
@@ -138,7 +138,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                 )}
                 {trip && (
                   <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                    <CalendarDays className="h-2.5 w-2.5 shrink-0 text-slate-400 dark:text-[#666666]" strokeWidth={2.5} />
+                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-400 dark:text-[#666666]" weight="bold" />
                     <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-[#888888] tracking-wide truncate">
                       {formatRange(trip.start, trip.end)}
                     </span>
@@ -215,14 +215,14 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#888888]">
                 {copiedKey === "pin" ? (
                   <>
-                    <Check className="h-2.5 w-2.5" style={{ color: accentColor }} strokeWidth={3} />
+                    <Check className="h-2.5 w-2.5" style={{ color: accentColor }} weight="bold" />
                     <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: accentColor }}>
                       Copied
                     </span>
                   </>
                 ) : (
                   <>
-                    <Copy className="h-2.5 w-2.5" strokeWidth={2.5} />
+                    <Copy className="h-2.5 w-2.5" weight="bold" />
                     <span className="text-[9px] font-bold uppercase tracking-[0.2em]">
                       Tap to copy · Type on mobile
                     </span>

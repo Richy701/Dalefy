@@ -3,7 +3,7 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 
 import { cn } from "@/lib/utils"
-import { ChevronRightIcon, EllipsisIcon } from "lucide-react"
+import { CaretRight as CaretRightIcon, DotsThree as DotsThreeIcon } from "@phosphor-icons/react"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -86,7 +86,7 @@ function BreadcrumbSeparator({
       {...props}
     >
       {children ?? (
-        <ChevronRightIcon />
+        <CaretRightIcon />
       )}
     </li>
   )

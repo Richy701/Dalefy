@@ -25,11 +25,11 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  MapPin, ChevronRight, CalendarDays, Users,
-  ArrowUpRight, Heart, Share2, Compass, Hotel, Utensils, Plane,
-  Bell, Sun, Moon, Plus, X as XIcon, ScanLine, Link2, Hash,
-  Check, Clock, WifiOff,
-} from "lucide-react-native";
+  MapPin, CaretRight, CalendarDots, Users,
+  ArrowUpRight, Heart, ShareNetwork, Compass, Bed, ForkKnife, AirplaneTilt,
+  Bell, Sun, Moon, Plus, X as XIcon, Scan, Link as LinkIcon, Hash,
+  Check, Clock, WifiSlash,
+} from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
 import { NotificationSheet } from "@/components/NotificationSheet";
@@ -122,7 +122,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
             shadowColor: C.teal, shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.4, shadowRadius: 8,
           }, checkStyle]}>
-            <Check size={20} color="#000" strokeWidth={3} />
+            <Check size={20} color="#000" weight="bold" />
           </Animated.View>
         </View>
 
@@ -130,7 +130,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
         <View style={{ padding: S.md, gap: 6 }}>
           {trip.destination && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <MapPin size={11} color={C.teal} strokeWidth={2} />
+              <MapPin size={11} color={C.teal} weight="regular" />
               <Text style={{
                 fontSize: T.xs, fontWeight: T.bold, color: C.teal,
                 letterSpacing: 1.5, textTransform: "uppercase",
@@ -143,7 +143,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
           }} numberOfLines={1}>{trip.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm, marginTop: 2 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <CalendarDays size={11} color={C.textTertiary} strokeWidth={1.8} />
+              <CalendarDots size={11} color={C.textTertiary} weight="regular" />
               <Text style={{ fontSize: T.sm, color: C.textSecondary, fontWeight: T.medium }}>{startDate}</Text>
             </View>
             {days > 0 && (
@@ -196,7 +196,7 @@ function QRScanPane({ C, styles, onScanned }: {
     return (
       <View style={styles.modeContent}>
         <View style={[styles.qrFrame, { alignItems: "center", justifyContent: "center" }]}>
-          <ScanLine size={32} color={C.textTertiary} strokeWidth={1.2} />
+          <Scan size={32} color={C.textTertiary} weight="thin" />
           <Text style={{ color: C.textTertiary, fontSize: T.sm, fontWeight: T.medium, marginTop: S.sm, textAlign: "center" }}>
             QR scanning needs a rebuild.
           </Text>
@@ -208,7 +208,7 @@ function QRScanPane({ C, styles, onScanned }: {
   if (!permission?.granted) {
     return (
       <View style={[styles.modeContent, { justifyContent: "center", paddingVertical: S.xl, paddingHorizontal: S.md }]}>
-        <ScanLine size={28} color={C.textTertiary} strokeWidth={1.2} />
+        <Scan size={28} color={C.textTertiary} weight="thin" />
         <Text style={{ color: C.textSecondary, fontSize: T.sm, fontWeight: T.medium, textAlign: "center", marginTop: S.sm, marginBottom: S.md }}>
           Camera access is needed to scan QR codes
         </Text>
@@ -326,7 +326,8 @@ function LiveCountdownDisplay({ countdown, C }: {
               fontWeight: "800",
               color: C.teal,
               marginHorizontal: 1,
-              lineHeight: 30,
+              lineHeight: 38,
+              marginBottom: 12,
               opacity: 0.6,
             }}>
               :
@@ -489,7 +490,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             accessibilityLabel="Enter trip code"
             hitSlop={6}
           >
-            <Plus size={22} color={C.teal} strokeWidth={1.8} />
+            <Plus size={22} color={C.teal} weight="regular" />
           </Pressable>
           <Pressable
             onPress={() => setNotifOpen(true)}
@@ -497,7 +498,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             accessibilityLabel="Notifications"
             hitSlop={6}
           >
-            <Bell size={21} color={C.textSecondary} strokeWidth={1.8} />
+            <Bell size={21} color={C.textSecondary} weight="regular" />
             {unreadCount > 0 && <View style={styles.unreadDot} />}
           </Pressable>
         </View>
@@ -540,14 +541,14 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               <View style={styles.sheetHeader}>
                 <View style={{ flex: 1 }} />
                 <Pressable onPress={closeSheet} style={styles.codeClose} hitSlop={8}>
-                  <XIcon size={13} color={C.textSecondary} strokeWidth={2.5} />
+                  <XIcon size={13} color={C.textSecondary} weight="bold" />
                 </Pressable>
               </View>
 
               {/* Boarding pass hero */}
               <View style={styles.bpHero}>
                 <View style={styles.bpIconWrap}>
-                  <Plane size={28} color={C.teal} strokeWidth={1.5} />
+                  <AirplaneTilt size={28} color={C.teal} weight="light" />
                 </View>
                 <Text style={styles.bpTitle}>Join a Trip</Text>
                 <Text style={styles.bpSub}>Enter your boarding code to unlock your itinerary</Text>
@@ -557,8 +558,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               <View style={styles.modeTabs}>
                 {([
                   { key: "pin" as const, icon: Hash, label: "PIN" },
-                  { key: "qr" as const, icon: ScanLine, label: "Scan" },
-                  { key: "link" as const, icon: Link2, label: "Link" },
+                  { key: "qr" as const, icon: Scan, label: "Scan" },
+                  { key: "link" as const, icon: LinkIcon, label: "Link" },
                 ]).map(({ key, icon: Ic, label }) => {
                   const active = entryMode === key;
                   return (
@@ -573,7 +574,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                         setEntryMode(key);
                       }}
                     >
-                      <Ic size={14} color={active ? C.teal : C.textTertiary} strokeWidth={1.8} />
+                      <Ic size={14} color={active ? C.teal : C.textTertiary} weight="regular" />
                       <Text style={[styles.modeTabText, active && { color: C.textPrimary }]}>{label}</Text>
                     </Pressable>
                   );
@@ -719,11 +720,11 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             <Text style={styles.countdownNumber}>{days}</Text>
           )}
           <View style={styles.countdownMeta}>
-            <MapPin size={11} color={C.teal} strokeWidth={2} />
+            <MapPin size={11} color={C.teal} weight="regular" />
             <Text style={styles.countdownDest} numberOfLines={1}>
               {(nextTrip.destination || nextTrip.name).toUpperCase()}
             </Text>
-            <ArrowUpRight size={11} color={C.textSecondary} strokeWidth={2} />
+            <ArrowUpRight size={11} color={C.textSecondary} weight="regular" />
           </View>
         </ScalePress>
       ) : (
@@ -737,7 +738,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             <Text style={styles.countdownDest} numberOfLines={1}>
               Tap to join a trip
             </Text>
-            <ArrowUpRight size={11} color={C.textSecondary} strokeWidth={2} />
+            <ArrowUpRight size={11} color={C.textSecondary} weight="regular" />
           </View>
         </ScalePress>
       )}
@@ -959,19 +960,19 @@ function UpcomingCard({ trip }: { trip: Trip }) {
         <View style={styles.meta}>
           {trip.destination ? (
             <>
-              <MapPin size={9} color={C.teal} strokeWidth={1.8} />
+              <MapPin size={9} color={C.teal} weight="regular" />
               <Text style={styles.metaText}>{trip.destination}</Text>
               <Text style={styles.metaDot}>·</Text>
             </>
           ) : null}
-          <CalendarDays size={9} color={C.textTertiary} strokeWidth={1.8} />
+          <CalendarDots size={9} color={C.textTertiary} weight="regular" />
           <Text style={styles.metaText}>
             {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </Text>
           {trip.paxCount ? (
             <>
               <Text style={styles.metaDot}>·</Text>
-              <Users size={9} color={C.textTertiary} strokeWidth={1.8} />
+              <Users size={9} color={C.textTertiary} weight="regular" />
               <Text style={styles.metaText}>{trip.paxCount}</Text>
             </>
           ) : null}
@@ -980,7 +981,7 @@ function UpcomingCard({ trip }: { trip: Trip }) {
       <View style={styles.daysPill}>
         <Text style={styles.daysText}>{days <= 0 ? "Today" : `${days}d`}</Text>
       </View>
-      <ArrowUpRight size={14} color={C.textTertiary} strokeWidth={1.5} />
+      <ArrowUpRight size={14} color={C.textTertiary} weight="light" />
     </ScalePress>
     </Link>
     </ContextMenu>
@@ -1021,9 +1022,9 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
   const { C } = useTheme();
   const router = useRouter();
   const color = (C as Record<string, string>)[ev.type] ?? C.teal;
-  const Icon  = ev.type === "hotel" ? Hotel
-    : ev.type === "dining" ? Utensils
-    : ev.type === "flight" ? Plane
+  const Icon  = ev.type === "hotel" ? Bed
+    : ev.type === "dining" ? ForkKnife
+    : ev.type === "flight" ? AirplaneTilt
     : Compass;
 
   const styles = useMemo(() => makeSpotlightCardStyles(C, color), [C, color]);
@@ -1039,7 +1040,7 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
         <CachedImage uri={ev.image} style={styles.img} />
       ) : (
         <View style={styles.imgPlaceholder}>
-          <Icon size={22} color={color} strokeWidth={1.5} style={{ opacity: 0.5 }} />
+          <Icon size={22} color={color} weight="light" style={{ opacity: 0.5 }} />
         </View>
       )}
 
@@ -1059,13 +1060,13 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
         <View style={styles.infoRow}>
           {ev.time ? (
             <View style={styles.infoChip}>
-              <Clock size={11} color={C.textTertiary} strokeWidth={2} />
+              <Clock size={11} color={C.textTertiary} weight="regular" />
               <Text style={styles.infoText}>{ev.time}</Text>
             </View>
           ) : null}
           {ev.location ? (
             <View style={styles.infoChip}>
-              <MapPin size={11} color={C.textTertiary} strokeWidth={2} />
+              <MapPin size={11} color={C.textTertiary} weight="regular" />
               <Text style={styles.infoText} numberOfLines={1}>{ev.location}</Text>
             </View>
           ) : null}
@@ -1143,7 +1144,7 @@ function TripRow({ trip }: { trip: Trip }) {
           width: 72,
         }}
       >
-        <Share2 size={18} color="#000" strokeWidth={2} />
+        <ShareNetwork size={18} color="#000" weight="regular" />
         <Text style={{ color: "#000", fontSize: 11, fontWeight: "700", marginTop: 4 }}>Share</Text>
       </Pressable>
     </View>
@@ -1178,7 +1179,7 @@ function TripRow({ trip }: { trip: Trip }) {
         ) : null}
         <Text style={styles.rowName} numberOfLines={2}>{trip.name}</Text>
         <View style={styles.rowDateRow}>
-          <CalendarDays size={9} color={C.teal} strokeWidth={1.8} />
+          <CalendarDots size={9} color={C.teal} weight="regular" />
           <Text style={styles.rowDate}>
             {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             {" – "}
@@ -1202,7 +1203,7 @@ function TripRow({ trip }: { trip: Trip }) {
           </Text>
         </View>
       )}
-      <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} style={{ marginLeft: 2 }} />
+      <CaretRight size={14} color={C.textTertiary} weight="light" style={{ marginLeft: 2 }} />
     </ScalePress>
     </Link>
     </ContextMenu>
@@ -1289,7 +1290,7 @@ export default function HomeScreen() {
         {/* ── Offline banner ── */}
         {offline && trips.length > 0 && (
           <View style={styles.offlineBanner}>
-            <WifiOff size={14} color={C.textTertiary} strokeWidth={2} />
+            <WifiSlash size={14} color={C.textTertiary} weight="regular" />
             <Text style={styles.offlineText}>You're offline. Showing saved trips.</Text>
           </View>
         )}
@@ -1367,7 +1368,7 @@ export default function HomeScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Open trip to add events"
                 >
-                  <Compass size={22} color={C.textTertiary} strokeWidth={1.5} />
+                  <Compass size={22} color={C.textTertiary} weight="light" />
                   <Text style={styles.spotEmptyText}>Open trip to add events</Text>
                 </Pressable>
               </FadeIn>
@@ -1400,7 +1401,7 @@ export default function HomeScreen() {
         {ready && trips.length === 0 && (
           offline ? (
             <View style={styles.emptyState}>
-              <WifiOff size={48} color={C.textTertiary} strokeWidth={1.2} />
+              <WifiSlash size={48} color={C.textTertiary} weight="thin" />
               <Text style={styles.emptyTitle}>You're offline</Text>
               <Text style={styles.emptyText}>
                 Your trips will appear here once you're back online.

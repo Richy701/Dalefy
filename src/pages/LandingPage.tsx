@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Menu, MapPin, Plane, Hotel, ChevronLeft, ChevronRight, Calendar, Users } from "lucide-react";
+import { ArrowRight, List, MapPin, AirplaneTilt, Bed, CaretLeft, CaretRight, Calendar, Users } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { default as MapboxMap, Source, Layer, Marker } from "react-map-gl/mapbox";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -361,7 +361,7 @@ function LandingGlobe({ onReady }: { onReady?: (api: { flyTo: (idx: number) => v
               style={{ transform: `rotate(${planePos.bearing - 45}deg)` }}
               className="drop-shadow-[0_0_6px_rgba(11,210,181,0.6)]"
             >
-              <Plane className="h-4 w-4 text-brand fill-brand" />
+              <AirplaneTilt className="h-4 w-4 text-brand fill-brand" />
             </div>
           </Marker>
         )}
@@ -433,11 +433,11 @@ function LandingGlobe({ onReady }: { onReady?: (api: { flyTo: (idx: number) => v
                   </div>
                   <div className="flex items-center gap-2.5 px-3 py-1.5 border-t border-white/[0.06] bg-white/[0.02]">
                     <div className="flex items-center gap-1">
-                      <Plane className="h-2.5 w-2.5 text-brand" />
+                      <AirplaneTilt className="h-2.5 w-2.5 text-brand" />
                       <span className="text-[9px] font-bold text-[#999]">{dest.flights}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Hotel className="h-2.5 w-2.5 text-brand" />
+                      <Bed className="h-2.5 w-2.5 text-brand" />
                       <span className="text-[9px] font-bold text-[#999]">{dest.hotels}</span>
                     </div>
                   </div>
@@ -515,7 +515,7 @@ function GlobeSection({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElemen
               aria-label="Previous destination"
               className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-white/[0.06] active:bg-white/[0.1] text-[#888] hover:text-white transition-colors cursor-pointer"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <CaretLeft className="h-4 w-4" />
             </button>
 
             <div className="min-w-[120px] text-center select-none">
@@ -532,7 +532,7 @@ function GlobeSection({ reveal }: { reveal: { ref: React.RefObject<HTMLDivElemen
               aria-label="Next destination"
               className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-white/[0.06] active:bg-white/[0.1] text-[#888] hover:text-white transition-colors cursor-pointer"
             >
-              <ChevronRight className="h-4 w-4" />
+              <CaretRight className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -594,7 +594,7 @@ export function LandingPage() {
                   aria-label="Open menu"
                   className="h-10 w-10 flex items-center justify-center text-[#888] hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/[0.04]"
                 >
-                  <Menu className="h-5 w-5" />
+                  <List className="h-5 w-5" />
                 </button>
               </SheetTrigger>
               <SheetContent side="right" className="bg-[#0a0a0a] border-white/[0.04] w-64 p-0">

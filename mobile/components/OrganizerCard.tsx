@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
-import { Phone, Mail, User } from "lucide-react-native";
+import { Phone, Envelope, User } from "phosphor-react-native";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { TripOrganizer } from "@/shared/types";
 
@@ -64,7 +64,7 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
               accessibilityRole="button"
               accessibilityLabel={`Call ${organizer.name}`}
             >
-              <Phone size={13} color={C.teal} strokeWidth={2} />
+              <Phone size={13} color={C.teal} weight="regular" />
               <Text style={s.actionText}>CALL</Text>
             </Pressable>
           )}
@@ -75,7 +75,7 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
               accessibilityRole="button"
               accessibilityLabel={`Email ${organizer.name}`}
             >
-              <Mail size={13} color={C.teal} strokeWidth={2} />
+              <Envelope size={13} color={C.teal} weight="regular" />
               <Text style={s.actionText}>EMAIL</Text>
             </Pressable>
           )}

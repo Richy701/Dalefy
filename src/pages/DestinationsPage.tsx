@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Calendar as LucideCalendar, Plane, Hotel, Compass, Utensils, Globe, ChevronLeft, ChevronRight } from "lucide-react";
+import { MagnifyingGlass, MapPin, Calendar as LucideCalendar, AirplaneTilt, Bed, Compass, ForkKnife, Globe, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl";
 import { useTrips } from "@/context/TripsContext";
@@ -262,7 +262,7 @@ export function DestinationsPage() {
       <PageHeader
         left={destinations.length > 0 ? (
           <div className="max-w-full sm:max-w-md w-full relative group">
-            <Search className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input
               id="search-destinations"
@@ -403,7 +403,7 @@ export function DestinationsPage() {
                       onClick={handlePrev}
                       className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <ChevronLeft className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
+                      <CaretLeft className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
                     </button>
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-[#888] px-1 min-w-[60px] text-center truncate">
                       {mapPins[activeIdx]?.name?.split(",")[0] || `${activeIdx + 1}/${mapPins.length}`}
@@ -412,7 +412,7 @@ export function DestinationsPage() {
                       onClick={handleNext}
                       className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <ChevronRight className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
+                      <CaretRight className="h-4 w-4 text-slate-600 dark:text-[#aaa]" />
                     </button>
                   </div>
                 </div>
@@ -458,13 +458,13 @@ export function DestinationsPage() {
                 <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-[#1a1a1a] bg-slate-50 dark:bg-[#0a0a0a]">
                   {pin.types.flights > 0 && (
                     <div className="flex items-center gap-1">
-                      <Plane className="h-2.5 w-2.5" style={{ color: ACCENT }} />
+                      <AirplaneTilt className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                       <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.flights}</span>
                     </div>
                   )}
                   {pin.types.hotels > 0 && (
                     <div className="flex items-center gap-1">
-                      <Hotel className="h-2.5 w-2.5" style={{ color: ACCENT }} />
+                      <Bed className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                       <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.hotels}</span>
                     </div>
                   )}
@@ -476,7 +476,7 @@ export function DestinationsPage() {
                   )}
                   {pin.types.dining > 0 && (
                     <div className="flex items-center gap-1">
-                      <Utensils className="h-2.5 w-2.5" style={{ color: ACCENT }} />
+                      <ForkKnife className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                       <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{pin.types.dining}</span>
                     </div>
                   )}
@@ -525,13 +525,13 @@ export function DestinationsPage() {
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Plane className="h-2.5 w-2.5 text-white/90" />
+                        <AirplaneTilt className="h-2.5 w-2.5 text-white/90" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.flights}</span>
                       </div>
                     )}
                     {dest.types.hotels > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Hotel className="h-2.5 w-2.5 text-brand" />
+                        <Bed className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.hotels}</span>
                       </div>
                     )}
@@ -543,7 +543,7 @@ export function DestinationsPage() {
                     )}
                     {dest.types.dining > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
-                        <Utensils className="h-2.5 w-2.5 text-brand" />
+                        <ForkKnife className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.dining}</span>
                       </div>
                     )}

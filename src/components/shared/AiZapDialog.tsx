@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, ChartColumn, Lightbulb, Sparkles, FileText, Loader2 } from "lucide-react";
+import { Lightning, ChartBar, Lightbulb, Sparkle, FileText, SpinnerGap } from "@phosphor-icons/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useNotifications } from "@/context/NotificationContext";
 
@@ -21,9 +21,9 @@ interface AiZapDialogProps {
 }
 
 const AI_ACTIONS = [
-  { id: "optimize", label: "Tighten the Schedule", description: "Cut travel gaps and make the itinerary flow better", icon: Sparkles },
+  { id: "optimize", label: "Tighten the Schedule", description: "Cut travel gaps and make the itinerary flow better", icon: Sparkle },
   { id: "suggest", label: "Suggest Things to Do", description: "Find activities and experiences at each stop", icon: Lightbulb },
-  { id: "budget", label: "Estimate the Cost", description: "Get a rough cost breakdown per person for this trip", icon: ChartColumn },
+  { id: "budget", label: "Estimate the Cost", description: "Get a rough cost breakdown per person for this trip", icon: ChartBar },
   { id: "summary", label: "Write a Trip Summary", description: "Create a short overview you can share with the group", icon: FileText },
 ];
 
@@ -51,7 +51,7 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
         <SheetHeader className="p-6 border-b border-slate-200 dark:border-[#1f1f1f] text-left">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
-              <Zap className="h-5 w-5 text-black" />
+              <Lightning className="h-5 w-5 text-black" />
             </div>
             <div>
               <SheetTitle className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">AI Assistant</SheetTitle>
@@ -73,7 +73,7 @@ export function AiZapDialog({ open, onOpenChange }: AiZapDialogProps) {
               >
                 <div className="flex items-start gap-4">
                   <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0 group-hover:bg-brand group-hover:text-black transition-colors">
-                    {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
+                    {isLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wide">{action.label}</p>

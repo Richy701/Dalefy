@@ -1,4 +1,4 @@
-import { Plane, Hotel, Compass, Utensils, Car } from "lucide-react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car } from "@phosphor-icons/react";
 import type { TravelEvent } from "@/types";
 
 function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
@@ -16,10 +16,10 @@ export function DockBar({ onAddEvent }: { onAddEvent: (type: TravelEvent["type"]
   return (
     <div className="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-300 max-w-[calc(100vw-2rem)]">
       <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] p-1.5 sm:p-2 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex items-center gap-0.5 sm:gap-1 ring-1 ring-slate-900/5 dark:ring-white/5 shadow-xl overflow-x-auto">
-        <DockButton icon={<Plane className="h-4 w-4" />} label="Flight" onClick={() => onAddEvent("flight")} />
-        <DockButton icon={<Hotel className="h-4 w-4" />} label="Hotel" onClick={() => onAddEvent("hotel")} />
+        <DockButton icon={<AirplaneTilt className="h-4 w-4" />} label="Flight" onClick={() => onAddEvent("flight")} />
+        <DockButton icon={<Bed className="h-4 w-4" />} label="Hotel" onClick={() => onAddEvent("hotel")} />
         <DockButton icon={<Compass className="h-4 w-4" />} label="Activity" onClick={() => onAddEvent("activity")} />
-        <DockButton icon={<Utensils className="h-4 w-4" />} label="Dining" onClick={() => onAddEvent("dining")} />
+        <DockButton icon={<ForkKnife className="h-4 w-4" />} label="Dining" onClick={() => onAddEvent("dining")} />
         <DockButton icon={<Car className="h-4 w-4" />} label="Transfer" onClick={() => onAddEvent("transfer")} />
       </div>
     </div>

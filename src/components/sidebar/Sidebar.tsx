@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Users, Globe, ChartPie, Images,
-  LogOut, ArrowUpRight, Plus, Upload, FileDown,
-  Plane, Clock, CalendarDays, Map,
-} from "lucide-react";
+  SquaresFour, Users, Globe, ChartPie, Images,
+  SignOut, ArrowUpRight, Plus, Upload, FileArrowDown,
+  AirplaneTilt, Clock, CalendarDots, MapTrifold,
+} from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { useDemo } from "@/hooks/useDemo";
@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: SquaresFour, label: "Dashboard", path: "/" },
   { icon: Users,           label: "Travelers",   path: "/travelers" },
   { icon: Globe,           label: "Destinations", path: "/destinations" },
   { icon: Images,          label: "Media",        path: "/media" },
@@ -74,7 +74,7 @@ function UserFooter({ onSignOut }: { onSignOut: () => void }) {
             onClick={onSignOut}
             className="h-7 w-7 rounded-lg flex items-center justify-center text-[#444] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
           >
-            <LogOut className="h-3 w-3" />
+            <SignOut className="h-3 w-3" />
           </TooltipTrigger>
           <TooltipContent side="top">Sign out</TooltipContent>
         </Tooltip>
@@ -212,10 +212,10 @@ export function AppSidebar() {
               <SidebarGroupContent>
                 <div className="grid grid-cols-2 gap-1.5 px-2">
                   {[
-                    { label: "Trips", value: stats.total, icon: Map },
-                    { label: "Active", value: stats.active, icon: Plane },
+                    { label: "Trips", value: stats.total, icon: MapTrifold },
+                    { label: "Active", value: stats.active, icon: AirplaneTilt },
                     { label: "Upcoming", value: stats.upcoming, icon: Clock },
-                    { label: "Days", value: stats.totalDays, icon: CalendarDays },
+                    { label: "Days", value: stats.totalDays, icon: CalendarDots },
                   ].map((s) => (
                     <div
                       key={s.label}
@@ -280,7 +280,7 @@ export function AppSidebar() {
                   {[
                     { label: "New Trip", icon: Plus, action: () => navigate("/dashboard") },
                     { label: "Upload", icon: Upload, action: () => navigate("/media") },
-                    { label: "Export", icon: FileDown, action: () => navigate("/reports") },
+                    { label: "Export", icon: FileArrowDown, action: () => navigate("/reports") },
                   ].map((a) => (
                     <Tooltip key={a.label}>
                       <TooltipTrigger asChild>

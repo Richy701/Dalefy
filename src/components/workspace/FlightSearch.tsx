@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plane, ArrowRight, CircleCheck, Calendar as CalendarIcon, Hash, Route } from "lucide-react";
+import { SpinnerGap, AirplaneTilt, ArrowRight, CheckCircle, Calendar as CalendarIcon, Hash, Path } from "@phosphor-icons/react";
 import { searchFlights, lookupFlight, type FlightResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -91,7 +91,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               Number
             </button>
             <button type="button" onClick={() => setMode("route")} className={tabCls(mode === "route")}>
-              <Route className="h-2.5 w-2.5" />
+              <Path className="h-2.5 w-2.5" />
               Route
             </button>
           </div>
@@ -118,7 +118,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               </Popover>
             </div>
             <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0">
-              {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Plane className="h-4 w-4 sm:h-3 sm:w-3" />}
+              {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <AirplaneTilt className="h-4 w-4 sm:h-3 sm:w-3" />}
               Lookup
             </button>
           </div>
@@ -147,7 +147,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               </Popover>
             </div>
             <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0">
-              {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Plane className="h-4 w-4 sm:h-3 sm:w-3" />}
+              {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <AirplaneTilt className="h-4 w-4 sm:h-3 sm:w-3" />}
               Search
             </button>
           </div>
@@ -172,7 +172,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               {f.logo ? (
                 <img src={f.logo} alt={f.airline} className="h-5 w-5 object-contain shrink-0" />
               ) : (
-                <Plane className="h-4 w-4 text-brand shrink-0" />
+                <AirplaneTilt className="h-4 w-4 text-brand shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
@@ -191,7 +191,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               </div>
               <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                 {f.price > 0 && <p className="text-sm font-black text-slate-900 dark:text-white">${f.price}</p>}
-                {selected === f.flightNum && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
+                {selected === f.flightNum && <CheckCircle className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

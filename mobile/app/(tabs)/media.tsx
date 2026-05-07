@@ -8,9 +8,9 @@ import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  Images, Play, Plus, Upload, Camera, X, Trash2,
-  Image as LucideImage, Film, MapPin, ChevronRight, Aperture,
-} from "lucide-react-native";
+  Images, Play, Plus, Upload, Camera, X, Trash,
+  Image as PhosphorImage, FilmStripStrip, MapPin, CaretRight, Aperture,
+} from "phosphor-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScalePress } from "@/components/ScalePress";
@@ -92,7 +92,7 @@ function StatPill({ icon: Icon, value, label, C }: {
       backgroundColor: `${C.teal}12`, borderRadius: R.full,
       paddingHorizontal: 12, paddingVertical: 7,
     }}>
-      <Icon size={13} color={C.teal} strokeWidth={2} />
+      <Icon size={13} color={C.teal} weight="regular" />
       <Text style={{
         fontSize: 18, fontWeight: T.bold, color: C.textPrimary,
         letterSpacing: -0.5,
@@ -169,7 +169,7 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
                   marginTop: 2,
                 }}>{t.media?.length ?? 0} items</Text>
               </View>
-              <ChevronRight size={16} color={C.textTertiary} strokeWidth={1.5} />
+              <CaretRight size={16} color={C.textTertiary} weight="light" />
             </Pressable>
           ))}
         </ScrollView>
@@ -209,7 +209,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
         <Image source={{ uri: item.url }} style={{ width: SCREEN_W, height: "100%" }} resizeMode="contain" />
       ) : (
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
-          <Play size={28} color="#fff" strokeWidth={2} fill="#fff" />
+          <Play size={28} color="#fff" weight="fill" />
         </View>
       )}
     </View>
@@ -245,7 +245,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
               onPress={onClose}
               style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
             >
-              <X size={18} color="#fff" strokeWidth={2} />
+              <X size={18} color="#fff" weight="regular" />
             </Pressable>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: "rgba(255,255,255,0.6)" }}>
@@ -255,7 +255,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
                 onPress={() => onDelete(current)}
                 style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(239,68,68,0.3)", alignItems: "center", justifyContent: "center" }}
               >
-                <Trash2 size={16} color="#ef4444" strokeWidth={2} />
+                <Trash size={16} color="#ef4444" weight="regular" />
               </Pressable>
             </View>
           </View>
@@ -347,7 +347,7 @@ function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C
             width: isHero ? 52 : 32, height: isHero ? 52 : 32, borderRadius: R.full,
             backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center",
           }}>
-            <Play size={isHero ? 20 : 14} color="#fff" strokeWidth={2} fill="#fff" />
+            <Play size={isHero ? 20 : 14} color="#fff" weight="fill" />
           </View>
         </View>
       )}
@@ -361,8 +361,8 @@ function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C
           paddingHorizontal: 8, paddingVertical: 4,
         }}>
           {item.type === "image"
-            ? <LucideImage size={10} color="#fff" strokeWidth={2} />
-            : <Film size={10} color="#fff" strokeWidth={2} />}
+            ? <PhosphorImage size={10} color="#fff" weight="regular" />
+            : <FilmStrip size={10} color="#fff" weight="regular" />}
           <Text style={{
             fontSize: 9, fontWeight: T.bold, color: "#fff",
             letterSpacing: 0.5, textTransform: "uppercase",
@@ -623,7 +623,7 @@ export default function MediaScreen() {
               style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
             >
-              <Plus size={16} color="#000" strokeWidth={2.5} />
+              <Plus size={16} color="#000" weight="bold" />
             </Pressable>
           )}
         </View>
@@ -651,14 +651,14 @@ export default function MediaScreen() {
             <View style={styles.heroContent}>
               {heroTrip?.destination && (
                 <View style={styles.heroLocRow}>
-                  <MapPin size={10} color={C.teal} strokeWidth={2} />
+                  <MapPin size={10} color={C.teal} weight="regular" />
                   <Text style={styles.heroLocText}>{heroTrip.destination.toUpperCase()}</Text>
                 </View>
               )}
 
               <View style={styles.statRow}>
-                <StatPill icon={LucideImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
-                <StatPill icon={Film} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
+                <StatPill icon={PhosphorImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
+                <StatPill icon={FilmStrip} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
               </View>
             </View>
           </View>
@@ -721,7 +721,7 @@ export default function MediaScreen() {
               style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1, marginTop: S.sm }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
             >
-              <Aperture size={15} color="#000" strokeWidth={2.5} />
+              <Aperture size={15} color="#000" weight="bold" />
               <Text style={styles.uploadFabText}>Upload</Text>
             </Pressable>
           </View>
@@ -753,7 +753,7 @@ export default function MediaScreen() {
                       style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
                       onPress={() => handleUploadToTrip(trip.id)}
                     >
-                      <Camera size={14} color={C.teal} strokeWidth={2} />
+                      <Camera size={14} color={C.teal} weight="regular" />
                     </Pressable>
                   </View>
 

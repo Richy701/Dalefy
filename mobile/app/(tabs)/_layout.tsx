@@ -10,11 +10,11 @@ const TABS: {
   materialIcon: keyof typeof MaterialIcons.glyphMap;
   hidden?: boolean;
 }[] = [
-  { name: "index",        label: "Home",    materialIcon: "home"         },
-  { name: "destinations", label: "World",   materialIcon: "public"       },
-  { name: "itinerary",    label: "Plan",    materialIcon: "event",        hidden: true },
-  { name: "media",        label: "Gallery", materialIcon: "photo-camera" },
-  { name: "profile",      label: "Me",      materialIcon: "person"       },
+  { name: "index",        label: "Home",         materialIcon: "home"         },
+  { name: "destinations", label: "Destinations", materialIcon: "public"       },
+  { name: "itinerary",    label: "Schedule",     materialIcon: "event",        hidden: true },
+  { name: "media",        label: "Gallery",      materialIcon: "photo-camera" },
+  { name: "profile",      label: "Profile",      materialIcon: "person"       },
 ];
 
 // iOS: use NativeTabs for liquid glass + SF Symbols

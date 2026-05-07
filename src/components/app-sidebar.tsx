@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@phosphor-icons/react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";

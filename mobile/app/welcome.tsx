@@ -11,7 +11,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, ArrowLeft, Camera, User, Building2, Check } from "lucide-react-native";
+import { ArrowRight, ArrowLeft, Camera, User, Buildings, Check } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -241,7 +241,7 @@ export default function WelcomeScreen() {
               style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]}
             >
               <Text style={styles.ctaText}>Get Started</Text>
-              <ArrowRight size={16} color="#000" strokeWidth={2.5} />
+              <ArrowRight size={16} color="#000" weight="bold" />
             </Pressable>
           </Animated.View>
         </View>
@@ -271,7 +271,7 @@ export default function WelcomeScreen() {
             {/* Icon */}
             <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.avatarSection}>
               <View style={[styles.iconCircle, { backgroundColor: C.tealDim }]}>
-                <Building2 size={32} color={C.teal} strokeWidth={1.2} />
+                <Buildings size={32} color={C.teal} weight="thin" />
               </View>
             </Animated.View>
 
@@ -324,7 +324,7 @@ export default function WelcomeScreen() {
               <ArrowRight
                 size={16}
                 color={agencyCode.trim() ? "#000" : C.textTertiary}
-                strokeWidth={2.5}
+                weight="bold"
               />
             </Pressable>
             <Pressable onPress={skipAgency} style={styles.skipBtn}>
@@ -382,11 +382,11 @@ export default function WelcomeScreen() {
                 {avatar ? (
                   <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
                 ) : (
-                  <User size={36} color={C.textTertiary} strokeWidth={1.2} />
+                  <User size={36} color={C.textTertiary} weight="thin" />
                 )}
               </View>
               <View style={styles.cameraBadge}>
-                <Camera size={12} color="#fff" strokeWidth={2} />
+                <Camera size={12} color="#fff" weight="regular" />
               </View>
             </Pressable>
             <Text style={styles.avatarHint}>
@@ -433,7 +433,7 @@ export default function WelcomeScreen() {
               style={styles.backRow}
               accessibilityRole="button"
             >
-              <ArrowLeft size={14} color={C.textTertiary} strokeWidth={2} />
+              <ArrowLeft size={14} color={C.textTertiary} weight="regular" />
               <Text style={styles.skipText}>Back</Text>
             </Pressable>
           )}
@@ -452,7 +452,7 @@ export default function WelcomeScreen() {
               {isEdit ? "Save" : "Get Started"}
             </Text>
             {!isEdit && (
-              <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} strokeWidth={2.5} />
+              <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
             )}
           </Pressable>
         </Animated.View>

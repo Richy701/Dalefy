@@ -12,8 +12,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  ChevronLeft, Sun, Moon, Map as MapIcon, Loader2, Plus, Plane, Hotel, Compass, Utensils, Car, Camera, CalendarDays, Users, MapPin, RefreshCcw, Wand2, Search, X, Upload, ChevronRight, Video, Image as ImageIcon2, Trash2, Pencil, Send, Share2, Link2, Check, FileText, Paperclip, Tag, Phone, Mail, Building2, ChevronDown, Eye, MailPlus, EllipsisVertical, ListChecks
-} from "lucide-react";
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EnvelopeOpen, DotsThreeVertical, ListChecks
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -727,7 +727,7 @@ export function WorkspacePage() {
       {/* Header */}
       <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-50 shadow-xl">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-[colors,transform] shadow-sm shrink-0"><ChevronLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden sm:block" />
           <div className="flex flex-col min-w-0 hidden sm:flex">
             <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate">{trip.name}</h2>
@@ -834,7 +834,7 @@ export function WorkspacePage() {
             <Pencil className="h-4 w-4" />
           </button>
           <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" />
           </button>
           <button onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showTasks ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
             <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">{showTasks ? "HIDE TASKS" : "TASKS"}</span>
@@ -847,7 +847,7 @@ export function WorkspacePage() {
             onClick={handleShareTrip}
             className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
           >
-            <Share2 className="h-4 w-4" />
+            <ShareNetwork className="h-4 w-4" />
           </button>
           <button
             aria-label="Preview itinerary"
@@ -861,16 +861,16 @@ export function WorkspacePage() {
             onClick={handleSendEmail}
             className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
           >
-            <MailPlus className="h-4 w-4" />
+            <EnvelopeOpen className="h-4 w-4" />
           </button>
           <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
+            {exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
           </Button>
 
           {/* Mobile overflow menu */}
           <DropdownMenu>
             <DropdownMenuTrigger aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
-                <EllipsisVertical className="h-4 w-4" />
+                <DotsThreeVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
               <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) setShowMap(false); }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
@@ -890,10 +890,10 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
               <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
-                <Share2 className="h-4 w-4" /> Share Link
+                <ShareNetwork className="h-4 w-4" /> Share Link
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
-                <MailPlus className="h-4 w-4" /> Send to Client
+                <EnvelopeOpen className="h-4 w-4" /> Send to Client
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <FileText className="h-4 w-4" /> Export PDF
@@ -906,7 +906,7 @@ export function WorkspacePage() {
                 <>
                   <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
                   <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
-                    <Trash2 className="h-4 w-4" /> Delete Trip
+                    <Trash className="h-4 w-4" /> Delete Trip
                   </DropdownMenuItem>
                 </>
               )}
@@ -914,7 +914,7 @@ export function WorkspacePage() {
           </DropdownMenu>
 
           <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
-            {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
+            {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
           </Button>
         </div>
       </header>
@@ -936,7 +936,7 @@ export function WorkspacePage() {
                 const typeIcons = [
                   ...new Set(dayEvents.map(e => e.type)),
                 ].slice(0, 4);
-                const TypeIcon = (t: string) => t === "flight" ? Plane : t === "hotel" ? Hotel : t === "dining" ? Utensils : t === "transfer" ? Car : Compass;
+                const TypeIcon = (t: string) => t === "flight" ? AirplaneTilt : t === "hotel" ? Bed : t === "dining" ? ForkKnife : t === "transfer" ? Car : Compass;
                 const isActive = i === activeDayIdx;
                 const dayPeers = presenceUsers.filter(p => p.activeDay === date);
                 return (
@@ -1020,7 +1020,7 @@ export function WorkspacePage() {
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
-                    <CalendarDays className="h-3 w-3 text-brand" />
+                    <CalendarDots className="h-3 w-3 text-brand" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">
                       {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
@@ -1116,7 +1116,7 @@ export function WorkspacePage() {
                             <div className="flex items-center gap-2 shrink-0">
                               {trip.organizer.email && (
                                 <a href={`mailto:${trip.organizer.email}`} className="h-10 px-4 rounded-xl bg-brand/10 border border-brand/20 flex items-center gap-2 text-brand hover:bg-brand/20 transition-colors">
-                                  <Mail className="h-3.5 w-3.5" />
+                                  <Envelope className="h-3.5 w-3.5" />
                                   <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Email</span>
                                 </a>
                               )}
@@ -1160,7 +1160,7 @@ export function WorkspacePage() {
                                         <p className="text-xs text-slate-500 dark:text-[#888] font-medium line-clamp-2 mt-1 leading-relaxed">{item.body}</p>
                                       )}
                                     </div>
-                                    <ChevronRight className="h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1" />
+                                    <CaretRight className="h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1" />
                                   </div>
                                 </button>
                               ))}
@@ -1292,7 +1292,7 @@ export function WorkspacePage() {
                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Add Travelers</h3>
                     </div>
                     <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555]" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555]" />
                       <input
                         value={peopleSearch}
                         onChange={e => setPeopleSearch(e.target.value)}
@@ -1423,10 +1423,10 @@ export function WorkspacePage() {
                 {/* Category tabs */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-[#1f1f1f]">
                   {([
-                    { id: "flight", label: "Flight", icon: Plane },
-                    { id: "hotel", label: "Hotel", icon: Hotel },
+                    { id: "flight", label: "Flight", icon: AirplaneTilt },
+                    { id: "hotel", label: "Hotel", icon: Bed },
                     { id: "activity", label: "Activity", icon: Compass },
-                    { id: "dining", label: "Dining", icon: Utensils },
+                    { id: "dining", label: "Dining", icon: ForkKnife },
                     { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
@@ -1489,7 +1489,7 @@ export function WorkspacePage() {
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/50 transition-colors text-left",
                           editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#888888]"
                         )}>
-                          <CalendarDays className="h-3.5 w-3.5 text-brand shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-brand shrink-0" />
                           <span className="text-sm">{editingEvent?.date ? format(parseISO(editingEvent.date), "MMM d, yyyy") : "Pick a date..."}</span>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
@@ -1600,7 +1600,7 @@ export function WorkspacePage() {
                 <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
                       <input
                         value={imageSearch}
                         onChange={e => setImageSearch(e.target.value)}
@@ -1611,7 +1611,7 @@ export function WorkspacePage() {
                     </div>
                     <button type="button" onClick={() => runImageSearch(imageSearch)}
                       className="h-9 px-3 rounded-lg bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
-                      {isSearchingImages ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                      {isSearchingImages ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {imageSearch && (
                       <button type="button" onClick={() => { setImageSearch(""); setImageResults([]); setImageSearchSource(null); }}
@@ -1630,7 +1630,7 @@ export function WorkspacePage() {
                   </div>
                   {imageIsAuto && (
                     <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
-                      <Wand2 className="h-3 w-3 text-brand" /> Auto-matching from title
+                      <MagicWand className="h-3 w-3 text-brand" /> Auto-matching from title
                     </p>
                   )}
                 </div>
@@ -1646,7 +1646,7 @@ export function WorkspacePage() {
                       </div>
                       {imageIsAuto && (
                         <div className="absolute top-2 right-2 flex items-center gap-1 bg-brand text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
-                          <Wand2 className="h-2.5 w-2.5" /> Auto
+                          <MagicWand className="h-2.5 w-2.5" /> Auto
                         </div>
                       )}
                     </>
@@ -1664,7 +1664,7 @@ export function WorkspacePage() {
                 <div className="p-3">
                   {isSearchingImages ? (
                     <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#888888]">
-                      <Loader2 className="h-4 w-4 animate-spin text-brand" />
+                      <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
                     </div>
                   ) : imageResults.length > 0 ? (
@@ -1682,11 +1682,11 @@ export function WorkspacePage() {
                         <div className="flex items-center gap-1.5 pt-1">
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
                             className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#aaa] hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
-                            <RefreshCcw className="h-3 w-3" /> Refresh
+                            <ArrowsClockwise className="h-3 w-3" /> Refresh
                           </button>
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
                             className="flex-1 h-7 rounded-lg bg-brand/10 border border-brand/40 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-brand/20 transition-colors flex items-center justify-center gap-1">
-                            Next <ChevronRight className="h-3 w-3" />
+                            Next <CaretRight className="h-3 w-3" />
                           </button>
                         </div>
                       )}
@@ -1713,7 +1713,7 @@ export function WorkspacePage() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
-                      <Search className="h-5 w-5 text-slate-300 dark:text-[#333]" />
+                      <MagnifyingGlass className="h-5 w-5 text-slate-300 dark:text-[#333]" />
                       <p className="text-[10px] text-slate-500 dark:text-[#888888] font-bold uppercase tracking-widest">Type to search images</p>
                     </div>
                   )}
@@ -1783,7 +1783,7 @@ export function WorkspacePage() {
                           </button>
                           <button type="button" onClick={() => handleRemoveDocument(i)}
                             className="h-6 w-6 rounded-md text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                            <Trash2 className="h-3 w-3" />
+                            <Trash className="h-3 w-3" />
                           </button>
                         </div>
                       ))}
@@ -1945,7 +1945,7 @@ export function WorkspacePage() {
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
                     <input
                       value={tripImageSearch}
                       onChange={e => setTripImageSearch(e.target.value)}
@@ -1961,17 +1961,17 @@ export function WorkspacePage() {
                   </button>
                   <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
                     className="h-9 px-3 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
-                    {isTripImageSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                    {isTripImageSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                   </button>
                   {tripImageResults.length > 0 && (
                     <>
                       <button type="button" aria-label="Refresh" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage)} disabled={isTripImageSearching}
                         className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                        <RefreshCcw className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
+                        <ArrowsClockwise className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
                       </button>
                       <button type="button" aria-label="Next page" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage + 1)} disabled={isTripImageSearching}
                         className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                        <ChevronRight className="h-3.5 w-3.5" />
+                        <CaretRight className="h-3.5 w-3.5" />
                       </button>
                       <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); setTripImagePage(1); setTripImageLastQuery(""); }}
                         className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
@@ -1983,7 +1983,7 @@ export function WorkspacePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                   {isTripImageSearching ? (
                     <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
-                      <Loader2 className="h-4 w-4 animate-spin text-brand" />
+                      <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                     </div>
                   ) : tripImageResults.length > 0 ? (
@@ -2035,7 +2035,7 @@ export function WorkspacePage() {
                           <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
                             {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
@@ -2049,7 +2049,7 @@ export function WorkspacePage() {
                           <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
                             {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDays className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
@@ -2187,7 +2187,7 @@ export function WorkspacePage() {
                         }}
                         className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     {/* Body textarea */}
@@ -2334,7 +2334,7 @@ export function WorkspacePage() {
                       onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
                       className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="p-4 sm:p-5">

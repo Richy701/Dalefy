@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Utensils, Flame, CircleCheck } from "lucide-react";
+import { SpinnerGap, ForkKnife, Flame, CheckCircle } from "@phosphor-icons/react";
 import { searchDining, type DiningResult } from "@/services/serpapi";
 import type { TravelEvent } from "@/types";
 
@@ -59,7 +59,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
             disabled={loading || !query}
             className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0"
           >
-            {loading ? <Loader2 className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Utensils className="h-4 w-4 sm:h-3 sm:w-3" />}
+            {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <ForkKnife className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search
           </button>
         </div>
@@ -84,7 +84,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
                 <img src={r.image} alt={r.name} className="h-10 w-14 object-cover rounded-lg shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="h-10 w-14 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
-                  <Utensils className="h-4 w-4 text-brand" />
+                  <ForkKnife className="h-4 w-4 text-brand" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -101,7 +101,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                {selected === r.name && <CircleCheck className="h-3.5 w-3.5 text-brand" />}
+                {selected === r.name && <CheckCircle className="h-3.5 w-3.5 text-brand" />}
               </div>
             </button>
           ))}

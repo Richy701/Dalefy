@@ -1,16 +1,16 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useMemo } from "react";
-import { Plane, Hotel, Compass, Utensils, Car, ChevronRight } from "lucide-react-native";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, CaretRight } from "phosphor-react-native";
 import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import type { TravelEvent } from "@/shared/types";
 import { useHaptic } from "@/hooks/useHaptic";
 import { ScalePress } from "@/components/ScalePress";
 
 const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: Plane,
-  hotel: Hotel,
+  flight: AirplaneTilt,
+  hotel: Bed,
   activity: Compass,
-  dining: Utensils,
+  dining: ForkKnife,
   transfer: Car,
 };
 
@@ -108,7 +108,7 @@ export function DaySummaryRow({
                 const Icon = TYPE_ICONS[type] ?? Compass;
                 return (
                   <View key={type} style={[s.pill, { backgroundColor: `${color}15` }]}>
-                    <Icon size={11} color={color} strokeWidth={1.8} />
+                    <Icon size={11} color={color} weight="regular" />
                     {count > 1 && <Text style={[s.pillText, { color }]}>{count}</Text>}
                   </View>
                 );
@@ -129,7 +129,7 @@ export function DaySummaryRow({
             <View style={[s.countBadge, isToday && { backgroundColor: C.tealDim, borderColor: C.tealMid }]}>
               <Text style={[s.countNum, isToday && { color: C.teal }]}>{events.length}</Text>
             </View>
-            <ChevronRight size={14} color={isToday ? C.teal : C.textTertiary} strokeWidth={2} />
+            <CaretRight size={14} color={isToday ? C.teal : C.textTertiary} weight="regular" />
           </View>
     </ScalePress>
   );

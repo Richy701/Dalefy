@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Users, Compass, Clock, Loader2, Check, ChevronDown, Plane, Terminal, DoorOpen, Info } from "lucide-react";
+import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info } from "@phosphor-icons/react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { Trip, TravelEvent } from "@/types";
@@ -70,9 +70,9 @@ function EventRow({ ev }: { ev: TravelEvent }) {
 
           {(ev.airline || ev.flightNum || ev.terminal || ev.arrTerminal || ev.status) && (
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
-              {ev.airline && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Plane className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
-              {ev.terminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><DoorOpen className="h-3 w-3" />Dep T{ev.terminal}</span>}
-              {ev.arrTerminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><DoorOpen className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
+              {ev.airline && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><AirplaneTilt className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
+              {ev.terminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Door className="h-3 w-3" />Dep T{ev.terminal}</span>}
+              {ev.arrTerminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Door className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
               {ev.status && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Info className="h-3 w-3" />{ev.status}</span>}
             </div>
           )}
@@ -129,7 +129,7 @@ function DaySection({ date, events, dayIdx }: { date: string; events: TravelEven
               {events.length} event{events.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <ChevronDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
+          <CaretDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
         </button>
         {!collapsed && (
           <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
@@ -213,7 +213,7 @@ export function SharedTripPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-brand animate-spin" />
+        <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
       </div>
     );
   }
@@ -252,7 +252,7 @@ export function SharedTripPage() {
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-              <CalendarDays className="h-3 w-3 text-white/70" />
+              <CalendarDots className="h-3 w-3 text-white/70" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
                 {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 {" - "}
@@ -304,7 +304,7 @@ export function SharedTripPage() {
                       {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
                     </p>
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-[#666] transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
+                  <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#666] transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {pickerOpen && (

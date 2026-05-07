@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
-  Loader2, ArrowRight, ArrowLeft, Eye, EyeOff, Upload, X, Check,
-  Briefcase, Users, Compass, Shield, Palette, Paintbrush,
-  Globe, MapPin, Calendar, Plane,
-} from "lucide-react";
+  SpinnerGap, ArrowRight, ArrowLeft, Eye, EyeSlash, Upload, X, Check,
+  Briefcase, Users, Compass, Shield, Palette, PaintBrush,
+  Globe, MapPin, Calendar, AirplaneTilt,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
                       : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-400 dark:text-[#555]"
                 }`}
               >
-                {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : n}
+                {done ? <Check className="h-3.5 w-3.5" weight="bold" /> : n}
               </div>
               <span className={`text-[11px] font-bold uppercase tracking-[0.12em] hidden sm:inline transition-colors ${
                 active ? "text-brand" : done ? "text-slate-500 dark:text-[#888]" : "text-slate-300 dark:text-[#444]"
@@ -83,7 +83,7 @@ function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
       <div className="h-9 w-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-        <X className="h-4 w-4 text-red-500" strokeWidth={2.5} />
+        <X className="h-4 w-4 text-red-500" weight="bold" />
       </div>
       <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex-1">{message}</p>
     </div>
@@ -135,7 +135,7 @@ function HeroBackground() {
     { icon: Globe, label: "Team workspaces" },
     { icon: MapPin, label: "Route maps" },
     { icon: Calendar, label: "Day-by-day builder" },
-    { icon: Plane, label: "Share via PIN" },
+    { icon: AirplaneTilt, label: "Share via PIN" },
   ];
 
   return (
@@ -215,7 +215,7 @@ function HeroBackground() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, delay: 0.8 + i * 0.1 }}
             >
-              <Icon className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
+              <Icon className="h-3.5 w-3.5 text-brand" weight="bold" />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">{label}</span>
             </motion.div>
           ))}
@@ -448,7 +448,7 @@ export function LoginPage() {
                 variant="outline"
                 className="w-full h-14 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
               >
-                {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
+                {googleLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
               </Button>
 
               <OrDivider />
@@ -481,7 +481,7 @@ export function LoginPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
                     >
-                      {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                      {showPassword ? <EyeSlash className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                     </button>
                   </div>
                 </InputField>
@@ -491,7 +491,7 @@ export function LoginPage() {
                   disabled={loading}
                   className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-4.5 w-4.5" /></>}
+                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-4.5 w-4.5" /></>}
                 </Button>
               </form>
 
@@ -555,7 +555,7 @@ export function LoginPage() {
                     variant="outline"
                     className="w-full h-14 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
                   >
-                    {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
+                    {googleLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
                   </Button>
 
                   <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#999] mt-8">
@@ -618,7 +618,7 @@ export function LoginPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
                       >
-                        {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                        {showPassword ? <EyeSlash className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                       </button>
                     </div>
                   </InputField>
@@ -644,7 +644,7 @@ export function LoginPage() {
                               : "bg-white dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] hover:border-slate-300 dark:hover:border-[#333]"
                           }`}
                         >
-                          <Icon className={`h-5 w-5 transition-colors ${selected ? "text-brand" : "text-slate-400 dark:text-[#666]"}`} strokeWidth={2} />
+                          <Icon className={`h-5 w-5 transition-colors ${selected ? "text-brand" : "text-slate-400 dark:text-[#666]"}`} weight="regular" />
                           <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${
                             selected ? "text-brand" : "text-slate-600 dark:text-[#999]"
                           }`}>
@@ -687,7 +687,7 @@ export function LoginPage() {
                     disabled={loading}
                     className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                   >
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-4.5 w-4.5" /></>}
+                    {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-4.5 w-4.5" /></>}
                   </Button>
                 </div>
               </form>
@@ -734,13 +734,13 @@ export function LoginPage() {
                           onClick={() => setBrandLogo("")}
                           className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-slate-800 dark:bg-[#333] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="h-3 w-3" strokeWidth={3} />
+                          <X className="h-3 w-3" weight="bold" />
                         </button>
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
                       <label className="flex items-center justify-center gap-2.5 cursor-pointer h-12 rounded-xl bg-white dark:bg-[#0a0a0a] border border-dashed border-slate-300 dark:border-[#2a2a2a] hover:border-brand/50 dark:hover:border-brand/30 transition-colors">
-                        <Upload className="h-4 w-4 text-slate-400 dark:text-[#666]" strokeWidth={2} />
+                        <Upload className="h-4 w-4 text-slate-400 dark:text-[#666]" weight="regular" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                           {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
                         </span>
@@ -803,7 +803,7 @@ export function LoginPage() {
                 {/* Live preview */}
                 <div className="relative bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden">
                   <div className="px-5 pt-3.5 pb-3 flex items-center gap-2" style={{ backgroundColor: `${brandColor}10`, borderBottom: `1px solid ${brandColor}20` }}>
-                    <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} strokeWidth={2.5} />
+                    <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} weight="bold" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: brandColor }}>
                       Client Preview
                     </span>
@@ -859,7 +859,7 @@ export function LoginPage() {
                     }}
                     className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                   >
-                    {savingBrand ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-4.5 w-4.5" /></>}
+                    {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-4.5 w-4.5" /></>}
                   </Button>
                 </div>
               </div>
@@ -875,10 +875,10 @@ export function LoginPage() {
                 className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#bbb] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer"
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <SpinnerGap className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <Compass className="h-4 w-4" strokeWidth={2} />
+                    <Compass className="h-4 w-4" weight="regular" />
                     Explore Demo
                   </>
                 )}

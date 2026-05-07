@@ -2,19 +2,19 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Upload,
-  Trash2,
-  ZoomIn,
+  Trash,
+  MagnifyingGlassPlus,
   Play,
   Images,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  CaretDown,
+  CaretLeft,
+  CaretRight,
   X,
   Image as ImageIcon,
-  Film,
+  FilmStrip,
   ArrowUpRight,
   Download,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
@@ -371,7 +371,7 @@ export function MediaPage() {
                   onClick={() => setCarouselIdx((i) => (i - 1 + carouselTrips.length) % carouselTrips.length)}
                   className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <CaretLeft className="h-3.5 w-3.5" />
                 </button>
                 <div className="flex items-center gap-1.5 px-1">
                   {carouselTrips.map((_, i) => (
@@ -390,7 +390,7 @@ export function MediaPage() {
                   onClick={() => setCarouselIdx((i) => (i + 1) % carouselTrips.length)}
                   className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
                 >
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <CaretRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
@@ -437,7 +437,7 @@ export function MediaPage() {
               ) : (
                 <span className="text-slate-400 dark:text-[#666]">Select trip</span>
               )}
-              <ChevronDown className={`h-3 w-3 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
+              <CaretDown className={`h-3 w-3 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
             </button>
 
             {tripPickerOpen && (
@@ -558,7 +558,7 @@ export function MediaPage() {
             {([
               { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
               { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
-              { key: "video" as MediaFilter, label: "Videos", icon: <Film className="h-3.5 w-3.5" /> },
+              { key: "video" as MediaFilter, label: "Videos", icon: <FilmStrip className="h-3.5 w-3.5" /> },
             ]).map((opt) => (
               <button
                 key={opt.key}
@@ -674,7 +674,7 @@ export function MediaPage() {
                   ) : (
                     <span className="text-slate-400 dark:text-[#666] flex-1 text-left">Select trip</span>
                   )}
-                  <ChevronDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
+                  <CaretDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
                 </button>
                 {tripPickerOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
@@ -752,7 +752,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
 
         {/* Type badge */}
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.15em] text-white/90 flex items-center gap-1">
-          {item.type === "image" ? <ImageIcon className="h-2.5 w-2.5" /> : <Film className="h-2.5 w-2.5" />}
+          {item.type === "image" ? <ImageIcon className="h-2.5 w-2.5" /> : <FilmStrip className="h-2.5 w-2.5" />}
           {item.type === "image" ? "Photo" : "Video"}
         </div>
 
@@ -763,7 +763,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
               onClick={() => onZoom(lbIdx)}
               className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
             >
-              <ZoomIn className="h-4 w-4" />
+              <MagnifyingGlassPlus className="h-4 w-4" />
             </button>
           )}
           <a
@@ -779,7 +779,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
             onClick={() => onDelete(item)}
             className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash className="h-4 w-4" />
           </button>
         </div>
       </div>

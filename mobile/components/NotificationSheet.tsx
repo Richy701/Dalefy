@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import ContextMenu from "@/components/ContextMenu";
-import { Bell, Trash2, Plane, PlaneLanding, PlaneTakeoff, AlertTriangle, Hotel, Utensils, CalendarDays, Car } from "lucide-react-native";
+import { Bell, Trash, AirplaneTilt, AirplaneLanding, AirplaneTakeoff, Warning, Bed, ForkKnife, CalendarDots, Car } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
@@ -89,7 +89,7 @@ export function NotificationSheet({ visible, onClose }: Props) {
           {notifications.length === 0 ? (
             <View style={styles.emptyWrap}>
               <View style={styles.emptyIcon}>
-                <Bell size={32} color={C.textDim} strokeWidth={1.2} />
+                <Bell size={32} color={C.textDim} weight="thin" />
               </View>
               <Text style={styles.emptyTitle}>No Notifications</Text>
               <Text style={styles.emptyDesc}>
@@ -118,16 +118,16 @@ export function NotificationSheet({ visible, onClose }: Props) {
 
 function NotificationIcon({ n, C }: { n: { type: string; message: string }; C: ThemeColors }) {
   const msg = n.message.toLowerCase();
-  if (n.type === "warning" || msg.includes("cancelled") || msg.includes("delayed")) return <AlertTriangle size={16} color={C.amber} strokeWidth={1.8} />;
-  if (n.type === "landed" || msg.includes("landed")) return <PlaneLanding size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "boarding" || msg.includes("boarding")) return <PlaneTakeoff size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "flight" || msg.includes("flight") || msg.includes("gate") || msg.includes("terminal")) return <Plane size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "hotel" || msg.includes("hotel") || msg.includes("check-in")) return <Hotel size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "dining" || msg.includes("dining") || msg.includes("restaurant")) return <Utensils size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "transfer" || msg.includes("transfer") || msg.includes("pickup")) return <Car size={16} color={C.teal} strokeWidth={1.8} />;
-  if (n.type === "activity") return <CalendarDays size={16} color={C.teal} strokeWidth={1.8} />;
-  if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart")) return <Plane size={16} color={C.teal} strokeWidth={1.8} />;
-  return <Bell size={16} color={C.teal} strokeWidth={1.8} />;
+  if (n.type === "warning" || msg.includes("cancelled") || msg.includes("delayed")) return <Warning size={16} color={C.amber} weight="regular" />;
+  if (n.type === "landed" || msg.includes("landed")) return <AirplaneLanding size={16} color={C.teal} weight="regular" />;
+  if (n.type === "boarding" || msg.includes("boarding")) return <AirplaneTakeoff size={16} color={C.teal} weight="regular" />;
+  if (n.type === "flight" || msg.includes("flight") || msg.includes("gate") || msg.includes("terminal")) return <AirplaneTilt size={16} color={C.teal} weight="regular" />;
+  if (n.type === "hotel" || msg.includes("hotel") || msg.includes("check-in")) return <Bed size={16} color={C.teal} weight="regular" />;
+  if (n.type === "dining" || msg.includes("dining") || msg.includes("restaurant")) return <ForkKnife size={16} color={C.teal} weight="regular" />;
+  if (n.type === "transfer" || msg.includes("transfer") || msg.includes("pickup")) return <Car size={16} color={C.teal} weight="regular" />;
+  if (n.type === "activity") return <CalendarDots size={16} color={C.teal} weight="regular" />;
+  if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart")) return <AirplaneTilt size={16} color={C.teal} weight="regular" />;
+  return <Bell size={16} color={C.teal} weight="regular" />;
 }
 
 /* ── Swipeable notification row ── */
@@ -159,7 +159,7 @@ function NotificationRow({ notification: n, C, styles, onMarkRead, onRemove }: R
           style={[styles.swipeBtn, { backgroundColor: C.red }]}
           onPress={() => { swipeRef.current?.close(); onRemove(); }}
         >
-          <Trash2 size={16} color="#fff" strokeWidth={2} />
+          <Trash size={16} color="#fff" weight="regular" />
         </Pressable>
       </View>
     );

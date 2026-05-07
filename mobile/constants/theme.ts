@@ -31,10 +31,10 @@ export const darkColors = {
   redDim: "rgba(239,68,68,0.12)",
 
   flight: "#0bd2b5",
-  hotel: "#0bd2b5",
-  activity: "#0bd2b5",
-  dining: "#0bd2b5",
-  transfer: "#0bd2b5",
+  hotel: "#a78bfa",
+  activity: "#f59e0b",
+  dining: "#fb7185",
+  transfer: "#60a5fa",
 };
 
 export const lightColors = {
@@ -66,10 +66,10 @@ export const lightColors = {
   redDim: "rgba(239,68,68,0.12)",
 
   flight: "#0ab8a0",
-  hotel: "#0ab8a0",
-  activity: "#0ab8a0",
-  dining: "#0ab8a0",
-  transfer: "#0ab8a0",
+  hotel: "#8b5cf6",
+  activity: "#d97706",
+  dining: "#e11d48",
+  transfer: "#3b82f6",
 };
 
 // Backward compat — screens not yet migrated to useTheme() will always get dark
@@ -176,9 +176,5 @@ export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
     tealMid: `rgba(${r},${g},${b},0.25)`,
     tealGlow: `rgba(${r},${g},${b},0.15)`,
     flight: hex,
-    hotel: hex,
-    activity: hex,
-    dining: hex,
-    transfer: hex,
   };
 }

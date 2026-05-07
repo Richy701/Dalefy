@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Mail, Copy, Check, X, Loader2, Link2, Users } from "lucide-react";
+import { UserPlus, Envelope, Copy, Check, X, SpinnerGap, Link, Users } from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -114,7 +114,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Email Address</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#888]" />
+                <Envelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#888]" />
                 <Input
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -129,7 +129,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 className="h-11 w-11 rounded-xl bg-brand hover:opacity-90 p-0 shadow-lg shadow-brand/20"
                 style={{ color: accentFg }}
               >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                {sending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
               </Button>
             </div>
             <div className="flex gap-1.5">
@@ -162,7 +162,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   <img src={brand.logoUrl} alt="" className="h-4 w-4 rounded-full object-contain shrink-0" />
                 ) : (
                   <div className="h-4 w-4 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: accentColor }}>
-                    <Users className="h-2.5 w-2.5" style={{ color: accentFg }} strokeWidth={2.5} />
+                    <Users className="h-2.5 w-2.5" style={{ color: accentFg }} weight="bold" />
                   </div>
                 )}
                 <span className="text-[9px] font-black uppercase tracking-[0.2em] truncate" style={{ color: accentColor }}>
@@ -201,7 +201,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-[#111] transition-colors"
                 onClick={() => handleCopy("last", lastInvite.link)}
               >
-                <Link2 className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
+                <Link className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
                 <p className="text-[10px] font-mono text-slate-400 dark:text-[#666] truncate flex-1">
                   {lastInvite.link}
                 </p>
@@ -224,7 +224,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 return (
                   <div key={invite.id} className="flex items-center gap-2 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-3 py-2.5">
                     <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                      <Mail className="h-3.5 w-3.5" />
+                      <Envelope className="h-3.5 w-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{invite.email}</p>
@@ -236,8 +236,8 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                       title="Copy invite link"
                     >
                       {isCopied
-                        ? <Check className="h-3.5 w-3.5 text-brand" strokeWidth={2.5} />
-                        : <Link2 className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
+                        ? <Check className="h-3.5 w-3.5 text-brand" weight="bold" />
+                        : <Link className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
                     </button>
                     <button
                       onClick={() => handleRevoke(invite)}

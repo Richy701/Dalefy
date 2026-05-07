@@ -2,12 +2,12 @@ import { useState, useMemo, useCallback, useRef, useEffect, type DragEvent } fro
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Plus, Search, Plane, Calendar as LucideCalendar, Trash2, ArrowUpRight,
-  EllipsisVertical, LayoutGrid, List, ExternalLink, Users,
-  MapPin, DollarSign, Briefcase, Hotel, Utensils, Compass, Globe,
-  X, Upload, Loader2, RefreshCw, ChevronRight,
-  Clock, Hash, Tag, ArrowRight, Copy, FileStack, Save
-} from "lucide-react";
+  Plus, MagnifyingGlass, AirplaneTilt, Calendar as LucideCalendar, Trash, ArrowUpRight,
+  DotsThreeVertical, GridFour, List, ArrowSquareOut, Users,
+  MapPin, CurrencyDollar, Briefcase, Bed, ForkKnife, Compass, Globe,
+  X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk
+} from "@phosphor-icons/react";
 import { STORAGE } from "@/config/storageKeys";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import NumberFlow from "@number-flow/react";
@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer } from "vaul";
 import { Calendar } from "@/components/ui/calendar";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -396,7 +396,7 @@ export function DashboardPage() {
       <PageHeader
         left={
           <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
-            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
             <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
@@ -493,7 +493,7 @@ export function DashboardPage() {
                     ))}
                   </div>
                   <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-brand/80 group-hover:text-brand transition-colors">
-                    <Plane className="h-3 w-3" />
+                    <AirplaneTilt className="h-3 w-3" />
                     {upcomingCards[0].destination || upcomingCards[0].name}
                     <ArrowUpRight className="h-2.5 w-2.5 opacity-40" />
                   </p>
@@ -624,13 +624,13 @@ export function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {(ev.airline || ev.flightNum) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
-                                  <Plane className="h-3 w-3 text-brand" strokeWidth={2} />
+                                  <AirplaneTilt className="h-3 w-3 text-brand" weight="regular" />
                                   {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
                                 </span>
                               )}
                               {ev.duration && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
-                                  <Clock className="h-3 w-3" strokeWidth={2} />
+                                  <Clock className="h-3 w-3" weight="regular" />
                                   {ev.duration}
                                 </span>
                               )}
@@ -639,14 +639,14 @@ export function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {ev.roomType && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
-                                  <Hotel className="h-3 w-3 text-brand" strokeWidth={2} />
+                                  <Bed className="h-3 w-3 text-brand" weight="regular" />
                                   {ev.roomType}
                                 </span>
                               )}
                               {(ev.checkin || ev.checkout) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
                                   {ev.checkin || "—"}
-                                  <ArrowRight className="h-2.5 w-2.5" strokeWidth={2.5} />
+                                  <ArrowRight className="h-2.5 w-2.5" weight="bold" />
                                   {ev.checkout || "—"}
                                 </span>
                               )}
@@ -655,13 +655,13 @@ export function DashboardPage() {
                             <div className="flex items-center gap-2 flex-wrap">
                               {ev.price && (
                                 <span className={cn("inline-flex items-center gap-1 text-[11px] font-bold", cfg.text)}>
-                                  <Tag className="h-3 w-3" strokeWidth={2} />
+                                  <Tag className="h-3 w-3" weight="regular" />
                                   {ev.price}
                                 </span>
                               )}
                               {ev.endTime && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
-                                  <Clock className="h-3 w-3" strokeWidth={2} />
+                                  <Clock className="h-3 w-3" weight="regular" />
                                   ends {ev.endTime}
                                 </span>
                               )}
@@ -691,7 +691,7 @@ export function DashboardPage() {
                               <div className="min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                   <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
-                                    <cfg.Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+                                    <cfg.Icon className="h-2.5 w-2.5" weight="bold" />
                                     {typeLabel}
                                   </div>
                                   {(timeParts || monthDayLabel) && (
@@ -706,7 +706,7 @@ export function DashboardPage() {
 
                                 {ev.location && (
                                   <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-[#888] min-w-0">
-                                    <MapPin className="h-3 w-3 shrink-0" strokeWidth={2} />
+                                    <MapPin className="h-3 w-3 shrink-0" weight="regular" />
                                     <span className="truncate">{ev.location}</span>
                                   </div>
                                 )}
@@ -725,7 +725,7 @@ export function DashboardPage() {
                                   )}
                                   {ev.confNumber && (
                                     <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                                      <Hash className="h-2.5 w-2.5" strokeWidth={2.5} />
+                                      <Hash className="h-2.5 w-2.5" weight="bold" />
                                       {ev.confNumber}
                                     </span>
                                   )}
@@ -950,7 +950,7 @@ export function DashboardPage() {
                           className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent px-3 py-2.5"
                         >
                           <div className="flex items-center gap-1.5 mb-1">
-                            <Icon className="h-3 w-3 text-brand" strokeWidth={2} />
+                            <Icon className="h-3 w-3 text-brand" weight="regular" />
                             <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">
                               {label}
                             </span>
@@ -968,7 +968,7 @@ export function DashboardPage() {
                         onClick={() => handleOpenTrip(spotlightTrip)}
                         className="w-full h-11 rounded-2xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-opacity flex items-center justify-center gap-2"
                       >
-                        Open Itinerary <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+                        Open Itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
                       </button>
                     </div>
                   </div>
@@ -987,11 +987,11 @@ export function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-400" />
+                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-400" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
 <div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><LayoutGrid className="h-4 w-4" /></button>
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
                   <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -1046,13 +1046,13 @@ export function DashboardPage() {
                         <div className="absolute -top-14 right-4 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
-                              <EllipsisVertical className="h-3.5 w-3.5" />
+                              <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
-                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1071,7 +1071,7 @@ export function DashboardPage() {
                 {filteredTrips.length === 0 && (
                   <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-20">
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
-                      <Plane className="h-6 w-6 text-brand opacity-60" />
+                      <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips yet</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
@@ -1138,13 +1138,13 @@ export function DashboardPage() {
                         <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
                           <DropdownMenu>
                             <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-400 dark:text-[#555] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors flex items-center justify-center cursor-pointer">
-                              <EllipsisVertical className="h-3.5 w-3.5" />
+                              <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Save className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
-                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1176,7 +1176,7 @@ export function DashboardPage() {
                         <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">{tpl.name}</p>
                         <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                           {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
-                          <span className="flex items-center gap-1"><FileStack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
+                          <span className="flex items-center gap-1"><Stack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
                         </div>
                       </div>
                       <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
@@ -1285,7 +1285,7 @@ export function DashboardPage() {
 
                 {/* Budget + Currency */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><DollarSign className="h-3 w-3" /> Total Budget (Optional)</label>
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (Optional)</label>
                   <div className="flex gap-2">
                     <input
                       name="budget"
@@ -1330,7 +1330,7 @@ export function DashboardPage() {
                   {/* Search bar */}
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
                       <input
                         value={coverSearch}
                         onChange={e => setCoverSearch(e.target.value)}
@@ -1341,17 +1341,17 @@ export function DashboardPage() {
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)}
                       className="h-10 px-4 rounded-2xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0">
-                      {isCoverSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                      {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
                           className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                          <RefreshCw className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
+                          <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
                           className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
-                          <ChevronRight className="h-3.5 w-3.5" />
+                          <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
                           className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
@@ -1364,7 +1364,7 @@ export function DashboardPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {isCoverSearching ? (
                       <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
-                        <Loader2 className="h-4 w-4 animate-spin text-brand" />
+                        <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                         <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                       </div>
                     ) : coverResults.length > 0 ? (

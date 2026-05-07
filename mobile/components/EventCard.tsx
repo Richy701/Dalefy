@@ -4,9 +4,9 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import {
-  Plane, Hotel, Compass, Utensils, Car,
+  AirplaneTilt, Bed, Compass, ForkKnife, Car,
   MapPin, ArrowRight, Hash, FileText,
-} from "lucide-react-native";
+} from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent, EventDocument } from "@/shared/types";
 
@@ -55,7 +55,7 @@ function flightStatusInfo(status: string | undefined, duration: string | undefin
   return { label: duration ?? null, color: C.textTertiary, isStatus: false };
 }
 
-function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
   const router = useRouter();
   const cities = parseFlightCities(ev.title ?? "");
 
@@ -78,6 +78,7 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
 
   const handlePress = () => {
     Haptics.selectionAsync();
+    if (onPress) return onPress(ev);
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -167,7 +168,7 @@ function FlightCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId
         <View style={[cs.footer, { marginTop: chips.length > 0 ? S.xs : S.sm }]}>
           <View style={{ flex: 1 }} />
           <View style={cs.confRow}>
-            <Hash size={10} color={C.textDim} strokeWidth={2} />
+            <Hash size={10} color={C.textDim} weight="regular" />
             <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
           </View>
         </View>
@@ -222,10 +223,11 @@ const fs = StyleSheet.create({
 });
 
 // ── Hotel Card ───────────────────────────────────────────────────────────────
-function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
   const router = useRouter();
   const handlePress = () => {
     Haptics.selectionAsync();
+    if (onPress) return onPress(ev);
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -242,7 +244,7 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
         {/* Header */}
         <View style={cs.header}>
           <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
-            <Hotel size={13} color={C.hotel} strokeWidth={1.8} />
+            <Bed size={13} color={C.hotel} weight="regular" />
           </View>
           <Text style={[cs.smallLabel, { color: C.hotel, flex: 1 }]}>Stay</Text>
           {ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
@@ -252,7 +254,7 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
 
         {ev.location && (
           <View style={cs.locationRow}>
-            <MapPin size={11} color={C.textTertiary} strokeWidth={1.5} />
+            <MapPin size={11} color={C.textTertiary} weight="light" style={{ marginTop: 2 }} />
             <Text style={[cs.locationText, { color: C.textTertiary }]}>{ev.location}</Text>
           </View>
         )}
@@ -268,7 +270,7 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
               </View>
             )}
             {ev.checkin && ev.checkout && (
-              <ArrowRight size={14} color={C.hotel} strokeWidth={2} />
+              <ArrowRight size={14} color={C.hotel} weight="regular" />
             )}
             {ev.checkout && (
               <View style={{ flex: 1, alignItems: ev.checkin ? "flex-end" : "flex-start" }}>
@@ -292,7 +294,7 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
           <View style={[cs.footer, { marginTop: S.sm }]}>
             <View style={{ flex: 1 }} />
             <View style={cs.confRow}>
-              <Hash size={10} color={C.textDim} strokeWidth={2} />
+              <Hash size={10} color={C.textDim} weight="regular" />
               <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
             </View>
           </View>
@@ -303,16 +305,17 @@ function HotelCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?
 }
 
 // ── Activity / Dining Card ───────────────────────────────────────────────────
-function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; tripId?: string }) {
+function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
   const isDining = ev.type === "dining";
   const isTransfer = ev.type === "transfer";
   const color = isDining ? C.dining : isTransfer ? (C as any).transfer ?? C.activity : C.activity;
-  const Icon = isTransfer ? Car : isDining ? Utensils : Compass;
+  const Icon = isTransfer ? Car : isDining ? ForkKnife : Compass;
   const label = isTransfer ? "Transfer" : isDining ? "Dining" : "Activity";
 
   const router = useRouter();
   const handlePress = () => {
     Haptics.selectionAsync();
+    if (onPress) return onPress(ev);
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
@@ -329,7 +332,7 @@ function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; trip
         {/* Header */}
         <View style={cs.header}>
           <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
-            <Icon size={13} color={color} strokeWidth={1.8} />
+            <Icon size={13} color={color} weight="regular" />
           </View>
           <Text style={[cs.smallLabel, { color, flex: 1 }]}>{label}</Text>
           {ev.time && (
@@ -347,7 +350,7 @@ function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; trip
 
         {ev.location && (
           <View style={cs.locationRow}>
-            <MapPin size={11} color={C.textTertiary} strokeWidth={1.5} />
+            <MapPin size={11} color={C.textTertiary} weight="light" style={{ marginTop: 2 }} />
             <Text style={[cs.locationText, { color: C.textTertiary }]}>{ev.location}</Text>
           </View>
         )}
@@ -368,7 +371,7 @@ function ActivityCard({ ev, C, tripId }: { ev: TravelEvent; C: ThemeColors; trip
             <View style={{ flex: 1 }} />
             {ev.confNumber && (
               <View style={cs.confRow}>
-                <Hash size={10} color={C.textDim} strokeWidth={2} />
+                <Hash size={10} color={C.textDim} weight="regular" />
                 <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
               </View>
             )}
@@ -401,8 +404,8 @@ const cs = StyleSheet.create({
   title: { fontSize: T.lg, fontWeight: T.bold, letterSpacing: -0.2, marginBottom: 4 },
   desc: { fontSize: T.sm, lineHeight: 20, marginBottom: S.xs },
 
-  locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: S.sm },
-  locationText: { fontSize: T.sm, fontWeight: T.medium, flex: 1 },
+  locationRow: { flexDirection: "row", alignItems: "flex-start", gap: 4, marginBottom: S.sm },
+  locationText: { fontSize: T.sm, fontWeight: T.medium, flex: 1, lineHeight: 16 },
 
   // Flight route
   routeSection: {
@@ -472,7 +475,7 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
             accessibilityRole="button"
             accessibilityLabel={`Open ${doc.name}`}
           >
-            <FileText size={12} color={C.teal} strokeWidth={1.8} />
+            <FileText size={12} color={C.teal} weight="regular" />
             <Text style={{ fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary, flex: 1 }} numberOfLines={1}>{doc.name}</Text>
             <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary }}>{sizeText}</Text>
           </Pressable>
@@ -482,10 +485,10 @@ export function DocsRow({ documents, C }: { documents: EventDocument[]; C: Theme
   );
 }
 
-export function EventCard({ ev, C, tripId, isLeader = false }: { ev: TravelEvent; C: ThemeColors; tripId?: string; isLeader?: boolean }) {
+export function EventCard({ ev, C, tripId, isLeader = false, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; isLeader?: boolean; onPress?: (ev: TravelEvent) => void }) {
   // Strip sensitive fields for standard travelers
   const event = isLeader ? ev : { ...ev, notes: undefined, supplier: undefined, confNumber: undefined, documents: undefined };
-  if (event.type === "flight") return <FlightCard ev={event} C={C} tripId={tripId} />;
-  if (event.type === "hotel")  return <HotelCard  ev={event} C={C} tripId={tripId} />;
-  return <ActivityCard ev={event} C={C} tripId={tripId} />;
+  if (event.type === "flight") return <FlightCard ev={event} C={C} tripId={tripId} onPress={onPress} />;
+  if (event.type === "hotel")  return <HotelCard  ev={event} C={C} tripId={tripId} onPress={onPress} />;
+  return <ActivityCard ev={event} C={C} tripId={tripId} onPress={onPress} />;
 }

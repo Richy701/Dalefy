@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import {
-  Loader2, ArrowRight, Building2, Upload, X, Palette, Paintbrush, Check,
-  Globe, MapPin, Calendar, Plane,
-} from "lucide-react";
+  SpinnerGap, ArrowRight, Buildings, Upload, X, Palette, PaintBrush, Check,
+  Globe, MapPin, Calendar, AirplaneTilt,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ function StepIndicator({ current }: { current: Step }) {
                       : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-400 dark:text-[#555]"
                 }`}
               >
-                {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : n}
+                {done ? <Check className="h-3.5 w-3.5" weight="bold" /> : n}
               </div>
               <span className={`text-[11px] font-bold uppercase tracking-[0.12em] hidden sm:inline transition-colors ${
                 active ? "text-brand" : done ? "text-slate-500 dark:text-[#888]" : "text-slate-300 dark:text-[#444]"
@@ -67,7 +67,7 @@ function BrandPanel() {
     { icon: Globe, label: "Team workspaces" },
     { icon: MapPin, label: "Route maps" },
     { icon: Calendar, label: "Day-by-day builder" },
-    { icon: Plane, label: "Share via PIN" },
+    { icon: AirplaneTilt, label: "Share via PIN" },
   ];
 
   return (
@@ -97,7 +97,7 @@ function BrandPanel() {
           {features.map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/[0.06] border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
-                <Icon className="h-4 w-4 text-brand" strokeWidth={2} />
+                <Icon className="h-4 w-4 text-brand" weight="regular" />
               </div>
               <span className="text-sm font-semibold text-slate-600 dark:text-[#bbb]">{label}</span>
             </div>
@@ -252,7 +252,7 @@ export function CreateOrgPage() {
                   disabled={!canSubmit || loading}
                   className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed gap-2.5 transition-all duration-150"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-4.5 w-4.5" /></>}
+                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-4.5 w-4.5" /></>}
                 </Button>
               </form>
             </>
@@ -296,13 +296,13 @@ export function CreateOrgPage() {
                           onClick={() => setBrandLogo("")}
                           className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-slate-800 dark:bg-[#333] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="h-3 w-3" strokeWidth={3} />
+                          <X className="h-3 w-3" weight="bold" />
                         </button>
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
                       <label className="flex items-center justify-center gap-2.5 cursor-pointer h-12 rounded-xl bg-white dark:bg-[#0a0a0a] border border-dashed border-slate-300 dark:border-[#2a2a2a] hover:border-brand/50 dark:hover:border-brand/30 transition-colors">
-                        <Upload className="h-4 w-4 text-slate-400 dark:text-[#666]" strokeWidth={2} />
+                        <Upload className="h-4 w-4 text-slate-400 dark:text-[#666]" weight="regular" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                           {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
                         </span>
@@ -366,7 +366,7 @@ export function CreateOrgPage() {
                 {/* Live preview */}
                 <div className="relative bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden">
                   <div className="px-5 pt-3.5 pb-3 flex items-center gap-2" style={{ backgroundColor: `${brandColor}10`, borderBottom: `1px solid ${brandColor}20` }}>
-                    <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} strokeWidth={2.5} />
+                    <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} weight="bold" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: brandColor }}>
                       Client Preview
                     </span>
@@ -409,7 +409,7 @@ export function CreateOrgPage() {
                     onClick={handleFinishBranding}
                     className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                   >
-                    {savingBrand ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-4.5 w-4.5" /></>}
+                    {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-4.5 w-4.5" /></>}
                   </Button>
                 </div>
               </div>

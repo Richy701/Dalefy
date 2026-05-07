@@ -1,15 +1,16 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image, Platform } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image, Platform, useWindowDimensions } from "react-native";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
-  User, Moon, Sun, Smartphone, Palette, Bell, Shield, ChevronRight,
-  Droplet, Vibrate, Pencil, ExternalLink, Info,
-  FileText, CalendarSync, Activity, MessageCircleQuestion, Share2, FileCheck,
-} from "lucide-react-native";
-import { T, R, S, ACCENT_PALETTE, type ThemeColors } from "@/constants/theme";
+  User, Moon, Sun, DeviceMobile, Palette, Bell, Shield, CaretRight,
+  Vibrate, Pencil, ArrowSquareOut, Info,
+  FileText, CalendarCheck, Pulse, ChatCircle, ShareNetwork, FileText as FileCheckIcon,
+} from "phosphor-react-native";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -71,11 +72,23 @@ export default function ProfileScreen() {
 
 
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
+    <View style={s.safe}>
+      {/* ── Sticky blur header ── */}
+      <View style={[s.stickyHeader, { paddingTop: insets.top }]}>
+        {Platform.OS === "ios" ? (
+          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
+        )}
+        <Text style={s.screenTitle}>Profile</Text>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 52 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
       >
 
@@ -92,14 +105,14 @@ export default function ProfileScreen() {
             ) : initials ? (
               <Text style={s.avatarText}>{initials}</Text>
             ) : (
-              <User size={28} color={C.teal} strokeWidth={1.5} />
+              <User size={28} color={C.teal} weight="light" />
             )}
           </View>
           <View style={s.heroText}>
             <Text style={s.heroName}>{firstName || "Traveller"}</Text>
             {nextTrip && <Text style={s.heroSub}>{nextTrip}</Text>}
           </View>
-          <Pencil size={16} color={C.textTertiary} strokeWidth={1.5} />
+          <Pencil size={16} color={C.textTertiary} weight="light" />
         </Pressable>
         </FadeIn>
 
@@ -109,7 +122,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           {/* Theme */}
           <View style={s.row}>
-            <Palette size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Palette size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Theme</Text>
             <SegmentedControl
               values={["Light", "Dark", "Auto"]}
@@ -140,36 +153,9 @@ export default function ProfileScreen() {
 
           <View style={s.divider} />
 
-          {/* Accent color */}
-          <View style={s.row}>
-            <Droplet size={18} color={C.textSecondary} strokeWidth={1.5} />
-            <Text style={s.rowLabel}>Accent</Text>
-            <View style={s.swatches}>
-              {ACCENT_PALETTE.map((p) => {
-                const selected = prefs.accent === p.id;
-                const hex = isDark ? p.dark : p.light;
-                return (
-                  <Pressable
-                    key={p.id}
-                    accessibilityLabel={p.label}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    onPress={() => { haptic.selection(); setPref("accent", p.id); }}
-                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                    style={[s.swatchBtn, selected && { borderColor: hex }]}
-                  >
-                    <View style={[s.swatchDot, { backgroundColor: hex }]} />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={s.divider} />
-
           {/* Haptics */}
           <View style={s.row}>
-            <Vibrate size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Vibrate size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Haptic feedback</Text>
             <Switch
               value={prefs.haptics}
@@ -186,7 +172,7 @@ export default function ProfileScreen() {
         <Text style={s.sectionLabel}>Notifications</Text>
         <View style={s.card}>
           <View style={s.row}>
-            <Bell size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Bell size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Trip reminders</Text>
             <Switch
               value={prefs.tripReminders}
@@ -197,7 +183,7 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.row}>
-            <CalendarSync size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <CalendarCheck size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Itinerary updates</Text>
             <Switch
               value={prefs.itineraryUpdates}
@@ -208,7 +194,7 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.row}>
-            <Activity size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Pulse size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Live Activity</Text>
             <Switch
               value={prefs.liveActivity !== false}
@@ -225,7 +211,7 @@ export default function ProfileScreen() {
         <Text style={s.sectionLabel}>My Documents</Text>
         <View style={s.card}>
           <View style={s.docsEmpty}>
-            <FileText size={24} color={C.textTertiary} strokeWidth={1.5} />
+            <FileText size={24} color={C.textTertiary} weight="light" />
             <Text style={s.docsEmptyTitle}>No documents yet</Text>
             <Text style={s.docsEmptyText}>
               Your travel agency will share documents here when they're ready.
@@ -244,9 +230,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
-            <MessageCircleQuestion size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <ChatCircle size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Help & support</Text>
-            <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
           <Pressable
@@ -255,9 +241,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
-            <Shield size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Shield size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Privacy policy</Text>
-            <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
           <Pressable
@@ -266,13 +252,13 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >
-            <FileCheck size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <FileCheckIcon size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Terms of service</Text>
-            <ExternalLink size={14} color={C.textTertiary} strokeWidth={1.5} />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
           <View style={s.row}>
-            <Info size={18} color={C.textSecondary} strokeWidth={1.5} />
+            <Info size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Version</Text>
             <Text style={s.rowValue}>1.0.0</Text>
           </View>
@@ -291,7 +277,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -299,6 +285,15 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
     scroll: { paddingBottom: 100, paddingHorizontal: S.md },
+    stickyHeader: {
+      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+      overflow: "hidden",
+    },
+    screenTitle: {
+      fontSize: 22, fontWeight: "700",
+      color: C.textPrimary,
+      paddingHorizontal: S.md, paddingVertical: 10,
+    },
 
     // ── Hero ──
     heroCard: {
@@ -405,27 +400,6 @@ function makeStyles(C: ThemeColors) {
       borderRadius: R.full,
     },
     themeBtnActive: { backgroundColor: C.card },
-
-    // ── Accent swatches ──
-    swatches: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    swatchBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 2.5,
-      borderColor: "transparent",
-    },
-    swatchDot: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-    },
 
     // ── Documents empty ──
     docsEmpty: {

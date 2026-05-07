@@ -7,7 +7,7 @@ import { ScalePress } from "@/components/ScalePress";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { Search, Globe, MapPin, Navigation, Plane, Hotel, Compass, Utensils, Car, CalendarDays } from "lucide-react-native";
+import { MagnifyingGlass, Globe, MapPin, NavigationArrow, AirplaneTilt, Bed, Compass, ForkKnife, Car, CalendarDots } from "phosphor-react-native";
 
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
@@ -202,7 +202,7 @@ export default function DestinationsScreen() {
   const stats = [
     { label: "Places", value: enriched.length, icon: MapPin },
     { label: "Regions", value: regionCount, icon: Globe },
-    { label: "Events", value: totalEvents, icon: Navigation },
+    { label: "Events", value: totalEvents, icon: NavigationArrow },
   ];
 
   return (
@@ -320,7 +320,7 @@ export default function DestinationsScreen() {
            ═══════════════════════════════════════════ */}
         <View style={styles.searchSection}>
           <View style={styles.searchWrap}>
-            <Search size={15} color={C.textTertiary} strokeWidth={1.5} />
+            <MagnifyingGlass size={15} color={C.textTertiary} weight="light" />
             <TextInput
               style={styles.searchInput}
               placeholder="Search destinations..."
@@ -394,7 +394,7 @@ export default function DestinationsScreen() {
                     {/* Top pills */}
                     <View style={styles.cardTopRow}>
                       <View style={[styles.cardPill, { backgroundColor: C.teal }]}>
-                        <Plane size={10} color="#000" strokeWidth={2.5} />
+                        <AirplaneTilt size={10} color="#000" weight="bold" />
                         <Text style={styles.cardPillText}>
                           {plural(dest.tripCount, "trip")}
                         </Text>
@@ -414,31 +414,31 @@ export default function DestinationsScreen() {
                       <View style={styles.cardTypes}>
                         {dest.types.flights > 0 && (
                           <View style={styles.typeBadge}>
-                            <Plane size={9} color="#fff" strokeWidth={2} />
+                            <AirplaneTilt size={9} color="#fff" weight="regular" />
                             <Text style={styles.typeBadgeText}>{dest.types.flights}</Text>
                           </View>
                         )}
                         {dest.types.hotels > 0 && (
                           <View style={styles.typeBadge}>
-                            <Hotel size={9} color="#fff" strokeWidth={2} />
+                            <Bed size={9} color="#fff" weight="regular" />
                             <Text style={styles.typeBadgeText}>{dest.types.hotels}</Text>
                           </View>
                         )}
                         {dest.types.activities > 0 && (
                           <View style={styles.typeBadge}>
-                            <Compass size={9} color="#fff" strokeWidth={2} />
+                            <Compass size={9} color="#fff" weight="regular" />
                             <Text style={styles.typeBadgeText}>{dest.types.activities}</Text>
                           </View>
                         )}
                         {dest.types.dining > 0 && (
                           <View style={styles.typeBadge}>
-                            <Utensils size={9} color="#fff" strokeWidth={2} />
+                            <ForkKnife size={9} color="#fff" weight="regular" />
                             <Text style={styles.typeBadgeText}>{dest.types.dining}</Text>
                           </View>
                         )}
                         {dest.types.transfers > 0 && (
                           <View style={styles.typeBadge}>
-                            <Car size={9} color="#fff" strokeWidth={2} />
+                            <Car size={9} color="#fff" weight="regular" />
                             <Text style={styles.typeBadgeText}>{dest.types.transfers}</Text>
                           </View>
                         )}
@@ -446,7 +446,7 @@ export default function DestinationsScreen() {
                       {/* Next visit */}
                       {new Date(dest.nextVisit) > new Date() && (
                         <View style={styles.cardMeta}>
-                          <CalendarDays size={10} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+                          <CalendarDots size={10} color="rgba(255,255,255,0.5)" weight="light" />
                           <Text style={styles.cardMetaText}>
                             {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                           </Text>

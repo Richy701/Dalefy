@@ -1,4 +1,4 @@
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "@phosphor-icons/react";
 import { useTheme } from "@/context/ThemeContext";
 import { NotificationPanel } from "@/components/shared/NotificationPanel";
 import { MobileSidebar } from "@/components/sidebar/MobileSidebar";

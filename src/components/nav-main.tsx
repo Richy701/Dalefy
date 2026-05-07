@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Globe, ChartPie, Images, Settings } from "lucide-react";
+import { SquaresFour, Users, Globe, ChartPie, Images, Gear } from "@phosphor-icons/react";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: SquaresFour, label: "Dashboard", path: "/" },
   { icon: Users,           label: "Travelers",   path: "/travelers" },
   { icon: Globe,           label: "Destinations", path: "/destinations" },
   { icon: Images,          label: "Media",        path: "/media" },
   { icon: ChartPie,        label: "Reports",      path: "/reports" },
-  { icon: Settings,        label: "Settings",     path: "/settings" },
+  { icon: Gear,        label: "Settings",     path: "/settings" },
 ];
 
 export function NavMain() {

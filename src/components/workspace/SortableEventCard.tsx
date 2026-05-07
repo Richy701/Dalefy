@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { DotsSixVertical } from "@phosphor-icons/react";
 import { EventCard } from "./EventCard";
 import type { TravelEvent } from "@/types";
 
@@ -39,7 +39,7 @@ export function SortableEventCard({ event, onClick, onDelete, assignedPeople }: 
         title="Drag to reorder"
         aria-label="Drag handle"
       >
-        <GripVertical className="h-4 w-4" />
+        <DotsSixVertical className="h-4 w-4" />
       </div>
       <EventCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />
     </div>

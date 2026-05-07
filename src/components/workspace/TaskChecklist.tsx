@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Check, Trash2, CalendarDays, User, Tag } from "lucide-react";
+import { Plus, Check, Trash, CalendarDots, User, Tag } from "@phosphor-icons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parse } from "date-fns";
@@ -149,7 +149,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                 onClick={() => handleDelete(task.id)}
                 className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash className="h-3 w-3" />
               </button>
             </div>
           );
@@ -184,7 +184,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             {/* Due date */}
             <Popover>
               <PopoverTrigger className="h-7 px-2 rounded-lg bg-white dark:bg-[#111] border border-slate-200 dark:border-[#252525] hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
-                <CalendarDays className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
+                <CalendarDots className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
                 <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-400 dark:text-[#555]"}`}>
                   {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
                 </span>

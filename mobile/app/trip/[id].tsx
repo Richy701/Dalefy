@@ -1,6 +1,6 @@
 import {
   View, Text, Pressable, Image,
-  StyleSheet, Platform, Linking, Share,
+  StyleSheet, Platform, Linking, Share, ScrollView as RNScrollView,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,12 +9,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  ChevronLeft, Compass, MapPin, Users, Moon, Map,
-} from "lucide-react-native";
+  CaretLeft, Compass, MapPin, Users, Moon, MapTrifold,
+} from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
-import { resolveCoords } from "@/shared/coordinates";
+import { geocode } from "@/services/geocode";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
@@ -143,10 +143,13 @@ export default function TripScreen() {
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
 
-  // Resolve trip destination to map coordinate
-  const destCoords = useMemo((): [number, number] | null => {
-    if (!trip?.destination) return null;
-    return resolveCoords(trip.destination);
+  // Resolve trip destination to map coordinate (static lookup → Mapbox API fallback)
+  const [destCoords, setDestCoords] = useState<[number, number] | null>(null);
+  useEffect(() => {
+    if (!trip?.destination) { setDestCoords(null); return; }
+    let cancelled = false;
+    geocode(trip.destination).then(c => { if (!cancelled) setDestCoords(c); });
+    return () => { cancelled = true; };
   }, [trip?.destination]);
 
   // [lng, lat] for Mapbox
@@ -166,6 +169,7 @@ export default function TripScreen() {
       },
     }] : [],
   }), [destCoords]);
+
 
   const openInMaps = useCallback(() => {
     if (!mapCenter) return;
@@ -223,7 +227,7 @@ export default function TripScreen() {
               style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
             >
-              <ChevronLeft size={22} color="#fff" strokeWidth={2} />
+              <CaretLeft size={22} color="#fff" weight="regular" />
             </Pressable>
           ),
         } : {}),
@@ -310,13 +314,13 @@ export default function TripScreen() {
                 }
                 return label ? (
                   <View style={styles.chip}>
-                    <Users size={10} color={C.teal} strokeWidth={2} />
+                    <Users size={10} color={C.teal} weight="regular" />
                     <Text style={styles.chipText}>{label}</Text>
                   </View>
                 ) : null;
               })()}
               <View style={styles.chip}>
-                <Moon size={10} color={C.teal} strokeWidth={2} />
+                <Moon size={10} color={C.teal} weight="regular" />
                 <Text style={styles.chipText}>
                   {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   {" — "}
@@ -325,7 +329,7 @@ export default function TripScreen() {
               </View>
               {trip.destination ? (
                 <View style={styles.chip}>
-                  <MapPin size={10} color={C.teal} strokeWidth={2} />
+                  <MapPin size={10} color={C.teal} weight="regular" />
                   <Text style={styles.chipText}>{trip.destination}</Text>
                 </View>
               ) : null}
@@ -365,7 +369,7 @@ export default function TripScreen() {
           >
           <Pressable style={styles.mapSection} onPress={openInMaps}>
             <View style={styles.sectionHeader}>
-              <Map size={13} color={C.teal} strokeWidth={1.8} />
+              <MapTrifold size={13} color={C.teal} weight="regular" />
               <Text style={styles.sectionEyebrow}>LOCATION</Text>
               <View style={{ flex: 1 }} />
               <Text style={[styles.sectionEyebrow, { color: C.teal }]}>Open in Maps ›</Text>
@@ -387,8 +391,8 @@ export default function TripScreen() {
                 onDidFinishLoadingStyle={handleMapLoaded}
               >
                 <MapboxGL.Camera
-                  zoomLevel={3}
-                  centerCoordinate={mapCenter}
+                  zoomLevel={4}
+                  centerCoordinate={mapCenter ?? [0, 20]}
                   pitch={0}
                   heading={0}
                   animationDuration={0}
@@ -398,17 +402,40 @@ export default function TripScreen() {
                     <MapboxGL.CircleLayer
                       id="trip-pin-glow"
                       style={{
-                        circleRadius: 18,
+                        circleRadius: 28,
                         circleColor: C.teal,
-                        circleOpacity: 0.08,
+                        circleOpacity: 0.12,
+                        circleBlur: 0.6,
+                      }}
+                    />
+                    <MapboxGL.CircleLayer
+                      id="trip-pin-ring"
+                      style={{
+                        circleRadius: 10,
+                        circleColor: C.teal,
+                        circleOpacity: 0.25,
                       }}
                     />
                     <MapboxGL.CircleLayer
                       id="trip-pin-dot"
                       style={{
-                        circleRadius: 4,
+                        circleRadius: 5,
                         circleColor: C.teal,
-                        circleOpacity: 0.7,
+                        circleStrokeWidth: 2,
+                        circleStrokeColor: isDark ? "#000" : "#fff",
+                      }}
+                    />
+                    <MapboxGL.SymbolLayer
+                      id="trip-pin-label"
+                      style={{
+                        textField: trip?.destination || trip?.name || "",
+                        textSize: 12,
+                        textFont: ["DIN Pro Bold"],
+                        textColor: isDark ? "#fff" : "#111",
+                        textHaloColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.85)",
+                        textHaloWidth: 1.5,
+                        textOffset: [0, 1.8],
+                        textAllowOverlap: true,
                       }}
                     />
                   </MapboxGL.ShapeSource>
@@ -423,9 +450,45 @@ export default function TripScreen() {
         {/* ── Itinerary ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Compass size={13} color={C.teal} strokeWidth={1.8} />
             <Text style={styles.sectionEyebrow}>ITINERARY</Text>
           </View>
+
+          {/* Quick-jump day pills */}
+          {(() => {
+            const sortedDates = Object.keys(grouped).sort();
+            if (sortedDates.length <= 1) return null;
+            const todayStr = new Date().toISOString().split("T")[0];
+            return (
+              <RNScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dayPillScroll}
+              >
+                {sortedDates.map((d, i) => {
+                  const dt = new Date(d + "T12:00:00");
+                  const isToday = d === todayStr;
+                  const dayLabel = dt.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 3);
+                  const dayNum = dt.getDate();
+                  return (
+                    <Pressable
+                      key={d}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        router.push({ pathname: "/trip/day", params: { tripId: trip.id, date: d } });
+                      }}
+                      style={[
+                        styles.dayPill,
+                        { backgroundColor: isToday ? C.teal : C.elevated },
+                      ]}
+                    >
+                      <Text style={[styles.dayPillWeekday, { color: isToday ? "#000" : C.textTertiary }]}>{dayLabel}</Text>
+                      <Text style={[styles.dayPillNum, { color: isToday ? "#000" : C.textPrimary }]}>{dayNum}</Text>
+                    </Pressable>
+                  );
+                })}
+              </RNScrollView>
+            );
+          })()}
 
           <View style={styles.dayRows}>
             {(() => {
@@ -610,6 +673,30 @@ function makeStyles(C: ThemeColors) {
     // Itinerary
     section: { paddingBottom: S.md },
     dayRows: { paddingHorizontal: S.md },
+
+    // Day quick-jump pills
+    dayPillScroll: {
+      paddingHorizontal: S.md,
+      gap: 8,
+      paddingBottom: S.sm,
+    },
+    dayPill: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: 44,
+      height: 52,
+      borderRadius: R.lg,
+    },
+    dayPillWeekday: {
+      fontSize: 10,
+      fontWeight: "600",
+      letterSpacing: 0.3,
+    },
+    dayPillNum: {
+      fontSize: T.lg,
+      fontWeight: "700",
+      marginTop: 1,
+    },
 
   });
 }

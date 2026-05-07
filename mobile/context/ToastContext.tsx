@@ -8,7 +8,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "./ThemeContext";
-import { CheckCircle2, XCircle } from "lucide-react-native";
+import { CheckCircle, XCircle } from "phosphor-react-native";
 import { T, R, S } from "@/constants/theme";
 
 type ToastType = "success" | "error";
@@ -82,9 +82,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <View style={[StyleSheet.absoluteFillObject, { borderRadius: 50, backgroundColor: isDark ? "rgba(30,30,30,0.95)" : "rgba(250,250,250,0.95)" }]} />
         )}
         {type === "error" ? (
-          <XCircle size={14} color="#ff453a" strokeWidth={2} style={{ marginRight: 6 }} />
+          <XCircle size={14} color="#ff453a" weight="regular" style={{ marginRight: 6 }} />
         ) : (
-          <CheckCircle2 size={14} color={C.teal} strokeWidth={2} style={{ marginRight: 6 }} />
+          <CheckCircle size={14} color={C.teal} weight="regular" style={{ marginRight: 6 }} />
         )}
         <Text style={[styles.text, { color: type === "error" ? "#ff453a" : C.textPrimary }]} numberOfLines={1}>
           {message}

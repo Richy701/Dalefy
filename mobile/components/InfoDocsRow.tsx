@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { FileText, ChevronRight } from "lucide-react-native";
+import { FileText, CaretRight } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
 
@@ -20,7 +20,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
       accessibilityLabel={`Information and documents, ${count} items`}
     >
       <View style={s.iconBox}>
-        <FileText size={15} color={C.teal} strokeWidth={1.8} />
+        <FileText size={15} color={C.teal} weight="regular" />
       </View>
       <View style={s.center}>
         <Text style={s.label}>INFORMATION & DOCUMENTS</Text>
@@ -28,7 +28,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
       <View style={s.countBadge}>
         <Text style={s.countText}>{count}</Text>
       </View>
-      <ChevronRight size={14} color={C.textTertiary} strokeWidth={2} />
+      <CaretRight size={14} color={C.textTertiary} weight="regular" />
     </ScalePress>
   );
 }

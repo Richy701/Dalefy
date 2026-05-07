@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash2, Lock, Building2, Upload, Users,
-} from "lucide-react";
+  Sun, Moon, Download, Trash, Lock, Buildings, Upload, Users,
+} from "@phosphor-icons/react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { changePassword } from "@/services/firebaseAuth";
@@ -366,7 +366,7 @@ export function SettingsPage() {
           {/* ── Set up Agency (real auth, no org yet) ── */}
           {canSetupOrg && (
             <Section
-              icon={Building2}
+              icon={Buildings}
               title="Agency Setup"
               description="Create your agency to unlock white-label branding on shared trips and PDFs."
             >
@@ -392,7 +392,7 @@ export function SettingsPage() {
           {/* ── Organization Branding (owner/admin only) ── */}
           {showBrandingSection && (
             <Section
-              icon={Building2}
+              icon={Buildings}
               title="White-Label"
               description="How clients see your agency on shared trips and PDFs."
             >
@@ -644,7 +644,7 @@ export function SettingsPage() {
                   variant="ghost"
                   className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-black uppercase tracking-wider text-[10px] px-3 gap-1.5"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash className="h-3.5 w-3.5" />
                   Reset
                 </Button>
               }

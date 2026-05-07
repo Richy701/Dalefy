@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Crown, Shield, UserCog, Eye, ChevronDown, UserMinus, ArrowRightLeft, Loader2, UserPlus } from "lucide-react";
+import { Crown, Shield, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useOrg } from "@/context/OrgContext";
@@ -11,7 +11,7 @@ import type { OrgRole } from "@/types";
 const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: string }> = {
   owner: { icon: Crown, label: "Owner", color: "text-amber-500" },
   admin: { icon: Shield, label: "Admin", color: "text-brand" },
-  agent: { icon: UserCog, label: "Agent", color: "text-slate-600 dark:text-[#aaa]" },
+  agent: { icon: UserGear, label: "Agent", color: "text-slate-600 dark:text-[#aaa]" },
   viewer: { icon: Eye, label: "Viewer", color: "text-slate-400 dark:text-[#666]" },
 };
 
@@ -100,7 +100,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-brand" />
+        <SpinnerGap className="h-5 w-5 animate-spin text-brand" />
       </div>
     );
   }
@@ -140,12 +140,12 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${config.color} bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 transition-colors`}
                   >
                     {actionLoading === member.userId ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <SpinnerGap className="h-3 w-3 animate-spin" />
                     ) : (
                       <RoleIcon className="h-3 w-3" />
                     )}
                     {config.label}
-                    <ChevronDown className="h-3 w-3 opacity-40" />
+                    <CaretDown className="h-3 w-3 opacity-40" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[160px] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-1">
@@ -171,7 +171,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                       onClick={() => setConfirmTransfer(member.userId)}
                       className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-amber-500"
                     >
-                      <ArrowRightLeft className="h-3.5 w-3.5" /> Transfer Ownership
+                      <ArrowsLeftRight className="h-3.5 w-3.5" /> Transfer Ownership
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem

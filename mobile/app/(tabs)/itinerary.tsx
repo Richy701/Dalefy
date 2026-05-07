@@ -1,15 +1,15 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl, Share,
+  StyleSheet, RefreshControl, Share, Platform,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { Illustration } from "@/components/Illustration";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  CalendarDays, MapPin, ChevronRight,
-  Plane, Hotel, Compass, Utensils, Car,
-} from "lucide-react-native";
+  CalendarDots, MapPin, CaretRight,
+  AirplaneTilt, Bed, Compass, ForkKnife, Car,
+} from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useMemo, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
@@ -42,10 +42,10 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
-const EVENT_ICON: Record<string, typeof Plane> = {
-  flight: Plane,
-  hotel: Hotel,
-  dining: Utensils,
+const EVENT_ICON: Record<string, typeof AirplaneTilt> = {
+  flight: AirplaneTilt,
+  hotel: Bed,
+  dining: ForkKnife,
   activity: Compass,
   transfer: Car,
 };
@@ -142,7 +142,7 @@ function EventRow({ item, C, onPress }: {
       <View style={styles.eventContent}>
         <View style={styles.eventTop}>
           <View style={[styles.eventIconBox, { backgroundColor: `${color}18` }]}>
-            <Icon size={13} color={color} strokeWidth={1.8} />
+            <Icon size={13} color={color} weight="regular" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={1}>
@@ -150,14 +150,14 @@ function EventRow({ item, C, onPress }: {
             </Text>
             {ev.location && (
               <View style={styles.locationRow}>
-                <MapPin size={9} color={C.textTertiary} strokeWidth={1.5} />
+                <MapPin size={9} color={C.textTertiary} weight="light" />
                 <Text style={[styles.locationText, { color: C.textTertiary }]} numberOfLines={1}>
                   {ev.location}
                 </Text>
               </View>
             )}
           </View>
-          <ChevronRight size={14} color={C.textTertiary} strokeWidth={1.5} />
+          <CaretRight size={14} color={C.textTertiary} weight="light" />
         </View>
 
         {/* Trip badge */}
@@ -180,7 +180,7 @@ function EmptyDay({ C }: { C: ThemeColors }) {
 }
 
 export default function ScheduleScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { trips, ready, reload } = useTrips();
   const router = useRouter();
@@ -196,7 +196,15 @@ export default function ScheduleScreen() {
 
   if (ready && trips.length === 0) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]}>
+      <View style={[styles.safe, { backgroundColor: C.bg }]}>
+        <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
+          )}
+          <Text style={[styles.screenTitle, { color: C.textPrimary }]}>Schedule</Text>
+        </View>
         <View style={styles.emptyState}>
           <Illustration name="sitting" width={260} height={160} />
           <Text style={[styles.emptyTitle, { color: C.textPrimary }]}>No schedule yet</Text>
@@ -204,26 +212,29 @@ export default function ScheduleScreen() {
             Join a trip from the home screen and your upcoming events will appear here.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]} edges={[]}>
+    <View style={[styles.safe, { backgroundColor: C.bg }]}>
+      {/* ── Sticky blur header ── */}
+      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
+        {Platform.OS === "ios" ? (
+          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
+        ) : (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
+        )}
+        <Text style={[styles.screenTitle, { color: C.textPrimary }]}>Schedule</Text>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + S.md }]}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 52 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: C.textPrimary }]}>Schedule</Text>
-          <Text style={[styles.headerSub, { color: C.textSecondary }]}>
-            {hasAnyEvents ? "Your next few days" : "No events coming up"}
-          </Text>
-        </View>
 
         {/* Day groups */}
         {schedule.map((day, i) => {
@@ -272,7 +283,7 @@ export default function ScheduleScreen() {
                       <EventRow
                         item={item}
                         C={C}
-                        onPress={() => router.push(`/trip/${item.trip.id}`)}
+                        onPress={() => router.push(`/trip/event?tripId=${item.trip.id}&eventId=${item.event.id}`)}
                       />
                     </ContextMenu>
                   ))}
@@ -284,13 +295,21 @@ export default function ScheduleScreen() {
           );
         })}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingBottom: 100 },
+  stickyHeader: {
+    position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+    overflow: "hidden",
+  },
+  screenTitle: {
+    fontSize: 22, fontWeight: "700",
+    paddingHorizontal: S.md, paddingVertical: 10,
+  },
 
   header: { paddingHorizontal: S.md, marginBottom: S.lg },
   headerTitle: {
