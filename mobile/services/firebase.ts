@@ -79,10 +79,10 @@ export function waitForAuth(): Promise<void> {
   if (!_authReady) {
     const auth = firebaseAuth();
 
-    // If auth already has a user, resolve immediately
     if (auth.currentUser) {
-      console.log("[Firebase] Already signed in:", auth.currentUser.isAnonymous ? "anonymous" : auth.currentUser.email);
-      _authReady = Promise.resolve();
+      _authReady = auth.currentUser.getIdToken().then(() => {
+        console.log("[Firebase] Already signed in:", auth.currentUser!.isAnonymous ? "anonymous" : auth.currentUser!.email);
+      });
       return _authReady;
     }
 
@@ -92,10 +92,11 @@ export function waitForAuth(): Promise<void> {
         resolve();
       }, 5000);
 
-      const unsub = auth.onAuthStateChanged((user) => {
+      const unsub = auth.onAuthStateChanged(async (user) => {
         unsub();
         clearTimeout(timeout);
         if (user) {
+          await user.getIdToken();
           console.log("[Firebase] Auth ready:", user.isAnonymous ? "anonymous" : user.email);
           resolve();
         } else {
