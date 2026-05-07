@@ -4,7 +4,7 @@ import type { Trip, TravelEvent } from "@/types";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId } from "@/services/firebaseTrips";
+import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, repairTripOwnership } from "@/services/firebaseTrips";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { deriveAttendeesString } from "@/lib/travelerSync";
 import { useOrg } from "@/context/OrgContext";
@@ -264,9 +264,13 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const isDemoUser = authLoading ? false : (!user || user.id === "demo" || (user.id?.length ?? 0) <= 20);
   const useCloud = firebaseOn && !isDemoUser;
   const local = useLocalTrips(isDemoUser && !authLoading);
-  const { currentOrg } = useOrg();
+  const { currentOrg, isLoading: orgLoading } = useOrg();
   const orgId = currentOrg?.id ?? null;
-  const cloud = useCloudTrips(useCloud ? (user?.id ?? null) : null, orgId);
+  // Don't fire cloud queries while org is still loading — avoids a user_id-only
+  // query that returns incomplete results, then a second org-scoped query that
+  // briefly flashes empty while it resolves.
+  const cloudUid = useCloud && !orgLoading ? (user?.id ?? null) : null;
+  const cloud = useCloudTrips(cloudUid, orgId);
   const isLocalOnly = !useCloud;
 
   const { setTrips } = useCloud ? cloud : local;
@@ -274,12 +278,13 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   const trips = useMergedTrips(useCloud, isLocalOnly, cloud.trips, local.trips);
 
-  // One-time backfill: stamp existing user trips with org ID
+  // One-time backfill: stamp existing user trips with org ID + repair ownership
   const backfillRan = useRef(false);
   useEffect(() => {
     if (!useCloud || !orgId || !cloud.ready || backfillRan.current) return;
     backfillRan.current = true;
     backfillOrgId(orgId).catch(err => logger.error("TripsProvider", "org backfill failed:", err));
+    repairTripOwnership(orgId).catch(err => logger.error("TripsProvider", "ownership repair failed:", err));
   }, [useCloud, orgId, cloud.ready]);
 
   // Side-effect hooks (extracted)

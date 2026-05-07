@@ -104,7 +104,7 @@ function tripDuration(start: string, end: string) {
 }
 
 export function DashboardPage() {
-  const { trips, addTrip, deleteTrip } = useTrips();
+  const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
@@ -428,7 +428,12 @@ export function DashboardPage() {
 
       {/* ── Scrollable Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {trips.length === 0 ? (
+        {!tripsReady ? (
+          <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-4">
+            <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#555]">Loading trips</p>
+          </div>
+        ) : trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
             <BrandIllustration src="/illustrations/illus-riding.svg" className="w-72 h-72 object-contain" draggable={false} />
             <p className="text-sm font-medium text-slate-500 dark:text-[#888] text-center max-w-xs leading-relaxed">

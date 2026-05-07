@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Clock, DotsThreeVertical, Gear, Trash, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Clock, DotsThreeVertical, Gear, Trash, Copy, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
 
@@ -68,7 +68,7 @@ function MediaBadge({ media, documents }: { media?: TravelEvent["media"]; docume
   );
 }
 
-function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => void }) {
+function CardMenu({ onClick, onDuplicate, onDelete }: { onClick: () => void; onDuplicate: () => void; onDelete: () => void }) {
   return (
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
@@ -78,6 +78,9 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
         <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
           <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
             <Gear className="h-3.5 w-3.5 text-brand" /> Edit Event
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onDuplicate} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
+            <Copy className="h-3.5 w-3.5 text-brand" /> Duplicate
           </DropdownMenuItem>
           <div className="my-1 h-px bg-slate-100 dark:bg-[#1f1f1f]" />
           <DropdownMenuItem onClick={onDelete} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-red-500 hover:bg-red-500/5">
@@ -91,10 +94,11 @@ function CardMenu({ onClick, onDelete }: { onClick: () => void; onDelete: () => 
 
 // ─── Compact Row — used when event data is sparse ─────────────────────────────
 function CompactCard({
-  event, onClick, onDelete, Icon, label, assignedPeople,
+  event, onClick, onDuplicate, onDelete, Icon, label, assignedPeople,
 }: {
   event: TravelEvent;
   onClick: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   Icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -128,13 +132,13 @@ function CompactCard({
       <StatusChip status={event.status} />
       <MediaBadge media={event.media} documents={event.documents} />
       <AssignedDots people={assignedPeople} />
-      <CardMenu onClick={onClick} onDelete={onDelete} />
+      <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
     </div>
   );
 }
 
 // ─── Flight Card ──────────────────────────────────────────────────────────────
-function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const parts = event.location?.match(/^(.+?)\s+to\s+(.+)$/i);
   const from = event.depAirport || parts?.[1]?.trim() || event.location || "";
   const to = event.arrAirport || parts?.[2]?.trim() || "";
@@ -143,7 +147,7 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
   if (!to) {
     return (
       <CompactCard
-        event={event} onClick={onClick} onDelete={onDelete}
+        event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete}
         Icon={AirplaneTilt} label="Flight"
         assignedPeople={assignedPeople}
       />
@@ -208,20 +212,19 @@ function FlightCard({ event, onClick, onDelete, assignedPeople }: { event: Trave
           </div>
         </div>
 
-        <CardMenu onClick={onClick} onDelete={onDelete} />
+        <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
     </div>
   );
 }
 
 // ─── Hotel Card ───────────────────────────────────────────────────────────────
-function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
-  // Sparse: no checkin/out, no roomType, no location → collapse to compact row.
+function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isSparse = !event.checkin && !event.checkout && !event.roomType && !event.location;
   if (isSparse) {
     return (
       <CompactCard
-        event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople}
+        event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
         Icon={Hotel} label="Accommodation"
       />
     );
@@ -257,7 +260,7 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
                 </p>
               )}
             </div>
-            <CardMenu onClick={onClick} onDelete={onDelete} />
+            <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
@@ -294,17 +297,16 @@ function HotelCard({ event, onClick, onDelete, assignedPeople }: { event: Travel
 }
 
 // ─── Activity / Dining Card ───────────────────────────────────────────────────
-function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
   const isDining = event.type === "dining";
   const isTransfer = event.type === "transfer";
   const Icon = isTransfer ? Car : isDining ? ForkKnife : Compass;
 
-  // Sparse: no notes, no endTime, no location → collapse to compact row.
   const isSparse = !event.notes && !event.endTime && !event.location;
   if (isSparse) {
     return (
       <CompactCard
-        event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople}
+        event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
         Icon={Icon} label={isTransfer ? "Transfer" : isDining ? "Dining" : "Activity"}
       />
     );
@@ -345,7 +347,7 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
                 <p className="text-xs text-slate-500 dark:text-[#888] mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
               )}
             </div>
-            <CardMenu onClick={onClick} onDelete={onDelete} />
+            <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
@@ -364,8 +366,8 @@ function ActivityCard({ event, onClick, onDelete, assignedPeople }: { event: Tra
 }
 
 // ─── Public export ────────────────────────────────────────────────────────────
-export const EventCard = memo(function EventCard({ event, onClick, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
-  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
-  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
-  return <ActivityCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />;
+export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
+  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
+  return <ActivityCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
 });

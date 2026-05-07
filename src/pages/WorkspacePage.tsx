@@ -434,6 +434,17 @@ export function WorkspacePage() {
     toast.success("Event saved");
   };
 
+  const handleDuplicateEvent = (eventId: string) => {
+    if (demoGate()) return;
+    const source = trip.events.find(ev => ev.id === eventId);
+    if (!source) return;
+    const { id, ...rest } = source;
+    const duplicate: TravelEvent = { ...rest, id: Date.now().toString(), title: `${source.title} (copy)` };
+    updateEvent(trip.id, duplicate);
+    showToast("Event duplicated");
+    toast.success("Event duplicated");
+  };
+
   const handleDeleteEvent = (eventId: string) => {
     if (demoGate()) return;
     const removed = trip.events.find(ev => ev.id === eventId);
@@ -1219,6 +1230,7 @@ export function WorkspacePage() {
                                     key={event.id}
                                     event={event}
                                     onClick={() => handleEditEvent(event)}
+                                    onDuplicate={() => handleDuplicateEvent(event.id)}
                                     onDelete={() => handleDeleteEvent(event.id)}
                                     assignedPeople={
                                       event.assignedTo?.length

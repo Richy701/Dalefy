@@ -7,11 +7,12 @@ import type { TravelEvent } from "@/types";
 interface SortableEventCardProps {
   event: TravelEvent;
   onClick: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   assignedPeople?: Array<{ initials: string; name: string }>;
 }
 
-export function SortableEventCard({ event, onClick, onDelete, assignedPeople }: SortableEventCardProps) {
+export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: SortableEventCardProps) {
   const {
     attributes,
     listeners,
@@ -41,7 +42,7 @@ export function SortableEventCard({ event, onClick, onDelete, assignedPeople }: 
       >
         <DotsSixVertical className="h-4 w-4" />
       </div>
-      <EventCard event={event} onClick={onClick} onDelete={onDelete} assignedPeople={assignedPeople} />
+      <EventCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />
     </div>
   );
 }
