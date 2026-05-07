@@ -977,9 +977,6 @@ function UpcomingCard({ trip }: { trip: Trip }) {
           ) : null}
         </View>
       </View>
-      <View style={styles.daysPill}>
-        <Text style={styles.daysText}>{days <= 0 ? "Today" : `${days}d`}</Text>
-      </View>
       <ArrowUpRight size={14} color={C.textTertiary} weight="light" />
     </ScalePress>
     </Link>
