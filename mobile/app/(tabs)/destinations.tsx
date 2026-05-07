@@ -496,7 +496,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       color: C.textSecondary, marginTop: 3,
     },
     mapCard: {
-      height: 220,
+      height: 240,
       overflow: "hidden",
       backgroundColor: C.card,
     },
@@ -549,11 +549,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingHorizontal: S.md,
     },
     cardsGrid: {
-      gap: S.sm,
+      gap: S.md,
     },
     card: {
-      width: "100%", height: 200, borderRadius: R["2xl"],
+      width: "100%", height: 220, borderRadius: R["2xl"],
       overflow: "hidden", backgroundColor: C.card,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
     },
     cardTopRow: {
       position: "absolute", top: 0, left: 0, right: 0,

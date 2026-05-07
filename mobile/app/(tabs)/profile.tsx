@@ -304,20 +304,20 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.card,
       borderRadius: R["2xl"],
       marginTop: S.md,
-      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
     },
     avatar: {
-      width: 52,
-      height: 52,
+      width: 56,
+      height: 56,
       borderRadius: R.full,
       backgroundColor: C.elevated,
       alignItems: "center",
       justifyContent: "center",
     },
     avatarImg: {
-      width: 52,
-      height: 52,
+      width: 56,
+      height: 56,
       borderRadius: R.full,
     },
     avatarText: {
@@ -354,8 +354,8 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.card,
       borderRadius: R["2xl"],
       overflow: "hidden",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
     },
 
     // ── Rows ──

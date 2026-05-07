@@ -140,7 +140,7 @@ function makeStyles(C: ThemeColors) {
     // Card
     cardOuter: {
       flex: 1,
-      marginBottom: S.xs,
+      marginBottom: S.sm,
     },
     card: {
       flex: 1,
@@ -149,6 +149,8 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.card,
       borderRadius: R.xl,
       overflow: "hidden",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
     },
     cardToday: {
       backgroundColor: `${C.teal}08`,
@@ -156,28 +158,28 @@ function makeStyles(C: ThemeColors) {
 
     // Day number column
     dayCol: {
-      width: 48,
+      width: 52,
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: S.sm,
+      paddingVertical: S.md,
     },
     dayNum: {
       fontSize: T["2xl"],
       fontWeight: T.bold,
       letterSpacing: -0.3,
-      lineHeight: 26,
+      lineHeight: 28,
     },
     dayLabel: {
       fontSize: 10,
-      fontWeight: T.bold,
+      fontWeight: T.semibold,
       letterSpacing: 1.2,
-      marginTop: 1,
+      marginTop: 2,
     },
 
     // Center content
     center: {
       flex: 1,
-      paddingVertical: S.sm,
+      paddingVertical: S.md,
       paddingRight: S.xs,
     },
     dateRow: {

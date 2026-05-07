@@ -14,7 +14,6 @@ import {
   AirplaneTakeoff, AirplaneLanding, Timer, Armchair, Door,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
-import Svg, { Path } from "react-native-svg";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
@@ -320,36 +319,23 @@ function getCountdown(dateStr: string, timeStr?: string): string | null {
   return `${mins}m`;
 }
 
-function FlightArc({ color, planeColor }: { color: string; planeColor: string }) {
-  return (
-    <View style={{ width: "100%", height: 40, alignItems: "center", justifyContent: "center" }}>
-      <Svg width="100%" height={40} viewBox="0 0 200 40" preserveAspectRatio="none">
-        <Path
-          d="M 10 32 Q 100 -8 190 32"
-          stroke={color}
-          weight="light"
-          strokeDasharray="4,4"
-          fill="none"
-          opacity={0.5}
-        />
-      </Svg>
-      <View style={{
-        position: "absolute",
-        top: 4,
-        backgroundColor: "transparent",
-        transform: [{ rotate: "45deg" }],
-      }}>
-        <AirplaneTilt size={14} color={planeColor} weight="fill" />
-      </View>
-    </View>
-  );
-}
-
 function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color: string }) {
-  const depCode = ev.depAirport?.trim().toUpperCase() || "";
-  const arrCode = ev.arrAirport?.trim().toUpperCase() || "";
+  let depCode = ev.depAirport?.trim().toUpperCase() || "";
+  let arrCode = ev.arrAirport?.trim().toUpperCase() || "";
+
+  if ((!depCode || !arrCode) && ev.location) {
+    const locMatch = ev.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/i);
+    if (locMatch) {
+      if (!depCode) depCode = locMatch[1].toUpperCase();
+      if (!arrCode) arrCode = locMatch[2].toUpperCase();
+    }
+  }
+
   const hasIata = depCode.length >= 3 && arrCode.length >= 3;
-  const cities = parseFlightCities(ev.title || "");
+  let cities = parseFlightCities(ev.title || "");
+  if (!cities.to && ev.location) {
+    cities = parseFlightCities(ev.location);
+  }
   const countdown = ev.date ? getCountdown(ev.date, ev.time) : null;
 
   const statusLower = (ev.status || "").toLowerCase();
@@ -363,11 +349,12 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
 
   if (!hasIata && !cities.to) return null;
 
+  const flightLabel = ev.flightNum || (ev.airline ? ev.airline : "");
+
   const detailItems: Array<{ icon: React.ComponentType<any>; label: string; value: string }> = [];
   if (ev.terminal) detailItems.push({ icon: Door, label: "Terminal", value: ev.terminal });
   if (ev.gate) detailItems.push({ icon: NavigationArrow, label: "Gate", value: ev.gate });
   if (ev.seatDetails) detailItems.push({ icon: Armchair, label: "Seat", value: ev.seatDetails });
-  if (ev.duration) detailItems.push({ icon: Timer, label: "Duration", value: ev.duration });
 
   return (
     <View style={[frs.card, { backgroundColor: C.card }]}>
@@ -387,29 +374,28 @@ function FlightRoute({ ev, C, color }: { ev: TravelEvent; C: ThemeColors; color:
         )}
       </View>
 
-      {/* IATA codes + arc */}
+      {/* Route — Tripsy style: city, IATA, time | line + plane | city, IATA, time */}
       <View style={frs.routeRow}>
         <View style={frs.endpoint}>
-          {hasIata && (
-            <Text style={[frs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>
-          )}
           <Text style={[frs.cityName, { color: C.textSecondary }]} numberOfLines={1}>{cities.from}</Text>
-          {ev.time && <Text style={[frs.time, { color: C.textPrimary }]}>{ev.time}</Text>}
+          {hasIata && <Text style={[frs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>}
+          {ev.time && <Text style={[frs.time, { color: C.textTertiary }]}>{ev.time}</Text>}
         </View>
 
-        <View style={frs.arcWrap}>
-          <FlightArc color={C.teal} planeColor={C.teal} />
-          {ev.duration && (
-            <Text style={[frs.durationLabel, { color: C.textTertiary }]}>{ev.duration}</Text>
-          )}
+        <View style={frs.connector}>
+          {flightLabel ? <Text style={[frs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
+          <View style={frs.lineRow}>
+            <View style={[frs.line, { backgroundColor: C.flight + "30" }]} />
+            <AirplaneTilt size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+            <View style={[frs.line, { backgroundColor: C.flight + "30" }]} />
+          </View>
+          {ev.duration && <Text style={[frs.durationText, { color: C.textTertiary }]}>{ev.duration}</Text>}
         </View>
 
         <View style={[frs.endpoint, { alignItems: "flex-end" }]}>
-          {hasIata && (
-            <Text style={[frs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>
-          )}
           <Text style={[frs.cityName, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{cities.to}</Text>
-          {ev.endTime && <Text style={[frs.time, { color: C.textPrimary }]}>{ev.endTime}</Text>}
+          {hasIata && <Text style={[frs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>}
+          {ev.endTime && <Text style={[frs.time, { color: C.textTertiary }]}>{ev.endTime}</Text>}
         </View>
       </View>
 
@@ -453,11 +439,20 @@ const frs = StyleSheet.create({
     marginBottom: 4,
   },
   endpoint: { flex: 1 },
+  cityName: { fontSize: T.sm, fontWeight: "400", letterSpacing: 0.2, marginBottom: 2 },
   iata: { fontSize: 32, fontWeight: "800", letterSpacing: -0.5, lineHeight: 36 },
-  cityName: { fontSize: 12, fontWeight: "600", marginTop: 2 },
-  time: { fontSize: T.lg, fontWeight: "700", marginTop: 6 },
-  arcWrap: { flex: 1.2, alignItems: "center", paddingTop: 2 },
-  durationLabel: { fontSize: 11, fontWeight: "600", marginTop: -2 },
+  time: { fontSize: T.base, fontWeight: "500", marginTop: 6 },
+  connector: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    paddingTop: S.xl,
+  },
+  flightNum: { fontSize: T.xs, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
+  lineRow: {
+    flexDirection: "row", alignItems: "center",
+    width: "100%", paddingHorizontal: 2,
+  },
+  line: { flex: 1, height: 1.5, borderRadius: 1 },
+  durationText: { fontSize: T.xs, fontWeight: "500", marginTop: 8 },
   detailGrid: {
     flexDirection: "row", flexWrap: "wrap",
     borderTopWidth: StyleSheet.hairlineWidth,

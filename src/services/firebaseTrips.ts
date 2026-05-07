@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -93,11 +93,21 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
   const cleanTrip = await uploadTripImages(trip);
 
   const data = tripToDoc(cleanTrip);
-  if (userId) data.user_id = userId;
   if (orgId) data.organization_id = orgId;
 
-  logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org");
-  await setDoc(doc(firebaseDb(), TRIPS, trip.id), data, { merge: true });
+  // Only stamp user_id on brand-new docs — never overwrite another user's ownership
+  const tripRef = doc(firebaseDb(), TRIPS, trip.id);
+  let isNew = false;
+  try {
+    const existing = await getDoc(tripRef);
+    isNew = !existing.exists();
+  } catch {
+    isNew = true;
+  }
+  if (isNew && userId) data.user_id = userId;
+
+  logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org", isNew ? "(new)" : "(update)");
+  await setDoc(tripRef, data, { merge: true });
   return cleanTrip;
 }
 
@@ -236,6 +246,94 @@ export async function deleteAllTripMembers(): Promise<number> {
   }
   logger.log("deleteAllTripMembers", `deleted ${deleted}/${snap.size} docs`);
   return deleted;
+}
+
+// ── Repair: restore user_id ownership ────────────────────────────────────
+
+/** Look up a user's Firebase UID from their email in the profiles collection */
+async function findUidByEmail(email: string): Promise<string | null> {
+  const snap = await getDocs(
+    query(collection(firebaseDb(), "profiles"), where("email", "==", email)),
+  );
+  return snap.empty ? null : snap.docs[0].id;
+}
+
+/**
+ * One-time repair: restore `user_id` on trips that were incorrectly overwritten.
+ * Finds all org trips where user_id != the original creator, and reassigns
+ * trips back to the correct owner based on their email.
+ *
+ * Call from browser console:
+ *   import('/src/services/firebaseTrips.ts').then(m => m.repairTripOwnership('org-id'))
+ */
+export async function repairTripOwnership(orgId: string): Promise<{ fixed: number; skipped: number; log: string[] }> {
+  const db = firebaseDb();
+  const currentUid = firebaseAuth().currentUser?.uid;
+  if (!currentUid) return { fixed: 0, skipped: 0, log: ["Not authenticated"] };
+
+  const ashUid = await findUidByEmail("ash.murray@dialaflight.co.uk");
+  if (!ashUid) return { fixed: 0, skipped: 0, log: ["Could not find Ash's profile by email"] };
+
+  const snap = await getDocs(
+    query(collection(db, TRIPS), where("organization_id", "==", orgId)),
+  );
+
+  const log: string[] = [];
+  let fixed = 0;
+  let skipped = 0;
+
+  for (const d of snap.docs) {
+    if (DEMO_IDS.has(d.id)) continue;
+    const data = d.data();
+    const currentOwner = data.user_id as string;
+
+    // If the trip's user_id matches the current user (you) but was likely
+    // created by Ash — check trip_members for the earliest join to infer creator
+    if (currentOwner === currentUid) {
+      const memberSnap = await getDocs(
+        query(collection(db, TRIP_MEMBERS), where("trip_id", "==", d.id)),
+      );
+      const members = memberSnap.docs.map(m => m.data());
+      const ashMember = members.find(m => m.uid === ashUid || m.device_id?.includes(ashUid));
+
+      if (ashMember) {
+        log.push(`Restoring "${data.name}" (${d.id}) → Ash (was ${currentOwner.slice(0, 8)}...)`);
+        await setDoc(d.ref, { user_id: ashUid }, { merge: true });
+        fixed++;
+      } else {
+        skipped++;
+      }
+    } else {
+      skipped++;
+    }
+  }
+
+  log.push(`Done: ${fixed} fixed, ${skipped} skipped`);
+  for (const l of log) logger.log("repairTripOwnership", l);
+  return { fixed, skipped, log };
+}
+
+/**
+ * Simpler variant: reassign specific trips to Ash by trip ID.
+ * Call from console: repairTripsForUser(['trip-id-1', 'trip-id-2'], 'ash.murray@dialaflight.co.uk')
+ */
+export async function repairTripsForUser(tripIds: string[], email: string): Promise<string[]> {
+  const uid = await findUidByEmail(email);
+  if (!uid) return [`No profile found for ${email}`];
+
+  const db = firebaseDb();
+  const log: string[] = [];
+
+  for (const id of tripIds) {
+    const ref = doc(db, TRIPS, id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) { log.push(`${id}: not found`); continue; }
+    await setDoc(ref, { user_id: uid }, { merge: true });
+    log.push(`${id} ("${snap.data().name}"): user_id → ${uid.slice(0, 8)}...`);
+  }
+
+  for (const l of log) logger.log("repairTripsForUser", l);
+  return log;
 }
 
 // ── Image upload ──────────────────────────────────────────────────────────

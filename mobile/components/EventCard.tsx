@@ -57,10 +57,18 @@ function flightStatusInfo(status: string | undefined, duration: string | undefin
 
 function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
   const router = useRouter();
-  const cities = parseFlightCities(ev.title ?? "");
+  let cities = parseFlightCities(ev.title ?? "");
+  if (!cities.to && ev.location) cities = parseFlightCities(ev.location);
 
-  const depCode = ev.depAirport?.toUpperCase() || "";
-  const arrCode = ev.arrAirport?.toUpperCase() || "";
+  let depCode = ev.depAirport?.toUpperCase() || "";
+  let arrCode = ev.arrAirport?.toUpperCase() || "";
+  if ((!depCode || !arrCode) && ev.location) {
+    const locMatch = ev.location.match(/^([A-Z]{3})\s+to\s+([A-Z]{3})$/i);
+    if (locMatch) {
+      if (!depCode) depCode = locMatch[1].toUpperCase();
+      if (!arrCode) arrCode = locMatch[2].toUpperCase();
+    }
+  }
   const hasCodes = depCode.length >= 3 && arrCode.length >= 3;
 
   const depCity = cities.from || ev.location || "";
@@ -82,65 +90,39 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
+  const flightLabel = ev.flightNum || (ev.airline ? `${ev.airline}` : "");
+
   return (
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [fs.card, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
     >
-      {/* Airline strip + status badge */}
-      <View style={fs.strip}>
-        <Text style={[fs.airline, { color: C.textSecondary }]} numberOfLines={1}>
-          {ev.airline ?? "Flight"}{ev.flightNum ? ` · ${ev.flightNum}` : ""}
-        </Text>
-        {badge.label && (
-          <View style={[fs.badge, badge.isStatus && { backgroundColor: `${badge.color}18` }]}>
-            {badge.isStatus && badge.label === "IN FLIGHT" && (
-              <View style={[fs.pulseDot, { backgroundColor: badge.color }]} />
-            )}
-            <Text style={[fs.badgeText, { color: badge.color }]}>{badge.label}</Text>
+      {/* Route — Tripsy-style: city, IATA, time | line + plane | city, IATA, time */}
+      {(hasCodes || arrCity) ? (
+        <View style={fs.route}>
+          {/* Departure */}
+          <View style={fs.endpoint}>
+            <Text style={[fs.cityName, { color: C.textSecondary }]} numberOfLines={1}>{depCity}</Text>
+            {hasCodes && <Text style={[fs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>}
+            {depTime ? <Text style={[fs.time, { color: C.textTertiary }]}>{depTime}</Text> : null}
           </View>
-        )}
-      </View>
 
-      {/* Route hero */}
-      {hasCodes ? (
-        <View style={fs.route}>
-          <View style={fs.endpoint}>
-            <Text style={[fs.cityLabel, { color: C.textPrimary }]} numberOfLines={2}>{depCity}</Text>
-            <Text style={[fs.iata, { color: C.textSecondary }]}>
-              {depCode.slice(0, 3)}{ev.terminal ? ` · T${ev.terminal}` : ""}
-            </Text>
-            {depTime ? <Text style={[fs.time, { color: C.flight }]}>{depTime}</Text> : null}
-          </View>
+          {/* Center connector */}
           <View style={fs.connector}>
-            <Text style={{ color: C.flight, fontSize: 18, textAlign: "center" }}>✈</Text>
-            {ev.duration && (
-              <Text style={[fs.duration, { color: C.textTertiary }]}>{ev.duration}</Text>
-            )}
+            {flightLabel ? <Text style={[fs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
+            <View style={fs.lineRow}>
+              <View style={[fs.line, { backgroundColor: C.flight + "30" }]} />
+              <AirplaneTilt size={16} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
+              <View style={[fs.line, { backgroundColor: C.flight + "30" }]} />
+            </View>
+            {ev.duration ? <Text style={[fs.durationText, { color: C.textTertiary }]}>{ev.duration}</Text> : null}
           </View>
+
+          {/* Arrival */}
           <View style={[fs.endpoint, { alignItems: "flex-end" }]}>
-            <Text style={[fs.cityLabel, { color: C.textPrimary, textAlign: "right" }]} numberOfLines={2}>{arrCity}</Text>
-            <Text style={[fs.iata, { color: C.textSecondary }]}>
-              {arrCode.slice(0, 3)}{ev.arrTerminal ? ` · T${ev.arrTerminal}` : ""}
-            </Text>
-            {arrTime ? <Text style={[fs.time, { color: C.flight }]}>{arrTime}</Text> : null}
-          </View>
-        </View>
-      ) : arrCity ? (
-        <View style={fs.route}>
-          <View style={fs.endpoint}>
-            <Text style={[fs.cityOnly, { color: C.textPrimary }]} numberOfLines={2}>{depCity}</Text>
-            {depTime ? <Text style={[fs.time, { color: C.flight }]}>{depTime}</Text> : null}
-          </View>
-          <View style={fs.connector}>
-            <Text style={{ color: C.flight, fontSize: 18, textAlign: "center" }}>✈</Text>
-            {ev.duration && (
-              <Text style={[fs.duration, { color: C.textTertiary }]}>{ev.duration}</Text>
-            )}
-          </View>
-          <View style={[fs.endpoint, { alignItems: "flex-end" }]}>
-            <Text style={[fs.cityOnly, { color: C.textPrimary, textAlign: "right" }]} numberOfLines={2}>{arrCity}</Text>
-            {arrTime ? <Text style={[fs.time, { color: C.flight }]}>{arrTime}</Text> : null}
+            <Text style={[fs.cityName, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{arrCity}</Text>
+            {hasCodes && <Text style={[fs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>}
+            {arrTime ? <Text style={[fs.time, { color: C.textTertiary }]}>{arrTime}</Text> : null}
           </View>
         </View>
       ) : (
@@ -163,7 +145,6 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
         <Text style={[cs.notesFlat, { color: C.textTertiary }]}>{ev.notes}</Text>
       )}
 
-      {/* Confirmation number */}
       {ev.confNumber && (
         <View style={[cs.footer, { marginTop: chips.length > 0 ? S.xs : S.sm }]}>
           <View style={{ flex: 1 }} />
@@ -178,41 +159,28 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
 }
 
 const fs = StyleSheet.create({
-  card: { borderRadius: R.xl, padding: S.md },
-  strip: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    marginBottom: S.md,
-  },
-  airline: { fontSize: T.sm, fontWeight: T.semibold, flex: 1 },
-  badge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: R.full,
-  },
-  badgeText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.5 },
-  pulseDot: { width: 5, height: 5, borderRadius: 3 },
+  card: { borderRadius: R.xl, padding: S.lg },
   route: {
     flexDirection: "row", alignItems: "flex-start",
     marginBottom: S.sm,
   },
   endpoint: { flex: 1 },
-  cityLabel: { fontSize: T.base, fontWeight: T.bold, letterSpacing: -0.1, lineHeight: 20 },
-  cityOnly: { fontSize: T.lg, fontWeight: T.bold, letterSpacing: -0.2, lineHeight: 22 },
-  iata: { fontSize: 12, fontWeight: T.bold, letterSpacing: 1, marginTop: 2 },
-  time: { fontSize: T.base, fontWeight: T.bold, marginTop: 4 },
+  cityName: { fontSize: T.xs, fontWeight: T.regular, letterSpacing: 0.2, marginBottom: 2 },
+  iata: { fontSize: T["2xl"], fontWeight: T.bold, letterSpacing: -0.5 },
+  time: { fontSize: T.sm, fontWeight: T.medium, marginTop: 4 },
   connector: {
     alignItems: "center",
-    paddingTop: 2,
-    flex: 0.8,
+    justifyContent: "center",
+    flex: 0.9,
+    paddingTop: S.lg,
   },
-  flightPath: {
+  flightNum: { fontSize: T.xs, fontWeight: T.medium, letterSpacing: 0.3, marginBottom: 6 },
+  lineRow: {
     flexDirection: "row", alignItems: "center",
-    width: "100%", gap: 6, paddingHorizontal: 4,
+    width: "100%", paddingHorizontal: 2,
   },
-  pathDash: { flex: 1, height: 0, borderTopWidth: 1.5, borderStyle: "dashed" },
-  planeWrap: {
-    width: 22, height: 22, alignItems: "center", justifyContent: "center",
-  },
-  duration: { fontSize: 12, fontWeight: T.medium, marginTop: 4 },
+  line: { flex: 1, height: 1.5, borderRadius: 1 },
+  durationText: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: S.xs, marginBottom: S.xs },
   chip: {
     paddingHorizontal: S.sm, paddingVertical: S.xs,
@@ -386,15 +354,15 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
 const cs = StyleSheet.create({
   card: { borderRadius: R.xl, padding: S.md },
   content: { padding: S.md },
-  imageBanner: { width: "100%", height: 140, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl },
+  imageBanner: { width: "100%", height: 170, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl },
 
   header: { flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.sm },
   iconBox: {
-    width: 34, height: 34, borderRadius: R.md,
+    width: 36, height: 36, borderRadius: R.md,
     alignItems: "center", justifyContent: "center",
   },
-  smallLabel: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.5 },
-  meta: { fontSize: T.xs, fontWeight: T.medium, marginTop: 1 },
+  smallLabel: { fontSize: T.xs, fontWeight: T.semibold, letterSpacing: 0.5 },
+  meta: { fontSize: T.xs, fontWeight: T.regular, marginTop: 1 },
   timeBadge: {
     fontSize: T.xs, fontWeight: T.bold,
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.full,

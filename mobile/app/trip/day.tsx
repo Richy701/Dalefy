@@ -398,7 +398,7 @@ function makeStyles(C: ThemeColors) {
     // Events
     eventsSection: {
       paddingHorizontal: S.md,
-      gap: S.md,
+      gap: S.lg,
     },
 
     // Empty state

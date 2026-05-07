@@ -4,12 +4,12 @@ export const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 60;
 
 export const darkColors = {
   bg: "#09090b",
-  surface: "#0c0c0f",
-  card: "#131316",
-  elevated: "#1a1a1f",
+  surface: "#0e0e12",
+  card: "#141418",
+  elevated: "#1c1c22",
 
-  border: "rgba(255,255,255,0.12)",
-  borderLight: "rgba(255,255,255,0.06)",
+  border: "rgba(255,255,255,0.10)",
+  borderLight: "rgba(255,255,255,0.05)",
 
   textPrimary: "#EDEDEF",
   textSecondary: "#9a9a9a",
@@ -38,13 +38,13 @@ export const darkColors = {
 };
 
 export const lightColors = {
-  bg: "#f7f8fb",
+  bg: "#f5f6fa",
   surface: "#eef0f5",
   card: "#ffffff",
-  elevated: "#e9ecf2",
+  elevated: "#f0f1f5",
 
-  border: "rgba(0,0,0,0.08)",
-  borderLight: "rgba(0,0,0,0.04)",
+  border: "rgba(0,0,0,0.07)",
+  borderLight: "rgba(0,0,0,0.03)",
 
   textPrimary: "#0d0f14",
   textSecondary: "#4b5263",
@@ -107,22 +107,22 @@ export const T = {
 };
 
 export const R = {
-  sm: 8,
-  md: 10,
-  lg: 14,
-  xl: 18,
-  "2xl": 24,
+  sm: 10,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  "2xl": 26,
   full: 100,
 };
 
 export const S = {
-  "2xs": 3,
-  xs: 6,
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
-  "2xl": 32,
+  "2xs": 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 28,
+  "2xl": 36,
 };
 
 export function statusColor(status: string, C: ThemeColors = darkColors) {

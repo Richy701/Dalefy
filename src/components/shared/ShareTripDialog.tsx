@@ -235,14 +235,14 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
           {/* Link rows */}
           <div className="mt-4 space-y-2 pb-4 sm:pb-0">
             <LinkRow
-              icon={Link2}
+              icon={Link}
               label="Web Link"
               value={webUrl}
               copied={copiedKey === "web"}
               onCopy={() => copy("web", webUrl, "Web link")}
             />
             <LinkRow
-              icon={Smartphone}
+              icon={DeviceMobile}
               label="Mobile Deep Link"
               value={deepLink}
               copied={copiedKey === "deep"}

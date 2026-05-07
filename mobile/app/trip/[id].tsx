@@ -654,7 +654,7 @@ function makeStyles(C: ThemeColors) {
 
     mapSection: { paddingTop: S.md },
     mapWrap: {
-      height: 220, marginHorizontal: S.md,
+      height: 240, marginHorizontal: S.md,
       borderRadius: R.xl, overflow: "hidden",
       backgroundColor: C.card,
     },
@@ -662,16 +662,16 @@ function makeStyles(C: ThemeColors) {
 
     // Section headers
     sectionHeader: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm,
+      flexDirection: "row", alignItems: "center", gap: 8,
+      paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: S.sm,
     },
     sectionEyebrow: {
-      fontSize: 10, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 1.5,
+      fontSize: 10, fontWeight: T.semibold, color: C.textTertiary,
+      letterSpacing: 1.8,
     },
 
     // Itinerary
-    section: { paddingBottom: S.md },
+    section: { paddingBottom: S.lg },
     dayRows: { paddingHorizontal: S.md },
 
     // Day quick-jump pills

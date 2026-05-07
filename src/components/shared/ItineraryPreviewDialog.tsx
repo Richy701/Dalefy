@@ -83,7 +83,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
             {trip.name}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <Pill icon={CalendarDays} forPrint={forPrint}>{dateRange} · {nights} night{nights !== 1 ? "s" : ""}</Pill>
+            <Pill icon={CalendarDots} forPrint={forPrint}>{dateRange} · {nights} night{nights !== 1 ? "s" : ""}</Pill>
             {trip.destination && <Pill icon={MapPin} forPrint={forPrint}>{trip.destination}</Pill>}
             {trip.attendees && <Pill icon={Users} className={forPrint ? undefined : "hidden sm:flex"} forPrint={forPrint}>{trip.attendees}</Pill>}
           </div>

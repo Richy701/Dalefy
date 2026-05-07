@@ -13,6 +13,13 @@ import { isFirebaseConfigured } from "@/services/firebase";
 import { STORAGE } from "@/config/storageKeys";
 import { Logo } from "@/components/shared/Logo";
 import { BRAND } from "@/config/brand";
+import { repairTripOwnership, repairTripsForUser } from "@/services/firebaseTrips";
+
+// Expose repair utilities on window for one-time console use
+if (typeof window !== "undefined") {
+  (window as Record<string, unknown>).repairTripOwnership = repairTripOwnership;
+  (window as Record<string, unknown>).repairTripsForUser = repairTripsForUser;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
