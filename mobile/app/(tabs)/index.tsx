@@ -51,11 +51,7 @@ try {
 } catch { /* native module not in this build */ }
 
 function daysUntil(dateStr: string) {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const a = new Date(todayStr + "T00:00:00");
-  const b = new Date(dateStr + "T00:00:00");
-  return Math.round((b.getTime() - a.getTime()) / 86400000);
+  return Math.max(0, Math.ceil((new Date(dateStr + "T00:00:00").getTime() - Date.now()) / 86400000));
 }
 
 
@@ -156,7 +152,7 @@ function TripFoundReveal({ trip, C }: { trip: Trip; C: ThemeColors }) {
                 paddingHorizontal: 8, paddingVertical: 3,
               }}>
                 <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal }}>
-                  {days === 1 ? "Tomorrow" : `${days - 1} days`}
+                  {days === 1 ? "Tomorrow" : `${days} days`}
                 </Text>
               </View>
             )}
@@ -982,7 +978,7 @@ function UpcomingCard({ trip }: { trip: Trip }) {
         </View>
       </View>
       <View style={styles.daysPill}>
-        <Text style={styles.daysText}>{days <= 0 ? "Today" : days === 1 ? "1d" : `${days - 1}d`}</Text>
+        <Text style={styles.daysText}>{days <= 0 ? "Today" : `${days}d`}</Text>
       </View>
       <ArrowUpRight size={14} color={C.textTertiary} weight="light" />
     </ScalePress>
@@ -1196,7 +1192,7 @@ function TripRow({ trip }: { trip: Trip }) {
       </View>
       {!isPast && days > 0 ? (
         <View style={styles.daysBadge}>
-          <Text style={styles.daysBadgeNum}>{days === 1 ? "1d" : `${days - 1}d`}</Text>
+          <Text style={styles.daysBadgeNum}>{`${days}d`}</Text>
         </View>
       ) : isPast ? (
         <View style={styles.pastChip}>
