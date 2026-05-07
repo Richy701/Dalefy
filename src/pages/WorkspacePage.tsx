@@ -1578,7 +1578,7 @@ export function WorkspacePage() {
                         ) : (
                           <>
                             {[
-                              { key: "checkin", label: "Check-in", isTime: true }, { key: "checkout", label: "Check-out", isTime: true },
+                              { key: "checkin", label: "Check-in", isTime: false }, { key: "checkout", label: "Check-out", isTime: false },
                               { key: "roomType", label: "Room Type", isTime: false },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
