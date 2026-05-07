@@ -86,8 +86,8 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
   const depCity = cities.from || ev.location || "";
   const arrCity = cities.to || "";
 
-  const depTime = ev.time || "";
-  const arrTime = ev.endTime || "";
+  const depTime = ev.time ? formatTimeTo24h(ev.time) : "";
+  const arrTime = ev.endTime ? formatTimeTo24h(ev.endTime) : "";
 
   const badge = flightStatusInfo(ev.status, undefined, C);
 
