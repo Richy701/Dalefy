@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Images, Play, Plus, Upload, Camera, X, Trash,
-  Image as PhosphorImage, FilmStripStrip, MapPin, CaretRight, Aperture,
+  Image as PhosphorImage, VideoCamera, MapPin, CaretRight, Aperture,
 } from "phosphor-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -362,7 +362,7 @@ function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C
         }}>
           {item.type === "image"
             ? <PhosphorImage size={10} color="#fff" weight="regular" />
-            : <FilmStrip size={10} color="#fff" weight="regular" />}
+            : <VideoCamera size={10} color="#fff" weight="regular" />}
           <Text style={{
             fontSize: 9, fontWeight: T.bold, color: "#fff",
             letterSpacing: 0.5, textTransform: "uppercase",
@@ -658,7 +658,7 @@ export default function MediaScreen() {
 
               <View style={styles.statRow}>
                 <StatPill icon={PhosphorImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
-                <StatPill icon={FilmStrip} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
+                <StatPill icon={VideoCamera} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
               </View>
             </View>
           </View>
