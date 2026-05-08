@@ -9,6 +9,7 @@ import { resolvedBrand } from "@/config/brand";
 import { hexToRgb } from "@/context/BrandContext";
 import { fetchBrandingForTrip, type OrgBranding } from "@/services/firebaseBranding";
 import { EVENT_ICONS, EVENT_HEX } from "@/config/eventStyles";
+import { sortEvents } from "@/lib/sortEvents";
 
 function rowToTrip(row: Record<string, unknown>): Trip {
   return {
@@ -199,8 +200,9 @@ export function SharedTripPage() {
   }, [trip, viewAsId]);
 
   const grouped = useMemo(() => {
+    const sorted = sortEvents(filteredEvents);
     const map: Record<string, TravelEvent[]> = {};
-    for (const ev of filteredEvents) {
+    for (const ev of sorted) {
       if (!map[ev.date]) map[ev.date] = [];
       map[ev.date].push(ev);
     }

@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
+import { sortEvents } from "@/lib/sortEvents";
 import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
@@ -23,8 +24,9 @@ interface ItineraryPreviewContentProps {
 export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl }: ItineraryPreviewContentProps) {
   const { brand } = useBrand();
   const grouped = useMemo(() => {
+    const sorted = sortEvents(trip.events);
     const map: Record<string, TravelEvent[]> = {};
-    for (const ev of trip.events) {
+    for (const ev of sorted) {
       if (!map[ev.date]) map[ev.date] = [];
       map[ev.date].push(ev);
     }
