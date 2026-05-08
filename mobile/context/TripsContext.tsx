@@ -6,7 +6,7 @@ import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/
 
 const CACHE_KEY = "daf-trips-cache";
 
-export const TRIPS_CTX_VERSION = "v8";
+export const TRIPS_CTX_VERSION = "v9";
 console.log(`[TripsContext] ${TRIPS_CTX_VERSION} loaded`);
 // Eager module-level cache read — fires at import time, well before React mounts.
 // If AsyncStorage resolves before first render, trips are available immediately.
@@ -32,7 +32,7 @@ interface TripsContextValue {
   /** Optimistic-only update — no Firestore write */
   updateTripLocal: (trip: Trip) => void;
   clearTrips: () => Promise<void>;
-  reload: () => Promise<void>;
+  reload: () => Promise<boolean>;
   /** Block subscription/reload overwrites while a long-running operation is in progress */
   holdWrites: () => void;
   releaseWrites: () => void;
@@ -41,6 +41,7 @@ interface TripsContextValue {
 const TripsContext = createContext<TripsContextValue | null>(null);
 
 function save(trips: Trip[]) {
+  if (trips.length === 0) return;
   AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trips)).catch(() => {});
 }
 
@@ -95,33 +96,52 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [isSuccess]);
 
   useEffect(() => {
-    if (isError) setNetworkDown(true);
+    if (isError) {
+      setNetworkDown(true);
+      confirmedOnline.current = false;
+    }
   }, [isError]);
 
-  // Sync remote data → local cache when it arrives (skip during pending writes)
-  // Only overwrite cache with empty results when we've confirmed we're online
+  // Sync remote data → local cache (only non-empty to prevent offline wipes)
   useEffect(() => {
-    if (remoteTrips && pendingWrites.current === 0) {
-      if (remoteTrips.length > 0 || confirmedOnline.current) {
-        setLocalCache(remoteTrips);
-        save(remoteTrips);
-      }
+    if (remoteTrips && pendingWrites.current === 0 && remoteTrips.length > 0) {
+      setLocalCache(remoteTrips);
+      save(remoteTrips);
     }
   }, [remoteTrips]);
 
-  // Firestore realtime subscription — push fresh data straight into the query cache
-  // Skip updates while local writes are pending to prevent overwriting optimistic state
-  // Don't let empty snapshots wipe cache until we've confirmed we're actually online
+  // Firestore realtime subscription (never accepts empty — prevents offline wipes)
   useEffect(() => {
     const unsub = subscribeToTrips((freshTrips) => {
       if (pendingWrites.current > 0) return;
-      if (freshTrips.length === 0 && !confirmedOnline.current) return;
+      if (freshTrips.length === 0) return;
+      confirmedOnline.current = true;
+      setNetworkDown(false);
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
       setLocalCache(freshTrips);
       save(freshTrips);
     });
     return () => unsub();
   }, [qc]);
+
+  // Auto-recover from offline: poll fetchTrips every 10s until we get a response
+  useEffect(() => {
+    if (!networkDown) return;
+    const id = setInterval(() => {
+      fetchTrips()
+        .then((trips) => {
+          confirmedOnline.current = true;
+          setNetworkDown(false);
+          qc.setQueryData<Trip[]>(["trips"], trips);
+          if (trips.length > 0) {
+            setLocalCache(trips);
+            save(trips);
+          }
+        })
+        .catch(() => {});
+    }, 10000);
+    return () => clearInterval(id);
+  }, [networkDown, qc]);
 
   // Prefer remote when it has data; fall back to cache when remote is empty.
   // Only show truly empty when remote confirmed empty AND cache is also empty.
@@ -213,23 +233,22 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const holdWrites = useCallback(() => { pendingWrites.current++; }, []);
   const releaseWrites = useCallback(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, []);
 
-  const reload = useCallback(async () => {
-    // Don't refetch from Firestore while writes are pending — use local cache
-    if (pendingWrites.current > 0) {
-      console.log("[TripsContext] reload: skipped (writes pending)");
-      return;
-    }
+  const reload = useCallback(async (): Promise<boolean> => {
+    if (pendingWrites.current > 0) return false;
     try {
-      console.log("[TripsContext] reload: invalidating query...");
-      await qc.invalidateQueries({ queryKey: ["trips"] });
-      console.log("[TripsContext] reload: complete");
-    } catch (err) {
-      console.error("[TripsContext] reload failed:", err);
-      const raw = await AsyncStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw) as Trip[];
-        qc.setQueryData<Trip[]>(["trips"], cached);
+      const fresh = await fetchTrips();
+      confirmedOnline.current = true;
+      setNetworkDown(false);
+      qc.setQueryData<Trip[]>(["trips"], fresh);
+      if (fresh.length > 0) {
+        setLocalCache(fresh);
+        save(fresh);
       }
+      return true;
+    } catch {
+      setNetworkDown(true);
+      confirmedOnline.current = false;
+      return false;
     }
   }, [qc]);
 

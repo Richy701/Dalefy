@@ -1245,10 +1245,10 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRefreshing(true);
-    await reload();
+    const ok = await reload();
     setRefreshing(false);
-    toast(offline ? "You're offline" : "You're all up to date");
-  }, [reload, toast, offline]);
+    toast(ok ? "You're all up to date" : "You're offline");
+  }, [reload, toast]);
 
   const sorted = useMemo(() =>
     [...trips].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
