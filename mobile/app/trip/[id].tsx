@@ -284,9 +284,13 @@ export default function TripScreen() {
         {/* ── Hero banner — parallax + Apple Zoom target ── */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFillObject, heroImageStyle]}>
-            <Link.AppleZoomTarget>
+            {Platform.OS === "ios" && Link.AppleZoomTarget ? (
+              <Link.AppleZoomTarget>
+                <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+              </Link.AppleZoomTarget>
+            ) : (
               <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
-            </Link.AppleZoomTarget>
+            )}
           </Animated.View>
           <LinearGradient
             colors={["#00000008", "#00000040", "#000000e8"]}

@@ -7,12 +7,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
-import * as NavigationBar from "expo-navigation-bar";
+let NavigationBar: any = null;
+try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available */ }
 
 // Read saved theme preference and set native root background BEFORE React mounts.
 // This prevents the flash when the user's saved theme differs from the system theme.
 const systemIsDark = Appearance.getColorScheme() === "dark";
-SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f7f8fb");
+SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f7f8fb").catch(() => {});
 
 // Eagerly apply saved preference — runs async but resolves before splash hides
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,18 +21,19 @@ AsyncStorage.getItem("daf-prefs").then((raw) => {
   if (!raw) return;
   try {
     const { themeMode } = JSON.parse(raw);
-    if (themeMode && themeMode !== "system") {
-      const savedDark = themeMode === "dark";
-      Appearance.setColorScheme(themeMode);
-      SystemUI.setBackgroundColorAsync(savedDark ? "#09090b" : "#f7f8fb");
+    if (themeMode === "light" || themeMode === "dark") {
+      if (Platform.OS !== "android") {
+        try { Appearance.setColorScheme(themeMode); } catch { /* older RN */ }
+      }
+      SystemUI.setBackgroundColorAsync(themeMode === "dark" ? "#09090b" : "#f7f8fb").catch(() => {});
     }
   } catch { /* ignore */ }
 }).catch(() => {});
 
 // Android: transparent nav bar so content extends edge-to-edge
-if (Platform.OS === "android") {
-  NavigationBar.setBackgroundColorAsync("#09090b");
-  NavigationBar.setButtonStyleAsync("light");
+if (Platform.OS === "android" && NavigationBar) {
+  NavigationBar.setBackgroundColorAsync("#09090b").catch(() => {});
+  NavigationBar.setButtonStyleAsync("light").catch(() => {});
 }
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
@@ -43,8 +45,12 @@ import { BrandProvider } from "@/context/BrandContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
 import { registerForPushNotifications } from "@/services/pushNotifications";
-import * as QuickActions from "expo-quick-actions";
-import { useQuickActionRouting } from "expo-quick-actions/router";
+let QuickActions: any = null;
+let useQuickActionRouting: any = () => {};
+try {
+  QuickActions = require("expo-quick-actions");
+  useQuickActionRouting = require("expo-quick-actions/router").useQuickActionRouting;
+} catch { /* not available */ }
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
@@ -131,20 +137,22 @@ function AppStack() {
 
   // Android: sync nav bar color with theme
   useEffect(() => {
-    if (Platform.OS === "android") {
-      NavigationBar.setBackgroundColorAsync(C.bg);
-      NavigationBar.setButtonStyleAsync(isDark ? "light" : "dark");
+    if (Platform.OS === "android" && NavigationBar) {
+      NavigationBar.setBackgroundColorAsync(C.bg).catch(() => {});
+      NavigationBar.setButtonStyleAsync(isDark ? "light" : "dark").catch(() => {});
     }
   }, [isDark, C.bg]);
 
   // Quick actions — long-press app icon shortcuts
   useQuickActionRouting();
   useEffect(() => {
-    QuickActions.setItems([
-      { id: "join", title: "Join a Trip", icon: Platform.select({ ios: "symbol:qrcode", android: "shortcut_join" }) ?? undefined, params: { href: "/" } },
-      { id: "gallery", title: "Gallery", icon: Platform.select({ ios: "symbol:camera.fill", android: "shortcut_gallery" }) ?? undefined, params: { href: "/media" } },
-      { id: "profile", title: "My Profile", icon: Platform.select({ ios: "symbol:person.crop.circle", android: "shortcut_profile" }) ?? undefined, params: { href: "/profile" } },
-    ]);
+    try {
+      QuickActions?.setItems([
+        { id: "join", title: "Join a Trip", icon: Platform.select({ ios: "symbol:qrcode", android: "shortcut_join" }) ?? undefined, params: { href: "/" } },
+        { id: "gallery", title: "Gallery", icon: Platform.select({ ios: "symbol:camera.fill", android: "shortcut_gallery" }) ?? undefined, params: { href: "/media" } },
+        { id: "profile", title: "My Profile", icon: Platform.select({ ios: "symbol:person.crop.circle", android: "shortcut_profile" }) ?? undefined, params: { href: "/profile" } },
+      ]);
+    } catch { /* not available */ }
   }, []);
 
   // Keep the iOS home screen widget in sync with trip data
@@ -242,7 +250,7 @@ function AppStack() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <QueryClientProvider client={queryClient}>
@@ -267,3 +275,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default RootLayout;

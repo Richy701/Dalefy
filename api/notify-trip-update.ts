@@ -9,7 +9,7 @@
  * Body: { tripId, tripName, changes: string[] }
  */
 
-import { listCollection, decodeValue, type FirestoreDoc } from "./_firebaseAdmin";
+import { listCollection, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";

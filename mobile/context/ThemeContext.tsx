@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
-import { Appearance } from "react-native";
+import { Appearance, Platform } from "react-native";
 import * as SystemUI from "expo-system-ui";
 import { darkColors, lightColors, applyAccentHex, type ThemeColors } from "@/constants/theme";
 import { usePreferences, type ThemeMode } from "./PreferencesContext";
@@ -32,9 +32,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     Appearance.getColorScheme() === "light" ? "light" : "dark"
   );
 
-  // Sync native appearance whenever the saved mode changes (including initial load from storage)
   useEffect(() => {
-    Appearance.setColorScheme(mode === "system" ? null : mode);
+    if (Platform.OS !== "android") {
+      Appearance.setColorScheme(mode === "system" ? null : mode);
+    }
   }, [mode]);
 
   useEffect(() => {
@@ -57,7 +58,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [isDark, brand.accentColor]);
 
   const setMode = useCallback((m: ThemeMode) => {
-    Appearance.setColorScheme(m === "system" ? null : m);
+    if (Platform.OS !== "android") {
+      Appearance.setColorScheme(m === "system" ? null : m);
+    }
     const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
     SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f7f8fb");
     setPref("themeMode", m);

@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   MapPin, Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   Clock, NavigationArrow, CalendarDots, Sun, CloudSun, Thermometer,
-  Suitcase, Calendar, Globe, CaretRight,
+  Suitcase, Calendar, Globe, CaretRight, Drop, Wind, CloudRain,
 } from "phosphor-react-native";
 import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
@@ -111,27 +111,73 @@ interface WeatherData {
   temp: number;
   description: string;
   icon: string;
+  feelsLike?: number;
+  humidity?: number;
+  windSpeed?: number;
+  high?: number;
+  low?: number;
+  rainChance?: number;
 }
 
 const WEATHER_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_KEY;
 
-async function fetchWeather(destination: string): Promise<WeatherData | null> {
+async function geocodeDestination(destination: string): Promise<{ lat: number; lon: number } | null> {
   if (!WEATHER_KEY) return null;
   try {
-    const geoRes = await fetch(
+    const res = await fetch(
       `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(destination)}&limit=1&appid=${WEATHER_KEY}`
     );
-    const geoJson = await geoRes.json();
-    if (!geoJson[0]) return null;
-    const { lat, lon } = geoJson[0];
+    const json = await res.json();
+    if (!json[0]) return null;
+    return { lat: json[0].lat, lon: json[0].lon };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCurrentWeather(destination: string): Promise<WeatherData | null> {
+  const geo = await geocodeDestination(destination);
+  if (!geo) return null;
+  try {
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_KEY}`
+      `https://api.openweathermap.org/data/2.5/weather?lat=${geo.lat}&lon=${geo.lon}&units=metric&appid=${WEATHER_KEY}`
     );
     const json = await res.json();
     return {
       temp: Math.round(json.main.temp),
       description: json.weather[0].description,
       icon: json.weather[0].icon,
+      feelsLike: Math.round(json.main.feels_like),
+      humidity: json.main.humidity,
+      windSpeed: Math.round(json.wind.speed * 3.6),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchForecastWeather(destination: string, targetDate: string): Promise<WeatherData | null> {
+  const geo = await geocodeDestination(destination);
+  if (!geo) return null;
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&units=metric&appid=${WEATHER_KEY}`
+    );
+    const json = await res.json();
+    const targetDay = targetDate.slice(0, 10);
+    const dayEntries = (json.list ?? []).filter((e: any) => (e.dt_txt as string).startsWith(targetDay));
+    if (dayEntries.length === 0) return null;
+    const midday = dayEntries.find((e: any) => (e.dt_txt as string).includes("12:00")) ?? dayEntries[0];
+    const high = Math.round(Math.max(...dayEntries.map((e: any) => e.main.temp_max)));
+    const low = Math.round(Math.min(...dayEntries.map((e: any) => e.main.temp_min)));
+    const maxRainChance = Math.round(Math.max(...dayEntries.map((e: any) => (e.pop ?? 0) * 100)));
+    return {
+      temp: Math.round(midday.main.temp),
+      description: midday.weather[0].description,
+      icon: midday.weather[0].icon,
+      high,
+      low,
+      rainChance: maxRainChance,
     };
   } catch {
     return null;
@@ -217,11 +263,20 @@ export default function TodayScreen() {
 
   const hasInfo = useMemo(() => (upcomingTrip?.info?.length ?? 0) > 0, [upcomingTrip]);
 
+  const weatherTrip = activeTrip ?? upcomingTrip;
   const [weather, setWeather] = useState<WeatherData | null>(null);
   useEffect(() => {
-    if (!upcomingTrip?.destination || activeTrip) return;
-    fetchWeather(upcomingTrip.destination).then(setWeather);
-  }, [upcomingTrip?.destination, activeTrip]);
+    if (!weatherTrip?.destination) return;
+    setWeather(null);
+    if (activeTrip) {
+      fetchCurrentWeather(weatherTrip.destination).then(setWeather);
+    } else {
+      fetchForecastWeather(weatherTrip.destination, weatherTrip.start).then(w => {
+        if (w) setWeather(w);
+        else fetchCurrentWeather(weatherTrip.destination).then(setWeather);
+      });
+    }
+  }, [weatherTrip?.destination, !!activeTrip]);
 
   // Events with mappable locations (skip flights — departure airport is irrelevant)
   const mappableEvents = useMemo(() => todayEvents.filter(ev => ev.type !== "flight"), [todayEvents]);
@@ -303,21 +358,34 @@ export default function TodayScreen() {
                       <Text style={styles.heroDest}>{upcomingTrip.destination}</Text>
                     </View>
                   )}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
-                    <Calendar size={14} color="rgba(255,255,255,0.85)" weight="bold" />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
+                    <Calendar size={13} color="rgba(255,255,255,0.85)" weight="bold" />
                     <Text style={styles.heroMeta}>
                       {new Date(upcomingTrip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       {" - "}
                       {new Date(upcomingTrip.end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </Text>
-                    {weather && (
-                      <>
-                        <View style={{ width: 1, height: 12, backgroundColor: "rgba(255,255,255,0.3)" }} />
-                        <CloudSun size={14} color="rgba(255,255,255,0.85)" weight="bold" />
-                        <Text style={styles.heroMeta}>{weather.temp}°C, {weather.description}</Text>
-                      </>
-                    )}
                   </View>
+                  {weather && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                      <CloudSun size={13} color="rgba(255,255,255,0.85)" weight="bold" />
+                      <Text style={styles.heroMeta}>{weather.temp}°C, {weather.description}</Text>
+                      {weather.high != null && weather.low != null && (
+                        <>
+                          <View style={{ width: 1, height: 10, backgroundColor: "rgba(255,255,255,0.3)" }} />
+                          <Thermometer size={12} color="rgba(255,255,255,0.7)" weight="bold" />
+                          <Text style={styles.heroMetaSub}>{weather.low}° / {weather.high}°</Text>
+                        </>
+                      )}
+                      {weather.rainChance != null && weather.rainChance > 0 && (
+                        <>
+                          <View style={{ width: 1, height: 10, backgroundColor: "rgba(255,255,255,0.3)" }} />
+                          <CloudRain size={12} color="rgba(255,255,255,0.7)" weight="bold" />
+                          <Text style={styles.heroMetaSub}>{weather.rainChance}%</Text>
+                        </>
+                      )}
+                    </View>
+                  )}
                 </View>
               </Pressable>
 
@@ -563,6 +631,33 @@ export default function TodayScreen() {
               <Text style={[styles.destination, { color: C.textSecondary }]}>{activeTrip.destination}</Text>
             </View>
           )}
+          {weather && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
+              <CloudSun size={13} color={C.textTertiary} weight="bold" />
+              <Text style={[styles.destination, { color: C.textTertiary }]}>{weather.temp}°C, {weather.description}</Text>
+              {weather.feelsLike != null && (
+                <>
+                  <View style={{ width: 1, height: 10, backgroundColor: C.border }} />
+                  <Thermometer size={12} color={C.textTertiary} weight="bold" />
+                  <Text style={[styles.destination, { color: C.textTertiary }]}>Feels {weather.feelsLike}°</Text>
+                </>
+              )}
+              {weather.humidity != null && (
+                <>
+                  <View style={{ width: 1, height: 10, backgroundColor: C.border }} />
+                  <Drop size={12} color={C.textTertiary} weight="bold" />
+                  <Text style={[styles.destination, { color: C.textTertiary }]}>{weather.humidity}%</Text>
+                </>
+              )}
+              {weather.windSpeed != null && (
+                <>
+                  <View style={{ width: 1, height: 10, backgroundColor: C.border }} />
+                  <Wind size={12} color={C.textTertiary} weight="bold" />
+                  <Text style={[styles.destination, { color: C.textTertiary }]}>{weather.windSpeed} km/h</Text>
+                </>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Next up card */}
@@ -753,7 +848,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // Hero trip card
     heroCard: {
-      height: 180, borderRadius: R["2xl"], overflow: "hidden",
+      height: 200, borderRadius: R["2xl"], overflow: "hidden",
       justifyContent: "flex-end",
     },
     heroContent: {
@@ -768,6 +863,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroName: { fontSize: T.xl, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
     heroDest: { fontSize: T.sm, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
     heroMeta: { fontSize: T.sm, fontWeight: "600", color: "rgba(255,255,255,0.9)" },
+    heroMetaSub: { fontSize: T.xs, fontWeight: "600", color: "rgba(255,255,255,0.65)" },
 
     previewLabel: { fontSize: T.xs, fontWeight: "700", letterSpacing: 1 },
     previewDate: { fontSize: T.xs, fontWeight: "600" },

@@ -16,10 +16,15 @@ import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/comp
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import * as Haptics from "expo-haptics";
 
-const HAS_LIQUID_GLASS = isLiquidGlassAvailable();
+let GlassView: any = null;
+let HAS_LIQUID_GLASS = false;
+try {
+  const glass = require("expo-glass-effect");
+  GlassView = glass.GlassView;
+  HAS_LIQUID_GLASS = glass.isLiquidGlassAvailable();
+} catch { /* native module unavailable on this device */ }
 import { useRouter, Link } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
@@ -953,9 +958,13 @@ function UpcomingCard({ trip }: { trip: Trip }) {
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${days <= 0 ? "departing today" : `${days} days away`}`}
     >
-      <Link.AppleZoom>
+      {Platform.OS === "ios" && Link.AppleZoom ? (
+        <Link.AppleZoom>
+          <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
+        </Link.AppleZoom>
+      ) : (
         <CachedImage uri={trip.image} style={styles.thumb} accessible={false} />
-      </Link.AppleZoom>
+      )}
       <View style={styles.body}>
         {trip.destination ? (
           <Text style={styles.dest}>{trip.destination.toUpperCase()}</Text>
@@ -1170,9 +1179,13 @@ function TripRow({ trip }: { trip: Trip }) {
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
-      <Link.AppleZoom>
+      {Platform.OS === "ios" && Link.AppleZoom ? (
+        <Link.AppleZoom>
+          <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
+        </Link.AppleZoom>
+      ) : (
         <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
-      </Link.AppleZoom>
+      )}
       <View style={styles.rowBody}>
         {trip.destination ? (
           <Text style={styles.rowDest}>{trip.destination.toUpperCase()}</Text>
