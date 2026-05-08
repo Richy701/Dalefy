@@ -24,6 +24,8 @@ interface TripsContextValue {
   trips: Trip[];
   ready: boolean;
   offline: boolean;
+  /** Debug: raw localCache length, isSuccess, isError */
+  _debug: { lc: number | null; ok: boolean; err: boolean };
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
   updateTrip: (trip: Trip) => void;
@@ -136,6 +138,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const hasCachedTrips = localCache !== null && localCache.length > 0;
   const ready = hasCachedTrips || isSuccess || isError || networkDown;
   const offline = networkDown && !isSuccess;
+  const _debug = useMemo(() => ({ lc: localCache ? localCache.length : null, ok: isSuccess, err: isError }), [localCache, isSuccess, isError]);
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
@@ -229,7 +232,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [qc]);
 
   return (
-    <TripsContext.Provider value={{ trips, ready, offline, addTrip, deleteTrip, updateTrip, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
+    <TripsContext.Provider value={{ trips, ready, offline, _debug, addTrip, deleteTrip, updateTrip, updateTripLocal, clearTrips, reload, holdWrites, releaseWrites }}>
       {children}
     </TripsContext.Provider>
   );

@@ -1229,7 +1229,7 @@ export default function HomeScreen() {
   const { C } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, ready, offline, reload } = useTrips();
+  const { trips, ready, offline, _debug, reload } = useTrips();
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
@@ -1439,7 +1439,7 @@ export default function HomeScreen() {
           )
         )}
 
-        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | cache:{cacheCount ?? "?"} | {ready ? "rdy" : "..."} | {offline ? "off" : "on"}</Text>
+        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | lc:{_debug.lc ?? "null"} | cache:{cacheCount ?? "?"} | {_debug.ok ? "ok" : _debug.err ? "err" : "..."} | {offline ? "off" : "on"}</Text>
 
       </ScrollView>
     </SafeAreaView>
