@@ -1,5 +1,5 @@
 import {
-  View, Text, Pressable, Image,
+  View, Text, Pressable, Image, ActivityIndicator,
   StyleSheet, Platform, Linking, Share,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
@@ -63,7 +63,7 @@ function timeToMinutes(t: string): number {
 
 export default function TripScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { trips } = useTrips();
+  const { trips, ready } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
   const { brand } = useBrand();
@@ -188,10 +188,19 @@ export default function TripScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Text style={styles.errorText}>Trip not found</Text>
-          <Pressable onPress={safeBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>Go back</Text>
-          </Pressable>
+          {!ready ? (
+            <>
+              <ActivityIndicator size="large" color={C.teal} style={{ marginBottom: S.md }} />
+              <Text style={styles.errorText}>Loading trip...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.errorText}>Trip not found</Text>
+              <Pressable onPress={safeBack} style={styles.backBtn}>
+                <Text style={styles.backBtnText}>Go back</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </SafeAreaView>
     );

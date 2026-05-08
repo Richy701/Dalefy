@@ -11,6 +11,7 @@ private struct TD {
   let destination: String
   let tripImage: String
   let daysLeft: Int
+  let totalCountdownDays: Int
   let startDate: String
   let currentDay: Int
   let totalDays: Int
@@ -25,6 +26,7 @@ private struct TD {
     destination = (props?["destination"] as? String) ?? ""
     tripImage   = (props?["tripImage"] as? String) ?? ""
     daysLeft    = (props?["daysLeft"] as? Int) ?? 0
+    totalCountdownDays = (props?["totalCountdownDays"] as? Int) ?? 30
     startDate   = (props?["startDate"] as? String) ?? ""
     currentDay  = (props?["currentDay"] as? Int) ?? 0
     totalDays   = (props?["totalDays"] as? Int) ?? 0
@@ -41,7 +43,8 @@ private struct TD {
     return Double(currentDay) / Double(totalDays)
   }
   var countdownProgress: Double {
-    max(0, min(1, 1.0 - Double(daysLeft) / 30.0))
+    let scale = Double(max(totalCountdownDays, 10))
+    return max(0, min(1, 1.0 - Double(daysLeft) / scale))
   }
 }
 
@@ -399,7 +402,7 @@ private struct Medium: View {
   let dark: Bool
   private var w: Color { dark ? .white : Color(hex: "#111111") }
   private var m: Color { dark ? Color(hex: "#aaaaaa") : Color(hex: "#888888") }
-  private var dim: Color { dark ? Color(hex: "#333333") : Color(hex: "#cccccc") }
+  private var dim: Color { dark ? Color(hex: "#777777") : Color(hex: "#999999") }
   private var sep: Color { dark ? Color(hex: "#222222") : Color(hex: "#dddddd") }
 
   var body: some View {
@@ -611,7 +614,7 @@ private struct Large: View {
   let dark: Bool
   private var w: Color { dark ? .white : Color(hex: "#111111") }
   private var m: Color { dark ? Color(hex: "#aaaaaa") : Color(hex: "#888888") }
-  private var dim: Color { dark ? Color(hex: "#333333") : Color(hex: "#cccccc") }
+  private var dim: Color { dark ? Color(hex: "#777777") : Color(hex: "#999999") }
   private var line: Color { dark ? Color(hex: "#1a1a1a") : Color(hex: "#eeeeee") }
 
   var body: some View {

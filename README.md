@@ -26,11 +26,13 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Clickable URLs** -- URLs typed in info page body text auto-render as clickable hyperlinks
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
 - **Unified Theming** -- Single brand accent color across all event types, light and dark modes
-- **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts 
-for today's flights and updates live via the flight status cron
+- **iOS Home Screen Widget** -- Trip countdown widget with radial progress ring, destination name, start date, and upcoming events. Dynamically scales the countdown ring based on days remaining, auto-transitions between upcoming/active/empty states via WidgetKit timeline entries (up to 30 days)
+- **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts for today's flights and updates live via the flight status cron
+- **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
 - **Push Notifications** -- Trip update and flight status alerts for travelers via Expo push notifications
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
+- **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
 - **Demo Mode** -- Full-featured demo with floating indicator badge, localStorage-only data
 
 ## Tech Stack
@@ -101,13 +103,14 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 |---|---|---|
 | `/api/flights` | — | Airport departures search by route and date |
 | `/api/flight-number` | — | Flight lookup by number and date |
-| `/api/hotels` | — | Hotel search with check-in/check-out dates |
-| `/api/activities` | — | Things to do search by location |
-| `/api/dining` | — | Restaurant search by location |
+| `/api/places` | — | Unified search for hotels, activities, and dining via Google Places API |
+| `/api/geocode` | — | Forward geocoding via Mapbox (location name to coordinates) |
 | `/api/images` | — | Image search with source selection (Google, Unsplash, Pexels) |
 | `/api/image-proxy` | — | SSRF-protected image proxy (HTTPS only, private IPs blocked, 5MB limit) |
 | `/api/parse-itinerary` | — | AI-powered itinerary parsing via Claude Haiku 4.5 — extracts events, travelers, info sections |
 | `/api/push` | Bearer | Push notifications — requires CRON_SECRET or Firebase auth token |
+| `/api/notify-trip-update` | Bearer | Notify trip members of itinerary changes via Expo push |
+| `/api/send-invite` | Bearer | Send team invitation emails via Resend |
 | `/api/check-flight-status` | Bearer | Cron (every 30 min): checks flight status, saves airport codes, and pushes updates to travelers |
 
 ## Security
@@ -140,8 +143,14 @@ VITE_FIREBASE_APP_ID=
 # Mapbox (required for maps)
 VITE_MAPBOX_TOKEN=
 
-# RapidAPI (single key for AeroDataBox, Booking.com, TripAdvisor16, Local Business Data, Real-Time Image Search)
+# RapidAPI (AeroDataBox flights)
 RAPIDAPI_KEY=
+
+# Google Places API (hotels, activities, dining)
+GOOGLE_PLACES_API_KEY=
+
+# Mapbox server-side (geocoding API)
+MAPBOX_TOKEN=
 
 # Image search (optional fallbacks)
 UNSPLASH_ACCESS_KEY=
@@ -149,6 +158,9 @@ PEXELS_API_KEY=
 
 # AI itinerary parsing (Claude Haiku 4.5)
 ANTHROPIC_API_KEY=
+
+# Team invitations (Resend email)
+RESEND_API_KEY=
 
 # Flight status cron
 CRON_EMAIL=

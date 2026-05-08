@@ -1,6 +1,6 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, Platform, LayoutAnimation, Share,
+  StyleSheet, Platform, LayoutAnimation, Share, Linking,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +12,29 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
+
+const URL_RE = /(https?:\/\/[^\s),]+)/g;
+
+function LinkedText({ text, style, linkColor }: { text: string; style: any; linkColor: string }) {
+  const parts = text.split(URL_RE);
+  return (
+    <Text style={style} selectable>
+      {parts.map((part, i) =>
+        URL_RE.test(part) ? (
+          <Text
+            key={i}
+            style={{ color: linkColor, textDecorationLine: "underline" }}
+            onPress={() => Linking.openURL(part)}
+          >
+            {part}
+          </Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        )
+      )}
+    </Text>
+  );
+}
 
 export default function InfoScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -110,7 +133,7 @@ export default function InfoScreen() {
 
                   {isOpen && item.body ? (
                     <View style={styles.sectionBody}>
-                      <Text style={styles.bodyText} selectable>{item.body}</Text>
+                      <LinkedText text={item.body} style={styles.bodyText} linkColor={C.teal} />
                     </View>
                   ) : null}
                 </View>

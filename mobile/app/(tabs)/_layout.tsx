@@ -11,7 +11,7 @@ const TABS: {
   hidden?: boolean;
 }[] = [
   { name: "index",        label: "Home",         materialIcon: "home"         },
-  { name: "destinations", label: "Destinations", materialIcon: "public"       },
+  { name: "destinations", label: "Today",        materialIcon: "today"        },
   { name: "itinerary",    label: "Schedule",     materialIcon: "event",        hidden: true },
   { name: "media",        label: "Gallery",      materialIcon: "photo-camera" },
   { name: "profile",      label: "Profile",      materialIcon: "person"       },
@@ -24,14 +24,14 @@ function IOSTabLayout() {
 
   const sfIcons: Record<string, string> = {
     index: "house.fill",
-    destinations: "map.fill",
+    destinations: "clock.fill",
     itinerary: "calendar",
     media: "camera.fill",
     profile: "person.crop.circle",
   };
   const mdIcons: Record<string, string> = {
     index: "home",
-    destinations: "public",
+    destinations: "today",
     itinerary: "event",
     media: "photo_camera",
     profile: "person",

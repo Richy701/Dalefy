@@ -226,7 +226,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/support"); }}
+            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/support.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
@@ -237,7 +237,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/privacy"); }}
+            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/privacy.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
@@ -248,7 +248,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dafadventures.com/terms"); }}
+            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/terms.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >

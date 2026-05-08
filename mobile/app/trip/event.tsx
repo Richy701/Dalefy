@@ -140,20 +140,25 @@ export default function EventDetailScreen() {
           {ev.image ? (
             <CachedImage uri={ev.image} style={styles.heroImage} />
           ) : (
-            <View style={[styles.heroImage, { backgroundColor: C.card }]}>
-              <Icon size={48} color={`${color}33`} weight="thin" />
+            <View style={[styles.heroImage, { backgroundColor: "#111" }]}>
+              <Icon size={56} color={`${color}22`} weight="thin" />
             </View>
           )}
           <LinearGradient
-            colors={["transparent", `${C.bg}CC`, C.bg]}
-            locations={[0.3, 0.7, 1]}
-            style={styles.heroGradient}
+            colors={["#00000008", "#00000040", "#000000e8"]}
+            locations={[0, 0.4, 1]}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <LinearGradient
+            colors={["#00000025", "transparent"]}
+            start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFillObject}
           />
           {/* Title over gradient */}
           <View style={styles.heroContent}>
-            <View style={[styles.typePill, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
-              <Icon size={12} color="#fff" weight="bold" />
-              <Text style={[styles.typePillText, { color: "#fff" }]}>{typeLabel.toUpperCase()}</Text>
+            <View style={[styles.typePill, { backgroundColor: `${color}25` }]}>
+              <Icon size={11} color={color} weight="bold" />
+              <Text style={[styles.typePillText, { color }]}>{typeLabel.toUpperCase()}</Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={3}>{ev.title}</Text>
             {ev.airline && (
@@ -185,17 +190,18 @@ export default function EventDetailScreen() {
         )}
 
         {/* ── Status badge (non-flight only, flights show inline) ── */}
-        {!isFlight && ev.status && (
-          <View style={styles.px}>
-            <View style={[styles.statusRow, { backgroundColor: C.card }]}>
-              <View style={[styles.statusDot, {
-                backgroundColor: ev.status.toLowerCase().includes("cancel") ? "#ef4444"
-                  : ev.status.toLowerCase().includes("delay") ? "#f59e0b" : "#22c55e"
-              }]} />
-              <Text style={[styles.statusText, { color: C.textPrimary }]}>{ev.status}</Text>
+        {!isFlight && ev.status && (() => {
+          const sl = ev.status.toLowerCase();
+          const sc = sl.includes("cancel") ? "#ef4444" : sl.includes("delay") ? "#f59e0b" : "#22c55e";
+          return (
+            <View style={styles.px}>
+              <View style={[styles.statusPill, { backgroundColor: `${sc}15` }]}>
+                <View style={[styles.statusDotSmall, { backgroundColor: sc }]} />
+                <Text style={[styles.statusPillText, { color: sc }]}>{ev.status}</Text>
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {/* ── Location card ── */}
         {ev.location && ev.type !== "flight" && (
@@ -260,7 +266,7 @@ export default function EventDetailScreen() {
           if (!infoRows.length) return null;
           return (
             <View style={[styles.infoCard, { backgroundColor: C.card }]}>
-              <Text style={[styles.textCardLabel, { color: C.textTertiary }]}>INFORMATION</Text>
+              <Text style={[styles.textCardLabel, { color }]}>INFORMATION</Text>
               {infoRows.map((row, i) => (
                 <View key={i} style={[styles.infoRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }]}>
                   <Text style={[styles.infoLabel, { color: C.textTertiary }]}>{row.label}</Text>
@@ -274,14 +280,16 @@ export default function EventDetailScreen() {
         {/* ── Documents ── */}
         {ev.documents && ev.documents.length > 0 && (
           <View style={styles.px}>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>DOCUMENTS</Text>
+            <Text style={[styles.sectionLabel, { color }]}>DOCUMENTS</Text>
             {ev.documents.map(doc => (
               <Pressable
                 key={doc.id}
                 onPress={() => Linking.openURL(doc.url).catch(() => {})}
                 style={({ pressed }) => [styles.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
               >
-                <FileText size={14} color={C.teal} weight="light" />
+                <View style={[styles.docIcon, { backgroundColor: `${color}15` }]}>
+                  <FileText size={14} color={color} weight="regular" />
+                </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
                   <Text style={[styles.docSize, { color: C.textTertiary }]}>
@@ -465,7 +473,7 @@ const frs = StyleSheet.create({
   },
   countdownText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
   routeRow: {
-    flexDirection: "row", alignItems: "flex-start",
+    flexDirection: "row", alignItems: "stretch",
     marginBottom: 4,
   },
   endpoint: { flex: 1 },
@@ -473,8 +481,7 @@ const frs = StyleSheet.create({
   iata: { fontSize: 34, fontWeight: "800", letterSpacing: -0.5, lineHeight: 38 },
   time: { fontSize: T.base, fontWeight: "500", marginTop: 6 },
   connector: {
-    flex: 1.1, alignItems: "center", justifyContent: "center",
-    paddingTop: S.xl,
+    flex: 1.1, alignItems: "center", justifyContent: "space-between",
   },
   flightNum: { fontSize: T.sm, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
   lineRow: {
@@ -511,30 +518,27 @@ function makeStyles(C: ThemeColors) {
     px: { paddingHorizontal: S.lg, marginBottom: S.md },
 
     // Hero
-    heroWrap: { position: "relative", height: 300, marginBottom: S.sm },
+    heroWrap: { position: "relative", height: 340, marginBottom: S.md },
     heroImage: {
       width: "100%", height: "100%",
       alignItems: "center", justifyContent: "center",
     },
-    heroGradient: {
-      position: "absolute", bottom: 0, left: 0, right: 0, height: 180,
-    },
     heroContent: {
       position: "absolute", bottom: 0, left: 0, right: 0,
-      paddingHorizontal: S.lg, paddingBottom: S.sm,
+      paddingHorizontal: S.lg, paddingBottom: S.lg,
     },
     typePill: {
       flexDirection: "row", alignItems: "center", gap: 5,
       alignSelf: "flex-start",
-      paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.full,
-      marginBottom: 8,
+      paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.full,
+      marginBottom: S.sm,
     },
     typePillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.2 },
     heroTitle: {
-      fontSize: 26, fontWeight: "700", color: C.textPrimary,
-      letterSpacing: -0.3, lineHeight: 30,
+      fontSize: 20, fontWeight: "700", color: "#fff",
+      letterSpacing: -0.2, lineHeight: 26,
     },
-    heroSub: { fontSize: T.base, fontWeight: "500", color: C.textTertiary, marginTop: 2 },
+    heroSub: { fontSize: T.base, fontWeight: "500", color: "rgba(255,255,255,0.7)", marginTop: 4 },
 
     // Chips
     chipWrap: {
@@ -549,12 +553,13 @@ function makeStyles(C: ThemeColors) {
     chipText: { fontSize: T.sm, fontWeight: "600" },
 
     // Status
-    statusRow: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      padding: S.md, borderRadius: R.lg,
+    statusPill: {
+      flexDirection: "row", alignItems: "center", gap: 6,
+      alignSelf: "flex-start",
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: R.full,
     },
-    statusDot: { width: 8, height: 8, borderRadius: 4 },
-    statusText: { fontSize: T.base, fontWeight: "700" },
+    statusDotSmall: { width: 6, height: 6, borderRadius: 3 },
+    statusPillText: { fontSize: T.xs, fontWeight: "700", letterSpacing: 0.3 },
 
     // Location
     locationCard: {
@@ -605,13 +610,17 @@ function makeStyles(C: ThemeColors) {
       paddingVertical: 10,
     },
     infoLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, marginBottom: 4 },
-    infoValue: { fontSize: T.base, lineHeight: 22, fontWeight: "400" },
+    infoValue: { fontSize: T.sm, lineHeight: 20, fontWeight: "400" },
 
     // Documents
     sectionLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: S.sm },
     docRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
       padding: S.md, borderRadius: R.lg, marginBottom: 4,
+    },
+    docIcon: {
+      width: 32, height: 32, borderRadius: 16,
+      alignItems: "center", justifyContent: "center",
     },
     docName: { flex: 1, fontSize: T.sm, fontWeight: "600" },
     docSize: { fontSize: T.xs, fontWeight: "500" },

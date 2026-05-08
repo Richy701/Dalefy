@@ -8,10 +8,9 @@ import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  Images, Play, Plus, Upload, Camera, X, Trash,
-  Image as PhosphorImage, VideoCamera, MapPin, CaretRight, Aperture,
+  Play, Plus, Camera, X, Trash,
+  VideoCamera, CaretRight, Aperture,
 } from "phosphor-react-native";
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
@@ -21,9 +20,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import * as ImagePicker from "expo-image-picker";
-import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
 import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
@@ -31,9 +28,13 @@ import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const GRID_GAP = 3;
+const GRID_GAP = 6;
 const GRID_COLS = 3;
 const GRID_ITEM_SIZE = (SCREEN_W - S.md * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const CONTENT_W = SCREEN_W - S.md * 2;
+const HERO_LARGE_W = Math.floor((CONTENT_W - GRID_GAP) * 0.64);
+const HERO_SMALL_W = CONTENT_W - HERO_LARGE_W - GRID_GAP;
+const HERO_ROW_H = Math.floor(GRID_ITEM_SIZE * 1.6);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,32 +79,6 @@ async function pickMedia(onPicked: (items: TripMedia[]) => void) {
   }
 }
 
-// ── Stat Pill ────────────────────────────────────────────────────────────────
-
-function StatPill({ icon: Icon, value, label, C }: {
-  icon: React.ComponentType<any>;
-  value: number;
-  label: string;
-  C: ThemeColors;
-}) {
-  return (
-    <View style={{
-      flexDirection: "row", alignItems: "center", gap: 6,
-      backgroundColor: `${C.teal}12`, borderRadius: R.full,
-      paddingHorizontal: 12, paddingVertical: 7,
-    }}>
-      <Icon size={13} color={C.teal} weight="regular" />
-      <Text style={{
-        fontSize: 18, fontWeight: T.bold, color: C.textPrimary,
-        letterSpacing: -0.5,
-      }}>{value}</Text>
-      <Text style={{
-        fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-        letterSpacing: 0.8, textTransform: "uppercase",
-      }}>{label}</Text>
-    </View>
-  );
-}
 
 // ── Trip Picker Sheet ────────────────────────────────────────────────────────
 
@@ -300,21 +275,17 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C }: {
+function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C }: {
   item: TripMedia;
-  index: number;
+  width: number;
+  height: number;
   isLast: boolean;
   remaining: number;
   onPress: () => void;
   onDelete: () => void;
-  isSolo?: boolean;
   C: ThemeColors;
 }) {
-  const isHero = index === 0;
-  const fullWidth = SCREEN_W - S.md * 2;
-  const size = isHero || isSolo ? fullWidth : GRID_ITEM_SIZE;
-  const height = isHero || isSolo ? fullWidth * 0.55 : GRID_ITEM_SIZE;
-
+  const isLarge = width > GRID_ITEM_SIZE + 1;
   return (
     <ContextMenu
       actions={[
@@ -329,12 +300,12 @@ function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C
       }}
     >
     <ScalePress
-      activeScale={0.96}
+      activeScale={0.97}
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
       style={{
-        width: size,
+        width,
         height,
-        borderRadius: isHero || isSolo ? R.xl : R.md,
+        borderRadius: R.lg,
         overflow: "hidden",
         backgroundColor: C.card,
       }}
@@ -344,41 +315,33 @@ function GridItem({ item, index, isLast, remaining, onPress, onDelete, isSolo, C
       ) : (
         <View style={{ width: "100%", height: "100%", backgroundColor: `${C.teal}12`, alignItems: "center", justifyContent: "center" }}>
           <View style={{
-            width: isHero ? 52 : 32, height: isHero ? 52 : 32, borderRadius: R.full,
+            width: isLarge ? 44 : 30, height: isLarge ? 44 : 30, borderRadius: R.full,
             backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center",
           }}>
-            <Play size={isHero ? 20 : 14} color="#fff" weight="fill" />
+            <Play size={isLarge ? 18 : 13} color="#fff" weight="fill" />
           </View>
         </View>
       )}
 
-      {/* Type badge on hero / solo */}
-      {(isHero || isSolo) && (
+      {item.type === "video" && (
         <View style={{
-          position: "absolute", top: S.xs, left: S.xs,
-          flexDirection: "row", alignItems: "center", gap: 4,
-          backgroundColor: "rgba(0,0,0,0.5)", borderRadius: R.full,
-          paddingHorizontal: 8, paddingVertical: 4,
+          position: "absolute", bottom: 6, left: 6,
+          flexDirection: "row", alignItems: "center", gap: 3,
+          backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.full,
+          paddingHorizontal: 6, paddingVertical: 3,
         }}>
-          {item.type === "image"
-            ? <PhosphorImage size={10} color="#fff" weight="regular" />
-            : <VideoCamera size={10} color="#fff" weight="regular" />}
-          <Text style={{
-            fontSize: 9, fontWeight: T.bold, color: "#fff",
-            letterSpacing: 0.5, textTransform: "uppercase",
-          }}>{item.type === "image" ? "Photo" : "Video"}</Text>
+          <VideoCamera size={9} color="#fff" weight="fill" />
         </View>
       )}
 
-      {/* +N overlay on last visible item */}
       {isLast && remaining > 0 && (
         <View style={{
           ...StyleSheet.absoluteFillObject,
-          backgroundColor: "rgba(0,0,0,0.6)",
+          backgroundColor: "rgba(0,0,0,0.55)",
           alignItems: "center", justifyContent: "center",
         }}>
           <Text style={{
-            fontSize: isHero ? T["3xl"] : T.xl, fontWeight: T.bold,
+            fontSize: isLarge ? T["2xl"] : T.lg, fontWeight: T.bold,
             color: "#fff", letterSpacing: -0.5,
           }}>+{remaining}</Text>
         </View>
@@ -396,7 +359,7 @@ export default function MediaScreen() {
   const { prefs } = usePreferences();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, updateTripLocal, reload } = useTrips();
+  const { trips, updateTrip, updateTripLocal, reload } = useTrips();
   const [deviceId, setDeviceId] = useState<string | null>(null);
   useEffect(() => { getDeviceId().then(setDeviceId); }, []);
   const [refreshing, setRefreshing] = useState(false);
@@ -453,23 +416,23 @@ export default function MediaScreen() {
     if (changed) setPendingMedia(() => cleaned);
   }, [trips, pendingMedia, setPendingMedia]);
 
-  // Merge context trips with pending uploads so local picks show instantly
-  // Dedup: skip pending items already in context
+  const isValidMediaUrl = useCallback((url?: string) =>
+    !!url && (url.startsWith("https://") || url.startsWith("file://") || url.startsWith("ph://")),
+  []);
+
   const mergedTrips = useMemo(() =>
     trips.map(t => {
-      // Filter to only this device's uploads
-      const ownMedia = (t.media ?? []).filter(m => !m.uploaderId || m.uploaderId === deviceId);
+      const ownMedia = (t.media ?? []).filter(m => isValidMediaUrl(m.url));
       const pending = pendingMedia[t.id];
       if (!pending?.length) return { ...t, media: ownMedia };
       const existingIds = new Set(ownMedia.map(m => m.id));
-      const newItems = pending.filter(m => !existingIds.has(m.id));
+      const newItems = pending.filter(m => !existingIds.has(m.id) && isValidMediaUrl(m.url));
       if (!newItems.length) return { ...t, media: ownMedia };
       return { ...t, media: [...ownMedia, ...newItems] };
     }),
-    [trips, pendingMedia, deviceId],
+    [trips, pendingMedia, isValidMediaUrl],
   );
 
-  // Aggregated data
   const allItems = useMemo(() =>
     mergedTrips.flatMap(t => (t.media ?? []).map(m => ({ ...m, tripId: t.id, tripName: t.destination || t.name }))),
     [mergedTrips],
@@ -489,11 +452,6 @@ export default function MediaScreen() {
     return list;
   }, [tripsWithMedia, tripFilter, mediaFilter]);
 
-  // Hero banner trip (first trip with media, or the filtered one)
-  const heroTrip = useMemo(() => {
-    if (tripFilter !== "all") return trips.find(t => t.id === tripFilter) ?? null;
-    return tripsWithMedia[0] ?? null;
-  }, [tripFilter, tripsWithMedia, trips]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     console.log("[Media] handleUploadToTrip called, tripId:", tripId);
@@ -582,41 +540,47 @@ export default function MediaScreen() {
       {
         text: "Delete", style: "destructive",
         onPress: async () => {
-          try {
-            // Fetch fresh trip to avoid stale closure
-            const freshTrip = await fetchTripById(item.tripId);
-            const trip = freshTrip ?? trips.find(t => t.id === item.tripId);
-            if (!trip) return;
-            const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
-            // Optimistic local update
-            updateTripLocal(updated);
-            setViewerIndex(-1);
-            // Write to Firestore directly so we can catch failures
-            await upsertTripRemote(updated);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            toast("Removed");
-          } catch (err: any) {
-            const msg = err?.message || String(err);
-            console.warn("[handleDelete] Firestore write failed:", msg);
-            // Revert — reload from Firestore
-            reload().catch(() => {});
-            Alert.alert("Delete failed", msg);
-          }
+          const trip = trips.find(t => t.id === item.tripId);
+          if (!trip) return;
+          const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
+          setViewerIndex(-1);
+          setPendingMedia(prev => {
+            const remaining = (prev[item.tripId] ?? []).filter(m => m.id !== item.id);
+            if (!remaining.length) { const next = { ...prev }; delete next[item.tripId]; return next; }
+            return { ...prev, [item.tripId]: remaining };
+          });
+          updateTrip(updated);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast("Removed");
         },
       },
     ]);
-  }, [trips, updateTripLocal, reload, toast]);
+  }, [trips, updateTrip, toast]);
+
+  const chipItems = useMemo(() => {
+    const items: { id: string; label: string; type: "trip" | "media" }[] = [];
+    if (tripsWithMedia.length > 1) {
+      items.push({ id: "all", label: "All Trips", type: "trip" });
+      tripsWithMedia.forEach(t => items.push({ id: t.id, label: t.destination || t.name, type: "trip" }));
+    }
+    items.push(
+      { id: "m-all", label: "All", type: "media" },
+      { id: "m-image", label: "Photos", type: "media" },
+      { id: "m-video", label: "Videos", type: "media" },
+    );
+    return items;
+  }, [tripsWithMedia]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.card }}>
-      {/* ── Sticky blur header ── */}
-      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-        )}
-        <View style={styles.headerRow}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        contentInsetAdjustmentBehavior="never"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+      >
+        {/* ── Header ── */}
+        <View style={[styles.headerRow, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
           <Text style={styles.screenTitle}>Gallery</Text>
           {trips.length > 0 && (
             <Pressable
@@ -627,128 +591,75 @@ export default function MediaScreen() {
             </Pressable>
           )}
         </View>
-      </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 52 }]}
-        contentInsetAdjustmentBehavior="never"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
-      >
+        {/* ── Filter chips ── */}
+        {tripsWithMedia.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {chipItems.map((item, i) => {
+              const prevType = i > 0 ? chipItems[i - 1].type : item.type;
+              const showDivider = item.type !== prevType;
+              const active = item.type === "trip"
+                ? tripFilter === item.id
+                : mediaFilter === (item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
 
-        {/* ── Hero Banner ── */}
-        {allItems.length > 0 ? (
-          <View style={styles.heroBanner}>
-            {heroTrip?.image && (
-              <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
-            )}
-            <LinearGradient
-              colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.85)"]}
-              style={StyleSheet.absoluteFillObject}
-            />
-
-            {/* Hero content */}
-            <View style={styles.heroContent}>
-              {heroTrip?.destination && (
-                <View style={styles.heroLocRow}>
-                  <MapPin size={10} color={C.teal} weight="regular" />
-                  <Text style={styles.heroLocText}>{heroTrip.destination.toUpperCase()}</Text>
+              return (
+                <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  {showDivider && <View style={styles.chipDivider} />}
+                  <Pressable
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      if (item.type === "trip") setTripFilter(item.id);
+                      else setMediaFilter(item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
+                    }}
+                  >
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
+                  </Pressable>
                 </View>
-              )}
-
-              <View style={styles.statRow}>
-                <StatPill icon={PhosphorImage} value={photos} label={photos === 1 ? "Photo" : "Photos"} C={C} />
-                <StatPill icon={VideoCamera} value={videos} label={videos === 1 ? "Video" : "Videos"} C={C} />
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {/* ── Filter Chips ── */}
-        {(tripsWithMedia.length > 0) && (
-          <View style={styles.filtersSection}>
-            {/* Trip filter */}
-            {tripsWithMedia.length > 1 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipRow}
-              >
-                {[{ id: "all", name: "All Trips" }, ...tripsWithMedia.map(t => ({
-                  id: t.id, name: t.destination || t.name,
-                }))].map(item => {
-                  const active = tripFilter === item.id;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={[styles.chip, active && styles.chipActive]}
-                      onPress={() => { Haptics.selectionAsync(); setTripFilter(item.id); }}
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                        {item.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-
-            {/* Media type toggle */}
-            <SegmentedControl
-              values={["All", "Photos", "Videos"]}
-              selectedIndex={mediaFilter === "all" ? 0 : mediaFilter === "image" ? 1 : 2}
-              onChange={(e) => {
-                const idx = e.nativeEvent.selectedSegmentIndex;
-                const val = (["all", "image", "video"] as const)[idx];
-                Haptics.selectionAsync();
-                setMediaFilter(val);
-              }}
-              style={{ marginHorizontal: S.md }}
-              appearance={isDark ? "dark" : "light"}
-            />
-          </View>
+              );
+            })}
+          </ScrollView>
         )}
 
         {/* ── Content ── */}
         {tripsWithMedia.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Illustration name="wavy" width={220} height={140} />
+          <View style={[styles.emptyWrap, { paddingTop: SCREEN_W * 0.2 }]}>
+            <Illustration name="wavy" width={260} height={170} />
             <Text style={styles.emptyTitle}>Your memories{"\n"}begin here</Text>
             <Text style={styles.emptyText}>
-              Photos and videos from your trips will appear here, organised by destination.
+              Upload photos and videos from your trips. They'll be organised by destination.
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.8 : 1, marginTop: S.sm }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-            >
-              <Aperture size={15} color="#000" weight="bold" />
-              <Text style={styles.uploadFabText}>Upload</Text>
-            </Pressable>
+            {trips.length > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.85 : 1 }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              >
+                <Plus size={16} color="#000" weight="bold" />
+                <Text style={styles.uploadFabText}>Upload Photos</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={styles.galleryWrap}>
             {filteredTrips.map((trip, tripIndex) => {
               const media = trip.media ?? [];
-              const maxVisible = 7; // hero (1) + 6 small
+              const maxVisible = 8;
               const visible = media.slice(0, maxVisible);
               const remaining = media.length - maxVisible;
 
               return (
-                <FadeIn key={trip.id} delay={tripIndex * 120}>
+                <FadeIn key={trip.id} delay={tripIndex * 100}>
                 <View style={styles.tripSection}>
-                  {/* Trip section header */}
+                  {/* Compact section header */}
                   <View style={styles.tripHeader}>
-                    <CachedImage uri={trip.image} style={styles.tripThumb} />
-                    <View style={styles.tripInfo}>
-                      {trip.destination && (
-                        <Text style={styles.tripDest}>{trip.destination.toUpperCase()}</Text>
-                      )}
-                      <Text style={styles.tripName} numberOfLines={1}>{trip.name}</Text>
-                    </View>
-                    <View style={styles.tripMeta}>
-                      <Text style={styles.tripCount}>{media.length}</Text>
-                      <Text style={styles.tripCountLabel}>items</Text>
-                    </View>
+                    <Text style={styles.tripName} numberOfLines={1}>
+                      {trip.destination || trip.name}
+                      <Text style={styles.tripCount}> · {media.length}</Text>
+                    </Text>
                     <Pressable
                       style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
                       onPress={() => handleUploadToTrip(trip.id)}
@@ -757,29 +668,54 @@ export default function MediaScreen() {
                     </Pressable>
                   </View>
 
-                  {/* Hero image — full width */}
-                  {visible[0] && (
+                  {/* Mixed-size first row */}
+                  {visible.length >= 2 ? (
+                    <View style={{ flexDirection: "row", gap: GRID_GAP }}>
+                      <GridItem
+                        item={visible[0]}
+                        width={HERO_LARGE_W}
+                        height={HERO_ROW_H}
+                        isLast={false}
+                        remaining={0}
+                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[0].id))}
+                        onDelete={() => handleDelete({ ...visible[0], tripId: trip.id })}
+                        C={C}
+                      />
+                      <GridItem
+                        item={visible[1]}
+                        width={HERO_SMALL_W}
+                        height={HERO_ROW_H}
+                        isLast={visible.length === 2 && remaining > 0}
+                        remaining={visible.length === 2 ? remaining : 0}
+                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[1].id))}
+                        onDelete={() => handleDelete({ ...visible[1], tripId: trip.id })}
+                        C={C}
+                      />
+                    </View>
+                  ) : visible[0] ? (
                     <GridItem
                       item={visible[0]}
-                      index={0}
-                      isSolo={visible.length === 1}
-                      isLast={visible.length === 1 && remaining > 0}
-                      remaining={visible.length === 1 ? remaining : 0}
+                      width={CONTENT_W}
+                      height={Math.floor(CONTENT_W * 0.55)}
+                      isLast={remaining > 0}
+                      remaining={remaining}
                       onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[0].id))}
                       onDelete={() => handleDelete({ ...visible[0], tripId: trip.id })}
                       C={C}
                     />
-                  )}
-                  {/* Grid of remaining items — 3 columns */}
-                  {visible.length > 1 && (
+                  ) : null}
+
+                  {/* 3-column grid */}
+                  {visible.length > 2 && (
                     <View style={styles.gridWrap}>
-                      {visible.slice(1).map((m, i) => (
+                      {visible.slice(2).map((m, i) => (
                         <GridItem
                           key={m.id}
                           item={m}
-                          index={i + 1}
-                          isLast={i === visible.length - 2 && remaining > 0}
-                          remaining={i === visible.length - 2 ? remaining : 0}
+                          width={GRID_ITEM_SIZE}
+                          height={GRID_ITEM_SIZE}
+                          isLast={i === visible.length - 3 && remaining > 0}
+                          remaining={i === visible.length - 3 ? remaining : 0}
                           onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
                           onDelete={() => handleDelete({ ...m, tripId: trip.id })}
                           C={C}
@@ -796,7 +732,6 @@ export default function MediaScreen() {
 
       </ScrollView>
 
-      {/* Trip picker bottom sheet */}
       <TripPickerSheet
         visible={pickerOpen}
         trips={trips}
@@ -805,7 +740,6 @@ export default function MediaScreen() {
         C={C}
       />
 
-      {/* Full-screen viewer */}
       <MediaViewer
         items={allItems}
         initialIndex={viewerIndex}
@@ -822,101 +756,59 @@ export default function MediaScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100, flexGrow: 1 },
-    stickyHeader: {
-      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-      overflow: "hidden",
-    },
+    scroll: { paddingBottom: 100 },
     headerRow: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, paddingVertical: 10,
+      paddingHorizontal: S.md, paddingBottom: 4,
     },
     screenTitle: {
-      fontSize: 22, fontWeight: "700",
-      color: C.textPrimary,
+      fontSize: 22, fontWeight: T.extrabold,
+      color: C.teal,
+    },
+    headerSubtitle: {
+      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
+      marginTop: 2,
     },
     headerUploadBtn: {
-      width: 32, height: 32, borderRadius: R.full,
+      width: 34, height: 34, borderRadius: R.full,
       backgroundColor: C.teal,
       alignItems: "center", justifyContent: "center",
     },
 
-    // ── Hero Banner ──
-    heroBanner: {
-      backgroundColor: "#0a0a0a",
-      overflow: "hidden",
-      borderBottomLeftRadius: R["2xl"],
-      borderBottomRightRadius: R["2xl"],
-      paddingHorizontal: S.md,
-      paddingBottom: S.lg,
-      justifyContent: "flex-end",
-      minHeight: 200,
+    // ── Filters ──
+    chipRow: {
+      paddingHorizontal: S.md, gap: 6,
+      paddingTop: S.sm, paddingBottom: S.md,
     },
-    emptyHeader: {
-      paddingHorizontal: S.md,
-      paddingBottom: S.sm,
+    chip: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: R.full, backgroundColor: C.elevated,
     },
+    chipActive: { backgroundColor: C.teal },
+    chipText: {
+      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
+      letterSpacing: 0.3,
+    },
+    chipTextActive: { color: "#000" },
+    chipDivider: {
+      width: 1, height: 16,
+      backgroundColor: C.border, marginHorizontal: 2,
+    },
+
+    // ── Upload FAB ──
     uploadFab: {
-      flexDirection: "row", alignItems: "center", gap: 5,
+      flexDirection: "row", alignItems: "center", gap: 6,
       backgroundColor: C.teal, borderRadius: R.full,
-      paddingHorizontal: S.sm, paddingVertical: 8,
+      paddingHorizontal: S.md, paddingVertical: 10,
     },
     uploadFabText: {
       fontSize: T.sm, fontWeight: T.bold, color: "#000",
       letterSpacing: 0.3,
     },
-    heroContent: {
-      gap: S.xs,
-    },
-    heroLocRow: {
-      flexDirection: "row", alignItems: "center", gap: 5,
-    },
-    heroLocText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 1.5,
-    },
-    statRow: {
-      flexDirection: "row", gap: S.xs, marginTop: S.xs,
-    },
-
-    // ── Filters ──
-    filtersSection: {
-      paddingTop: S.md, gap: S.sm,
-    },
-    chipRow: {
-      paddingHorizontal: S.md, gap: S.xs,
-    },
-    chip: {
-      paddingHorizontal: 14, paddingVertical: 7,
-      borderRadius: R.full, backgroundColor: C.card,
-    },
-    chipActive: { backgroundColor: C.teal },
-    chipText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
-      letterSpacing: 0.5, textTransform: "uppercase",
-    },
-    chipTextActive: { color: "#000" },
-    typeToggle: {
-      flexDirection: "row", marginHorizontal: S.md,
-      backgroundColor: C.card, borderRadius: R.lg,
-      padding: 3, gap: 2,
-    },
-    typeBtn: {
-      flex: 1, flexDirection: "row", alignItems: "center",
-      justifyContent: "center", gap: 5,
-      paddingVertical: 8, borderRadius: R.md,
-    },
-    typeBtnActive: { backgroundColor: C.teal },
-    typeBtnText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 0.3, textTransform: "uppercase",
-    },
-    typeBtnTextActive: { color: "#000" },
 
     // ── Empty ──
     emptyWrap: {
-      flex: 1, alignItems: "center", justifyContent: "center",
+      alignItems: "center", justifyContent: "center",
       paddingHorizontal: S.xl, gap: S.sm,
     },
     emptyTitle: {
@@ -927,17 +819,10 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.sm, color: C.textTertiary,
       textAlign: "center", lineHeight: 22, maxWidth: 260,
     },
-    emptyBtn: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      marginTop: S.xs, borderRadius: R.full,
-      paddingHorizontal: S.lg, paddingVertical: 14,
-      backgroundColor: C.teal,
-    },
-    emptyBtnText: { fontSize: T.base, fontWeight: T.bold, color: "#000" },
 
     // ── Gallery ──
     galleryWrap: {
-      paddingTop: S.md, gap: S["2xl"],
+      gap: S.xl,
     },
 
     // ── Trip Section ──
@@ -946,30 +831,18 @@ function makeStyles(C: ThemeColors) {
     },
     tripHeader: {
       flexDirection: "row", alignItems: "center",
-      gap: S.xs, marginBottom: S.sm,
-    },
-    tripThumb: {
-      width: 44, height: 44, borderRadius: R.md,
-    },
-    tripInfo: { flex: 1 },
-    tripDest: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 1.2, marginBottom: 2,
+      justifyContent: "space-between",
+      marginBottom: 8,
     },
     tripName: {
       fontSize: T.base, fontWeight: T.bold, color: C.textPrimary,
+      flex: 1,
     },
-    tripMeta: { alignItems: "center", marginRight: S.xs },
     tripCount: {
-      fontSize: T.lg, fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: -0.3,
-    },
-    tripCountLabel: {
-      fontSize: 9, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 0.5, textTransform: "uppercase",
+      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
     },
     addBtn: {
-      width: 36, height: 36, borderRadius: 18,
+      width: 32, height: 32, borderRadius: R.full,
       backgroundColor: C.tealDim,
       alignItems: "center", justifyContent: "center",
     },

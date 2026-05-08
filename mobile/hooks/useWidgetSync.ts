@@ -95,6 +95,7 @@ export function useWidgetSync() {
         destination: upcoming.destination || upcoming.name,
         tripImage: upcoming.image || "",
         daysLeft: days,
+        totalCountdownDays: days,
         startDate,
         currentDay: 0,
         totalDays: 0,
@@ -106,7 +107,7 @@ export function useWidgetSync() {
       TripCountdown.updateSnapshot(baseProps);
 
       const timeline: Array<{ date: Date; props: any }> = [];
-      for (let i = 0; i <= Math.min(days, 7); i++) {
+      for (let i = 0; i <= Math.min(days, 30); i++) {
         const futureDate = new Date();
         futureDate.setDate(futureDate.getDate() + i);
         futureDate.setHours(0, 0, 0, 0);
