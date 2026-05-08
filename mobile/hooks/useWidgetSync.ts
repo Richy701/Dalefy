@@ -3,6 +3,19 @@ import { Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 
+function timeToMinutes(t: string): number {
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!m) return 720;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const pm = m[3].toUpperCase() === "PM";
+  if (pm && h < 12) h += 12;
+  if (!pm && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 let TripCountdown: any = null;
 try {
   TripCountdown = require("@/widgets/TripCountdown").default;
@@ -58,7 +71,7 @@ export function useWidgetSync() {
       const todayStr = new Date().toISOString().split("T")[0];
       const todayEvents = active.events
         .filter((e) => e.date === todayStr)
-        .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+        .sort((a, b) => timeToMinutes(a.time || "") - timeToMinutes(b.time || ""))
         .slice(0, 2);
 
       TripCountdown.updateSnapshot({
@@ -86,7 +99,7 @@ export function useWidgetSync() {
 
       const firstDayEvents = upcoming.events
         .filter((e) => e.date === upcoming.start)
-        .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+        .sort((a, b) => timeToMinutes(a.time || "") - timeToMinutes(b.time || ""))
         .slice(0, 2);
 
       const baseProps = {

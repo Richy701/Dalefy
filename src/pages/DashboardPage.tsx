@@ -40,6 +40,7 @@ import MapboxMap, { Source, Layer, Marker } from "react-map-gl/mapbox";
 import { geocode } from "@/services/geocode";
 import { COVER_IMAGES } from "@/data/images";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
+import { sortEvents } from "@/lib/sortEvents";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -214,7 +215,7 @@ export function DashboardPage() {
       const isHotel = (n: string) => { const l = n.toLowerCase(); return hotelNames.has(l) || [...hotelNames].some(h => h.includes(l) || l.includes(h)); };
       let name = trip.destination && !INVALID_DEST.test(trip.destination.trim()) && !isHotel(trip.destination.trim()) ? trip.destination : "";
       if (!name) {
-        const flights = trip.events.filter(e => e.type === "flight").sort((a, b) => a.date.localeCompare(b.date));
+        const flights = sortEvents(trip.events.filter(e => e.type === "flight"));
         for (const f of flights) { const m = f.location.match(/^.+?\s+to\s+(.+)$/i); if (m) { name = m[1].trim(); break; } }
       }
       if (!name) { const act = trip.events.find(e => e.type === "activity" && e.location); if (act) name = act.location; }

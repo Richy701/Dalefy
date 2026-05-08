@@ -45,6 +45,7 @@ const TripsContext = createContext<TripsContextType>({
 function useCloudTrips(uid: string | null, orgId?: string | null) {
   const qc = useQueryClient();
   const skipNextSnapshot = useRef(false);
+  const pendingDeletes = useRef<Set<string>>(new Set());
   const queryKey = ["trips", orgId || uid];
 
   const { data: trips = [], isSuccess } = useQuery<Trip[]>({
@@ -62,7 +63,11 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
         skipNextSnapshot.current = false;
         return;
       }
-      qc.setQueryData<Trip[]>(queryKey, updated);
+      // Filter out trips that are pending deletion to prevent snapshot revert
+      const filtered = pendingDeletes.current.size > 0
+        ? updated.filter(t => !pendingDeletes.current.has(t.id))
+        : updated;
+      qc.setQueryData<Trip[]>(queryKey, filtered);
     }, orgId);
     return () => unsub();
   }, [qc, uid, orgId]);
@@ -70,6 +75,17 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
   const setTrips: React.Dispatch<React.SetStateAction<Trip[]>> = useCallback((action) => {
     const prev = qc.getQueryData<Trip[]>(queryKey) ?? [];
     const next = typeof action === "function" ? action(prev) : action;
+
+    // Track deleted IDs so snapshots don't re-add them
+    const nextIds = new Set(next.map(t => t.id));
+    for (const t of prev) {
+      if (!nextIds.has(t.id)) {
+        pendingDeletes.current.add(t.id);
+        // Clear after cloud sync has time to complete
+        setTimeout(() => pendingDeletes.current.delete(t.id), 10_000);
+      }
+    }
+
     qc.setQueryData<Trip[]>(queryKey, next);
     skipNextSnapshot.current = true;
     syncToCloud(prev, next, orgId);
@@ -310,7 +326,15 @@ export function TripsProvider({ children }: { children: ReactNode }) {
 
   const deleteTrip = useCallback((id: string) => {
     setTrips(prev => prev.filter(t => t.id !== id));
-    if (useCloud) flushLocal(prev => prev.filter(t => t.id !== id));
+    if (useCloud) {
+      flushLocal(prev => prev.filter(t => t.id !== id));
+      // Also call removeTrip directly as a safety net
+      if (!DEMO_IDS.has(id)) {
+        removeTrip(id).catch(err => {
+          logger.error("deleteTrip", "cloud removal failed:", err);
+        });
+      }
+    }
   }, [setTrips, useCloud, flushLocal]);
 
   const updateTrip = useCallback((id: string, updates: Partial<Trip>) => {
