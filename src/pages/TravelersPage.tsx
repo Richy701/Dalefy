@@ -24,7 +24,7 @@ import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
-import { isFirebaseConfigured } from "@/services/firebase";
+import { isFirebaseConfigured, firebaseAuth } from "@/services/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -1550,15 +1550,26 @@ export function TravelersPage() {
                           value={pushMessage}
                           onChange={e => setPushMessage(e.target.value)}
                           placeholder="Type a message to send..."
-                          onKeyDown={e => {
+                          onKeyDown={async e => {
                             if (e.key === "Enter" && pushMessage.trim()) {
                               e.preventDefault();
                               setSendingPush(true);
-                              setTimeout(() => {
-                                setSendingPush(false);
-                                setPushMessage("");
-                                showToast(`Notification sent to ${panelUser.name || "user"}: "${pushMessage.trim()}"`);
-                              }, 800);
+                              try {
+                                const idToken = await firebaseAuth().currentUser?.getIdToken();
+                                if (!idToken) throw new Error("Not authenticated");
+                                const resp = await fetch("/api/send-push", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                                  body: JSON.stringify({ deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() }),
+                                });
+                                const data = await resp.json();
+                                if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
+                                else showToast(data.reason || "No push token found for this user");
+                              } catch {
+                                showToast("Failed to send notification");
+                              }
+                              setSendingPush(false);
+                              setPushMessage("");
                             }
                           }}
                           className="w-full h-10 px-3.5 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand/40 focus:ring-1 focus:ring-brand/20 transition-all"
@@ -1567,9 +1578,21 @@ export function TravelersPage() {
                           onClick={async () => {
                             if (!pushMessage.trim()) return;
                             setSendingPush(true);
-                            await new Promise(r => setTimeout(r, 800));
+                            try {
+                              const idToken = await firebaseAuth().currentUser?.getIdToken();
+                              if (!idToken) throw new Error("Not authenticated");
+                              const resp = await fetch("/api/send-push", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                                body: JSON.stringify({ deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() }),
+                              });
+                              const data = await resp.json();
+                              if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
+                              else showToast(data.reason || "No push token found for this user");
+                            } catch {
+                              showToast("Failed to send notification");
+                            }
                             setSendingPush(false);
-                            showToast(`Notification sent to ${panelUser.name || "user"}: "${pushMessage.trim()}"`);
                             setPushMessage("");
                           }}
                           disabled={sendingPush || !pushMessage.trim()}
