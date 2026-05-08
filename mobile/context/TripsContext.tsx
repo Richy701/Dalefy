@@ -46,6 +46,8 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
   /** Track pending writes — block subscription updates until all writes settle */
   const pendingWrites = useRef(0);
+  /** True once a remote fetch has succeeded — safe to trust empty results */
+  const confirmedOnline = useRef(false);
 
   // Load local cache for instant display (fallback if eager read wasn't ready)
   useEffect(() => {
@@ -72,6 +74,10 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     retryDelay: 1000,
   });
 
+  useEffect(() => {
+    if (isSuccess) confirmedOnline.current = true;
+  }, [isSuccess]);
+
   // Sync remote data → local cache when it arrives (skip during pending writes)
   useEffect(() => {
     if (remoteTrips && pendingWrites.current === 0) {
@@ -82,9 +88,11 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
 
   // Firestore realtime subscription — push fresh data straight into the query cache
   // Skip updates while local writes are pending to prevent overwriting optimistic state
+  // Don't let empty snapshots wipe cache until we've confirmed we're actually online
   useEffect(() => {
     const unsub = subscribeToTrips((freshTrips) => {
       if (pendingWrites.current > 0) return;
+      if (freshTrips.length === 0 && !confirmedOnline.current) return;
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
       setLocalCache(freshTrips);
       save(freshTrips);
