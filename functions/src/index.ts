@@ -5,6 +5,9 @@ import { getFirestore } from "firebase-admin/firestore";
 initializeApp();
 const db = getFirestore();
 
+// Dedup: skip if we already notified for this trip within 30s
+const recentNotifs = new Map<string, number>();
+
 interface TripDoc {
   name?: string;
   destination?: string;
@@ -36,6 +39,12 @@ export const onTripUpdated = onDocumentWritten(
 
     const change = describeChange(before, after);
     if (!change) return;
+
+    // Dedup rapid writes (web app often saves twice in quick succession)
+    const now = Date.now();
+    const lastSent = recentNotifs.get(tripId) ?? 0;
+    if (now - lastSent < 30_000) return;
+    recentNotifs.set(tripId, now);
 
     // Get all members of this trip
     const membersSnap = await db
@@ -111,62 +120,14 @@ export const onTripUpdated = onDocumentWritten(
 );
 
 function describeChange(before: TripDoc, after: TripDoc): string | null {
-  const beforeEvents = before.events ?? [];
-  const afterEvents = after.events ?? [];
-
-  // Published snapshot changed — this is the main edit path from web
+  // Only notify when the published snapshot changes (i.e. organizer hit Publish)
   if (
-    JSON.stringify(before.published_snapshot) !==
-    JSON.stringify(after.published_snapshot)
+    !after.published_snapshot ||
+    JSON.stringify(before.published_snapshot) ===
+      JSON.stringify(after.published_snapshot)
   ) {
-    return "The itinerary has been updated - tap to see changes";
+    return null;
   }
 
-  // Events added
-  if (afterEvents.length > beforeEvents.length) {
-    const diff = afterEvents.length - beforeEvents.length;
-    const newest = afterEvents.find(
-      (e) => !beforeEvents.some((b) => b.title === e.title && b.date === e.date)
-    );
-    if (newest?.title) {
-      return `New event added: ${newest.title}`;
-    }
-    return `${diff} new event${diff > 1 ? "s" : ""} added`;
-  }
-
-  // Events removed
-  if (afterEvents.length < beforeEvents.length) {
-    return "An event has been removed from the itinerary";
-  }
-
-  // Events reordered or modified
-  if (JSON.stringify(beforeEvents) !== JSON.stringify(afterEvents)) {
-    return "The itinerary has been updated - tap to see changes";
-  }
-
-  // Destination changed
-  if (before.destination !== after.destination && after.destination) {
-    return `Destination updated to ${after.destination}`;
-  }
-
-  // Dates changed
-  if (
-    (before as Record<string, unknown>).start !== (after as Record<string, unknown>).start ||
-    (before as Record<string, unknown>).end_date !== (after as Record<string, unknown>).end_date
-  ) {
-    return "Trip dates have been updated";
-  }
-
-  // Name changed
-  if (before.name !== after.name && after.name) {
-    return `Trip renamed to ${after.name}`;
-  }
-
-  // Status changed
-  if (before.status !== after.status) {
-    return `Trip status changed to ${after.status}`;
-  }
-
-  // No meaningful change detected
-  return null;
+  return "The itinerary has been updated - tap to see changes";
 }
