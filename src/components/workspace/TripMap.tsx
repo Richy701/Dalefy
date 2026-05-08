@@ -8,6 +8,7 @@ import { resolveCoords } from "@/data/coordinates";
 import { ARC_ANIMATION_MS } from "@/config/constants";
 import { EVENT_HEX } from "@/config/eventStyles";
 import { geocode } from "@/services/geocode";
+import { sortEvents } from "@/lib/sortEvents";
 import { usePreferences } from "@/context/PreferencesContext";
 
 const TYPE_ICONS = {
@@ -114,11 +115,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       const result: MapPoint[] = [];
       const arcs: FlightArc[] = [];
       let order = 0;
-      const sortedEvents = [...trip.events]
-        .filter((e) => e.type === "flight")
-        .sort((a, b) =>
-          a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time)
-        );
+      const sortedEvents = sortEvents(trip.events.filter((e) => e.type === "flight"));
       const resolve = async (loc: string): Promise<[number, number] | null> =>
         resolveCoords(loc) ?? (await geocode(loc));
 

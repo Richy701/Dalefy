@@ -475,15 +475,19 @@ const MEAL_DEFAULTS: Record<string, string> = {
 /** Convert "9:50 AM" / "12:00 PM" to minutes since midnight for numeric sorting.
  *  Empty/TBD times sort to end of day so confirmed times appear first. */
 function timeToMinutes(t: string): number {
-  if (!t || t === "TBD") return 1440; // end of day — sort after real times
+  if (!t || t === "TBD") return 1440;
   const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return 1440;
-  let h = parseInt(m[1]);
-  const min = parseInt(m[2]);
-  const pm = m[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
-  return h * 60 + min;
+  if (m) {
+    let h = parseInt(m[1]);
+    const min = parseInt(m[2]);
+    const pm = m[3].toUpperCase() === "PM";
+    if (pm && h < 12) h += 12;
+    if (!pm && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  const h24 = t.match(/(\d{1,2}):(\d{2})/);
+  if (h24) return parseInt(h24[1]) * 60 + parseInt(h24[2]);
+  return 1440;
 }
 
 function guessEventType(line: string): EventType {

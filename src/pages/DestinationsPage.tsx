@@ -9,6 +9,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { resolveCoords } from "@/data/coordinates";
+import { sortEvents } from "@/lib/sortEvents";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
@@ -76,9 +77,7 @@ export function DestinationsPage() {
       }
       // 2. Extract from flight "X to Y" locations
       if (!destName) {
-        const flights = trip.events
-          .filter(e => e.type === "flight")
-          .sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.time.localeCompare(b.time));
+        const flights = sortEvents(trip.events.filter(e => e.type === "flight"));
         for (const f of flights) {
           const match = f.location.match(/^.+?\s+to\s+(.+)$/i);
           if (match) { destName = match[1].trim(); break; }
