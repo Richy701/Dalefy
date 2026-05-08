@@ -1238,8 +1238,8 @@ export default function HomeScreen() {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
-    toast("You're all up to date");
-  }, [reload, toast]);
+    toast(offline ? "You're offline" : "You're all up to date");
+  }, [reload, toast, offline]);
 
   const sorted = useMemo(() =>
     [...trips].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
