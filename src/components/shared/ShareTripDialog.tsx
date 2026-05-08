@@ -71,7 +71,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-full h-full max-w-none m-0 rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto sm:m-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] sm:overflow-hidden"
+        className="dialog-mobile-full border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] sm:overflow-hidden"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">

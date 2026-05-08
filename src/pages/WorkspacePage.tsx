@@ -2496,7 +2496,7 @@ export function WorkspacePage() {
 
       {/* ── Information mini-dialog ── */}
       <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
-        <DialogContent className="w-full h-full max-w-none m-0 rounded-none border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:m-auto sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
+        <DialogContent className="dialog-mobile-full border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
           <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
             <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
               <div className="flex items-center justify-between">

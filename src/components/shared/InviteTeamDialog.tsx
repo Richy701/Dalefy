@@ -105,8 +105,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="w-full h-full max-w-none m-0 rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:m-auto sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
-        style={{ inset: 0, margin: 0 }}
+        className="dialog-mobile-full border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Invite people to {orgName}</DialogTitle>

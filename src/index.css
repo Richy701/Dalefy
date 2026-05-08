@@ -333,3 +333,17 @@ button:focus-visible,
 .mapboxgl-map {
   overflow: hidden;
 }
+
+/* Full-screen mobile dialogs */
+@media (max-width: 639px) {
+  [data-slot="dialog-content"].dialog-mobile-full {
+    position: fixed !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    transform: none !important;
+    border-radius: 0 !important;
+  }
+}
