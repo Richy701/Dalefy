@@ -29,7 +29,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **iOS Home Screen Widget** -- Trip countdown widget with radial progress ring, destination name, start date, and upcoming events. Dynamically scales the countdown ring based on days remaining, auto-transitions between upcoming/active/empty states via WidgetKit timeline entries (up to 30 days)
 - **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts for today's flights and updates live via the flight status cron
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
-- **Push Notifications** -- Trip update and flight status alerts for travelers via Expo push notifications
+- **Push Notifications** -- Real-time push notifications via Firebase Cloud Function when itineraries are published, plus flight status alerts from the cron job. Local scheduled reminders for upcoming trips, flights, hotels, and events
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
 - **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
@@ -47,6 +47,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Routing:** react-router-dom v7 (HashRouter)
 - **PDF:** html2canvas + jsPDF
 - **Mobile:** Expo / React Native (in `/mobile`), expo-widgets (Live Activities + Dynamic Island)
+- **Cloud Functions:** Firebase Cloud Functions (Gen 2) for server-side push notifications on publish
 
 ## Getting Started
 
@@ -174,10 +175,22 @@ Without Firebase credentials, the app runs in demo mode with localStorage-only d
 
 Hosted on [Vercel](https://dalefy.vercel.app). Push to `main` to trigger a production deployment.
 
-The flight status cron runs daily via Vercel Cron Jobs. AI itinerary parsing requires an `ANTHROPIC_API_KEY` — without it, the import falls back to the offline heuristic parser.
+The flight status cron runs every 30 minutes via Vercel Cron Jobs. AI itinerary parsing requires an `ANTHROPIC_API_KEY` — without it, the import falls back to the offline heuristic parser.
+
+### Cloud Functions
+
+Firebase Cloud Functions (Gen 2) in `functions/` handle server-side push notifications. Deployed separately from the web app.
 
 ```bash
-# Manual deploy
+# Deploy functions
+cd functions && npm install && firebase deploy --only functions
+
+# View logs
+firebase functions:log --only onTripUpdated
+```
+
+```bash
+# Manual web deploy
 vercel --prod
 ```
 
