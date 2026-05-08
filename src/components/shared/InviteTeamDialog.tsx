@@ -48,8 +48,14 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
     }
   }, [open, currentOrg]);
 
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
   const handleInvite = async () => {
     if (!email.trim() || !currentOrg) return;
+    if (!isValidEmail(email.trim())) {
+      showToast("Please enter a valid email address");
+      return;
+    }
     setSending(true);
     setLastInvite(null);
 
@@ -99,7 +105,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="!left-0 !top-0 !translate-x-0 !translate-y-0 w-full h-full max-w-none rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:!left-1/2 sm:!top-1/2 sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
+        className="w-full h-full max-w-none m-0 rounded-none border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:m-auto sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Invite people to {orgName}</DialogTitle>
@@ -114,6 +120,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               <div className="relative flex-1">
                 <Envelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#888]" />
                 <Input
+                  type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="team@company.com"
@@ -123,7 +130,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               </div>
               <Button
                 onClick={handleInvite}
-                disabled={sending || !email.trim()}
+                disabled={sending || !isValidEmail(email.trim())}
                 className="h-11 w-11 rounded-xl bg-brand hover:opacity-90 p-0 shadow-lg shadow-brand/20"
                 style={{ color: accentFg }}
               >
