@@ -241,10 +241,11 @@ function useMergedTrips(
   isLocalOnly: boolean,
   cloudTrips: Trip[],
   localTrips: Trip[],
+  deletedIds: Set<string>,
 ) {
   return useMemo(() => {
-    logger.log("useMergedTrips", `useCloud=${useCloud} isLocalOnly=${isLocalOnly} cloud=${cloudTrips.length} local=${localTrips.length}`);
-    if (!useCloud) return localTrips;
+    logger.log("useMergedTrips", `useCloud=${useCloud} isLocalOnly=${isLocalOnly} cloud=${cloudTrips.length} local=${localTrips.length} deleted=${deletedIds.size}`);
+    if (!useCloud) return localTrips.filter(t => !deletedIds.has(t.id));
 
     // Read localStorage directly for the freshest local data
     let localSrc: Trip[] = localTrips;
@@ -262,14 +263,14 @@ function useMergedTrips(
       return lt ? mergeLocalMedia(t, lt) : t;
     });
 
-    // Add local-only trips (not in cloud, not demo)
+    // Add local-only trips (not in cloud, not demo, not recently deleted)
     const demoIds = new Set(INITIAL_TRIPS.map(t => t.id));
     for (const lt of localSrc) {
-      if (!cloudIds.has(lt.id) && !demoIds.has(lt.id)) merged.push(lt);
+      if (!cloudIds.has(lt.id) && !demoIds.has(lt.id) && !deletedIds.has(lt.id)) merged.push(lt);
     }
 
     return merged;
-  }, [useCloud, cloudTrips, localTrips, isLocalOnly]);
+  }, [useCloud, cloudTrips, localTrips, isLocalOnly, deletedIds]);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -292,7 +293,8 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const { setTrips } = useCloud ? cloud : local;
   const ready = useCloud ? cloud.ready : local.ready;
 
-  const trips = useMergedTrips(useCloud, isLocalOnly, cloud.trips, local.trips);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const trips = useMergedTrips(useCloud, isLocalOnly, cloud.trips, local.trips, deletedIds);
 
   // One-time backfill: stamp existing user trips with org ID + repair ownership
   const backfillRan = useRef(false);
@@ -325,10 +327,11 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [setTrips, useCloud, flushLocal, currentOrg]);
 
   const deleteTrip = useCallback((id: string) => {
+    // Track deletion so useMergedTrips never re-adds from stale localStorage
+    setDeletedIds(prev => new Set(prev).add(id));
     setTrips(prev => prev.filter(t => t.id !== id));
     if (useCloud) {
       flushLocal(prev => prev.filter(t => t.id !== id));
-      // Also call removeTrip directly as a safety net
       if (!DEMO_IDS.has(id)) {
         removeTrip(id).catch(err => {
           logger.error("deleteTrip", "cloud removal failed:", err);
