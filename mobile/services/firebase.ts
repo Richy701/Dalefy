@@ -79,31 +79,32 @@ export function waitForAuth(): Promise<void> {
   if (!_authReady) {
     const auth = firebaseAuth();
 
-    if (auth.currentUser) {
-      _authReady = auth.currentUser.getIdToken().then(() => {
-        console.log("[Firebase] Already signed in:", auth.currentUser!.isAnonymous ? "anonymous" : auth.currentUser!.email);
-      });
-      return _authReady;
-    }
-
     _authReady = new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
-        console.warn("[Firebase] Auth timeout — proceeding");
+        console.warn("[Firebase] Auth timeout — proceeding without token");
         resolve();
-      }, 5000);
+      }, 3000);
+
+      if (auth.currentUser) {
+        auth.currentUser.getIdToken()
+          .then(() => console.log("[Firebase] Already signed in:", auth.currentUser!.isAnonymous ? "anonymous" : auth.currentUser!.email))
+          .catch(() => console.warn("[Firebase] Token refresh failed (offline?) — proceeding with cached user"))
+          .finally(() => { clearTimeout(timeout); resolve(); });
+        return;
+      }
 
       const unsub = auth.onAuthStateChanged(async (user) => {
         unsub();
-        clearTimeout(timeout);
         if (user) {
-          await user.getIdToken();
-          console.log("[Firebase] Auth ready:", user.isAnonymous ? "anonymous" : user.email);
-          resolve();
+          user.getIdToken()
+            .then(() => console.log("[Firebase] Auth ready:", user.isAnonymous ? "anonymous" : user.email))
+            .catch(() => console.warn("[Firebase] Token refresh failed — proceeding with cached user"))
+            .finally(() => { clearTimeout(timeout); resolve(); });
         } else {
           signInAnonymously(auth)
             .then(() => console.log("[Firebase] Anonymous auth OK"))
             .catch((err) => console.warn("[Firebase] Anonymous auth failed:", err))
-            .finally(resolve);
+            .finally(() => { clearTimeout(timeout); resolve(); });
         }
       });
     });

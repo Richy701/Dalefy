@@ -6,7 +6,8 @@ import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/
 
 const CACHE_KEY = "daf-trips-cache";
 
-console.log("[TripsContext] v6 loaded");
+export const TRIPS_CTX_VERSION = "v8";
+console.log(`[TripsContext] ${TRIPS_CTX_VERSION} loaded`);
 // Eager module-level cache read — fires at import time, well before React mounts.
 // If AsyncStorage resolves before first render, trips are available immediately.
 let _eagerCache: Trip[] | null = null;
@@ -96,10 +97,13 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   }, [isError]);
 
   // Sync remote data → local cache when it arrives (skip during pending writes)
+  // Only overwrite cache with empty results when we've confirmed we're online
   useEffect(() => {
     if (remoteTrips && pendingWrites.current === 0) {
-      setLocalCache(remoteTrips);
-      save(remoteTrips);
+      if (remoteTrips.length > 0 || confirmedOnline.current) {
+        setLocalCache(remoteTrips);
+        save(remoteTrips);
+      }
     }
   }, [remoteTrips]);
 

@@ -38,7 +38,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
 import { NotificationSheet } from "@/components/NotificationSheet";
-import { useTrips } from "@/context/TripsContext";
+import { useTrips, TRIPS_CTX_VERSION } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -1429,6 +1429,8 @@ export default function HomeScreen() {
             </View>
           )
         )}
+
+        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | {ready ? "rdy" : "..."} | {offline ? "off" : "on"}</Text>
 
       </ScrollView>
     </SafeAreaView>
