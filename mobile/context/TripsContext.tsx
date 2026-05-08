@@ -6,6 +6,7 @@ import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/
 
 const CACHE_KEY = "daf-trips-cache";
 
+console.log("[TripsContext] v6 loaded");
 // Eager module-level cache read — fires at import time, well before React mounts.
 // If AsyncStorage resolves before first render, trips are available immediately.
 let _eagerCache: Trip[] | null = null;
@@ -50,11 +51,15 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   /** True once a remote fetch has succeeded — safe to trust empty results */
   const confirmedOnline = useRef(false);
 
-  // Fast network check — resolves in <2s instead of waiting for Firestore timeouts
+  // If Firestore hasn't responded within 3s, assume offline
   useEffect(() => {
-    fetch("https://firestore.googleapis.com", { method: "HEAD", mode: "no-cors" })
-      .then(() => setNetworkDown(false))
-      .catch(() => setNetworkDown(true));
+    const timer = setTimeout(() => {
+      if (!confirmedOnline.current) {
+        console.log("[TripsContext] offline timeout — no response in 3s");
+        setNetworkDown(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Load local cache for instant display (fallback if eager read wasn't ready)
