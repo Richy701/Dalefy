@@ -129,6 +129,18 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
 }
 
 export async function removeTrip(id: string): Promise<void> {
+  // Cascade: delete trip_members for this trip so they don't become orphans
+  try {
+    const members = await getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", id)));
+    if (members.size > 0) {
+      const batch = writeBatch(firebaseDb());
+      for (const d of members.docs) batch.delete(d.ref);
+      await batch.commit();
+      logger.log("removeTrip", `cascade-deleted ${members.size} trip_members for trip ${id}`);
+    }
+  } catch (err) {
+    logger.error("removeTrip", "trip_members cleanup failed (continuing):", err);
+  }
   await deleteDoc(doc(firebaseDb(), TRIPS, id));
 }
 
@@ -266,25 +278,6 @@ export async function updateTripMemberRole(
 
 /** Remove a user from a single trip (both device-keyed and uid-keyed docs) */
 export async function removeUserFromTrip(deviceId: string, tripId: string): Promise<number> {
-  const authUid = firebaseAuth().currentUser?.uid ?? "NO_AUTH";
-  logger.log("removeUserFromTrip", `auth=${authUid} device=${deviceId} trip=${tripId}`);
-
-  // Debug: check what the rules will evaluate against
-  try {
-    const tripDoc = await getDoc(doc(firebaseDb(), TRIPS, tripId));
-    if (tripDoc.exists()) {
-      const td = tripDoc.data();
-      logger.log("removeUserFromTrip", `trip owner=${td.user_id} org=${td.organization_id}`);
-    } else {
-      logger.log("removeUserFromTrip", "trip doc NOT FOUND");
-    }
-  } catch (e) { logger.error("removeUserFromTrip", "trip lookup failed:", e); }
-
-  try {
-    const memDoc = await getDoc(doc(firebaseDb(), "org_members", `${authUid}_${await getDoc(doc(firebaseDb(), TRIPS, tripId)).then(d => d.data()?.organization_id ?? "NONE")}`));
-    logger.log("removeUserFromTrip", `org_member exists=${memDoc.exists()} role=${memDoc.data()?.role ?? "N/A"}`);
-  } catch (e) { logger.error("removeUserFromTrip", "org_member lookup failed:", e); }
-
   const [snap, allForTrip] = await Promise.all([
     getDocs(query(
       collection(firebaseDb(), TRIP_MEMBERS),
@@ -301,29 +294,11 @@ export async function removeUserFromTrip(deviceId: string, tripId: string): Prom
   }
 
   if (refs.size === 0) return 0;
-
-  // Log each doc's data so we can see what the rules evaluate
-  for (const [id, r] of refs) {
-    const d = snap.docs.find(x => x.id === id) ?? allForTrip.docs.find(x => x.id === id);
-    if (d) {
-      const data = d.data();
-      logger.log("removeUserFromTrip", `doc ${id}: user_id=${data.user_id} uid=${data.uid} device_id=${data.device_id} org_id=${data.organization_id}`);
-    }
-  }
-
-  // Use individual deletes instead of batch for better error diagnostics
-  let deleted = 0;
-  for (const [id, r] of refs) {
-    try {
-      await deleteDoc(r);
-      deleted++;
-    } catch (err) {
-      logger.error("removeUserFromTrip", `FAILED to delete doc ${id}:`, err);
-      throw err;
-    }
-  }
-  logger.log("removeUserFromTrip", `removed ${deleted} docs for device ${deviceId} from trip ${tripId}`);
-  return deleted;
+  const batch = writeBatch(firebaseDb());
+  for (const r of refs.values()) batch.delete(r);
+  await batch.commit();
+  logger.log("removeUserFromTrip", `removed ${refs.size} docs for device ${deviceId} from trip ${tripId}`);
+  return refs.size;
 }
 
 /** Rename an app user across all their trip_members docs */

@@ -73,13 +73,10 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Sync remote data → local cache when it arrives (skip during pending writes)
-  // Never overwrite good cache with empty results (offline Firestore returns [])
   useEffect(() => {
     if (remoteTrips && pendingWrites.current === 0) {
-      if (remoteTrips.length > 0) {
-        setLocalCache(remoteTrips);
-        save(remoteTrips);
-      }
+      setLocalCache(remoteTrips);
+      save(remoteTrips);
     }
   }, [remoteTrips]);
 
@@ -88,7 +85,6 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsub = subscribeToTrips((freshTrips) => {
       if (pendingWrites.current > 0) return;
-      if (freshTrips.length === 0) return;
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
       setLocalCache(freshTrips);
       save(freshTrips);
@@ -96,14 +92,12 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, [qc]);
 
-  // Use remote data when available, fall back to local cache.
-  // Prefer local cache when remote returns empty but cache has data (offline scenario).
-  // Always wait for AsyncStorage before declaring ready — it's our offline safety net.
+  // Use remote data when available, fall back to local cache only before first fetch.
   const rawTrips = useMemo(() => {
-    if (remoteTrips && remoteTrips.length > 0) return remoteTrips;
+    if (isSuccess) return remoteTrips ?? [];
     if (localCache && localCache.length > 0) return localCache;
     return remoteTrips ?? localCache ?? [];
-  }, [remoteTrips, localCache]);
+  }, [remoteTrips, localCache, isSuccess]);
 
   const trips = useMemo(() => rawTrips.map(t => {
     const snap = t.publishedSnapshot;
@@ -111,7 +105,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return { ...t, events: snap.events, info: snap.info, organizer: snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
   }), [rawTrips]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
-  const offline = (isSuccess || isError) && (!remoteTrips || remoteTrips.length === 0) && trips.length > 0;
+  const offline = isError && trips.length > 0;
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");

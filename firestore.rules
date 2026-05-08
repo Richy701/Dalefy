@@ -163,7 +163,10 @@ service cloud.firestore {
                 && isOrgEditor(resource.data.organization_id))
             || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
                 && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
-                && isOrgEditor(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id)));
+                && isOrgEditor(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id))
+            // Fallback: org admin via user profile (handles orphaned trip_members whose trip was deleted)
+            || (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.current_org_id != null
+                && isOrgAdmin(get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.current_org_id)));
     }
 
     // ── Trip presence: real-time editing presence ────────────────────────
