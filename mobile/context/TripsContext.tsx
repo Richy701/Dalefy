@@ -123,10 +123,12 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, [qc]);
 
-  // Use remote data when available, fall back to local cache only before first fetch.
+  // Prefer remote when it has data; fall back to cache when remote is empty.
+  // Only show truly empty when remote confirmed empty AND cache is also empty.
   const rawTrips = useMemo(() => {
-    if (isSuccess) return remoteTrips ?? [];
+    if (remoteTrips && remoteTrips.length > 0) return remoteTrips;
     if (localCache && localCache.length > 0) return localCache;
+    if (isSuccess) return remoteTrips ?? [];
     return remoteTrips ?? localCache ?? [];
   }, [remoteTrips, localCache, isSuccess]);
 
