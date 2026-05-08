@@ -436,8 +436,8 @@ export function SettingsPage() {
               />
               {/* Agency Code */}
               <div className="px-5 py-4 border-b border-slate-100 dark:border-[#141414]">
-                <div className="flex items-start justify-between gap-6">
-                  <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
+                  <div className="min-w-0">
                     <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
                       Agency Code
                     </p>
@@ -445,7 +445,7 @@ export function SettingsPage() {
                       Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className="flex flex-col sm:items-end gap-2 shrink-0">
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
@@ -453,7 +453,7 @@ export function SettingsPage() {
                         onChange={e => setAgencyCodeEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                         placeholder={brandName ? brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) : "your-agency-code"}
                         maxLength={40}
-                        className="h-10 w-52 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                        className="h-10 w-full sm:w-52 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                       />
                       {agencyCodeEdit && agencyCodeEdit === currentOrg?.agencyCode ? (
                         <button

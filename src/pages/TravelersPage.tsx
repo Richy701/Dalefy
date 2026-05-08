@@ -11,7 +11,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square, SpinnerGap } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -94,6 +94,8 @@ export function TravelersPage() {
   const APP_USERS_PER_PAGE = 10;
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const [removingFromTrip, setRemovingFromTrip] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showSortMenu && !showFilterMenu && !showActionsMenu) return;
@@ -135,6 +137,7 @@ export function TravelersPage() {
 
   const handleDeleteAppUser = useCallback(async (deviceId: string, name: string) => {
     if (!confirm(`Remove ${name || "this user"}? This deletes all their trip membership records.`)) return;
+    setDeletingUser(deviceId);
     try {
       const count = await deleteAppUser(deviceId);
       setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
@@ -143,6 +146,8 @@ export function TravelersPage() {
     } catch (err) {
       console.error("Delete app user failed:", err);
       showToast("Failed to remove user — check console");
+    } finally {
+      setDeletingUser(null);
     }
   }, [showToast]);
 
@@ -177,6 +182,7 @@ export function TravelersPage() {
 
   const handleRemoveFromTrip = useCallback(async (deviceId: string, tripId: string, tripName: string) => {
     if (!confirm(`Remove this user from ${tripName}?`)) return;
+    setRemovingFromTrip(`${deviceId}_${tripId}`);
     try {
       await removeUserFromTrip(deviceId, tripId);
       setAppUsers(prev => prev.filter(m => !(m.device_id === deviceId && m.trip_id === tripId)));
@@ -184,6 +190,8 @@ export function TravelersPage() {
     } catch (err) {
       console.error("Remove from trip failed:", err);
       showToast("Failed to remove from trip");
+    } finally {
+      setRemovingFromTrip(null);
     }
   }, [showToast]);
 
@@ -1491,10 +1499,15 @@ export function TravelersPage() {
                                 </button>
                                 <button
                                   onClick={() => handleRemoveFromTrip(panelUser.deviceId, t.id, t.name)}
-                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                  disabled={removingFromTrip === `${panelUser.deviceId}_${t.id}`}
+                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title={`Remove from ${t.name}`}
                                 >
-                                  <SignOut className="h-3.5 w-3.5" />
+                                  {removingFromTrip === `${panelUser.deviceId}_${t.id}` ? (
+                                    <SpinnerGap className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <SignOut className="h-3.5 w-3.5" />
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -1572,10 +1585,15 @@ export function TravelersPage() {
                     <div className="pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Danger Zone</p>
                       <button
-                        onClick={() => { handleDeleteAppUser(panelUser.deviceId, panelUser.name); setDetailPanelUser(null); }}
-                        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
+                        onClick={() => handleDeleteAppUser(panelUser.deviceId, panelUser.name)}
+                        disabled={deletingUser === panelUser.deviceId}
+                        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Trash className="h-3.5 w-3.5" /> Remove User Completely
+                        {deletingUser === panelUser.deviceId ? (
+                          <><SpinnerGap className="h-3.5 w-3.5 animate-spin" /> Removing...</>
+                        ) : (
+                          <><Trash className="h-3.5 w-3.5" /> Remove User Completely</>
+                        )}
                       </button>
                     </div>
                   </div>

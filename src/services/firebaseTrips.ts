@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, where, onSnapshot,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, query, orderBy, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -203,34 +203,25 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
 export async function deleteAppUser(deviceId: string): Promise<number> {
   const refs = new Map<string, import("firebase/firestore").DocumentReference>();
 
-  const byDevice = await getDocs(
-    query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId)),
-  );
+  const [byDevice, byUid] = await Promise.all([
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", deviceId))),
+  ]);
   for (const d of byDevice.docs) refs.set(d.id, d.ref);
-
-  // Also find UID-keyed docs that share the same device_id
-  const byUid = await getDocs(
-    query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", deviceId)),
-  );
   for (const d of byUid.docs) refs.set(d.id, d.ref);
 
   if (refs.size === 0) return 0;
-  let deleted = 0;
-  let lastErr: unknown = null;
-  for (const [id, ref] of refs) {
-    try {
-      await deleteDoc(ref);
-      deleted++;
-    } catch (err) {
-      lastErr = err;
-      logger.log("deleteAppUser", `failed to delete ${id}:`, err);
-    }
+
+  const db = firebaseDb();
+  const allRefs = [...refs.values()];
+  // Firestore batches support up to 500 ops
+  for (let i = 0; i < allRefs.length; i += 500) {
+    const batch = writeBatch(db);
+    for (const r of allRefs.slice(i, i + 500)) batch.delete(r);
+    await batch.commit();
   }
-  if (deleted === 0 && lastErr) {
-    throw new Error(`Permission denied: could not delete trip member records. ${lastErr}`);
-  }
-  logger.log("deleteAppUser", `deleted ${deleted}/${refs.size} docs for device ${deviceId}`);
-  return deleted;
+  logger.log("deleteAppUser", `deleted ${allRefs.length} docs for device ${deviceId}`);
+  return allRefs.length;
 }
 
 /** Update the role on all trip_members docs for a device+trip pair */
@@ -275,28 +266,27 @@ export async function updateTripMemberRole(
 
 /** Remove a user from a single trip (both device-keyed and uid-keyed docs) */
 export async function removeUserFromTrip(deviceId: string, tripId: string): Promise<number> {
-  const snap = await getDocs(
-    query(
+  const [snap, allForTrip] = await Promise.all([
+    getDocs(query(
       collection(firebaseDb(), TRIP_MEMBERS),
       where("device_id", "==", deviceId),
       where("trip_id", "==", tripId),
-    ),
-  );
-  let deleted = 0;
-  for (const d of snap.docs) {
-    try { await deleteDoc(d.ref); deleted++; } catch { /* skip */ }
-  }
-  // Also check uid-keyed docs
-  const allForTrip = await getDocs(
-    query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", tripId)),
-  );
+    )),
+    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("trip_id", "==", tripId))),
+  ]);
+
+  const refs = new Map<string, import("firebase/firestore").DocumentReference>();
+  for (const d of snap.docs) refs.set(d.id, d.ref);
   for (const d of allForTrip.docs) {
-    if (d.data().device_id === deviceId && !snap.docs.find(s => s.id === d.id)) {
-      try { await deleteDoc(d.ref); deleted++; } catch { /* skip */ }
-    }
+    if (d.data().device_id === deviceId && !refs.has(d.id)) refs.set(d.id, d.ref);
   }
-  logger.log("removeUserFromTrip", `removed ${deleted} docs for device ${deviceId} from trip ${tripId}`);
-  return deleted;
+
+  if (refs.size === 0) return 0;
+  const batch = writeBatch(firebaseDb());
+  for (const r of refs.values()) batch.delete(r);
+  await batch.commit();
+  logger.log("removeUserFromTrip", `removed ${refs.size} docs for device ${deviceId} from trip ${tripId}`);
+  return refs.size;
 }
 
 /** Rename an app user across all their trip_members docs */
