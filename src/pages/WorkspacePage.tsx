@@ -804,27 +804,10 @@ export function WorkspacePage() {
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
       {/* Header */}
-      <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-50 shadow-xl">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+      <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-50 shadow-xl">
           <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden sm:block" />
-          <div className="flex flex-col min-w-0 hidden sm:flex">
-            <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate">{trip.name}</h2>
-            <div className="flex items-center gap-2 mt-1 leading-none">
-              <Badge className="bg-brand/10 text-brand border border-brand/20 font-bold px-2 py-0 h-4 rounded-full text-xs uppercase tracking-wider">EDITING</Badge>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-[#888888] uppercase tracking-[0.2em] leading-none hidden sm:inline truncate">
-                {(() => {
-                  const parsedPax = parseInt(trip.paxCount || "", 10);
-                  if (!isNaN(parsedPax) && parsedPax > 0) return `${parsedPax} ATTENDEES`;
-                  const moreMatch = trip.attendees?.match(/\+(\d+)\s+more/i);
-                  const listed = (trip.attendees || "").replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
-                  const total = listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
-                  return total > 0 ? `${total} ATTENDEES` : trip.attendees;
-                })()}
-              </span>
-            </div>
-          </div>
-        </div>
+          <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate min-w-0 hidden sm:block">{trip.name}</h2>
 
         {/* Presence avatars */}
         {presenceUsers.length > 0 && (
@@ -861,7 +844,7 @@ export function WorkspacePage() {
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
           {/* View As dropdown */}
           {tripTravelers.length > 0 && (
             <Popover>
@@ -1000,9 +983,6 @@ export function WorkspacePage() {
 
           <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
             {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
-            {trip.publishedSnapshot && (JSON.stringify(trip.events) !== JSON.stringify(trip.publishedSnapshot.events) || JSON.stringify(trip.info) !== JSON.stringify(trip.publishedSnapshot.info) || trip.name !== trip.publishedSnapshot.name || trip.image !== trip.publishedSnapshot.image) && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-amber-400 border-2 border-white dark:border-[#111111] animate-pulse" />
-            )}
           </Button>
         </div>
       </header>
@@ -2516,7 +2496,7 @@ export function WorkspacePage() {
 
       {/* ── Information mini-dialog ── */}
       <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
-        <DialogContent className="w-full h-full max-w-none rounded-none border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
+        <DialogContent className="fixed inset-0 translate-x-0 translate-y-0 w-full h-full max-w-none rounded-none border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-2xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
           <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
             <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
               <div className="flex items-center justify-between">
