@@ -113,7 +113,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     return { ...t, events: snap.events, info: snap.info, organizer: snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
   }), [rawTrips]);
   const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
-  const offline = isError && trips.length > 0;
+  const offline = isError && !isSuccess;
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
