@@ -1,7 +1,7 @@
 import { createContext, useContext, useCallback, useMemo, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip, TravelEvent } from "@/types";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useLocalStorage, notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { INITIAL_TRIPS } from "@/data/trips";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { fetchTrips, upsertTrip, removeTrip, subscribeToTrips, backfillOrgId, repairTripOwnership } from "@/services/firebaseTrips";
@@ -338,6 +338,18 @@ export function TripsProvider({ children }: { children: ReactNode }) {
         });
       }
     }
+    // Scrub from localStorage directly and notify useLocalStorage to re-sync
+    try {
+      const raw = localStorage.getItem(STORAGE.TRIPS);
+      if (raw) {
+        const stored: Trip[] = JSON.parse(raw);
+        const cleaned = stored.filter(t => t.id !== id);
+        if (cleaned.length !== stored.length) {
+          localStorage.setItem(STORAGE.TRIPS, JSON.stringify(cleaned));
+          notifyLocalStorage(STORAGE.TRIPS);
+        }
+      }
+    } catch { /* ignore */ }
   }, [setTrips, useCloud, flushLocal]);
 
   const updateTrip = useCallback((id: string, updates: Partial<Trip>) => {
