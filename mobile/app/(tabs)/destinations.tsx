@@ -52,6 +52,8 @@ const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
 };
 
 function timeToMinutes(t: string): number {
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
   const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!m) return 720;
   let h = parseInt(m[1]);
