@@ -351,7 +351,6 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   onPress: (t: Trip) => void;
 }) {
   const { C, isDark } = useTheme();
-
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
   const router = useRouter();

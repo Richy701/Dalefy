@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft, Compass, MapPin, Users, Moon, ShareNetwork, Plus, Check, CaretDown,
+  AirplaneTilt, Bed, ForkKnife, Car,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
@@ -41,6 +42,10 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
+const EVENT_ICONS: Record<string, React.ComponentType<any>> = {
+  flight: AirplaneTilt, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
+};
+
 export default function SharedTripScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
@@ -55,6 +60,7 @@ export default function SharedTripScreen() {
   const [error, setError] = useState(false);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   const alreadyInMyTrips = useMemo(
     () => (tripId ? trips.some((t) => t.id === tripId) : false),
@@ -103,6 +109,15 @@ export default function SharedTripScreen() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [tripId]);
+
+  const toggleDay = useCallback((date: string) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -301,8 +316,8 @@ export default function SharedTripScreen() {
         {/* Organizer contact card */}
         {trip.organizer && <OrganizerCard organizer={trip.organizer} C={C} />}
 
-        {/* Information & Documents */}
-        {trip.info && trip.info.length > 0 && (
+        {/* Information & Documents — only show after joining */}
+        {alreadyInMyTrips && trip.info && trip.info.length > 0 && (
           <InfoDocsRow
             count={trip.info.length}
             C={C}
@@ -322,50 +337,74 @@ export default function SharedTripScreen() {
               const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
               const todayStr = new Date().toISOString().split("T")[0];
               return sortedDays.map(([date, events], dayIdx) => (
-                <DaySummaryRow
-                  key={date}
-                  dayIndex={dayIdx + 1}
-                  date={date}
-                  events={events}
-                  C={C}
-                  isToday={date === todayStr}
-                  isFirst={dayIdx === 0}
-                  isLast={dayIdx === sortedDays.length - 1}
-                  onPress={() => router.push({ pathname: "/trip/day", params: { tripId: trip.id, date } })}
-                />
+                <View key={date}>
+                  <DaySummaryRow
+                    dayIndex={dayIdx + 1}
+                    date={date}
+                    events={events}
+                    C={C}
+                    isToday={date === todayStr}
+                    isFirst={dayIdx === 0}
+                    isLast={dayIdx === sortedDays.length - 1}
+                    onPress={() => toggleDay(date)}
+                  />
+                  {expandedDays.has(date) && (
+                    <View style={styles.expandedEvents}>
+                      {[...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)).map(ev => {
+                        const Icon = EVENT_ICONS[ev.type] ?? Compass;
+                        const color = (C as any)[ev.type] ?? C.teal;
+                        return (
+                          <View key={ev.id} style={styles.inlineEvent}>
+                            <View style={[styles.inlineEventIcon, { backgroundColor: `${color}12` }]}>
+                              <Icon size={13} color={color} weight="regular" />
+                            </View>
+                            <View style={styles.inlineEventContent}>
+                              <Text style={styles.inlineEventTitle} numberOfLines={1}>{ev.title}</Text>
+                              {(ev.time || ev.location) ? (
+                                <Text style={styles.inlineEventSub} numberOfLines={1}>
+                                  {ev.time || ""}{ev.time && ev.location ? "  ·  " : ""}{ev.location || ""}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
               ));
             })()}
           </View>
         </View>
 
-        <Animated.View style={addBtnStyle}>
-          <Pressable
-            onPress={handleAddToMyTrips}
-            disabled={alreadyInMyTrips || justAdded}
-            style={({ pressed }) => [
-              styles.addCta,
-              {
-                backgroundColor: (alreadyInMyTrips || justAdded) ? C.tealDim : C.teal,
-                opacity: pressed && !alreadyInMyTrips && !justAdded ? 0.85 : 1,
-              },
-            ]}
-          >
-            {(alreadyInMyTrips || justAdded) ? (
-              <Animated.View style={checkStyle}>
-                <Check size={18} color={C.teal} weight="bold" />
-              </Animated.View>
-            ) : (
-              <Plus size={16} color="#000" weight="bold" />
-            )}
-            <Text style={[
-              styles.addCtaText,
-              { color: (alreadyInMyTrips || justAdded) ? C.teal : "#000" },
-            ]}>
-              {(alreadyInMyTrips || justAdded) ? "Saved to my trips" : "Add to my trips"}
-            </Text>
-          </Pressable>
-        </Animated.View>
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Sticky bottom banner */}
+      {!alreadyInMyTrips && !justAdded ? (
+        <View style={[styles.stickyBar, { paddingBottom: insets.bottom + S.sm }]}>
+          <Text style={styles.stickyText}>You're previewing this trip</Text>
+          <Animated.View style={[addBtnStyle, { flex: 1 }]}>
+            <Pressable
+              onPress={handleAddToMyTrips}
+              style={({ pressed }) => [
+                styles.addCta,
+                { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Plus size={16} color="#000" weight="bold" />
+              <Text style={[styles.addCtaText, { color: "#000" }]}>Join Trip</Text>
+            </Pressable>
+          </Animated.View>
+        </View>
+      ) : (
+        <View style={[styles.stickyBar, styles.stickyBarJoined, { paddingBottom: insets.bottom + S.sm }]}>
+          <Animated.View style={checkStyle}>
+            <Check size={18} color={C.teal} weight="bold" />
+          </Animated.View>
+          <Text style={[styles.stickyTextJoined, { color: C.teal }]}>Saved to my trips</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -380,7 +419,6 @@ function makeStyles(C: ThemeColors) {
     actionBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
 
     addCta: {
-      marginHorizontal: S.md, marginTop: S.sm,
       height: 52, borderRadius: R.xl,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     },
@@ -498,6 +536,50 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.bold as any, color: `${C.teal}80`,
       letterSpacing: 0.8, textTransform: "uppercase",
       marginTop: 6, paddingHorizontal: 2,
+    },
+
+    // Expanded inline events
+    expandedEvents: {
+      marginTop: -2, marginBottom: S.md,
+      backgroundColor: C.card,
+      borderRadius: R.xl,
+      paddingVertical: 4, paddingHorizontal: S.sm,
+    },
+    inlineEvent: {
+      flexDirection: "row", alignItems: "center", gap: 10,
+      paddingVertical: 8, paddingHorizontal: 4,
+    },
+    inlineEventIcon: {
+      width: 28, height: 28, borderRadius: R.sm,
+      alignItems: "center", justifyContent: "center",
+    },
+    inlineEventContent: { flex: 1 },
+    inlineEventTitle: {
+      fontSize: T.xs, fontWeight: T.bold as any, color: C.textPrimary,
+    },
+    inlineEventSub: {
+      fontSize: 10, color: C.textTertiary, marginTop: 1,
+    },
+
+    // Sticky bottom bar
+    stickyBar: {
+      position: "absolute", bottom: 0, left: 0, right: 0,
+      backgroundColor: C.bg,
+      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
+      paddingHorizontal: S.md, paddingTop: S.sm,
+    },
+    stickyBarJoined: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      paddingVertical: S.md,
+    },
+    stickyText: {
+      fontSize: 11, fontWeight: T.bold as any, color: C.textTertiary,
+      textTransform: "uppercase", letterSpacing: 1,
+      textAlign: "center", marginBottom: 8,
+    },
+    stickyTextJoined: {
+      fontSize: T.sm, fontWeight: T.bold as any,
+      textTransform: "uppercase", letterSpacing: 1,
     },
   });
 }
