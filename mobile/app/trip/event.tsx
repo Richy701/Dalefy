@@ -235,7 +235,7 @@ export default function EventDetailScreen() {
           </View>
         )}
 
-        {/* ── Confirmation number ── */}
+        {/* ── Confirmation number (tap to copy) ── */}
         {isLeader && ev.confNumber && (
           <Pressable onPress={copyConf} style={({ pressed }) => [styles.confCard, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}>
             <View style={{ flex: 1 }}>
@@ -246,23 +246,33 @@ export default function EventDetailScreen() {
           </Pressable>
         )}
 
-        {/* ── Description ── */}
-        {ev.description && (
-          <View style={[styles.textCard, { backgroundColor: C.card }]}>
-            <Text style={[styles.textBody, { color: C.textSecondary }]}>{ev.description}</Text>
-          </View>
-        )}
+        {/* ── Information ── */}
+        {(() => {
+          const infoRows: Array<{ label: string; value: string }> = [];
+          if (ev.description) infoRows.push({ label: "Description", value: ev.description });
+          if (ev.notes) infoRows.push({ label: "Notes", value: ev.notes });
+          if (isLeader && ev.supplier) infoRows.push({ label: "Supplier", value: ev.supplier });
+          if (isLeader && ev.confNumber) infoRows.push({ label: "Confirmation", value: ev.confNumber });
+          if (ev.price) infoRows.push({ label: "Price", value: ev.price });
+          if (ev.roomType) infoRows.push({ label: "Room Type", value: ev.roomType });
+          if (ev.seatDetails) infoRows.push({ label: "Seat", value: ev.seatDetails });
+          if (ev.duration && !isFlight) infoRows.push({ label: "Duration", value: ev.duration });
+          if (!infoRows.length) return null;
+          return (
+            <View style={[styles.infoCard, { backgroundColor: C.card }]}>
+              <Text style={[styles.textCardLabel, { color: C.textTertiary }]}>INFORMATION</Text>
+              {infoRows.map((row, i) => (
+                <View key={i} style={[styles.infoRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }]}>
+                  <Text style={[styles.infoLabel, { color: C.textTertiary }]}>{row.label}</Text>
+                  <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        })()}
 
-        {/* ── Notes (leader only) ── */}
-        {isLeader && ev.notes && (
-          <View style={[styles.textCard, { backgroundColor: C.card }]}>
-            <Text style={[styles.textCardLabel, { color: C.textTertiary }]}>NOTES</Text>
-            <Text style={[styles.textBody, { color: C.textSecondary }]}>{ev.notes}</Text>
-          </View>
-        )}
-
-        {/* ── Documents (leader only) ── */}
-        {isLeader && ev.documents && ev.documents.length > 0 && (
+        {/* ── Documents ── */}
+        {ev.documents && ev.documents.length > 0 && (
           <View style={styles.px}>
             <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>DOCUMENTS</Text>
             {ev.documents.map(doc => (
@@ -272,10 +282,13 @@ export default function EventDetailScreen() {
                 style={({ pressed }) => [styles.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
               >
                 <FileText size={14} color={C.teal} weight="light" />
-                <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
-                <Text style={[styles.docSize, { color: C.textTertiary }]}>
-                  {Math.round(doc.size / 1024)} KB
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
+                  <Text style={[styles.docSize, { color: C.textTertiary }]}>
+                    {Math.round(doc.size / 1024)} KB
+                  </Text>
+                </View>
+                <CaretRight size={12} color={C.textDim} weight="regular" />
               </Pressable>
             ))}
           </View>
@@ -466,7 +479,7 @@ const frs = StyleSheet.create({
   flightNum: { fontSize: T.sm, fontWeight: "500", letterSpacing: 0.3, marginBottom: 8 },
   lineRow: {
     flexDirection: "row", alignItems: "center",
-    width: "100%", gap: 4, position: "relative" as const,
+    width: "100%", height: 22, position: "relative" as const,
   },
   line: { flex: 1, height: 3, borderRadius: 2 },
   planeAbsolute: {
@@ -582,6 +595,17 @@ function makeStyles(C: ThemeColors) {
     },
     textCardLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 },
     textBody: { fontSize: T.base, lineHeight: 24, fontWeight: "400" },
+
+    // Information card
+    infoCard: {
+      marginHorizontal: S.lg, marginBottom: S.md,
+      padding: S.lg, borderRadius: R.xl,
+    },
+    infoRow: {
+      paddingVertical: 10,
+    },
+    infoLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, marginBottom: 4 },
+    infoValue: { fontSize: T.base, lineHeight: 22, fontWeight: "400" },
 
     // Documents
     sectionLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: S.sm },
