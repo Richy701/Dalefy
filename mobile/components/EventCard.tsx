@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import {
   Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  MapPin, ArrowRight, Hash, FileText,
+  MapPin, ArrowRight, Hash, FileText, Info,
 } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent, EventDocument } from "@/shared/types";
@@ -34,6 +34,26 @@ function formatTimeTo24h(t: string): string {
   if (period === "AM" && h === 12) h = 0;
   return `${h.toString().padStart(2, "0")}:${min}`;
 }
+
+const IATA_CITY: Record<string, string> = {
+  LHR: "London", LGW: "London", STN: "London", LTN: "London", LCY: "London",
+  CDG: "Paris", ORY: "Paris", JFK: "New York", EWR: "New York", LGA: "New York",
+  LAX: "Los Angeles", SFO: "San Francisco", ORD: "Chicago", MDW: "Chicago",
+  ATL: "Atlanta", MIA: "Miami", FLL: "Fort Lauderdale", DFW: "Dallas",
+  DEN: "Denver", SEA: "Seattle", BOS: "Boston", IAD: "Washington", DCA: "Washington",
+  SIN: "Singapore", HND: "Tokyo", NRT: "Tokyo", ICN: "Seoul", PEK: "Beijing",
+  PVG: "Shanghai", HKG: "Hong Kong", BKK: "Bangkok", KUL: "Kuala Lumpur",
+  DEL: "New Delhi", BOM: "Mumbai", DXB: "Dubai", AUH: "Abu Dhabi", DOH: "Doha",
+  IST: "Istanbul", CAI: "Cairo", JNB: "Johannesburg", CPT: "Cape Town",
+  SYD: "Sydney", MEL: "Melbourne", AKL: "Auckland", FCO: "Rome", MXP: "Milan",
+  AMS: "Amsterdam", FRA: "Frankfurt", MUC: "Munich", MAD: "Madrid", BCN: "Barcelona",
+  LIS: "Lisbon", ZRH: "Zurich", VIE: "Vienna", CPH: "Copenhagen", OSL: "Oslo",
+  ARN: "Stockholm", HEL: "Helsinki", DUB: "Dublin", EDI: "Edinburgh",
+  MAN: "Manchester", BHX: "Birmingham", GLA: "Glasgow",
+  CUN: "Cancun", GRU: "São Paulo", EZE: "Buenos Aires", BOG: "Bogotá",
+  MEX: "Mexico City", LIM: "Lima", SCL: "Santiago", YYZ: "Toronto", YVR: "Vancouver",
+  ACC: "Accra", LOS: "Lagos", NBO: "Nairobi", ADD: "Addis Ababa",
+};
 
 // ── Flight Card ──────────────────────────────────────────────────────────────
 function parseFlightCities(title: string): { from: string; to: string } {
@@ -83,8 +103,8 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
   }
   const hasCodes = depCode.length >= 3 && arrCode.length >= 3;
 
-  const depCity = cities.from || ev.location || "";
-  const arrCity = cities.to || "";
+  const depCity = (depCode && IATA_CITY[depCode]) || cities.from || ev.location || "";
+  const arrCity = (arrCode && IATA_CITY[arrCode]) || cities.to || "";
 
   const depTime = ev.time ? formatTimeTo24h(ev.time) : "";
   const arrTime = ev.endTime ? formatTimeTo24h(ev.endTime) : "";
@@ -127,7 +147,10 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
 
           {/* Center connector */}
           <View style={fs.connector}>
-            {flightLabel ? <Text style={[fs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              {flightLabel ? <Text style={[fs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
+              <Info size={14} color={C.textTertiary} weight="regular" />
+            </View>
             <View style={fs.lineRow}>
               <View style={[fs.line, { backgroundColor: C.flight + "55" }]} />
               <Airplane size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
@@ -185,7 +208,7 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
 const fs = StyleSheet.create({
   card: { borderRadius: R.xl, paddingHorizontal: S.lg, paddingVertical: S.xl },
   route: {
-    flexDirection: "row", alignItems: "flex-start",
+    flexDirection: "row", alignItems: "stretch",
     marginBottom: S.sm,
   },
   endpoint: { flex: 1 },
@@ -194,17 +217,16 @@ const fs = StyleSheet.create({
   time: { fontSize: T.base, fontWeight: T.medium, marginTop: 4 },
   connector: {
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     flex: 1,
-    paddingTop: S.lg,
   },
-  flightNum: { fontSize: T.sm, fontWeight: T.medium, letterSpacing: 0.3, marginBottom: 8 },
+  flightNum: { fontSize: T.sm, fontWeight: T.medium, letterSpacing: 0.3 },
   lineRow: {
     flexDirection: "row", alignItems: "center",
     width: "100%", gap: 4,
   },
   line: { flex: 1, height: 3, borderRadius: 2 },
-  durationText: { fontSize: T.sm, fontWeight: T.medium, marginTop: 8 },
+  durationText: { fontSize: T.sm, fontWeight: T.medium },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: S.xs, marginBottom: S.xs },
   chip: {
     paddingHorizontal: S.sm, paddingVertical: S.xs,
@@ -235,11 +257,12 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
       <View style={cs.content}>
         {/* Header */}
         <View style={cs.header}>
-          <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
-            <Bed size={13} color={C.hotel} weight="regular" />
+          <View style={[cs.iconBox, { backgroundColor: C.hotel + "18" }]}>
+            <Bed size={12} color={C.hotel} weight="regular" />
           </View>
           <Text style={[cs.smallLabel, { color: C.hotel, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
           {!ev.isOvernight && ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
+          <Info size={16} color={C.textTertiary} weight="regular" style={{ marginLeft: 4 }} />
         </View>
 
         <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{ev.title}</Text>
@@ -322,8 +345,8 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
       <View style={cs.content}>
         {/* Header */}
         <View style={cs.header}>
-          <View style={[cs.iconBox, { backgroundColor: C.elevated }]}>
-            <Icon size={13} color={color} weight="regular" />
+          <View style={[cs.iconBox, { backgroundColor: color + "18" }]}>
+            <Icon size={12} color={color} weight="regular" />
           </View>
           <Text style={[cs.smallLabel, { color, flex: 1 }]}>{label}</Text>
           {ev.time && (
@@ -331,6 +354,7 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
               {ev.time}{ev.endTime ? ` – ${ev.endTime}` : ""}
             </Text>
           )}
+          <Info size={16} color={C.textTertiary} weight="regular" style={{ marginLeft: 4 }} />
         </View>
 
         <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{ev.title}</Text>
@@ -379,9 +403,9 @@ const cs = StyleSheet.create({
   content: { padding: S.md },
   imageBanner: { width: "100%", height: 170, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl },
 
-  header: { flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.sm },
+  header: { flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S.sm },
   iconBox: {
-    width: 36, height: 36, borderRadius: R.md,
+    width: 24, height: 24, borderRadius: 12,
     alignItems: "center", justifyContent: "center",
   },
   smallLabel: { fontSize: T.xs, fontWeight: T.semibold, letterSpacing: 0.5 },

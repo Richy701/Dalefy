@@ -503,57 +503,44 @@ function DayList({ grouped, trip, C, isLeader }: {
         const typeIcons = [...iconKeys].slice(0, 4);
 
         return (
-          <View key={date} style={{ marginBottom: S.sm }}>
+          <View key={date} style={{ marginBottom: S.md }}>
             <Pressable
               onPress={() => toggle(date)}
               style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: isOpen ? C.elevated : C.card,
-                borderRadius: R.xl,
-                padding: S.sm,
-                gap: S.sm,
-                opacity: pressed ? 0.7 : 1,
+                paddingVertical: S.md,
+                paddingHorizontal: S.sm,
+                opacity: pressed ? 0.6 : 1,
               })}
             >
-              <View style={{
-                width: 38, height: 38, borderRadius: R.md,
-                backgroundColor: isToday ? C.teal : `${C.teal}15`,
-                alignItems: "center", justifyContent: "center",
-              }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <Text style={{
-                  fontSize: T.lg, fontWeight: "800",
-                  color: isToday ? "#000" : C.teal,
-                }}>{dayIdx + 1}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: T.base, fontWeight: "700",
+                  fontSize: T.lg, fontWeight: "700",
                   color: isToday ? C.teal : C.textPrimary,
                 }}>{weekday}</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, gap: 6 }}>
-                  <Text style={{
-                    fontSize: T.xs, fontWeight: "500",
-                    color: C.textTertiary,
-                  }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
-                  <View style={{ flexDirection: "row", gap: 4 }}>
-                    {typeIcons.map(key => {
-                      const baseType = key.startsWith("transfer:") ? "transfer" : key;
-                      const iconColor = (C as Record<string, string>)[baseType] ?? C.teal;
-                      const Icon = key.startsWith("transfer:")
-                        ? (TRANSFER_ICONS[key.split(":")[1]] || Car)
-                        : (DAY_TYPE_ICONS[key] || Compass);
-                      return <Icon key={key} size={12} color={iconColor} weight="fill" />;
-                    })}
-                  </View>
+                <CaretDown
+                  size={14}
+                  color={C.textTertiary}
+                  weight="bold"
+                  style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}
+                />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8 }}>
+                <Text style={{
+                  fontSize: T.sm, fontWeight: "500",
+                  color: C.textTertiary,
+                }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
+                <View style={{ flexDirection: "row", gap: 5 }}>
+                  {typeIcons.map(key => {
+                    const baseType = key.startsWith("transfer:") ? "transfer" : key;
+                    const iconColor = (C as Record<string, string>)[baseType] ?? C.teal;
+                    const Icon = key.startsWith("transfer:")
+                      ? (TRANSFER_ICONS[key.split(":")[1]] || Car)
+                      : (DAY_TYPE_ICONS[key] || Compass);
+                    return <Icon key={key} size={13} color={iconColor} weight="regular" />;
+                  })}
                 </View>
               </View>
-              <CaretDown
-                size={14}
-                color={C.textTertiary}
-                weight="regular"
-                style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}
-              />
+              {!isOpen && <View style={{ height: 1, backgroundColor: C.border, marginTop: S.md }} />}
             </Pressable>
 
             {isOpen && (
