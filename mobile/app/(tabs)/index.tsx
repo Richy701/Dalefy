@@ -38,6 +38,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
 import { NotificationSheet } from "@/components/NotificationSheet";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrips, TRIPS_CTX_VERSION } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
@@ -1233,6 +1234,14 @@ export default function HomeScreen() {
   const haptic = useHaptic();
   const { toast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
+  const [cacheCount, setCacheCount] = useState<number | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem("daf-trips-cache").then(raw => {
+      if (raw) {
+        try { setCacheCount(JSON.parse(raw).length); } catch { setCacheCount(-1); }
+      } else { setCacheCount(0); }
+    }).catch(() => setCacheCount(-1));
+  }, [trips.length]);
   const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRefreshing(true);
@@ -1430,7 +1439,7 @@ export default function HomeScreen() {
           )
         )}
 
-        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | {ready ? "rdy" : "..."} | {offline ? "off" : "on"}</Text>
+        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | cache:{cacheCount ?? "?"} | {ready ? "rdy" : "..."} | {offline ? "off" : "on"}</Text>
 
       </ScrollView>
     </SafeAreaView>
