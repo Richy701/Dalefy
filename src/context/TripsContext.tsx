@@ -263,11 +263,8 @@ function useMergedTrips(
       return lt ? mergeLocalMedia(t, lt) : t;
     });
 
-    // Add local-only trips (not in cloud, not demo, not recently deleted)
-    const demoIds = new Set(INITIAL_TRIPS.map(t => t.id));
-    for (const lt of localSrc) {
-      if (!cloudIds.has(lt.id) && !demoIds.has(lt.id) && !deletedIds.has(lt.id)) merged.push(lt);
-    }
+    // Cloud is the source of truth — don't recover local-only trips as they
+    // are either stale leftovers or ghost trips from incomplete deletions.
 
     return merged;
   }, [useCloud, cloudTrips, localTrips, isLocalOnly, deletedIds]);
