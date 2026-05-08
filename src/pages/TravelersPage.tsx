@@ -29,6 +29,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { ComplianceDoc, User as UserType } from "@/types";
 
 type Tab = "travelers" | "hr" | "app-users";
@@ -96,6 +97,7 @@ export function TravelersPage() {
   const [bulkAction, setBulkAction] = useState(false);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const [removingFromTrip, setRemovingFromTrip] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string } | null>(null);
 
   useEffect(() => {
     if (!showSortMenu && !showFilterMenu && !showActionsMenu) return;
@@ -119,36 +121,46 @@ export function TravelersPage() {
       .finally(() => setAppUsersLoading(false));
   }, []);
 
-  const handleClearAppUsers = useCallback(async () => {
-    if (!confirm("Delete all app users? This removes everyone from the trip_members collection in Firebase. This cannot be undone.")) return;
-    setClearing(true);
-    try {
-      const count = await deleteAllTripMembers();
-      setAppUsers([]);
-      setDetailPanelUser(null);
-      showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
-    } catch (err) {
-      console.error("Clear app users failed:", err);
-      showToast("Failed to clear app users — check console for details");
-    } finally {
-      setClearing(false);
-    }
+  const handleClearAppUsers = useCallback(() => {
+    setPendingConfirm({
+      title: "Delete All App Users",
+      description: "This removes everyone from the trip_members collection in Firebase. This cannot be undone.",
+      action: async () => {
+        setClearing(true);
+        try {
+          const count = await deleteAllTripMembers();
+          setAppUsers([]);
+          setDetailPanelUser(null);
+          showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
+        } catch (err) {
+          console.error("Clear app users failed:", err);
+          showToast("Failed to clear app users — check console for details");
+        } finally {
+          setClearing(false);
+        }
+      },
+    });
   }, [showToast]);
 
-  const handleDeleteAppUser = useCallback(async (deviceId: string, name: string) => {
-    if (!confirm(`Remove ${name || "this user"}? This deletes all their trip membership records.`)) return;
-    setDeletingUser(deviceId);
-    try {
-      const count = await deleteAppUser(deviceId);
-      setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
-      setDetailPanelUser(null);
-      showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
-    } catch (err) {
-      console.error("Delete app user failed:", err);
-      showToast("Failed to remove user — check console");
-    } finally {
-      setDeletingUser(null);
-    }
+  const handleDeleteAppUser = useCallback((deviceId: string, name: string) => {
+    setPendingConfirm({
+      title: "Remove User",
+      description: `Remove ${name || "this user"}? This deletes all their trip membership records.`,
+      action: async () => {
+        setDeletingUser(deviceId);
+        try {
+          const count = await deleteAppUser(deviceId);
+          setAppUsers(prev => prev.filter(m => m.device_id !== deviceId));
+          setDetailPanelUser(null);
+          showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
+        } catch (err) {
+          console.error("Delete app user failed:", err);
+          showToast("Failed to remove user — check console");
+        } finally {
+          setDeletingUser(null);
+        }
+      },
+    });
   }, [showToast]);
 
   const handleToggleRole = useCallback(async (deviceId: string, tripId: string, currentRole: TripMemberRole) => {
@@ -180,19 +192,24 @@ export function TravelersPage() {
     }
   }, [showToast]);
 
-  const handleRemoveFromTrip = useCallback(async (deviceId: string, tripId: string, tripName: string) => {
-    if (!confirm(`Remove this user from ${tripName}?`)) return;
-    setRemovingFromTrip(`${deviceId}_${tripId}`);
-    try {
-      await removeUserFromTrip(deviceId, tripId);
-      setAppUsers(prev => prev.filter(m => !(m.device_id === deviceId && m.trip_id === tripId)));
-      showToast(`Removed from ${tripName}`);
-    } catch (err) {
-      console.error("Remove from trip failed:", err);
-      showToast("Failed to remove from trip");
-    } finally {
-      setRemovingFromTrip(null);
-    }
+  const handleRemoveFromTrip = useCallback((deviceId: string, tripId: string, tripName: string) => {
+    setPendingConfirm({
+      title: "Remove from Trip",
+      description: `Remove this user from ${tripName}?`,
+      action: async () => {
+        setRemovingFromTrip(`${deviceId}_${tripId}`);
+        try {
+          await removeUserFromTrip(deviceId, tripId);
+          setAppUsers(prev => prev.filter(m => !(m.device_id === deviceId && m.trip_id === tripId)));
+          showToast(`Removed from ${tripName}`);
+        } catch (err) {
+          console.error("Remove from trip failed:", err);
+          showToast("Failed to remove from trip");
+        } finally {
+          setRemovingFromTrip(null);
+        }
+      },
+    });
   }, [showToast]);
 
   const toggleSelectUser = useCallback((deviceId: string) => {
@@ -203,18 +220,23 @@ export function TravelersPage() {
     });
   }, []);
 
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedUsers.size === 0) return;
-    if (!confirm(`Remove ${selectedUsers.size} user${selectedUsers.size === 1 ? "" : "s"}? This deletes all their trip membership records.`)) return;
-    let removed = 0;
-    for (const deviceId of selectedUsers) {
-      try { await deleteAppUser(deviceId); removed++; } catch { /* skip */ }
-    }
-    setAppUsers(prev => prev.filter(m => !selectedUsers.has(m.device_id)));
-    setSelectedUsers(new Set());
-    setBulkAction(false);
-    setDetailPanelUser(null);
-    showToast(`Removed ${removed} user${removed === 1 ? "" : "s"}`);
+    setPendingConfirm({
+      title: "Remove Users",
+      description: `Remove ${selectedUsers.size} user${selectedUsers.size === 1 ? "" : "s"}? This deletes all their trip membership records.`,
+      action: async () => {
+        let removed = 0;
+        for (const deviceId of selectedUsers) {
+          try { await deleteAppUser(deviceId); removed++; } catch { /* skip */ }
+        }
+        setAppUsers(prev => prev.filter(m => !selectedUsers.has(m.device_id)));
+        setSelectedUsers(new Set());
+        setBulkAction(false);
+        setDetailPanelUser(null);
+        showToast(`Removed ${removed} user${removed === 1 ? "" : "s"}`);
+      },
+    });
   }, [selectedUsers, showToast]);
 
   // Group app users by device_id (unique person)
@@ -1837,6 +1859,15 @@ export function TravelersPage() {
         </Drawer.Portal>
       </Drawer.Root>
       <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <ConfirmDialog
+        open={!!pendingConfirm}
+        onOpenChange={(open) => { if (!open) setPendingConfirm(null); }}
+        title={pendingConfirm?.title ?? ""}
+        description={pendingConfirm?.description ?? ""}
+        confirmLabel="Remove"
+        onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
+        destructive
+      />
     </div>
   );
 }
