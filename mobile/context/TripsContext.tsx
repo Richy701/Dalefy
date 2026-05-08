@@ -42,12 +42,20 @@ function save(trips: Trip[]) {
 
 export function TripsProvider({ children }: { children: React.ReactNode }) {
   const [localCache, setLocalCache] = useState<Trip[] | null>(_eagerCache);
+  const [networkDown, setNetworkDown] = useState(false);
   const mounted = useRef(true);
   const qc = useQueryClient();
   /** Track pending writes — block subscription updates until all writes settle */
   const pendingWrites = useRef(0);
   /** True once a remote fetch has succeeded — safe to trust empty results */
   const confirmedOnline = useRef(false);
+
+  // Fast network check — resolves in <2s instead of waiting for Firestore timeouts
+  useEffect(() => {
+    fetch("https://firestore.googleapis.com", { method: "HEAD", mode: "no-cors" })
+      .then(() => setNetworkDown(false))
+      .catch(() => setNetworkDown(true));
+  }, []);
 
   // Load local cache for instant display (fallback if eager read wasn't ready)
   useEffect(() => {
@@ -75,8 +83,12 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (isSuccess) confirmedOnline.current = true;
+    if (isSuccess) { confirmedOnline.current = true; setNetworkDown(false); }
   }, [isSuccess]);
+
+  useEffect(() => {
+    if (isError) setNetworkDown(true);
+  }, [isError]);
 
   // Sync remote data → local cache when it arrives (skip during pending writes)
   useEffect(() => {
@@ -112,8 +124,8 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     if (!snap) return t;
     return { ...t, events: snap.events, info: snap.info, organizer: snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
   }), [rawTrips]);
-  const ready = localCache !== null && (isSuccess || isError || localCache.length > 0);
-  const offline = isError && !isSuccess;
+  const ready = localCache !== null && (isSuccess || isError || networkDown || localCache.length > 0);
+  const offline = networkDown && !isSuccess;
 
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
