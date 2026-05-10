@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { Trip, TravelEvent } from "@/shared/types";
@@ -102,6 +103,22 @@ export function useTripReminders() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tzRef = useRef(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [tz, setTz] = useState(tzRef.current);
+
+  // Detect timezone change when app comes back to foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        const current = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (current !== tzRef.current) {
+          tzRef.current = current;
+          setTz(current);
+        }
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!Notifications || !prefs.tripReminders) {
@@ -119,7 +136,7 @@ export function useTripReminders() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [trips, prefs.tripReminders]);
+  }, [trips, prefs.tripReminders, tz]);
 }
 
 async function cancelAllReminders() {
@@ -142,8 +159,6 @@ async function scheduleReminders(trips: Trip[]) {
   for (const trip of trips) {
     if (trip.status === "Draft") continue;
 
-    const firstEvent = trip.events.length > 0 ? trip.events[0] : null;
-
     // --- Trip starts tomorrow (9 AM day before) ---
     const tripStart = parseDate(trip.start);
     if (tripStart) {
@@ -152,13 +167,7 @@ async function scheduleReminders(trips: Trip[]) {
       dayBefore.setHours(9, 0, 0, 0);
 
       if (dayBefore.getTime() > now) {
-        let body = `"${trip.name}" starts tomorrow, make sure you're packed!`;
-        if (firstEvent) {
-          const firstLabel = firstEvent.type === "flight"
-            ? `${firstEvent.airline || ""} ${firstEvent.flightNum || firstEvent.title}`.trim()
-            : firstEvent.title;
-          body += `\nFirst up: ${firstLabel} at ${firstEvent.time}`;
-        }
+        const body = `"${trip.name}" starts tomorrow, make sure you're packed!`;
 
         await scheduleOne(
           `${REMINDER_PREFIX}trip-${trip.id}`,
@@ -174,16 +183,7 @@ async function scheduleReminders(trips: Trip[]) {
       morningOf.setHours(8, 0, 0, 0);
 
       if (morningOf.getTime() > now) {
-        let body = `"${trip.name}" starts today, have an amazing time!`;
-        if (firstEvent) {
-          const firstLabel = firstEvent.type === "flight"
-            ? `${firstEvent.airline || ""} ${firstEvent.flightNum || firstEvent.title}`.trim()
-            : firstEvent.title;
-          const loc = firstEvent.type === "flight" && firstEvent.location
-            ? ` from ${friendlyRoute(firstEvent.location).split(" to ")[0]}`
-            : "";
-          body += `\nFirst up: ${firstLabel} at ${firstEvent.time}${loc}`;
-        }
+        const body = `"${trip.name}" starts today, have an amazing time!`;
 
         await scheduleOne(
           `${REMINDER_PREFIX}trip-today-${trip.id}`,
