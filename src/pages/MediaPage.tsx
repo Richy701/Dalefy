@@ -19,7 +19,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { firebaseStorage } from "@/services/firebase";
+import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -138,7 +138,8 @@ export function MediaPage() {
           valid.map(async (file) => {
             const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const ext = file.name.split(".").pop() || "jpg";
-            const storagePath = `trips/${uploadTripId}/media/${id}.${ext}`;
+            const uid = firebaseAuth().currentUser?.uid ?? "anon";
+            const storagePath = `trips/${uploadTripId}/media/${uid}/${id}.${ext}`;
             const storageRef = ref(firebaseStorage(), storagePath);
             await uploadBytes(storageRef, file, { contentType: file.type });
             const url = await getDownloadURL(storageRef);

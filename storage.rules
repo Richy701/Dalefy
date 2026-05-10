@@ -28,10 +28,25 @@ service firebase.storage {
       allow write: if false;
     }
 
-    // Trip media: namespaced by trip ID, authenticated users only.
-    // Storage rules cannot verify trip membership, so that check is
-    // enforced in the application layer before upload.
-    match /trips/{tripId}/{allPaths=**} {
+    // Trip media: scoped by trip ID + uploader UID.
+    // Users can only write/delete under their own UID subfolder.
+    match /trips/{tripId}/media/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('(image|video)/.*');
+      allow delete: if request.auth != null
+        && request.auth.uid == uid;
+    }
+    // Legacy flat path (read-only for existing media uploaded before UID scoping)
+    match /trips/{tripId}/media/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Event-level media (itinerary attachments, uploaded by organiser)
+    match /trips/{tripId}/events/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
         && request.resource.size < 25 * 1024 * 1024

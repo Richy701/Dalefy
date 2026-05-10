@@ -494,7 +494,8 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
       clean.media.map(async (m, i) => {
         if (isBase64(m.url)) {
           try {
-            const url = await uploadBase64Image(m.url, `trips/${trip.id}/media/${m.id || `m-${i}`}`);
+            const uid = firebaseAuth().currentUser?.uid ?? "anon";
+            const url = await uploadBase64Image(m.url, `trips/${trip.id}/media/${uid}/${m.id || `m-${i}`}`);
             return { ...m, url };
           } catch {
             return m; // keep original on failure

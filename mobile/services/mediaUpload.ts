@@ -3,7 +3,7 @@ import { firebaseStorage, waitForAuth, firebaseAuth } from "./firebase";
 import * as ImageManipulator from "expo-image-manipulator";
 import type { TripMedia } from "@/shared/types";
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB — must match storage.rules
 
 const HEIC_TYPES = ["image/heic", "image/heif"];
 const HEIC_EXTS = [".heic", ".heif"];
@@ -86,8 +86,8 @@ export async function uploadMediaFile(
     const blob = await uriToBlob(uploadUri);
 
     if (blob.size > MAX_FILE_SIZE) {
-      console.warn("[MediaUpload] File too large:", blob.size);
-      return null;
+      const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+      throw new Error(`File too large (${sizeMB} MB). Maximum is 25 MB.`);
     }
 
     const extMap: Record<string, string> = {
@@ -106,7 +106,7 @@ export async function uploadMediaFile(
     };
     const ext = extMap[contentType] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
 
-    const storagePath = `trips/${tripId}/media/${mediaId}.${ext}`;
+    const storagePath = `trips/${tripId}/media/${uid}/${mediaId}.${ext}`;
     const storageRef = ref(firebaseStorage(), storagePath);
     await uploadBytes(storageRef, blob, { contentType });
 

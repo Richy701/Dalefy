@@ -61,7 +61,7 @@ async function pickMedia(onPicked: (items: TripMedia[]) => void) {
     return;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images", "videos"],
+    mediaTypes: ["images"],
     allowsMultipleSelection: true,
     quality: 0.85,
     selectionLimit: 20,
@@ -505,7 +505,8 @@ export default function MediaScreen() {
         })
         .catch((err) => {
           console.warn("[Media] Upload failed:", err);
-          toast("Couldn't upload — try again later");
+          const msg = err?.message ?? "";
+          toast(msg.includes("too large") ? msg : "Couldn't upload — try again later");
         })
         .finally(() => {
           setUploading(false);
@@ -535,6 +536,11 @@ export default function MediaScreen() {
   }, [trips, handleUploadToTrip]);
 
   const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
+    const isOwner = item.uploaderId && item.uploaderId === deviceId;
+    if (!isOwner) {
+      Alert.alert("Can't delete", "You can only remove photos you uploaded.");
+      return;
+    }
     Alert.alert("Delete?", `Remove "${item.name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -555,7 +561,7 @@ export default function MediaScreen() {
         },
       },
     ]);
-  }, [trips, updateTrip, toast]);
+  }, [trips, updateTrip, toast, deviceId]);
 
   const chipItems = useMemo(() => {
     const items: { id: string; label: string; type: "trip" | "media" }[] = [];
