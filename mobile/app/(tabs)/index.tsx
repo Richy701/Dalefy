@@ -57,7 +57,10 @@ try {
 } catch { /* native module not in this build */ }
 
 function daysUntil(dateStr: string) {
-  return Math.round((new Date(dateStr + "T00:00:00").getTime() - Date.now()) / 86400000);
+  const target = new Date(dateStr + "T00:00:00");
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - now.getTime()) / 86400000);
 }
 
 
