@@ -466,10 +466,12 @@ export default function MediaScreen() {
       setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
       setUploading(true);
       console.log("[Media] picked", items.length, "items, uploading to trip:", tripId);
-      toast(`Uploading ${items.length} file${items.length > 1 ? "s" : ""}...`);
+      toast(`Uploading 0/${items.length}...`);
 
       // 2. Upload to cloud, then write directly to Firestore
-      uploadTripMedia(items, tripId)
+      uploadTripMedia(items, tripId, (done, total) => {
+        toast(`Uploading ${done}/${total}...`);
+      })
         .then(async (uploaded) => {
           // Fetch latest trip from Firestore to avoid overwriting media from other uploads
           const freshTrip = await fetchTripById(tripId) ?? trip;

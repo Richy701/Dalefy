@@ -127,14 +127,19 @@ export async function uploadMediaFile(
 export async function uploadTripMedia(
   items: TripMedia[],
   tripId: string,
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<TripMedia[]> {
-  const results = await Promise.all(
-    items.map(async (item) => {
-      // Skip items already on Firebase Storage
-      if (item.url.includes("firebasestorage.googleapis.com")) return item;
+  const total = items.length;
+  const results: TripMedia[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.url.includes("firebasestorage.googleapis.com")) {
+      results.push(item);
+    } else {
       const url = await uploadMediaFile(item.url, tripId, item.id);
-      return url ? { ...item, url } : item;
-    }),
-  );
+      results.push(url ? { ...item, url } : item);
+    }
+    onProgress?.(i + 1, total);
+  }
   return results;
 }
