@@ -261,8 +261,7 @@ async function scheduleReminders(trips: Trip[]) {
         }
       }
 
-      // Hotel check-in: only schedule for future days (today is covered by Live Activity)
-      if (ev.type === "hotel" && ev.checkin) {
+      if (ev.type === "hotel" && ev.checkin && !ev.title.toLowerCase().includes("check-out") && !ev.title.toLowerCase().includes("checkout")) {
         const checkinDate = parseDate(ev.date);
         if (checkinDate) {
           const todayStr = new Date().toISOString().slice(0, 10);
@@ -292,7 +291,6 @@ async function scheduleReminders(trips: Trip[]) {
           let body = ev.location
             ? `Pickup at ${ev.location}`
             : "Your transfer is coming up, be ready!";
-          if (ev.notes) body += `\n${ev.notes}`;
           const next = findNextEvent(trip.events, ev);
           if (next) body += `\nHeading to: ${next.title}`;
 
@@ -307,10 +305,12 @@ async function scheduleReminders(trips: Trip[]) {
       }
 
       if (ev.type === "activity" || ev.type === "dining") {
+        const lower = ev.title.toLowerCase();
+        if (lower.includes("free time") || lower.includes("at leisure") || lower.includes("at own leisure")) continue;
+
         const remind = new Date(evDate.getTime() - 60 * 60 * 1000);
         if (remind.getTime() > now) {
-          let body = ev.location ? `At ${ev.location}` : "Coming up soon, get ready!";
-          if (ev.notes) body += `\n${ev.notes}`;
+          const body = ev.location ? `At ${ev.location}` : "Coming up soon, get ready!";
 
           await scheduleOne(
             `${REMINDER_PREFIX}event-${trip.id}-${ev.id}`,
