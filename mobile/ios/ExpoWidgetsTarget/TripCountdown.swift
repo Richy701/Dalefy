@@ -1294,9 +1294,9 @@ private struct CmpTrailing: View {
         .font(.system(size: 14, weight: .heavy, design: .rounded))
     } else {
       let p = EventProps(props)
-      Text(p.displayTitle)
-        .font(.system(size: 12, weight: .bold))
-        .foregroundStyle(Color.white.opacity(0.6))
+      Text(p.typeLabel)
+        .font(.system(size: 12, weight: .heavy))
+        .foregroundStyle(teal)
         .lineLimit(1)
     }
   }
@@ -1375,22 +1375,10 @@ private struct ExTrailing: View {
       .padding(12)
     } else {
       let p = EventProps(props)
-      VStack(alignment: .trailing, spacing: 2) {
-        HStack(spacing: 3) {
-          Image(systemName: p.icon)
-            .font(.system(size: 8, weight: .bold))
-            .foregroundStyle(teal)
-          Text(p.typeLabel)
-            .font(.system(size: 8, weight: .heavy))
-            .foregroundStyle(teal)
-            .lineLimit(1)
-            .fixedSize()
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(teal.opacity(0.1), in: Capsule())
-      }
-      .padding(12)
+      Image(systemName: p.icon)
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(teal)
+        .padding(12)
     }
   }
 }
@@ -1410,10 +1398,11 @@ private struct ExCenter: View {
     } else {
       let p = EventProps(props)
       Text(p.displayTitle)
-        .font(.system(size: 18, weight: .bold))
+        .font(.system(size: 14, weight: .bold))
         .foregroundStyle(.white)
-        .lineLimit(1)
-        .padding(.horizontal, 8)
+        .lineLimit(2)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 4)
         .padding(.top, 6)
     }
   }
@@ -1469,13 +1458,20 @@ private struct ExBottom: View {
             Image(systemName: "mappin.circle.fill")
               .font(.system(size: 10, weight: .semibold))
               .foregroundStyle(teal)
-            Text(p.location.count > 28 ? String(p.location.prefix(26)) + "..." : p.location)
+            Text(p.location.count > 24 ? String(p.location.prefix(22)) + "..." : p.location)
               .font(.system(size: 10, weight: .medium))
               .foregroundStyle(Color.white.opacity(0.6))
               .lineLimit(1)
           }
         }
         Spacer()
+        Text(p.typeLabel)
+          .font(.system(size: 8, weight: .heavy))
+          .foregroundStyle(teal)
+          .tracking(0.5)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 3)
+          .background(teal.opacity(0.1), in: Capsule())
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 4)

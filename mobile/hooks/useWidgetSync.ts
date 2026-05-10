@@ -36,9 +36,25 @@ function daysBetween(startStr: string, endStr: string) {
   return Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
+function cleanTitle(title: string): string {
+  const checkMatch = title.match(/check-?(in|out)\s*[—–\-]\s*(.*)/i);
+  if (checkMatch) {
+    return checkMatch[1].toLowerCase() === "out" ? `Check out of ${checkMatch[2]}` : `Check in to ${checkMatch[2]}`;
+  }
+  const mealMatch = title.match(/^(Dinner|Lunch|Breakfast|Brunch|Welcome Dinner|Farewell Dinner)\s*[—–\-]\s*(.*)/i);
+  if (mealMatch) return `${mealMatch[1]} at ${mealMatch[2]}`;
+  const transferMatch = title.match(/(?:transfer|pickup)\s+(?:&\s+transfer\s+)?to\s+(.*)/i);
+  if (transferMatch) return `Transfer to ${transferMatch[1]}`;
+  // Strip any short prefix (1-3 words) before a dash separator
+  const prefixMatch = title.match(/^(\S+(?:\s+\S+){0,2})\s*[—–\-]\s+(.+)$/);
+  if (prefixMatch) return prefixMatch[2];
+  return title;
+}
+
 function formatEventLine(ev: { time: string; title: string }): string {
   const time = ev.time || "";
-  const title = ev.title.length > 22 ? ev.title.slice(0, 21) + "…" : ev.title;
+  const cleaned = cleanTitle(ev.title);
+  const title = cleaned.length > 32 ? cleaned.slice(0, 31) + "…" : cleaned;
   return time ? `${time}  ${title}` : title;
 }
 

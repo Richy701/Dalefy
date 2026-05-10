@@ -124,8 +124,8 @@ function cleanTitle(title: string): string {
   // "X transfer to Y" / "X pickup & transfer to Y" → "Transfer to Y"
   const transferMatch = title.match(/(?:transfer|pickup)\s+(?:&\s+transfer\s+)?to\s+(.*)/i);
   if (transferMatch) return `Transfer to ${transferMatch[1]}`;
-  // "Type — details" (Flight, Tour, etc.) → strip prefix, keep details
-  const prefixMatch = title.match(/^(Flight|Transfer)\s*[—–]\s*(.*)/i);
+  // Strip any short prefix (1-3 words) before a dash separator
+  const prefixMatch = title.match(/^(\S+(?:\s+\S+){0,2})\s*[—–\-]\s+(.+)$/);
   if (prefixMatch) return prefixMatch[2];
   return title;
 }
@@ -133,7 +133,7 @@ function cleanTitle(title: string): string {
 /** Shorten title for Dynamic Island (~24 chars max), returned in CAPS. */
 function summarise(title: string): string {
   // Split on em/en dash or colon to get the core action
-  const core = title.split(/\s+[—–]\s+|\s*:\s*/)[0].trim();
+  const core = title.split(/\s+[—–\-]\s+|\s*:\s*/)[0].trim();
   // Strip trailing venue/detail phrases for brevity
   const short = core
     .replace(/\s+at\s+.*$/i, "")
@@ -204,9 +204,13 @@ export function useUpcomingEventLiveActivity() {
       let skipped = 0;
       let tz: string | undefined;
 
+      const deviceToday = nowInTz(undefined).dateStr;
+
       for (const trip of trips) {
         const tripTz = getDestinationTz(trip.destination);
-        const { dateStr: todayStr, minutes: now } = nowInTz(tripTz);
+        // Only use destination TZ after the start day — on departure day the traveler is still at origin
+        const useTripTz = tripTz && deviceToday > trip.start;
+        const { dateStr: todayStr, minutes: now } = nowInTz(useTripTz ? tripTz : undefined);
 
         for (const ev of trip.events) {
           if (ev.date !== todayStr) { skipped++; continue; }
@@ -214,7 +218,7 @@ export function useUpcomingEventLiveActivity() {
           const mins = timeToMinutes(ev.time);
           if (mins < 0) continue; // skip events with unparseable times
           todayEvents.push(ev);
-          if (!tz && tripTz) tz = tripTz; // use first matching trip's tz
+          if (!tz && useTripTz) tz = tripTz;
         }
       }
 
@@ -223,10 +227,10 @@ export function useUpcomingEventLiveActivity() {
 
       todayEvents.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
-      // Find next upcoming event (starts in the future or started within the last 30 mins)
+      // Find the next event within a 90-min window: up to 60 min ahead, 30 min behind
       const upcoming = todayEvents.find(ev => {
         const mins = timeToMinutes(ev.time);
-        return mins >= now - 30; // show events that started up to 30 mins ago
+        return mins > now - 30 && mins <= now + 60;
       });
 
       // Always end all existing system instances first to prevent stale activities
@@ -238,12 +242,22 @@ export function useUpcomingEventLiveActivity() {
         }
       } catch { /* ignore */ }
 
+      // Find next event outside the window to schedule a wake-up when it enters
+      const nextOutsideWindow = todayEvents.find(ev => {
+        const mins = timeToMinutes(ev.time);
+        return mins > now + 60;
+      });
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+
       if (!upcoming) {
         activityRef.current = null;
-        // Schedule re-check at midnight so we pick up tomorrow's events
-        if (timerRef.current) clearTimeout(timerRef.current);
+        // Wake up when the next event enters the 60-min look-ahead, or at midnight
         const minsToMid = minutesUntilMidnight(tz);
-        timerRef.current = setTimeout(update, (minsToMid + 1) * 60 * 1000);
+        const wakeIn = nextOutsideWindow
+          ? Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now)
+          : minsToMid + 1;
+        timerRef.current = setTimeout(update, wakeIn * 60 * 1000);
         return;
       }
 
@@ -259,18 +273,17 @@ export function useUpcomingEventLiveActivity() {
         activityRef.current = null;
       }
 
-      // Schedule next check: whichever comes first — event window expiry or midnight
-      if (timerRef.current) clearTimeout(timerRef.current);
+      // Schedule next check: event window expiry, next event entering window, or midnight
       const eventMins = timeToMinutes(upcoming.time);
-      const minsUntilPast = eventMins + 30 - now; // 30 min window
+      const minsUntilPast = eventMins + 30 - now;
       const minsToMid = minutesUntilMidnight(tz);
-      const nextCheck = Math.min(
-        minsUntilPast > 0 ? minsUntilPast : Infinity,
-        minsToMid + 1, // re-evaluate right after midnight
-      );
-      if (nextCheck < Infinity) {
-        timerRef.current = setTimeout(update, nextCheck * 60 * 1000);
+      const candidates = [minsToMid + 1];
+      if (minsUntilPast > 0) candidates.push(minsUntilPast);
+      else candidates.push(1); // window already expired, re-check in 1 min to dismiss
+      if (nextOutsideWindow) {
+        candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
       }
+      timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
     }
 
     update();

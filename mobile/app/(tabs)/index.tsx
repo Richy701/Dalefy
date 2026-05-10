@@ -1442,7 +1442,6 @@ export default function HomeScreen() {
           )
         )}
 
-        <Text style={{ color: C.textTertiary, opacity: 0.35, fontSize: 9, textAlign: "center", marginTop: 24 }}>{TRIPS_CTX_VERSION} | {trips.length}t | lc:{_debug.lc ?? "null"} | cache:{cacheCount ?? "?"} | {_debug.ok ? "ok" : _debug.err ? "err" : "..."} | {offline ? "off" : "on"}</Text>
 
       </ScrollView>
     </SafeAreaView>

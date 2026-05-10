@@ -199,10 +199,12 @@ export function useFlightLiveActivity() {
 
     // Collect today's flight events across all trips (timezone-aware)
     const todayFlights: TravelEvent[] = [];
+    const deviceToday = todayInTz(undefined);
     for (const trip of trips) {
       const tz = getDestinationTz(trip.destination);
-      const today = todayInTz(tz);
-      const tomorrow = tomorrowInTz(tz);
+      const useTripTz = tz && deviceToday > trip.start;
+      const today = todayInTz(useTripTz ? tz : undefined);
+      const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
         console.log(`[FlightLiveActivity] Flight: ${ev.flightNum} date=${ev.date} depAirport=${ev.depAirport} arrAirport=${ev.arrAirport} location=${ev.location}`);
