@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { fetchBranding, type OrgBranding } from "@/services/firebaseBranding";
+import { isValidHex } from "@/constants/theme";
 
 const DEFAULT_NAME = "Dalefy";
 
@@ -41,7 +42,7 @@ export function BrandProvider({ orgId, children }: Props) {
   const brand = useMemo<Brand>(() => ({
     name: orgBranding?.companyName || DEFAULT_NAME,
     logoUrl: orgBranding?.logoUrl || null,
-    accentColor: orgBranding?.accentColor || null,
+    accentColor: isValidHex(orgBranding?.accentColor) ? orgBranding.accentColor : null,
   }), [orgBranding]);
 
   const value = useMemo(() => ({ brand, orgBranding, refreshBranding: load }), [brand, orgBranding, load]);

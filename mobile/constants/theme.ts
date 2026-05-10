@@ -167,6 +167,10 @@ export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean
   return applyAccentHex(base, hex);
 }
 
+export function isValidHex(v: string | null | undefined): v is string {
+  return typeof v === "string" && /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(v);
+}
+
 export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
   const [r, g, b] = hexToRgbTuple(hex);
   return {
