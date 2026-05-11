@@ -9,8 +9,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  CaretLeft, Compass, MapPin, Users, Moon, MapTrifold, CaretDown,
-  Airplane, Bed, ForkKnife, Car, Train, Bus, Boat, Anchor,
+  CaretLeft, MapPin, Users, Moon, MapTrifold,
+  Airplane, Bed, ForkKnife, Car, Compass, Train, Bus, Boat,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -464,11 +464,7 @@ export default function TripScreen() {
 
         {/* ── Itinerary — inline days with events ── */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>ITINERARY</Text>
-          </View>
-
-          <DayList grouped={grouped} trip={trip} C={C} isLeader={isLeader} />
+          <DayList grouped={grouped} trip={trip} C={C} isDark={isDark} isLeader={isLeader} start={start} end={end} nights={nights} />
         </View>
 
         {/* Terminal element clearance */}
@@ -478,96 +474,351 @@ export default function TripScreen() {
   );
 }
 
-const DAY_TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: Airplane, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
+const ICON_ORDER = ["flight", "train", "bus", "car", "ferry", "hotel", "dining", "activity"] as const;
+
+const TYPE_ICON_MAP: Record<string, React.ComponentType<any>> = {
+  flight: Airplane, train: Train, bus: Bus, car: Car, ferry: Boat,
+  hotel: Bed, dining: ForkKnife, activity: Compass,
 };
 
-const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
-  car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass,
+function typeCounts(events: any[]): Array<{ key: string; Icon: React.ComponentType<any>; count: number }> {
+  const counts: Record<string, number> = {};
+  for (const e of events) {
+    if (e.type === "transfer") {
+      const sub = e.transferType || "car";
+      counts[sub] = (counts[sub] || 0) + 1;
+    } else {
+      counts[e.type] = (counts[e.type] || 0) + 1;
+    }
+  }
+  const result: Array<{ key: string; Icon: React.ComponentType<any>; count: number }> = [];
+  for (const k of ICON_ORDER) {
+    if (counts[k]) result.push({ key: k, Icon: TYPE_ICON_MAP[k] || Compass, count: counts[k] });
+  }
+  if (result.length <= 5) return result;
+  return result.slice(0, 4);
+}
+
+function resolveLocation(events: any[]): string | null {
+  for (const e of events) {
+    if (!e.location) continue;
+    const loc = e.location.replace(/\s+to\s+.*/i, "").trim();
+    const city = loc.split(",")[0].trim();
+    if (city) return city;
+  }
+  return null;
+}
+
+const DAY_THUMB_ICONS: Record<string, React.ComponentType<any>> = {
+  flight: Airplane, hotel: Bed, activity: Compass,
+  dining: ForkKnife, transfer: Car,
 };
 
-function DayList({ grouped, trip, C, isLeader }: {
+function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
   grouped: Record<string, any[]>;
-  trip: { id: string; events: any[] };
+  trip: { id: string; name: string; events: any[]; paxCount?: string; attendees?: string; travelers?: any[] };
   C: ThemeColors;
+  isDark: boolean;
   isLeader: boolean;
+  start: Date;
+  end: Date;
+  nights: number;
 }) {
   const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   const todayStr = new Date().toISOString().split("T")[0];
   const [openDay, setOpenDay] = useState<string | null>(null);
+
+  const maxEvents = useMemo(
+    () => Math.max(...sortedDays.map(([, evs]) => evs.length), 1),
+    [sortedDays],
+  );
+
+  const totalDays = nights + 1;
+  const currentDayIdx = sortedDays.findIndex(([d]) => d >= todayStr);
+  const currentDay = currentDayIdx >= 0 ? currentDayIdx + 1 : totalDays;
+  const totalEvents = trip.events.length;
+  const pastEvents = trip.events.filter(e => e.date < todayStr).length;
+  const todayDoneEstimate = Math.round(
+    trip.events.filter(e => e.date === todayStr).length * 0.5,
+  );
+  const completed = pastEvents + todayDoneEstimate;
+
+  const dateRange = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+
+  const travelerCount = (() => {
+    if (trip.travelers?.length) return trip.travelers.length;
+    const parsed = parseInt(trip.paxCount || "", 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+    if (trip.attendees) {
+      const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
+      const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter((s: string) => s.trim()).length;
+      return listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
+    }
+    return 0;
+  })();
+
+  const dayLocations = useMemo(() => {
+    const locs: Record<string, string | null> = {};
+    for (const [date, events] of sortedDays) locs[date] = resolveLocation(events);
+    return locs;
+  }, [sortedDays]);
+
+  const isMultiCity = useMemo(() => {
+    const unique = new Set(Object.values(dayLocations).filter(Boolean));
+    return unique.size >= 2;
+  }, [dayLocations]);
 
   const toggle = (date: string) => {
     Haptics.selectionAsync();
     setOpenDay(prev => prev === date ? null : date);
   };
 
+  const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
+  const progressBg = isDark ? C.elevated : "#e4e4e7";
+  const dividerColor = isDark ? C.border : "#e4e4e7";
+
   return (
-    <View style={{ paddingHorizontal: S.md }}>
-      {sortedDays.map(([date, events], dayIdx) => {
-        const dt = new Date(date + "T12:00:00");
-        const isToday = date === todayStr;
-        const weekday = dt.toLocaleDateString("en-US", { weekday: "long" });
-        const fullDate = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        const isOpen = openDay === date;
+    <View>
+      {/* ── Trip header ── */}
+      <View style={{
+        paddingHorizontal: S.md + S.sm,
+        paddingTop: S.xl,
+        paddingBottom: S.lg,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: dividerColor,
+      }}>
+        <Text style={{
+          fontSize: T["2xl"], fontWeight: "600",
+          color: C.textPrimary, letterSpacing: -0.3, marginBottom: 6,
+        }}>{trip.name}</Text>
 
-        const iconKeys = new Set<string>();
-        events.forEach((e: any) => {
-          if (e.type === "transfer" && e.transferType) iconKeys.add(`transfer:${e.transferType}`);
-          else iconKeys.add(e.type);
-        });
-        const typeIcons = [...iconKeys].slice(0, 4);
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+            {dateRange}
+          </Text>
+          <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
+          <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+            {totalDays} days
+          </Text>
+          {travelerCount > 0 && (
+            <>
+              <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
+              <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+                {travelerCount} traveler{travelerCount !== 1 ? "s" : ""}
+              </Text>
+            </>
+          )}
+        </View>
 
-        return (
-          <View key={date} style={{ marginBottom: S.md }}>
-            <Pressable
-              onPress={() => toggle(date)}
-              style={({ pressed }) => ({
-                paddingVertical: S.md,
-                paddingHorizontal: S.sm,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{
-                  fontSize: T.lg, fontWeight: "700",
-                  color: isToday ? C.teal : C.textPrimary,
-                }}>{weekday}</Text>
-                <CaretDown
-                  size={14}
-                  color={C.textTertiary}
-                  weight="bold"
-                  style={{ transform: [{ rotate: isOpen ? "0deg" : "-90deg" }] }}
-                />
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, gap: 8 }}>
-                <Text style={{
-                  fontSize: T.sm, fontWeight: "500",
-                  color: C.textTertiary,
-                }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
-                <View style={{ flexDirection: "row", gap: 5 }}>
-                  {typeIcons.map(key => {
-                    const baseType = key.startsWith("transfer:") ? "transfer" : key;
-                    const iconColor = (C as Record<string, string>)[baseType] ?? C.teal;
-                    const Icon = key.startsWith("transfer:")
-                      ? (TRANSFER_ICONS[key.split(":")[1]] || Car)
-                      : (DAY_TYPE_ICONS[key] || Compass);
-                    return <Icon key={key} size={13} color={iconColor} weight="regular" />;
-                  })}
-                </View>
-              </View>
-              {!isOpen && <View style={{ height: 1, backgroundColor: C.border, marginTop: S.md }} />}
-            </Pressable>
-
-            {isOpen && (
-              <View style={{ gap: S.sm, paddingTop: S.sm }}>
-                {events.map((ev: any) => (
-                  <EventCard key={ev.id} ev={ev} C={C} tripId={trip.id} isLeader={isLeader} />
-                ))}
-              </View>
-            )}
+        {/* Progress strip */}
+        <View style={{ marginTop: S.md }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={{
+              fontFamily: mono,
+              fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: 1.5,
+            }}>Day {currentDay} of {totalDays}</Text>
+            <Text style={{
+              fontFamily: mono,
+              fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: 1.5,
+            }}>{completed}/{totalEvents} events</Text>
           </View>
-        );
-      })}
+          <View style={{ height: 3, backgroundColor: progressBg, borderRadius: R.full, overflow: "hidden" }}>
+            <View style={{
+              height: 3, backgroundColor: C.teal, borderRadius: R.full,
+              width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%` as any,
+            }} />
+          </View>
+        </View>
+      </View>
+
+      {/* ── Day rows ── */}
+      <View style={{ paddingHorizontal: S.md }}>
+        {sortedDays.map(([date, events], dayIdx) => {
+          const dt = new Date(date + "T12:00:00");
+          const isToday = date === todayStr;
+          const isPast = date < todayStr;
+          const weekday = dt.toLocaleDateString("en-US", { weekday: "long" });
+          const fullDate = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const isOpen = openDay === date;
+          const icons = typeCounts(events);
+
+          const firstTime = !isPast && events[0]?.time
+            ? events[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
+            : null;
+
+          const barPct = (events.length / maxEvents) * 100;
+          const barColor = isToday
+            ? C.teal
+            : isPast
+              ? (isDark ? C.elevated : "#d4d4d8")
+              : (isDark ? C.textDim : "#a1a1aa");
+          const barBg = isDark ? C.elevated : "#e4e4e7";
+
+          const dayNameColor = isToday
+            ? (isDark ? C.teal : "#059669")
+            : isPast
+              ? (isDark ? C.textDim : "#a1a1aa")
+              : C.textPrimary;
+          const subColor = isToday
+            ? C.textTertiary
+            : isPast
+              ? (isDark ? C.textDim : "#d4d4d8")
+              : C.textTertiary;
+          const iconColor = isToday
+            ? (isDark ? C.teal : "#059669")
+            : isPast
+              ? (isDark ? C.textDim : "#a1a1aa")
+              : (isDark ? C.textDim : "#71717a");
+          const countColor = isToday
+            ? (isDark ? C.teal : "#047857")
+            : isPast
+              ? (isDark ? C.textDim : "#a1a1aa")
+              : (isDark ? C.textTertiary : "#52525b");
+
+          const photo = events.find((e: any) => e.image)?.image || null;
+          const FallbackIcon = DAY_THUMB_ICONS[events[0]?.type] || MapTrifold;
+
+          const dayLoc = dayLocations[date];
+          const prevLoc = dayIdx > 0 ? dayLocations[sortedDays[dayIdx - 1][0]] : null;
+          const showLocChip = isMultiCity && dayLoc && (dayIdx === 0 || dayLoc !== prevLoc);
+
+          return (
+            <View key={date}>
+              <Pressable
+                onPress={() => toggle(date)}
+                style={({ pressed }) => ({
+                  paddingVertical: S.sm + 2,
+                  paddingHorizontal: S.sm,
+                  borderRadius: R.md,
+                  backgroundColor: pressed
+                    ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)")
+                    : "transparent",
+                })}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  {/* Left: day info */}
+                  <View style={{ flex: 1 }}>
+                    {/* Row 1: Day name + Today pill + location chip */}
+                    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                      <Text style={{
+                        fontSize: T.xl, fontWeight: "600",
+                        color: dayNameColor, letterSpacing: -0.2,
+                      }}>{weekday}</Text>
+                      {isToday && (
+                        <View style={{
+                          paddingHorizontal: 7, paddingVertical: 2,
+                          borderRadius: R.full,
+                          backgroundColor: isDark ? `${C.teal}18` : "#ecfdf5",
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: isDark ? `${C.teal}33` : "#a7f3d0",
+                        }}>
+                          <Text style={{
+                            fontSize: 9, fontWeight: "600",
+                            color: isDark ? C.teal : "#047857",
+                            textTransform: "uppercase", letterSpacing: 1.5,
+                            fontFamily: mono,
+                          }}>Today</Text>
+                        </View>
+                      )}
+                      {showLocChip && (
+                        <View style={{
+                          flexDirection: "row", alignItems: "center", gap: 3,
+                          paddingHorizontal: 7, paddingVertical: 2,
+                          borderRadius: R.full,
+                          backgroundColor: isDark ? C.elevated : "#f4f4f5",
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: dividerColor,
+                        }}>
+                          <MapPin size={10} color={isDark ? C.textTertiary : "#71717a"} weight="fill" />
+                          <Text style={{
+                            fontSize: 10.5, fontWeight: "500",
+                            color: isDark ? C.textTertiary : "#52525b",
+                          }}>{dayLoc}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Row 2: Date + event count */}
+                    <Text style={{
+                      fontFamily: mono,
+                      fontSize: 11, color: subColor, marginTop: 3,
+                    }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
+
+                    {/* Row 3: Type icons with counts */}
+                    {icons.length > 0 && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
+                        {icons.map(({ key, Icon, count }) => (
+                          <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                            <Icon size={13} color={iconColor} weight="regular" />
+                            <Text style={{
+                              fontSize: T.xs, fontWeight: "500", color: countColor,
+                              fontFamily: mono,
+                            }}>{count}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Right: thumbnail + time */}
+                  <View style={{ alignItems: "flex-end", marginLeft: S.sm, gap: 4 }}>
+                    <View style={{
+                      width: 40, height: 40, borderRadius: R.md,
+                      overflow: "hidden",
+                      backgroundColor: isDark ? C.elevated : "#f4f4f5",
+                      opacity: isPast ? 0.5 : 1,
+                    }}>
+                      {photo ? (
+                        <CachedImage uri={photo} style={{ width: 40, height: 40 }} />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                          <FallbackIcon size={16} color={isDark ? C.textDim : "#a1a1aa"} weight="regular" />
+                        </View>
+                      )}
+                    </View>
+                    {firstTime && (
+                      <Text style={{
+                        fontFamily: mono,
+                        fontSize: 10, color: isDark ? C.textDim : "#a1a1aa",
+                      }}>{firstTime}</Text>
+                    )}
+                  </View>
+                </View>
+
+                {/* Density bar */}
+                <View style={{
+                  height: 3, backgroundColor: barBg, borderRadius: R.full,
+                  marginTop: S.xs + 2, overflow: "hidden",
+                }}>
+                  <View style={{
+                    height: 3, borderRadius: R.full,
+                    backgroundColor: barColor,
+                    width: `${barPct}%` as any,
+                  }} />
+                </View>
+              </Pressable>
+
+              {/* Divider */}
+              {!isOpen && (
+                <View style={{
+                  height: StyleSheet.hairlineWidth,
+                  backgroundColor: dividerColor,
+                  marginHorizontal: S.sm,
+                }} />
+              )}
+
+              {/* Expanded events */}
+              {isOpen && (
+                <View style={{ gap: S.sm, paddingTop: S.xs, paddingBottom: S.xs }}>
+                  {events.map((ev: any) => (
+                    <EventCard key={ev.id} ev={ev} C={C} tripId={trip.id} isLeader={isLeader} />
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }

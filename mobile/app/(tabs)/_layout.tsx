@@ -23,10 +23,10 @@ function IOSTabLayout() {
   const { C, isDark } = useTheme();
 
   const sfIcons: Record<string, string> = {
-    index: "house.fill",
-    destinations: "clock.fill",
+    index: "house",
+    destinations: "clock",
     itinerary: "calendar",
-    media: "camera.fill",
+    media: "camera",
     profile: "person.crop.circle",
   };
   const mdIcons: Record<string, string> = {
@@ -39,14 +39,14 @@ function IOSTabLayout() {
 
   return (
     <NativeTabs
-      tintColor={C.textPrimary}
+      tintColor={C.teal}
       iconColor={{
         default: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)",
-        selected: C.textPrimary,
+        selected: C.teal,
       }}
       labelStyle={{
         default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)", fontWeight: "500" },
-        selected: { color: C.textPrimary, fontWeight: "700" },
+        selected: { color: C.teal, fontWeight: "700" },
       }}
       sceneContainerStyle={{ backgroundColor: C.bg }}
       screenOptions={{
@@ -85,7 +85,7 @@ function AndroidTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: C.textPrimary,
+        tabBarActiveTintColor: C.teal,
         tabBarInactiveTintColor: inactiveColor,
         tabBarButton: (props) => <HapticTabButton {...props} />,
         tabBarStyle: {

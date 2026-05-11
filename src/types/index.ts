@@ -41,6 +41,7 @@ export interface TravelEvent {
   isOvernight?: boolean;
   transferType?: "car" | "train" | "bus" | "ferry" | "cruise" | "other";
   endDate?: string;
+  aircraft?: string;
   notes?: string;
   media?: Array<{ type: "image" | "video"; url: string; name: string }>;
   documents?: EventDocument[];
@@ -73,6 +74,13 @@ export interface TripInfo {
   title: string;
   body: string;
   leaderOnly?: boolean;
+  source?: string;
+  deadline?: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  notes?: string[];
+  completed?: boolean;
+  completedAt?: string;
 }
 
 export interface Organization {
