@@ -115,6 +115,64 @@ function tomorrowInTz(tz?: string): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+const IATA_TZ: Record<string, string> = {
+  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
+  CDG: "Europe/Paris", ORY: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
+  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
+  LIS: "Europe/Lisbon", ZRH: "Europe/Zurich", VIE: "Europe/Vienna", DUB: "Europe/Dublin",
+  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
+  KEF: "Atlantic/Reykjavik",
+  JFK: "America/New_York", EWR: "America/New_York", LGA: "America/New_York",
+  BOS: "America/New_York", MIA: "America/New_York", ATL: "America/New_York",
+  ORD: "America/Chicago", DFW: "America/Chicago",
+  DEN: "America/Denver",
+  LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SEA: "America/Los_Angeles",
+  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
+  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
+  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", KIX: "Asia/Tokyo",
+  ICN: "Asia/Seoul", DPS: "Asia/Makassar",
+  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
+  ACC: "Africa/Accra", LOS: "Africa/Lagos", NBO: "Africa/Nairobi",
+  MLE: "Indian/Maldives",
+};
+
+function getDepAirportCode(ev: TravelEvent): string | null {
+  if (ev.depAirport) return ev.depAirport.toUpperCase();
+  const locRoute = ev.location?.match(/^([A-Z]{3})\s+to\s+/i);
+  if (locRoute) return locRoute[1].toUpperCase();
+  return null;
+}
+
+function getUtcOffsetMins(tz: string, dateStr: string): number {
+  try {
+    const d = new Date(dateStr + "T12:00:00Z");
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(d);
+    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
+    const utcDay = d.getUTCDate();
+    let offsetMins = (localH * 60 + localM) - (12 * 60);
+    if (localDay > utcDay) offsetMins += 1440;
+    else if (localDay < utcDay) offsetMins -= 1440;
+    return offsetMins;
+  } catch { return 0; }
+}
+
+function depTimeToMs(ev: TravelEvent): number {
+  const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
+  if (!depMatch) return new Date(`${ev.date}T23:59:00`).getTime();
+  const h = depMatch[1].padStart(2, "0");
+  const m = depMatch[2];
+  const code = getDepAirportCode(ev);
+  const tz = code ? IATA_TZ[code] : undefined;
+  if (!tz) return new Date(`${ev.date}T${h}:${m}:00`).getTime();
+  const offsetMins = getUtcOffsetMins(tz, ev.date);
+  return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;
+}
+
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
   let from = "";
   let to = "";
@@ -209,10 +267,7 @@ export function useFlightLiveActivity() {
     for (const ev of todayFlights) {
       const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
       const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
-      const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
-      const depMs = depMatch
-        ? new Date(`${ev.date}T${depMatch[1].padStart(2, "0")}:${depMatch[2]}:00`).getTime()
-        : new Date(`${ev.date}T23:59:00`).getTime();
+      const depMs = depTimeToMs(ev);
       const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
       if (now > arrMs) continue;
       bestFlight = ev;

@@ -81,12 +81,58 @@ function parseTime(time: string): { hours: number; mins: number } | null {
   return { hours, mins };
 }
 
+const IATA_TZ: Record<string, string> = {
+  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
+  CDG: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
+  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
+  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
+  KEF: "Atlantic/Reykjavik",
+  JFK: "America/New_York", EWR: "America/New_York", LAX: "America/Los_Angeles",
+  ORD: "America/Chicago", MIA: "America/New_York", SFO: "America/Los_Angeles",
+  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
+  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
+  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", ICN: "Asia/Seoul", DPS: "Asia/Makassar",
+  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
+  ACC: "Africa/Accra", NBO: "Africa/Nairobi", MLE: "Indian/Maldives",
+};
+
+function getDepAirportTz(ev: TravelEvent): string | undefined {
+  const code = ev.depAirport?.toUpperCase()
+    || ev.location?.match(/^([A-Z]{3})\s+to\s+/i)?.[1]?.toUpperCase();
+  return code ? IATA_TZ[code] : undefined;
+}
+
+function getUtcOffsetMins(tz: string, dateStr: string): number {
+  try {
+    const d = new Date(dateStr + "T12:00:00Z");
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(d);
+    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
+    const utcDay = d.getUTCDate();
+    let offsetMins = (localH * 60 + localM) - (12 * 60);
+    if (localDay > utcDay) offsetMins += 1440;
+    else if (localDay < utcDay) offsetMins -= 1440;
+    return offsetMins;
+  } catch { return 0; }
+}
+
 function eventDateTime(ev: TravelEvent): Date | null {
   const d = new Date(ev.date);
   if (isNaN(d.getTime())) return null;
   if (ev.time) {
     const t = parseTime(ev.time);
-    if (t) d.setHours(t.hours, t.mins, 0, 0);
+    if (!t) return d;
+    const tz = ev.type === "flight" ? getDepAirportTz(ev) : undefined;
+    if (tz) {
+      const offsetMins = getUtcOffsetMins(tz, ev.date);
+      const utcMs = new Date(`${ev.date}T${String(t.hours).padStart(2, "0")}:${String(t.mins).padStart(2, "0")}:00Z`).getTime() - offsetMins * 60000;
+      return new Date(utcMs);
+    }
+    d.setHours(t.hours, t.mins, 0, 0);
   }
   return d;
 }
