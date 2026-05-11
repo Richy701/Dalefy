@@ -334,7 +334,8 @@ export default function SharedTripScreen() {
           <View style={styles.dayRows}>
             {(() => {
               const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-              const todayStr = new Date().toISOString().split("T")[0];
+              const _now = new Date();
+              const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
               return sortedDays.map(([date, events], dayIdx) => (
                 <View key={date}>
                   <DaySummaryRow

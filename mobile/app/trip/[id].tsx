@@ -525,7 +525,8 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
   nights: number;
 }) {
   const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-  const todayStr = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [openDay, setOpenDay] = useState<string | null>(null);
 
   const maxEvents = useMemo(

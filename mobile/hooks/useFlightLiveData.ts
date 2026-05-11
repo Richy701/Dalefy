@@ -45,7 +45,7 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
     };
 
     const getInterval = () => {
-      const dep = new Date(`${dateStr}T12:00:00`);
+      const dep = new Date(`${dateStr}T12:00:00Z`);
       const hoursOut = (dep.getTime() - Date.now()) / 3_600_000;
       if (hoursOut <= 1) return 5 * 60 * 1000;
       if (hoursOut <= 3) return 30 * 60 * 1000;
