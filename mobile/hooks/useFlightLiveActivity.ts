@@ -154,7 +154,7 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
     to: to || "---",
     departTime: ev.time || "",
     arriveTime: ev.endTime || "",
-    status: ev.status || "Scheduled",
+    status: "Scheduled",
     gate: ev.gate || "",
     duration: ev.duration || "",
   };
@@ -174,30 +174,29 @@ function safe(fn: () => unknown) {
 export function useFlightLiveActivity() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
-  const activitiesRef = useRef<LiveActivityRef[]>([]);
-  const didCleanup = useRef(false);
+  const activityRef = useRef<LiveActivityRef | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !FlightTracker) return;
 
-    // If Live Activity is disabled, end all and bail
     if (prefs.liveActivity === false) {
-      for (const r of activitiesRef.current) safe(() => r.activity.end("default"));
-      activitiesRef.current = [];
+      try {
+        const instances = FlightTracker.getInstances();
+        for (const inst of instances) safe(() => inst.end("default"));
+      } catch {}
+      activityRef.current = null;
       return;
     }
 
-    // End any stale Live Activities from previous sessions on first run
-    if (!didCleanup.current) {
-      didCleanup.current = true;
-      try {
-        const stale = FlightTracker.getInstances();
-        for (const a of stale) safe(() => a.end("immediate"));
-        console.log(`[FlightLiveActivity] Cleaned up ${stale.length} stale activities`);
-      } catch {}
-    }
+    // Always clean up all existing instances first
+    try {
+      const instances = FlightTracker.getInstances();
+      if (instances.length > 0) {
+        for (const inst of instances) safe(() => inst.end("immediate"));
+      }
+    } catch {}
 
-    // Collect today's flight events across all trips (timezone-aware)
+    // Collect today's flight events across all trips
     const todayFlights: TravelEvent[] = [];
     const deviceToday = todayInTz(undefined);
     for (const trip of trips) {
@@ -212,69 +211,55 @@ export function useFlightLiveActivity() {
         }
       }
     }
-    console.log(`[FlightLiveActivity] ${trips.length} trips, ${todayFlights.length} today flights`);
 
-    const current = activitiesRef.current;
-
-    function syncActivity(ev: TravelEvent, props: FlightTrackerProps) {
-      const existing = current.find(a => a.eventId === ev.id);
-      const status = ev.status?.toLowerCase() ?? "";
+    // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
+    const now = Date.now();
+    let bestFlight: TravelEvent | null = null;
+    for (const ev of todayFlights) {
       const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
       const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
       const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
       const depMs = depMatch
         ? new Date(`${ev.date}T${depMatch[1].padStart(2, "0")}:${depMatch[2]}:00`).getTime()
         : new Date(`${ev.date}T23:59:00`).getTime();
-      const arrivalMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
-      const hasActuallyArrived = Date.now() > arrivalMs;
-      const isEnded = hasActuallyArrived && (status.includes("landed") || status.includes("arrived") || status.includes("cancel"));
-
-      if (existing) {
-        if (isEnded) {
-          safe(() => existing.activity.end("default", props));
-          activitiesRef.current = current.filter(a => a.eventId !== ev.id);
-        } else {
-          safe(() => existing.activity.update(props));
-        }
-      } else if (!isEnded) {
-        try {
-          const activity = FlightTracker.start(props, `/trip/day?date=${ev.date}`);
-          activitiesRef.current.push({ eventId: ev.id, activity });
-        } catch (err) {
-          console.warn("[FlightLiveActivity] Failed to start:", err);
-        }
-      }
+      const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
+      if (now > arrMs) continue;
+      bestFlight = ev;
+      break;
     }
 
-    // Start/update live activities, fetching airport codes from API if missing
-    for (const ev of todayFlights) {
-      const props = eventToProps(ev);
+    if (!bestFlight) {
+      activityRef.current = null;
+      return;
+    }
 
-      if (props.from === "---" || props.to === "---") {
-        // Airport codes missing — fetch from API then update
-        if (ev.flightNum) {
-          fetchAirportCodes(ev.flightNum, ev.date).then(codes => {
-            if (codes) {
-              props.from = codes.from;
-              props.to = codes.to;
-            }
-            syncActivity(ev, props);
-          });
-        } else {
-          syncActivity(ev, props);
-        }
+    const props = eventToProps(bestFlight);
+
+    const startActivity = (p: FlightTrackerProps) => {
+      try {
+        const activity = FlightTracker.start(p, `/trip/day?date=${bestFlight!.date}`);
+        activityRef.current = { eventId: bestFlight!.id, activity };
+      } catch {}
+    };
+
+    if (props.from === "---" || props.to === "---") {
+      if (bestFlight.flightNum) {
+        fetchAirportCodes(bestFlight.flightNum, bestFlight.date).then(codes => {
+          if (codes) { props.from = codes.from; props.to = codes.to; }
+          startActivity(props);
+        });
       } else {
-        syncActivity(ev, props);
+        startActivity(props);
       }
+    } else {
+      startActivity(props);
     }
 
-    // End activities for flights no longer in today's list
-    const todayIds = new Set(todayFlights.map(e => e.id));
-    for (const r of current) {
-      if (!todayIds.has(r.eventId)) {
-        safe(() => r.activity.end("default"));
-        activitiesRef.current = activitiesRef.current.filter(a => a.eventId !== r.eventId);
+    return () => {
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
       }
-    }
+    };
   }, [trips, prefs.liveActivity]);
 }
