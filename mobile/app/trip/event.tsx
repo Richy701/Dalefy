@@ -633,7 +633,7 @@ function FlightDetailScreen({
   const airlineIata = ev.flightNum?.match(/^([A-Z0-9]{2})/)?.[1] || "";
   const [logoError, setLogoError] = useState(false);
 
-  const statusLower = (live?.status || ev.status || "").toLowerCase();
+  const statusLower = (live?.status || "").toLowerCase();
   const statusColor = statusLower.includes("cancel") ? "#ef4444"
     : statusLower.includes("delay") ? "#f59e0b" : "#22c55e";
   const statusBg = statusLower.includes("cancel") ? "rgba(239,68,68,0.12)"
