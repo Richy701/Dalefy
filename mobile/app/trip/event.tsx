@@ -124,14 +124,28 @@ function getTzLabel(iata: string, refDate: string): { abbr: string; offset: stri
   try {
     const d = new Date(refDate + "T12:00:00Z");
 
-    const fmt = new Intl.DateTimeFormat("en-GB", {
+    const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
-      timeZoneName: "shortOffset",
-      hour: "numeric",
-    });
-    const parts = fmt.formatToParts(d);
-    const raw = parts.find(p => p.type === "timeZoneName")?.value || "";
-    const offsetStr = raw.replace("UTC", "GMT") || "GMT";
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(d);
+
+    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
+    const utcDay = d.getUTCDate();
+
+    let offsetMins = (localH * 60 + localM) - (12 * 60);
+    if (localDay > utcDay) offsetMins += 1440;
+    else if (localDay < utcDay) offsetMins -= 1440;
+
+    const sign = offsetMins >= 0 ? "+" : "-";
+    const absH = Math.floor(Math.abs(offsetMins) / 60);
+    const absM = Math.abs(offsetMins) % 60;
+    const offsetStr = offsetMins === 0 ? "GMT"
+      : absM === 0 ? `GMT${sign}${absH}`
+      : `GMT${sign}${absH}:${String(absM).padStart(2, "0")}`;
 
     let abbr = "";
     try {
@@ -139,7 +153,7 @@ function getTzLabel(iata: string, refDate: string): { abbr: string; offset: stri
         .formatToParts(d);
       abbr = abbrParts.find(p => p.type === "timeZoneName")?.value || "";
     } catch {}
-    if (!abbr || abbr === offsetStr || (abbr === "GMT" && offsetStr !== "GMT")) abbr = "";
+    if (!abbr || abbr === offsetStr || (abbr === "GMT" && offsetMins !== 0)) abbr = "";
 
     return { abbr, offset: offsetStr };
   } catch { return null; }
