@@ -14,7 +14,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
 - **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
 - **Draft/Publish System** -- Edits stay as drafts until explicitly published. Mobile travelers only see the last published version, not work-in-progress changes. Amber indicator shows when unpublished changes exist
-- **Mobile Preview** -- Live phone-frame preview in the workspace showing how the trip looks on mobile. Supports independent dark/light theme toggle and updates in real-time as you edit
+- **Mobile Preview** -- Live phone-frame preview in the workspace matching the actual mobile trip detail screen. Includes brand eyebrow, parallax-style hero, trip header with progress bar, collapsible day rows with thumbnails, density bars, temporal coloring (today/past/future), type icons with counts, and glass pill overlays on event images. Independent dark/light theme toggle
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan, with choreographed success animation and trip preview
@@ -76,7 +76,15 @@ Travelers join trips via three methods: 6-digit PIN, QR scan, or invite link pas
 
 ### Shared Trip Preview
 
-The preview screen shows the trip itinerary with day-by-day summaries. Each day card displays the formatted date, "Day N" label, mint-coloured event type pills with counts, and a cleaned title preview (redundant type prefixes stripped). Tapping expands inline events. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
+The preview screen shows the trip itinerary with day-by-day summaries. Each day row displays the weekday, date in monospace, type icons with counts, a 40x40 thumbnail, density bar, and temporal coloring (today in teal with "Today" pill, past days dimmed, future days neutral). Multi-city trips show location chips when the city changes between days. Tapping expands inline event cards. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
+
+### Today Tab
+
+Three-state daily schedule view:
+
+- **Active trip** -- Compact map (140px) with event pins, trip name with stats strip (flights, hotels, events, days), weather data, "Next Up" countdown card, trip info and organizer cards, timeline with NOW divider and past-event dimming, "See full itinerary" button
+- **Upcoming trip** -- "Your next trip" headline, hero card with countdown badge and weather forecast, first-day event preview with cleaned titles, trip info and organizer shortcuts, stats footer
+- **Empty** -- Compass icon in teal circle, "No trips yet" with "Join a trip" CTA button
 
 ### Media Uploads
 
@@ -123,6 +131,7 @@ Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock
 - **Dynamic Island expanded**: Airport codes (leading/trailing), flight number + airplane icon (center), departure/arrival times + status pill (bottom)
 - **Dynamic Island compact**: Airplane icon + departure code (leading), arrival code (trailing)
 - **Lock Screen banner**: Full flight board with route, times, gate, and status
+- **Timezone offsets**: Uses Intl.DateTimeFormat `shortOffset` for reliable GMT offset labels (e.g. GMT+8) on Hermes
 
 The `useFlightLiveActivity` hook automatically starts activities for today's flights, updates them when Firestore data changes, and ends them when a flight lands or is cancelled. Airport codes are resolved from Firestore fields (`depAirport`/`arrAirport`), location parsing, or a fallback API call.
 
