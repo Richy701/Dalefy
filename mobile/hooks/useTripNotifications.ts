@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrips } from "@/context/TripsContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, Notification } from "@/shared/types";
 
@@ -97,6 +98,7 @@ function eventDateTime(ev: TravelEvent): Date | null {
  */
 export function useTripNotifications() {
   const { trips } = useTrips();
+  const { prefs } = usePreferences();
   const { notifications, addNotification, clearAll } = useNotifications();
   const seeded = useRef(false);
 
@@ -133,7 +135,8 @@ export function useTripNotifications() {
           });
         }
 
-        if (isActive && !startedToday) {
+        const isTraveler = !trip.travelerIds?.length || !prefs.uid || trip.travelerIds.includes(prefs.uid);
+        if (isActive && !startedToday && isTraveler) {
           add({
             message: `Welcome to ${trip.destination}`,
             detail: `${trip.name} is underway. Check your itinerary for today's plans.`,

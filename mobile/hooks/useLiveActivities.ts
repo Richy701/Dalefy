@@ -91,6 +91,20 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
+function getFlightProgress(ev: TravelEvent): number {
+  const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
+  if (!depMatch) return 0;
+  const depMs = new Date(`${ev.date}T${depMatch[1].padStart(2, "0")}:${depMatch[2]}:00`).getTime();
+  const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+  const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+  if (durMins <= 0) return 0;
+  const arrMs = depMs + durMins * 60000;
+  const now = Date.now();
+  if (now <= depMs) return 0;
+  if (now >= arrMs) return 1;
+  return (now - depMs) / (arrMs - depMs);
+}
+
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 2) + "..." : s;
 }
@@ -292,6 +306,7 @@ export function useLiveActivities() {
       // ── Start/update flight ──
       if (FlightTracker && bestFlight) {
         const props = flightToProps(bestFlight);
+        props.progress = getFlightProgress(bestFlight);
         const flight = bestFlight;
 
         const doStart = (p: FlightTrackerProps) => {
@@ -333,6 +348,10 @@ export function useLiveActivities() {
       }
       if (nextOutsideWindow) {
         candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - nowMins));
+      }
+      if (bestFlight) {
+        const fp = getFlightProgress(bestFlight);
+        if (fp > 0 && fp < 1) candidates.push(2);
       }
       timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
     }

@@ -40,6 +40,11 @@ function FlightTrackerActivity(
   const hierarchicalSecondary = { type: "hierarchical" as const, style: "secondary" as const };
   const hierarchicalTertiary = { type: "hierarchical" as const, style: "tertiary" as const };
 
+  const progress = Math.max(0, Math.min(1, props.progress ?? 0));
+  const trackW = 100;
+  const doneW = Math.round(progress * trackW);
+  const todoW = trackW - doneW;
+
   const status = props.status?.toLowerCase() ?? "";
   const statusColor =
     status.includes("cancel") ? "#ef4444" :
@@ -119,7 +124,29 @@ function FlightTrackerActivity(
 
         <Spacer />
         <VStack>
-          <Image systemName="airplane" size={14} color={teal} />
+          <HStack>
+            {doneW > 0 ? (
+              <HStack
+                modifiers={[
+                  frame({ width: doneW, height: 3 }),
+                  background(teal, shapes.capsule()),
+                ]}
+              >
+                <Spacer />
+              </HStack>
+            ) : null}
+            <Image systemName="airplane" size={12} color={teal} />
+            {todoW > 0 ? (
+              <HStack
+                modifiers={[
+                  frame({ width: todoW, height: 3 }),
+                  background("#ffffff30", shapes.capsule()),
+                ]}
+              >
+                <Spacer />
+              </HStack>
+            ) : null}
+          </HStack>
           {props.duration ? (
             <Text
               modifiers={[
@@ -218,12 +245,34 @@ function FlightTrackerActivity(
 
   // ── Expanded: center — plane + flight number ──
   const expandedCenter = (
-    <HStack modifiers={[padding({ all: 4 })]}>
-      <Image systemName="airplane" size={11} color={teal} />
+    <VStack modifiers={[padding({ all: 4 })]}>
+      <HStack>
+        {doneW > 0 ? (
+          <HStack
+            modifiers={[
+              frame({ width: Math.round(doneW * 0.5), height: 2 }),
+              background(teal, shapes.capsule()),
+            ]}
+          >
+            <Spacer />
+          </HStack>
+        ) : null}
+        <Image systemName="airplane" size={9} color={teal} />
+        {todoW > 0 ? (
+          <HStack
+            modifiers={[
+              frame({ width: Math.round(todoW * 0.5), height: 2 }),
+              background("#ffffff30", shapes.capsule()),
+            ]}
+          >
+            <Spacer />
+          </HStack>
+        ) : null}
+      </HStack>
       <Text modifiers={[font({ size: 10, weight: "semibold" }), foregroundStyle(hierarchicalTertiary)]}>
         {props.flightNum}
       </Text>
-    </HStack>
+    </VStack>
   );
 
   // ── Expanded: bottom — times + status ──
