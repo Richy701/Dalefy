@@ -122,24 +122,24 @@ function getTzLabel(iata: string, refDate: string): { abbr: string; offset: stri
   const tz = IATA_TZ[iata];
   if (!tz) return null;
   try {
-    const d = new Date(refDate + "T12:00:00");
-    const utcStr = d.toLocaleString("en-US", { timeZone: "UTC" });
-    const localStr = d.toLocaleString("en-US", { timeZone: tz });
-    const diffMs = new Date(localStr).getTime() - new Date(utcStr).getTime();
-    const totalMin = Math.round(diffMs / 60000);
-    const h = Math.trunc(totalMin / 60);
-    const m = Math.abs(totalMin % 60);
-    const offsetStr = m > 0
-      ? `GMT${h >= 0 ? "+" : ""}${h}:${m.toString().padStart(2, "0")}`
-      : h === 0 ? "GMT" : `GMT${h >= 0 ? "+" : ""}${h}`;
+    const d = new Date(refDate + "T12:00:00Z");
+
+    const fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+      hour: "numeric",
+    });
+    const parts = fmt.formatToParts(d);
+    const raw = parts.find(p => p.type === "timeZoneName")?.value || "";
+    const offsetStr = raw.replace("UTC", "GMT") || "GMT";
 
     let abbr = "";
     try {
-      const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
+      const abbrParts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" })
         .formatToParts(d);
-      abbr = parts.find(p => p.type === "timeZoneName")?.value || "";
+      abbr = abbrParts.find(p => p.type === "timeZoneName")?.value || "";
     } catch {}
-    if (!abbr || abbr === offsetStr || abbr === "GMT" && h !== 0) abbr = "";
+    if (!abbr || abbr === offsetStr || (abbr === "GMT" && offsetStr !== "GMT")) abbr = "";
 
     return { abbr, offset: offsetStr };
   } catch { return null; }
@@ -613,7 +613,7 @@ function FlightDetailScreen({
   }, [ev.date, ev.endDate, dur, depTime]);
 
   const depTz = useMemo(() => ev.date ? getTzLabel(depCode, ev.date) : null, [depCode, ev.date]);
-  const arrTz = useMemo(() => getTzLabel(arrCode, arrivalDate), [arrCode, arrivalDate]);
+  const arrTz = useMemo(() => arrivalDate ? getTzLabel(arrCode, arrivalDate) : null, [arrCode, arrivalDate]);
 
   const airlineIata = ev.flightNum?.match(/^([A-Z0-9]{2})/)?.[1] || "";
   const [logoError, setLogoError] = useState(false);
