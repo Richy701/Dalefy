@@ -187,24 +187,14 @@ export function useUpcomingEventLiveActivity() {
   useEffect(() => {
     if (Platform.OS !== "ios" || !UpcomingEvent) return;
 
-    // If Live Activity is disabled, end any active ones and bail
+    // If Live Activity is disabled, end our own and bail
     if (prefs.liveActivity === false) {
-      try {
-        const instances = UpcomingEvent.getInstances();
-        for (const inst of instances) safe(() => inst.end("default"));
-      } catch {}
-      activityRef.current = null;
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
       return;
     }
-
-    // Always clean up stale activities before starting
-    try {
-      const stale = UpcomingEvent.getInstances();
-      if (stale.length > 0) {
-        console.log(`[UpcomingEventLA] Cleaning ${stale.length} stale activities`);
-        for (const inst of stale) safe(() => inst.end("immediate"));
-      }
-    } catch { /* ignore */ }
 
     function update() {
       // Collect today's non-flight events across all trips, sorted by time
@@ -242,14 +232,11 @@ export function useUpcomingEventLiveActivity() {
         return mins > now - 30 && mins <= now + 60;
       });
 
-      // Always end all existing system instances first to prevent stale activities
-      try {
-        const instances = UpcomingEvent.getInstances();
-        if (instances.length > 0) {
-          console.log(`[UpcomingEventLA] Ending ${instances.length} existing instances`);
-          for (const inst of instances) safe(() => inst.end("immediate"));
-        }
-      } catch { /* ignore */ }
+      // End our own previous activity before starting the next one
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("immediate"));
+        activityRef.current = null;
+      }
 
       // Find next event outside the window to schedule a wake-up when it enters
       const nextOutsideWindow = todayEvents.find(ev => {
