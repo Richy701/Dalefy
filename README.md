@@ -95,6 +95,27 @@ The web Travelers page shows all mobile users who have joined trips via PIN. Adm
 
 Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
 
+### Profile
+
+The profile tab shows the traveler's avatar, name, and trip status. Features include:
+
+- **Gradient avatar** -- deterministic two-tone gradient derived from the user's name, with centered initials
+- **Trip status pill** -- shows next upcoming trip or "No trips yet"
+- **Toggle subtitles** -- each setting row shows a subtitle with the current value (e.g. "Dark", "Enabled")
+- **In-app browser** -- external links (Help, Privacy, Terms) open in an in-app Safari sheet via `expo-web-browser`
+- **Tappable version** -- tap the version number to copy it to clipboard with a toast confirmation
+
+### Onboarding
+
+Three-step welcome flow for new travelers (agency lookup, photo, name):
+
+- **Progress indicator** -- three segmented bars with "1/3" counter, filling as steps complete
+- **Top-left navigation** -- chevron to go back between steps, X button to close when editing
+- **Agency input** -- placeholder text, inline loading spinner during lookup, border color states (default, focused, error, success), helper text
+- **Avatar placeholder** -- elevated background with camera icon and "Add photo" label, no border
+- **Name input** -- iOS `textContentType="name"` for autofill support
+- **Preview mode** -- `?preview=1` query param to demo the full onboarding without resetting user data
+
 ### Live Activities & Dynamic Island
 
 Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock Screen and Dynamic Island:

@@ -2,23 +2,26 @@ import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
-  CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
-  DeviceMobileCamera, X, Info, Train, Bus, Boat, Anchor,
+  CaretRight, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
+  DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold,
 } from "@phosphor-icons/react";
+import { useBrand } from "@/context/BrandContext";
 import type { Trip, TravelEvent, TripOrganizer, TripInfo } from "@/types";
+
+const MONO = "Menlo, Monaco, 'Courier New', monospace";
 
 const dark = {
   bg: "#09090b", card: "#141418", elevated: "#1c1c22",
   border: "rgba(255,255,255,0.10)",
   textPrimary: "#EDEDEF", textSecondary: "#9a9a9a", textTertiary: "#8e8e96", textDim: "#4a4a4a",
-  teal: "#0bd2b5", tealDim: "rgba(11,210,181,0.1)",
+  teal: "#0bd2b5", tealDim: "rgba(11,210,181,0.1)", tealMid: "rgba(11,210,181,0.25)",
   flight: "#0bd2b5", hotel: "#a78bfa", activity: "#f59e0b", dining: "#fb7185", transfer: "#60a5fa",
 };
 const light = {
   bg: "#f5f6fa", card: "#ffffff", elevated: "#f0f1f5",
   border: "rgba(0,0,0,0.07)",
   textPrimary: "#0d0f14", textSecondary: "#4b5263", textTertiary: "#555d6e", textDim: "#c5cad6",
-  teal: "#0ab8a0", tealDim: "rgba(10,184,160,0.12)",
+  teal: "#0ab8a0", tealDim: "rgba(10,184,160,0.12)", tealMid: "rgba(10,184,160,0.25)",
   flight: "#0ab8a0", hotel: "#8b5cf6", activity: "#d97706", dining: "#e11d48", transfer: "#3b82f6",
 };
 
@@ -37,11 +40,7 @@ function groupEventsByDay(events: TravelEvent[]) {
   }
   const sorted = [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [, evs] of sorted) {
-    evs.sort((a, b) => {
-      const ta = timeToMin(a.time);
-      const tb = timeToMin(b.time);
-      return ta - tb;
-    });
+    evs.sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
   }
   return sorted;
 }
@@ -82,6 +81,45 @@ const IATA_CITY: Record<string, string> = {
   ACC: "Accra", LOS: "Lagos", NBO: "Nairobi",
 };
 
+const ICON_ORDER = ["flight", "train", "bus", "car", "ferry", "hotel", "dining", "activity"] as const;
+
+const TYPE_ICON_MAP: Record<string, React.ComponentType<any>> = {
+  flight: AirplaneTilt, train: Train, bus: Bus, car: Car, ferry: Boat,
+  hotel: Bed, dining: ForkKnife, activity: Compass,
+};
+
+const DAY_THUMB_ICONS: Record<string, React.ComponentType<any>> = {
+  flight: AirplaneTilt, hotel: Bed, activity: Compass,
+  dining: ForkKnife, transfer: Car,
+};
+
+function typeCounts(events: TravelEvent[]): Array<{ key: string; Icon: React.ComponentType<any>; count: number }> {
+  const counts: Record<string, number> = {};
+  for (const e of events) {
+    if (e.type === "transfer") {
+      const sub = e.transferType || "car";
+      counts[sub] = (counts[sub] || 0) + 1;
+    } else {
+      counts[e.type] = (counts[e.type] || 0) + 1;
+    }
+  }
+  const result: Array<{ key: string; Icon: React.ComponentType<any>; count: number }> = [];
+  for (const k of ICON_ORDER) {
+    if (counts[k]) result.push({ key: k, Icon: TYPE_ICON_MAP[k] || Compass, count: counts[k] });
+  }
+  return result.length <= 5 ? result : result.slice(0, 4);
+}
+
+function resolveLocation(events: TravelEvent[]): string | null {
+  for (const e of events) {
+    if (!e.location) continue;
+    const loc = e.location.replace(/\s+to\s+.*/i, "").trim();
+    const city = loc.split(",")[0].trim();
+    if (city) return city;
+  }
+  return null;
+}
+
 function TransferIcon({ transferType, color }: { transferType?: string; color: string }) {
   const s = 12;
   switch (transferType) {
@@ -103,6 +141,27 @@ function EventIcon({ type, color, transferType }: { type: string; color: string;
     case "transfer": return <TransferIcon transferType={transferType} color={color} />;
     default: return <Compass size={s} color={color} />;
   }
+}
+
+function GlassPill({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      paddingInline: 10, paddingBlock: 5, borderRadius: 100,
+      background: "rgba(9,9,11,0.65)",
+      border: "0.5px solid rgba(255,255,255,0.10)",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function GlassPillText({ children, color }: { children: React.ReactNode; color: string }) {
+  return (
+    <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color }}>
+      {children}
+    </span>
+  );
 }
 
 function FlightCard({ ev, c }: { ev: TravelEvent; c: C }) {
@@ -127,13 +186,12 @@ function FlightCard({ ev, c }: { ev: TravelEvent; c: C }) {
       <div style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
         <div style={{ flex: 1 }}>
           {depCity && <div style={{ fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{depCity}</div>}
-          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{depCode || "DEP"}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{depCode || "DEP"}</div>
           {depTime && <div style={{ fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{depTime}</div>}
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {ev.flightNum && <span style={{ fontSize: 10, fontWeight: 500, color: c.textTertiary, letterSpacing: 0.3 }}>{ev.flightNum}</span>}
-            <Info size={11} color={c.textTertiary} />
           </div>
           <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 4 }}>
             <div style={{ flex: 1, height: 3, background: col + "55", borderRadius: 2 }} />
@@ -144,7 +202,7 @@ function FlightCard({ ev, c }: { ev: TravelEvent; c: C }) {
         </div>
         <div style={{ flex: 1, textAlign: "right" }}>
           {arrCity && <div style={{ fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{arrCity}</div>}
-          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{arrCode || "ARR"}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{arrCode || "ARR"}</div>
           {arrTime && <div style={{ fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{arrTime}</div>}
         </div>
       </div>
@@ -183,7 +241,6 @@ function CardHeader({ icon, label, color, time, c }: { icon: React.ReactNode; la
       </div>
       <span style={{ fontSize: 11, fontWeight: 600, color, flex: 1, letterSpacing: 0.5 }}>{label}</span>
       {time && <span style={{ fontSize: 11, color: c.textTertiary }}>{time}</span>}
-      <Info size={13} color={c.textTertiary} />
     </div>
   );
 }
@@ -193,15 +250,32 @@ function HotelCard({ ev, c }: { ev: TravelEvent; c: C }) {
   const label = ev.isOvernight ? "Overnight" : "Stay";
   return (
     <div style={{ background: c.card, borderRadius: 20, overflow: "hidden" }}>
-      {ev.image && <img src={ev.image} alt="" style={{ width: "100%", height: 130, objectFit: "cover" }} />}
+      {ev.image && (
+        <div style={{ position: "relative", height: 140, overflow: "hidden" }}>
+          <img src={ev.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <GlassPill>
+              <Bed size={10} color={c.teal} />
+              <GlassPillText color={c.teal}>{ev.isOvernight ? "Overnight" : "Stay"}</GlassPillText>
+            </GlassPill>
+            {!ev.isOvernight && ev.time && (
+              <GlassPill>
+                <GlassPillText color="#f4f4f5">{ev.time}</GlassPillText>
+              </GlassPill>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{ padding: "12px 14px" }}>
-        <CardHeader
-          icon={<Bed size={12} color={col} />}
-          label={label}
-          color={col}
-          time={!ev.isOvernight ? ev.time : undefined}
-          c={c}
-        />
+        {!ev.image && (
+          <CardHeader
+            icon={<Bed size={12} color={col} />}
+            label={label}
+            color={col}
+            time={!ev.isOvernight ? ev.time : undefined}
+            c={c}
+          />
+        )}
         <div style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary, letterSpacing: -0.2, marginBottom: 4 }}>{ev.title}</div>
         {ev.location && (
           <div style={{ display: "flex", alignItems: "flex-start", gap: 4, marginBottom: 10 }}>
@@ -209,7 +283,7 @@ function HotelCard({ ev, c }: { ev: TravelEvent; c: C }) {
             <span style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary, lineHeight: "15px" }}>{ev.location}</span>
           </div>
         )}
-        {!ev.isOvernight && (ev.time || ev.endTime) && (
+        {!ev.isOvernight && (ev.time || ev.endTime) && !ev.image && (
           <div style={{ display: "flex", alignItems: "center", background: c.elevated, borderRadius: 10, padding: "6px 10px", marginBottom: 6 }}>
             {ev.time && (
               <div style={{ flex: 1 }}>
@@ -239,15 +313,32 @@ function GenericCard({ ev, c }: { ev: TravelEvent; c: C }) {
   const timeStr = ev.time ? `${ev.time}${ev.endTime ? ` – ${ev.endTime}` : ""}` : undefined;
   return (
     <div style={{ background: c.card, borderRadius: 20, overflow: "hidden" }}>
-      {ev.image && <img src={ev.image} alt="" style={{ width: "100%", height: 130, objectFit: "cover" }} />}
+      {ev.image && (
+        <div style={{ position: "relative", height: 140, overflow: "hidden" }}>
+          <img src={ev.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <GlassPill>
+              <EventIcon type={ev.type} color={c.teal} transferType={ev.transferType} />
+              <GlassPillText color={c.teal}>{label}</GlassPillText>
+            </GlassPill>
+            {timeStr && (
+              <GlassPill>
+                <GlassPillText color="#f4f4f5">{timeStr}</GlassPillText>
+              </GlassPill>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{ padding: "12px 14px" }}>
-        <CardHeader
-          icon={<EventIcon type={ev.type} color={col} transferType={ev.transferType} />}
-          label={label}
-          color={col}
-          time={timeStr}
-          c={c}
-        />
+        {!ev.image && (
+          <CardHeader
+            icon={<EventIcon type={ev.type} color={col} transferType={ev.transferType} />}
+            label={label}
+            color={col}
+            time={timeStr}
+            c={c}
+          />
+        )}
         <div style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary, letterSpacing: -0.2, marginBottom: 4 }}>{ev.title}</div>
         {ev.description && <div style={{ fontSize: 11, color: c.textTertiary, lineHeight: "17px", marginBottom: 6 }}>{ev.description}</div>}
         {ev.location && (
@@ -277,15 +368,15 @@ function OrganizerSection({ org, c }: { org: TripOrganizer; c: C }) {
     <div style={{ margin: "14px 14px 0", background: c.card, borderRadius: 20, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {org.avatar ? (
-          <img src={org.avatar} alt="" style={{ width: 44, height: 44, borderRadius: 100, objectFit: "cover" }} />
+          <img src={org.avatar} alt="" style={{ width: 48, height: 48, borderRadius: 100, objectFit: "cover" }} />
         ) : (
-          <div style={{ width: 44, height: 44, borderRadius: 100, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: c.teal }}>{initials}</span>
+          <div style={{ width: 48, height: 48, borderRadius: 100, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.teal }}>{initials}</span>
           </div>
         )}
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: c.textTertiary, letterSpacing: 1.5, textTransform: "uppercase" }}>YOUR ORGANIZER</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: c.textPrimary }}>{org.name}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: c.textTertiary, letterSpacing: 1.5, textTransform: "uppercase" }}>YOUR ORGANIZER</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary }}>{org.name}</div>
           {(org.role || org.company) && (
             <div style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary, marginTop: 1 }}>
               {[org.role, org.company].filter(Boolean).join(" · ")}
@@ -294,15 +385,15 @@ function OrganizerSection({ org, c }: { org: TripOrganizer; c: C }) {
         </div>
       </div>
       {(org.phone || org.email) && (
-        <div style={{ display: "flex", gap: 6, marginTop: 10, borderTop: `1px solid ${c.border}`, paddingTop: 10 }}>
+        <div style={{ display: "flex", gap: 6, marginTop: 10, borderTop: `0.5px solid ${c.border}`, paddingTop: 10 }}>
           {org.phone && (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "8px 0" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "10px 0" }}>
               <Phone size={12} color={c.teal} />
               <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 1, textTransform: "uppercase" }}>Call</span>
             </div>
           )}
           {org.email && (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "8px 0" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "10px 0" }}>
               <Envelope size={12} color={c.teal} />
               <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 1, textTransform: "uppercase" }}>Email</span>
             </div>
@@ -317,37 +408,122 @@ function InfoDocsSection({ info, c }: { info: TripInfo[]; c: C }) {
   const visibleCount = info.filter(i => !i.leaderOnly).length;
   if (visibleCount === 0) return null;
   return (
-    <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: c.card, borderRadius: 20, display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ width: 32, height: 32, borderRadius: 10, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <FileText size={13} color={c.teal} />
+    <div style={{ margin: "10px 14px 0", padding: "12px 12px", background: c.card, borderRadius: 20, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 12, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <FileText size={15} color={c.teal} />
       </div>
       <span style={{ fontSize: 10, fontWeight: 700, color: c.textSecondary, letterSpacing: 1, flex: 1 }}>INFORMATION & DOCUMENTS</span>
-      <div style={{ background: c.tealDim, borderRadius: 8, padding: "2px 6px" }}>
+      <div style={{ background: c.tealDim, borderRadius: 10, padding: "2px 6px" }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 0.5 }}>{visibleCount}</span>
       </div>
+      <CaretRight size={14} color={c.textTertiary} />
     </div>
   );
 }
 
-const DAY_TYPE_ICONS: Record<string, string> = {
-  flight: "flight", hotel: "hotel", activity: "activity", dining: "dining", transfer: "transfer",
-};
-
-function ItinerarySection({ events, c }: { events: TravelEvent[]; c: C }) {
+function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean }) {
   const groups = useMemo(() => groupEventsByDay(events), [events]);
   const [openDay, setOpenDay] = useState<string | null>(null);
 
   if (groups.length === 0) return null;
 
-  const today = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
+  const start = new Date(trip.start + "T00:00:00");
+  const end = new Date(trip.end + "T00:00:00");
+  const totalDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+  const nights = totalDays - 1;
+
+  const currentDayIdx = groups.findIndex(([d]) => d >= todayStr);
+  const currentDay = currentDayIdx >= 0 ? currentDayIdx + 1 : totalDays;
+  const totalEvents = events.length;
+  const pastEvents = events.filter(e => e.date < todayStr).length;
+  const todayDoneEst = Math.round(events.filter(e => e.date === todayStr).length * 0.5);
+  const completed = pastEvents + todayDoneEst;
+
+  const dateRange = (() => {
+    try {
+      return `${format(parseISO(trip.start), "MMM d")} - ${format(parseISO(trip.end), "MMM d, yyyy")}`;
+    } catch { return `${trip.start} - ${trip.end}`; }
+  })();
+
+  const travelerCount = (() => {
+    if (trip.travelers?.length) return trip.travelers.length;
+    const parsed = parseInt(trip.paxCount || "", 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+    if (trip.attendees) {
+      const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
+      const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
+      return listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
+    }
+    return 0;
+  })();
+
+  const maxEvents = Math.max(...groups.map(([, evs]) => evs.length), 1);
+
+  const dayLocations = useMemo(() => {
+    const locs: Record<string, string | null> = {};
+    for (const [date, evs] of groups) locs[date] = resolveLocation(evs);
+    return locs;
+  }, [groups]);
+
+  const isMultiCity = useMemo(() => {
+    const unique = new Set(Object.values(dayLocations).filter(Boolean));
+    return unique.size >= 2;
+  }, [dayLocations]);
+
+  const dividerColor = isDark ? c.border : "#e4e4e7";
+  const progressBg = isDark ? c.elevated : "#e4e4e7";
 
   return (
     <div style={{ paddingBottom: 16 }}>
-      <SectionHeader label="ITINERARY" c={c} />
+      {/* Trip header block */}
+      <div style={{
+        padding: "22px 18px 16px",
+        borderBottom: `0.5px solid ${dividerColor}`,
+      }}>
+        <div style={{ fontSize: 20, fontWeight: 600, color: c.textPrimary, letterSpacing: -0.3, marginBottom: 6 }}>
+          {trip.name}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>{dateRange}</span>
+          <span style={{ fontSize: 11, color: c.textDim }}> · </span>
+          <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>{totalDays} days</span>
+          {travelerCount > 0 && (
+            <>
+              <span style={{ fontSize: 11, color: c.textDim }}> · </span>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>
+                {travelerCount} traveler{travelerCount !== 1 ? "s" : ""}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Progress strip */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: c.textDim, textTransform: "uppercase", letterSpacing: 1.5 }}>
+              Day {currentDay} of {totalDays}
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: c.textDim, textTransform: "uppercase", letterSpacing: 1.5 }}>
+              {completed}/{totalEvents} events
+            </span>
+          </div>
+          <div style={{ height: 3, background: progressBg, borderRadius: 100, overflow: "hidden" }}>
+            <div style={{
+              height: 3, background: c.teal, borderRadius: 100,
+              width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%`,
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Day rows */}
       <div style={{ padding: "0 14px" }}>
-        {groups.map(([date, evs]) => {
-          const isToday = date === today;
+        {groups.map(([date, evs], dayIdx) => {
+          const isToday = date === todayStr;
+          const isPast = date < todayStr;
           const isOpen = openDay === date;
+
           let weekday = "";
           let shortDate = "";
           try {
@@ -356,41 +532,149 @@ function ItinerarySection({ events, c }: { events: TravelEvent[]; c: C }) {
             shortDate = format(d, "MMM d");
           } catch { weekday = date; }
 
-          const iconKeys = new Set<string>();
-          evs.forEach(e => {
-            if (e.type === "transfer" && e.transferType) iconKeys.add(`transfer:${e.transferType}`);
-            else iconKeys.add(e.type);
-          });
-          const typeIcons = [...iconKeys].slice(0, 4);
+          const icons = typeCounts(evs);
+          const firstTime = !isPast && evs[0]?.time
+            ? evs[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
+            : null;
+
+          const barPct = (evs.length / maxEvents) * 100;
+
+          const dayNameColor = isToday
+            ? (isDark ? c.teal : "#059669")
+            : isPast
+              ? (isDark ? c.textDim : "#a1a1aa")
+              : c.textPrimary;
+          const subColor = isToday
+            ? c.textTertiary
+            : isPast
+              ? (isDark ? c.textDim : "#d4d4d8")
+              : c.textTertiary;
+          const iconColor = isToday
+            ? (isDark ? c.teal : "#059669")
+            : isPast
+              ? (isDark ? c.textDim : "#a1a1aa")
+              : (isDark ? c.textDim : "#71717a");
+          const countColor = isToday
+            ? (isDark ? c.teal : "#047857")
+            : isPast
+              ? (isDark ? c.textDim : "#a1a1aa")
+              : (isDark ? c.textTertiary : "#52525b");
+          const barColor = isToday
+            ? c.teal
+            : isPast
+              ? (isDark ? c.elevated : "#d4d4d8")
+              : (isDark ? c.textDim : "#a1a1aa");
+
+          const photo = evs.find(e => e.image)?.image || null;
+          const FallbackIcon = DAY_THUMB_ICONS[evs[0]?.type] || MapTrifold;
+
+          const dayLoc = dayLocations[date];
+          const prevLoc = dayIdx > 0 ? dayLocations[groups[dayIdx - 1][0]] : null;
+          const showLocChip = isMultiCity && dayLoc && (dayIdx === 0 || dayLoc !== prevLoc);
 
           return (
             <div key={date}>
               <button
                 type="button"
                 onClick={() => setOpenDay(prev => prev === date ? null : date)}
-                style={{ display: "block", padding: "10px 6px", width: "100%", cursor: "pointer", background: "none", border: "none", textAlign: "left" }}
+                style={{
+                  display: "block", width: "100%", cursor: "pointer",
+                  background: "none", border: "none", textAlign: "left",
+                  padding: "14px 12px", borderRadius: 12,
+                }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: isToday ? c.teal : c.textPrimary }}>{weekday}</span>
-                  <CaretDown size={13} color={c.textTertiary} style={{ transform: isOpen ? "none" : "rotate(-90deg)", transition: "transform 0.2s" }} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", marginTop: 3, gap: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary }}>
-                    {shortDate} · {evs.length} event{evs.length !== 1 ? "s" : ""}
-                  </span>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    {typeIcons.map(key => {
-                      const baseType = key.startsWith("transfer:") ? "transfer" : key;
-                      const iconColor = eventColor(baseType, c);
-                      const transferType = key.startsWith("transfer:") ? key.split(":")[1] : undefined;
-                      return <EventIcon key={key} type={baseType} color={iconColor} transferType={transferType} />;
-                    })}
+                <div style={{ display: "flex", alignItems: "flex-start" }}>
+                  {/* Left: day info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Row 1: Weekday + Today pill + location chip */}
+                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 600, color: dayNameColor, letterSpacing: -0.2 }}>
+                        {weekday}
+                      </span>
+                      {isToday && (
+                        <span style={{
+                          display: "inline-block",
+                          padding: "2px 7px", borderRadius: 100,
+                          background: isDark ? `${c.teal}18` : "#ecfdf5",
+                          border: `0.5px solid ${isDark ? `${c.teal}33` : "#a7f3d0"}`,
+                          fontFamily: MONO, fontSize: 9, fontWeight: 600,
+                          color: isDark ? c.teal : "#047857",
+                          textTransform: "uppercase", letterSpacing: 1.5,
+                        }}>
+                          Today
+                        </span>
+                      )}
+                      {showLocChip && (
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          padding: "2px 7px", borderRadius: 100,
+                          background: isDark ? c.elevated : "#f4f4f5",
+                          border: `0.5px solid ${dividerColor}`,
+                        }}>
+                          <MapPin size={10} color={isDark ? c.textTertiary : "#71717a"} weight="fill" />
+                          <span style={{ fontSize: 10.5, fontWeight: 500, color: isDark ? c.textTertiary : "#52525b" }}>
+                            {dayLoc}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Row 2: Date + event count */}
+                    <div style={{ fontFamily: MONO, fontSize: 11, color: subColor, marginTop: 3 }}>
+                      {shortDate} · {evs.length} event{evs.length !== 1 ? "s" : ""}
+                    </div>
+
+                    {/* Row 3: Type icons with counts */}
+                    {icons.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                        {icons.map(({ key, Icon, count }) => (
+                          <div key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            <Icon size={13} color={iconColor} />
+                            <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, color: countColor }}>
+                              {count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: thumbnail + time */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginLeft: 12, gap: 4 }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 12, overflow: "hidden",
+                      background: isDark ? c.elevated : "#f4f4f5",
+                      opacity: isPast ? 0.5 : 1,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {photo ? (
+                        <img src={photo} alt="" style={{ width: 40, height: 40, objectFit: "cover" }} />
+                      ) : (
+                        <FallbackIcon size={16} color={isDark ? c.textDim : "#a1a1aa"} />
+                      )}
+                    </div>
+                    {firstTime && (
+                      <span style={{ fontFamily: MONO, fontSize: 10, color: isDark ? c.textDim : "#a1a1aa" }}>
+                        {firstTime}
+                      </span>
+                    )}
                   </div>
                 </div>
-                {!isOpen && <div style={{ height: 1, background: c.border, marginTop: 10 }} />}
+
+                {/* Density bar */}
+                <div style={{ height: 3, background: isDark ? c.elevated : "#e4e4e7", borderRadius: 100, marginTop: 10, overflow: "hidden" }}>
+                  <div style={{ height: 3, borderRadius: 100, background: barColor, width: `${barPct}%` }} />
+                </div>
               </button>
+
+              {/* Divider */}
+              {!isOpen && (
+                <div style={{ height: 0.5, background: dividerColor, marginInline: 12 }} />
+              )}
+
+              {/* Expanded events */}
               {isOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 2, paddingBottom: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 2, paddingBottom: 6 }}>
                   {evs.map(ev => <MobileEventCard key={ev.id} ev={ev} c={c} />)}
                 </div>
               )}
@@ -398,14 +682,6 @@ function ItinerarySection({ events, c }: { events: TravelEvent[]; c: C }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function SectionHeader({ label, c }: { label: string; c: C }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "20px 14px 10px" }}>
-      <span style={{ fontSize: 9, fontWeight: 700, color: c.textTertiary, letterSpacing: 1.8 }}>{label}</span>
     </div>
   );
 }
@@ -418,6 +694,8 @@ interface MobilePreviewProps {
 export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
   const [previewTheme, setPreviewTheme] = useState<"dark" | "light">("dark");
   const c = previewTheme === "dark" ? dark : light;
+  const isDark = previewTheme === "dark";
+  const { brand } = useBrand();
 
   const paxNum = parseInt(trip.paxCount || trip.attendees || "0");
   let dateRange = "";
@@ -453,29 +731,22 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
           className="relative w-full shrink-0"
           style={{ maxWidth: 310, aspectRatio: "390 / 844" }}
         >
-          {/* Phone bezel — titanium-style gradient shell */}
+          {/* Phone bezel */}
           <div
             className="absolute inset-0 overflow-hidden"
             style={{
               borderRadius: 44,
-              background: previewTheme === "dark"
+              background: isDark
                 ? "linear-gradient(160deg, #3a3a3e 0%, #1c1c1e 30%, #252528 60%, #1a1a1c 100%)"
                 : "linear-gradient(160deg, #e8e8ed 0%, #d1d1d6 30%, #e0e0e5 60%, #c7c7cc 100%)",
               padding: 2,
-              boxShadow: previewTheme === "dark"
+              boxShadow: isDark
                 ? "0 2px 4px rgba(0,0,0,0.3), 0 12px 40px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.08) inset"
                 : "0 2px 4px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(255,255,255,0.6) inset",
             }}
           >
             {/* Screen area */}
-            <div
-              style={{
-                borderRadius: 42,
-                overflow: "hidden",
-                height: "100%",
-                position: "relative",
-              }}
-            >
+            <div style={{ borderRadius: 42, overflow: "hidden", height: "100%", position: "relative" }}>
               {/* Status bar */}
               <div style={{ background: c.bg, padding: "6px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", height: 40, position: "relative", zIndex: 2 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: c.textPrimary }}>9:41</span>
@@ -494,7 +765,7 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
                 className="scrollbar-hide"
               >
                 {/* Hero */}
-                <div style={{ position: "relative", height: 280, overflow: "hidden" }}>
+                <div style={{ position: "relative", height: 310, overflow: "hidden" }}>
                   <img
                     src={trip.image}
                     alt=""
@@ -509,20 +780,27 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
                     background: "linear-gradient(to right, rgba(0,0,0,0.15) 0%, transparent 100%)",
                   }} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 14px 16px" }}>
+                    {/* Brand eyebrow */}
                     <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: 2, background: c.teal }} />
-                      <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, textTransform: "uppercase", letterSpacing: 2 }}>Itinerary</span>
+                      {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt="" style={{ width: 10, height: 10, borderRadius: 2 }} />
+                      ) : (
+                        <div style={{ width: 8, height: 8, borderRadius: 2, background: c.teal }} />
+                      )}
+                      <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, textTransform: "uppercase", letterSpacing: 2 }}>
+                        {brand.name} · Itinerary
+                      </span>
                     </div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#fff", letterSpacing: -0.3, lineHeight: "26px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", letterSpacing: -0.3, lineHeight: "30px", marginBottom: 10 }}>
                       {trip.name}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                       {paxNum > 0 && (
-                        <HeroChip><Users size={9} color="rgba(255,255,255,0.85)" /> {paxNum} attendees</HeroChip>
+                        <HeroChip><Users size={10} color={c.teal} /> {paxNum} attendees</HeroChip>
                       )}
-                      <HeroChip><Moon size={9} color="rgba(255,255,255,0.85)" /> {dateRange}</HeroChip>
+                      <HeroChip><Moon size={10} color={c.teal} /> {dateRange}</HeroChip>
                       {trip.destination && (
-                        <HeroChip><MapPin size={9} color="rgba(255,255,255,0.85)" /> {trip.destination}</HeroChip>
+                        <HeroChip><MapPin size={10} color={c.teal} /> {trip.destination}</HeroChip>
                       )}
                     </div>
                   </div>
@@ -534,8 +812,8 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
                 {/* Info */}
                 {trip.info && trip.info.length > 0 && <InfoDocsSection info={trip.info} c={c} />}
 
-                {/* Itinerary */}
-                <ItinerarySection events={trip.events} c={c} />
+                {/* Day list */}
+                <DayListSection events={trip.events} trip={trip} c={c} isDark={isDark} />
 
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />
@@ -543,11 +821,11 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
             </div>
           </div>
 
-          {/* Side buttons — subtle, matches bezel */}
-          <div className="absolute top-[18%] -left-[1px] w-[2px] h-[20px] rounded-r-sm" style={{ background: previewTheme === "dark" ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[26%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: previewTheme === "dark" ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[34%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: previewTheme === "dark" ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[28%] -right-[1px] w-[2px] h-[56px] rounded-l-sm" style={{ background: previewTheme === "dark" ? "#2a2a2c" : "#c7c7cc" }} />
+          {/* Side buttons */}
+          <div className="absolute top-[18%] -left-[1px] w-[2px] h-[20px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[26%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[34%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[28%] -right-[1px] w-[2px] h-[56px] rounded-l-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
         </div>
       </div>
     </div>
@@ -559,7 +837,7 @@ function HeroChip({ children }: { children: React.ReactNode }) {
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 4,
       background: "rgba(255,255,255,0.10)", borderRadius: 100,
-      padding: "4px 9px", fontSize: 10, fontWeight: 600,
+      padding: "5px 10px", fontSize: 10, fontWeight: 600,
       color: "rgba(255,255,255,0.85)", letterSpacing: 0.1,
       whiteSpace: "nowrap",
     }}>

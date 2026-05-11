@@ -1,14 +1,16 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Alert, Linking, Image, Platform, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform } from "react-native";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import * as Clipboard from "expo-clipboard";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
-  User, Moon, Sun, DeviceMobile, Palette, Bell, Shield, CaretRight,
+  User, Palette, Bell, Shield,
   Vibrate, Pencil, ArrowSquareOut, Info,
-  FileText, CalendarCheck, Pulse, ChatCircle, ShareNetwork, FileText as FileCheckIcon,
+  FileText, CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
 } from "phosphor-react-native";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 
@@ -21,6 +23,15 @@ import { useToast } from "@/context/ToastContext";
 import { FadeIn } from "@/components/FadeIn";
 import { CachedImage } from "@/components/CachedImage";
 import { useMemo, useState, useCallback } from "react";
+
+function deriveGradient(name: string): [string, string] {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  const from = `hsl(${hue}, 65%, 55%)`;
+  const to = `hsl(${(hue + 40) % 360}, 65%, 45%)`;
+  return [from, to];
+}
 
 export default function ProfileScreen() {
   const { C, isDark, mode, setMode } = useTheme();
@@ -41,6 +52,7 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
+  const [gradFrom, gradTo] = useMemo(() => deriveGradient(prefs.name || "?"), [prefs.name]);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -94,26 +106,35 @@ export default function ProfileScreen() {
 
         {/* ── Profile hero ── */}
         <FadeIn delay={0}>
-        <Pressable
-          style={({ pressed }) => [s.heroCard, pressed && { opacity: 0.8 }]}
-          onPress={() => { haptic.selection(); router.push("/welcome"); }}
-          accessibilityLabel="Edit your name"
-        >
+        <View style={s.heroCard}>
           <View style={s.avatar}>
             {prefs.avatar ? (
               <CachedImage uri={prefs.avatar} style={s.avatarImg} blurhash={null} />
             ) : initials ? (
-              <Text style={s.avatarText}>{initials}</Text>
+              <View style={[s.avatarGrad, { backgroundColor: gradFrom }]}>
+                <Text style={s.avatarText}>{initials}</Text>
+              </View>
             ) : (
               <User size={28} color={C.teal} weight="light" />
             )}
           </View>
           <View style={s.heroText}>
             <Text style={s.heroName}>{firstName || "Traveller"}</Text>
-            {nextTrip && <Text style={s.heroSub}>{nextTrip}</Text>}
+            {nextTrip && (
+              <View style={[s.statusPill, { backgroundColor: C.tealMid }]}>
+                <Text style={[s.statusPillText, { color: C.teal }]}>{nextTrip}</Text>
+              </View>
+            )}
           </View>
-          <Pencil size={16} color={C.textTertiary} weight="light" />
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => { haptic.selection(); router.push("/welcome"); }}
+            accessibilityLabel="Edit your profile"
+            hitSlop={8}
+          >
+            <Pencil size={14} color={C.textSecondary} weight="light" />
+          </Pressable>
+        </View>
         </FadeIn>
 
         {/* ── Appearance ── */}
@@ -156,7 +177,10 @@ export default function ProfileScreen() {
           {/* Haptics */}
           <View style={s.row}>
             <Vibrate size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Haptic feedback</Text>
+            <View style={s.rowLabelGroup}>
+              <Text style={s.rowLabel}>Haptic feedback</Text>
+              <Text style={s.rowSub}>Subtle vibrations on actions</Text>
+            </View>
             <Switch
               value={prefs.haptics}
               onValueChange={(v) => { haptic.selection(); setPref("haptics", v); }}
@@ -173,7 +197,10 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <View style={s.row}>
             <Bell size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Trip reminders</Text>
+            <View style={s.rowLabelGroup}>
+              <Text style={s.rowLabel}>Trip reminders</Text>
+              <Text style={s.rowSub}>Push notifications before each event</Text>
+            </View>
             <Switch
               value={prefs.tripReminders}
               onValueChange={(v) => { haptic.selection(); setPref("tripReminders", v); }}
@@ -184,7 +211,10 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <View style={s.row}>
             <CalendarCheck size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Itinerary updates</Text>
+            <View style={s.rowLabelGroup}>
+              <Text style={s.rowLabel}>Itinerary updates</Text>
+              <Text style={s.rowSub}>When your organiser changes the plan</Text>
+            </View>
             <Switch
               value={prefs.itineraryUpdates}
               onValueChange={(v) => { haptic.selection(); setPref("itineraryUpdates", v); }}
@@ -195,7 +225,10 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <View style={s.row}>
             <Pulse size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Live Activity</Text>
+            <View style={s.rowLabelGroup}>
+              <Text style={s.rowLabel}>Live Activity</Text>
+              <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
+            </View>
             <Switch
               value={prefs.liveActivity !== false}
               onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
@@ -226,7 +259,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/support.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/support.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
@@ -237,7 +270,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/privacy.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/privacy.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
@@ -248,7 +281,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); Linking.openURL("https://dalefy.vercel.app/terms.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/terms.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >
@@ -257,11 +290,19 @@ export default function ProfileScreen() {
             <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
-          <View style={s.row}>
+          <Pressable
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={async () => {
+              haptic.selection();
+              await Clipboard.setStringAsync("Dalefy v1.0.0 (27)");
+              toast("Version copied");
+            }}
+            accessibilityLabel="Copy version to clipboard"
+          >
             <Info size={18} color={C.textSecondary} weight="light" />
             <Text style={s.rowLabel}>Version</Text>
-            <Text style={s.rowValue}>1.0.0</Text>
-          </View>
+            <Text style={s.rowValue}>1.0.0 (27)</Text>
+          </Pressable>
         </View>
         </FadeIn>
 
@@ -315,15 +356,41 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center",
       justifyContent: "center",
     },
+    avatarGrad: {
+      width: 56,
+      height: 56,
+      borderRadius: R.full,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     avatarImg: {
       width: 56,
       height: 56,
       borderRadius: R.full,
     },
     avatarText: {
-      fontSize: T.xl,
+      fontSize: 22,
       fontWeight: T.bold,
-      color: C.teal,
+      color: "#fff",
+    },
+    editBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: R.full,
+      backgroundColor: C.elevated,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    statusPill: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: R.full,
+      marginTop: 4,
+    },
+    statusPillText: {
+      fontSize: T.xs,
+      fontWeight: T.semibold,
     },
     heroText: { flex: 1 },
     heroName: {
@@ -371,11 +438,20 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.border,
       marginLeft: S.md + 18 + S.sm,
     },
+    rowLabelGroup: {
+      flex: 1,
+      minWidth: 0,
+    },
     rowLabel: {
       flex: 1,
       fontSize: T.base,
       fontWeight: T.medium,
       color: C.textPrimary,
+    },
+    rowSub: {
+      fontSize: T.xs,
+      color: C.textTertiary,
+      marginTop: 2,
     },
     rowValue: {
       fontSize: T.sm,
