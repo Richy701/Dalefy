@@ -220,7 +220,10 @@ export function useFlightLiveActivity() {
     function syncActivity(ev: TravelEvent, props: FlightTrackerProps) {
       const existing = current.find(a => a.eventId === ev.id);
       const status = ev.status?.toLowerCase() ?? "";
-      const isEnded = status.includes("landed") || status.includes("arrived") || status.includes("cancel");
+      const depTime = ev.time?.match(/(\d{1,2}):(\d{2})/);
+      const depDate = new Date(`${ev.date}T${depTime ? `${depTime[1].padStart(2, "0")}:${depTime[2]}` : "23:59"}:00`);
+      const hasActuallyDeparted = depDate.getTime() < Date.now();
+      const isEnded = hasActuallyDeparted && (status.includes("landed") || status.includes("arrived") || status.includes("cancel"));
 
       if (existing) {
         if (isEnded) {

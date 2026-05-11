@@ -166,6 +166,19 @@ export function useTripNotifications() {
               type: "boarding",
             });
           }
+          if (ev.date === today) {
+            const evDt = eventDateTime(ev);
+            if (evDt && evDt.getTime() > now.getTime()) {
+              const label = ev.flightNum || ev.title;
+              const dest = ev.location ? friendlyDestination(ev.location) : null;
+              add({
+                message: `${label} departs today`,
+                detail: dest ? `Flying to ${dest} at ${ev.time || "TBA"}` : `Departure at ${ev.time || "TBA"}`,
+                time: ev.time || "",
+                type: "flight",
+              });
+            }
+          }
         }
 
         if (isActive) {
