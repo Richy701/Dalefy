@@ -111,7 +111,17 @@ function truncate(s: string, max: number): string {
 
 /** Strip redundant type prefixes like "Hotel check-in — " since the type label already shows */
 /** Rewrite event titles into clear, natural English for the banner. */
-function cleanTitle(title: string): string {
+function cleanTitle(title: string, type?: string, transferType?: string): string {
+  // Strip type prefix first (e.g. "Transfer - Manchester..." or "Flight - ...")
+  const TYPE_PREFIXES: Record<string, string> = {
+    flight: "Flight", hotel: "Hotel", activity: "Activity",
+    dining: "Dining", transfer: "Transfer",
+    car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise",
+  };
+  for (const key of [transferType, type]) {
+    const label = TYPE_PREFIXES[key || ""];
+    if (label) title = title.replace(new RegExp(`^${label}\\s*[-–·:]\\s*`, "i"), "");
+  }
   // "X check-in/out — Venue" → "Check in to Venue" / "Check out of Venue"
   const checkMatch = title.match(/check-?(in|out)\s*[—–]\s*(.*)/i);
   if (checkMatch) {
@@ -124,9 +134,8 @@ function cleanTitle(title: string): string {
   // "X transfer to Y" / "X pickup & transfer to Y" → "Transfer to Y"
   const transferMatch = title.match(/(?:transfer|pickup)\s+(?:&\s+transfer\s+)?to\s+(.*)/i);
   if (transferMatch) return `Transfer to ${transferMatch[1]}`;
-  // Strip any short prefix (1-3 words) before a dash separator
-  const prefixMatch = title.match(/^(\S+(?:\s+\S+){0,2})\s*[—–\-]\s+(.+)$/);
-  if (prefixMatch) return prefixMatch[2];
+  // Normalise internal separators to em-dash
+  title = title.replace(/\s*[-–·:]\s*/g, " — ");
   return title;
 }
 
@@ -146,11 +155,11 @@ function summarise(title: string): string {
 }
 
 function eventToProps(ev: TravelEvent): UpcomingEventProps {
-  const cleaned = cleanTitle(ev.title);
+  const cleaned = cleanTitle(ev.title, ev.type, ev.transferType);
   // Location: just the venue name, strip address details after comma
   const shortLocation = (ev.location || "").split(",")[0].trim();
   return {
-    title: truncate(cleaned, 36),
+    title: truncate(cleaned, 48),
     shortTitle: summarise(cleaned),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
