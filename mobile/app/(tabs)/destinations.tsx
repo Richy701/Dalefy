@@ -669,16 +669,16 @@ export default function TodayScreen() {
             const s = tripStats(activeTrip);
             return (
               <View style={styles.activeStatsStrip}>
-                <Airplane size={12} color={C.textDim} weight="bold" />
+                <Airplane size={12} color={C.textTertiary} weight="bold" />
                 <Text style={styles.activeStatsText}>{s.flights}</Text>
                 <View style={styles.activeStatsDot} />
-                <Bed size={12} color={C.textDim} weight="bold" />
+                <Bed size={12} color={C.textTertiary} weight="bold" />
                 <Text style={styles.activeStatsText}>{s.hotels}</Text>
                 <View style={styles.activeStatsDot} />
-                <CalendarDots size={12} color={C.textDim} weight="bold" />
+                <CalendarDots size={12} color={C.textTertiary} weight="bold" />
                 <Text style={styles.activeStatsText}>{s.totalEvents} events</Text>
                 <View style={styles.activeStatsDot} />
-                <Calendar size={12} color={C.textDim} weight="bold" />
+                <Calendar size={12} color={C.textTertiary} weight="bold" />
                 <Text style={styles.activeStatsText}>{s.totalDays} days</Text>
               </View>
             );
@@ -944,10 +944,10 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       flexDirection: "row", alignItems: "center",
       gap: 5, marginTop: 6,
     },
-    activeStatsText: { fontSize: T.xs, fontWeight: "600", color: C.textDim },
+    activeStatsText: { fontSize: T.xs, fontWeight: "600", color: C.textTertiary },
     activeStatsDot: {
       width: 3, height: 3, borderRadius: 1.5,
-      backgroundColor: C.textDim, opacity: 0.4,
+      backgroundColor: C.textTertiary, opacity: 0.4,
     },
 
     // Upcoming headline

@@ -57,6 +57,28 @@ try {
   useCameraPermissions = cam.useCameraPermissions;
 } catch { /* native module not in this build */ }
 
+const TYPE_LABELS: Record<string, string> = {
+  flight: "Flight", hotel: "Hotel", activity: "Activity",
+  dining: "Dining", transfer: "Transfer",
+  car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise",
+};
+
+function cleanTitle(title: string, type: string, transferType?: string): string {
+  const labels = [TYPE_LABELS[transferType || ""] || "", TYPE_LABELS[type] || ""];
+  for (const l of labels) {
+    if (!l) continue;
+    const re = new RegExp(`^${l}\\s*[-–·:]\\s*`, "i");
+    title = title.replace(re, "");
+  }
+  return title;
+}
+
+function normaliseTitle(title: string, type: string, transferType?: string): string {
+  let t = cleanTitle(title, type, transferType);
+  t = t.replace(/\s*[-–·:]\s*/g, " — ");
+  return t;
+}
+
 function daysUntil(dateStr: string) {
   const target = new Date(dateStr + "T00:00:00");
   const now = new Date();
@@ -1279,7 +1301,7 @@ function CompactEventRow({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
         <Icon size={16} color={C.teal} weight="regular" />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 18 }} numberOfLines={2}>{ev.title}</Text>
+        <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 18 }} numberOfLines={2}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
         {ev.location ? <Text style={{ fontSize: T.xs, color: C.textTertiary, marginTop: 1 }} numberOfLines={1}>{ev.location}</Text> : null}
       </View>
       {ev.time ? <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary }}>{ev.time}</Text> : null}
@@ -1439,7 +1461,7 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
             <Text style={styles.countdownText}>{countdown}</Text>
           </View>
         )}
-        <Text style={styles.title} numberOfLines={2}>{ev.title}</Text>
+        <Text style={styles.title} numberOfLines={2}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
         {(ev.location || ev.notes) ? (
           <Text style={styles.sub} numberOfLines={2}>{ev.location || ev.notes}</Text>
         ) : null}
