@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, Notification } from "@/shared/types";
+
+const SEED_KEY = "daf-notif-seeded";
 
 const AIRPORT_NAMES: Record<string, string> = {
   // UK
@@ -48,6 +51,24 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function tomorrowStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysUntil(dateStr: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  return Math.round((target.getTime() - now.getTime()) / 86400000);
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  flight: "flight", hotel: "hotel check-in", activity: "activity",
+  dining: "dining", transfer: "transfer",
+};
+
 function parseTime(time: string): { hours: number; mins: number } | null {
   const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
   if (!match) return null;
@@ -83,112 +104,144 @@ export function useTripNotifications() {
     if (seeded.current || trips.length === 0) return;
     seeded.current = true;
 
-    // Clear stale notifications from previous sessions (e.g. past trips)
-    // then reseed fresh ones from current trip state
-    if (notifications.length > 0) clearAll();
-
-    const now = new Date();
     const today = todayStr();
-    const seen = new Set<string>();
+    AsyncStorage.getItem(SEED_KEY).then(lastSeeded => {
+      if (lastSeeded === today) return;
+      if (notifications.length > 0) clearAll();
 
-    const add = (n: Omit<Notification, "id" | "read">) => {
-      if (seen.has(n.message)) return;
-      seen.add(n.message);
-      addNotification(n);
-    };
+      const now = new Date();
+      const seen = new Set<string>();
 
-    for (const trip of trips) {
-      const isActive = trip.start <= today && trip.end >= today;
-      const startedToday = trip.start === today;
+      const add = (n: Omit<Notification, "id" | "read">) => {
+        if (seen.has(n.message)) return;
+        seen.add(n.message);
+        addNotification(n);
+      };
 
-      // Only generate notifications for active trips
-      if (!isActive) continue;
+      for (const trip of trips) {
+        const isActive = trip.start <= today && trip.end >= today;
+        const startedToday = trip.start === today;
 
-      // ── Trip started today ──
-      if (startedToday) {
-        add({
-          message: `${trip.name} starts today!`,
-          detail: `Your trip to ${trip.destination} begins. Have an amazing time!`,
-          time: "9:00 AM",
-          type: "info",
-        });
-      }
+        if (!isActive) continue;
 
-      // ── Welcome / arrived (active trip, first day already past) ──
-      if (isActive && !startedToday) {
-        add({
-          message: `Welcome to ${trip.destination}`,
-          detail: `${trip.name} is underway. Check your itinerary for today's plans.`,
-          time: "8:00 AM",
-          type: "info",
-        });
-      }
-
-      // ── Flights that already landed ──
-      for (const ev of trip.events) {
-        if (ev.type !== "flight") continue;
-        const status = ev.status?.toLowerCase() ?? "";
-        if (status.includes("landed") || status.includes("arrived")) {
-          const label = ev.flightNum || ev.title;
-          const dest = ev.location ? friendlyDestination(ev.location) : null;
+        if (startedToday) {
           add({
-            message: `${label} Landed`,
-            detail: dest ? `Arrived at ${dest}` : "Your flight has landed.",
-            time: ev.endTime || ev.time || "",
-            type: "landed",
+            message: `${trip.name} starts today!`,
+            detail: `Your trip to ${trip.destination} begins. Have an amazing time!`,
+            time: "9:00 AM",
+            type: "info",
           });
         }
-        // Flights that are boarding
-        if (status.includes("boarding")) {
-          const label = ev.flightNum || ev.title;
+
+        if (isActive && !startedToday) {
           add({
-            message: `${label} Now Boarding`,
-            detail: ev.gate ? `Head to gate ${ev.gate}` : "Proceed to your gate.",
-            time: ev.time || "",
-            type: "boarding",
+            message: `Welcome to ${trip.destination}`,
+            detail: `${trip.name} is underway. Check your itinerary for today's plans.`,
+            time: "8:00 AM",
+            type: "info",
           });
         }
-      }
 
-      // ── Today's upcoming events ──
-      if (isActive) {
-        const todayEvents = trip.events.filter(ev => ev.date === today);
-        for (const ev of todayEvents) {
-          const evTime = eventDateTime(ev);
-          if (!evTime || evTime.getTime() < now.getTime()) continue;
+        for (const ev of trip.events) {
+          if (ev.type !== "flight") continue;
+          const status = ev.status?.toLowerCase() ?? "";
+          if (status.includes("landed") || status.includes("arrived")) {
+            const label = ev.flightNum || ev.title;
+            const dest = ev.location ? friendlyDestination(ev.location) : null;
+            add({
+              message: `${label} Landed`,
+              detail: dest ? `Arrived at ${dest}` : "Your flight has landed.",
+              time: ev.endTime || ev.time || "",
+              type: "landed",
+            });
+          }
+          if (status.includes("boarding")) {
+            const label = ev.flightNum || ev.title;
+            add({
+              message: `${label} Now Boarding`,
+              detail: ev.gate ? `Head to gate ${ev.gate}` : "Proceed to your gate.",
+              time: ev.time || "",
+              type: "boarding",
+            });
+          }
+        }
 
-          const timeStr = ev.time || "";
-          if (ev.type === "hotel" && ev.checkin) {
+        if (isActive) {
+          const todayEvents = trip.events.filter(ev => ev.date === today);
+          for (const ev of todayEvents) {
+            const evTime = eventDateTime(ev);
+            if (!evTime || evTime.getTime() < now.getTime()) continue;
+
+            const timeStr = ev.time || "";
+            if (ev.type === "hotel" && ev.checkin) {
+              add({
+                message: `Check-in: ${ev.title}`,
+                detail: `Check-in${ev.checkin ? ` from ${ev.checkin}` : ""} today.${ev.location ? ` ${ev.location}` : ""}`,
+                time: ev.checkin || timeStr,
+                type: "hotel",
+              });
+            } else if (ev.type === "dining") {
+              add({
+                message: ev.title,
+                detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
+                time: timeStr,
+                type: "dining",
+              });
+            } else if (ev.type === "activity") {
+              add({
+                message: ev.title,
+                detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
+                time: timeStr,
+                type: "activity",
+              });
+            } else if (ev.type === "transfer") {
+              add({
+                message: ev.title,
+                detail: ev.location ? `Pickup: ${ev.location} · ${timeStr}` : `Scheduled at ${timeStr}`,
+                time: timeStr,
+                type: "transfer",
+              });
+            }
+          }
+        }
+
+        // ── Tomorrow preview ──
+        const tomorrow = tomorrowStr();
+        if (tomorrow <= trip.end) {
+          const tomorrowEvents = trip.events.filter(ev => ev.date === tomorrow);
+          if (tomorrowEvents.length > 0) {
+            const types = [...new Set(tomorrowEvents.map(ev => TYPE_LABEL[ev.type] || ev.type))];
+            const summary = types.length <= 2 ? types.join(" and ") : `${types.slice(0, 2).join(", ")} and more`;
             add({
-              message: `Check-in: ${ev.title}`,
-              detail: `Check-in${ev.checkin ? ` from ${ev.checkin}` : ""} today.${ev.location ? ` ${ev.location}` : ""}`,
-              time: ev.checkin || timeStr,
-              type: "hotel",
+              message: `Tomorrow: ${tomorrowEvents.length} event${tomorrowEvents.length > 1 ? "s" : ""}`,
+              detail: `You have ${summary} planned for tomorrow.`,
+              time: "",
+              type: "info",
             });
-          } else if (ev.type === "dining") {
+          }
+        }
+
+        // ── Next flight heads-up ──
+        const nextFlight = trip.events
+          .filter(ev => ev.type === "flight" && ev.date > today)
+          .sort((a, b) => a.date.localeCompare(b.date))[0];
+        if (nextFlight) {
+          const days = daysUntil(nextFlight.date);
+          if (days > 0 && days <= 7) {
+            const label = nextFlight.flightNum || nextFlight.title;
+            const dest = nextFlight.location ? friendlyDestination(nextFlight.location) : null;
+            const when = days === 1 ? "tomorrow" : `in ${days} days`;
             add({
-              message: ev.title,
-              detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
-              time: timeStr,
-              type: "dining",
-            });
-          } else if (ev.type === "activity") {
-            add({
-              message: ev.title,
-              detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
-              time: timeStr,
-              type: "activity",
-            });
-          } else if (ev.type === "transfer") {
-            add({
-              message: ev.title,
-              detail: ev.location ? `Pickup: ${ev.location} · ${timeStr}` : `Scheduled at ${timeStr}`,
-              time: timeStr,
-              type: "transfer",
+              message: `${label} ${when}`,
+              detail: dest ? `Flying to ${dest}` : `Departure at ${nextFlight.time || "TBA"}`,
+              time: nextFlight.time || "",
+              type: "flight",
             });
           }
         }
       }
-    }
+
+      AsyncStorage.setItem(SEED_KEY, today);
+    });
   }, [trips, notifications, addNotification]);
 }

@@ -565,15 +565,9 @@ function FlightDetailScreen({
 }) {
   const { data: live } = useFlightLiveData(ev.flightNum, ev.date);
 
-  let depCode = ev.depAirport?.toUpperCase() || "";
-  let arrCode = ev.arrAirport?.toUpperCase() || "";
-  if (!depCode || !arrCode) {
-    const m = (ev.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
-    if (m) {
-      if (!depCode) depCode = m[1].toUpperCase();
-      if (!arrCode) arrCode = m[2].toUpperCase();
-    }
-  }
+  const locMatch = (ev.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
+  const depCode = locMatch?.[1]?.toUpperCase() || ev.depAirport?.toUpperCase() || "";
+  const arrCode = locMatch?.[2]?.toUpperCase() || ev.arrAirport?.toUpperCase() || "";
   const depCity = IATA_CITY[depCode] || "";
   const arrCity = IATA_CITY[arrCode] || "";
   const depAirportName = IATA_AIRPORT[depCode] || "";
