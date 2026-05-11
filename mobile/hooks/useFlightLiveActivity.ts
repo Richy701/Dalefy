@@ -177,28 +177,15 @@ export function useFlightLiveActivity() {
   const activityRef = useRef<LiveActivityRef | null>(null);
 
   useEffect(() => {
-    console.log(`[FlightLA] Hook fired. iOS=${Platform.OS === "ios"} FlightTracker=${!!FlightTracker} liveActivity=${prefs.liveActivity} trips=${trips.length}`);
-
     if (Platform.OS !== "ios" || !FlightTracker) return;
 
     if (prefs.liveActivity === false) {
-      console.log("[FlightLA] Disabled by prefs");
-      try {
-        const instances = FlightTracker.getInstances();
-        for (const inst of instances) safe(() => inst.end("default"));
-      } catch {}
-      activityRef.current = null;
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
       return;
     }
-
-    // Always clean up all existing instances first
-    try {
-      const instances = FlightTracker.getInstances();
-      console.log(`[FlightLA] Cleanup: ${instances.length} existing instances`);
-      if (instances.length > 0) {
-        for (const inst of instances) safe(() => inst.end("immediate"));
-      }
-    } catch (e) { console.warn("[FlightLA] Cleanup error:", e); }
 
     // Collect today's flight events across all trips
     const todayFlights: TravelEvent[] = [];
@@ -208,16 +195,13 @@ export function useFlightLiveActivity() {
       const useTripTz = tz && deviceToday > trip.start;
       const today = todayInTz(useTripTz ? tz : undefined);
       const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
-      console.log(`[FlightLA] Trip "${trip.name}" dest=${trip.destination} deviceToday=${deviceToday} today=${today} tomorrow=${tomorrow} start=${trip.start} useTripTz=${useTripTz}`);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
-        const match = ev.date === today || ev.date === tomorrow || ev.date === deviceToday;
-        console.log(`[FlightLA]   Flight ${ev.flightNum} date=${ev.date} match=${match} time=${ev.time} duration=${ev.duration} status=${ev.status}`);
-        if (match) todayFlights.push(ev);
+        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday) {
+          todayFlights.push(ev);
+        }
       }
     }
-
-    console.log(`[FlightLA] Found ${todayFlights.length} today flights`);
 
     // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
     const now = Date.now();
@@ -230,48 +214,59 @@ export function useFlightLiveActivity() {
         ? new Date(`${ev.date}T${depMatch[1].padStart(2, "0")}:${depMatch[2]}:00`).getTime()
         : new Date(`${ev.date}T23:59:00`).getTime();
       const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
-      console.log(`[FlightLA] Checking ${ev.flightNum}: depMs=${depMs} arrMs=${arrMs} now=${now} arrived=${now > arrMs}`);
       if (now > arrMs) continue;
       bestFlight = ev;
       break;
     }
 
     if (!bestFlight) {
-      console.log("[FlightLA] No active flight found, bailing");
-      activityRef.current = null;
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
       return;
     }
 
-    console.log(`[FlightLA] Best flight: ${bestFlight.flightNum} ${bestFlight.date}`);
     const props = eventToProps(bestFlight);
-    console.log(`[FlightLA] Props: from=${props.from} to=${props.to} status=${props.status} dep=${props.departTime} arr=${props.arriveTime}`);
+    const flightRef = bestFlight;
 
-    const startActivity = (p: FlightTrackerProps) => {
-      try {
-        console.log(`[FlightLA] Starting Live Activity...`);
-        const activity = FlightTracker.start(p, `/trip/day?date=${bestFlight!.date}`);
-        activityRef.current = { eventId: bestFlight!.id, activity };
-        console.log(`[FlightLA] Started successfully!`);
-      } catch (err) {
-        console.error(`[FlightLA] FAILED to start:`, err);
+    // Delay start so UpcomingEvent hook's cleanup finishes first
+    // (both widgets share the same NativeLiveActivity type)
+    const timer = setTimeout(() => {
+      // End previous flight activity if switching flights
+      if (activityRef.current && activityRef.current.eventId !== flightRef.id) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
       }
-    };
 
-    if (props.from === "---" || props.to === "---") {
-      console.log(`[FlightLA] Missing airport codes, fetching...`);
-      if (bestFlight.flightNum) {
-        fetchAirportCodes(bestFlight.flightNum, bestFlight.date).then(codes => {
-          if (codes) { props.from = codes.from; props.to = codes.to; }
-          startActivity(props);
-        });
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.update(props));
+        return;
+      }
+
+      const doStart = (p: FlightTrackerProps) => {
+        try {
+          const activity = FlightTracker.start(p, `/trip/day?date=${flightRef.date}`);
+          activityRef.current = { eventId: flightRef.id, activity };
+        } catch {}
+      };
+
+      if (props.from === "---" || props.to === "---") {
+        if (flightRef.flightNum) {
+          fetchAirportCodes(flightRef.flightNum, flightRef.date).then(codes => {
+            if (codes) { props.from = codes.from; props.to = codes.to; }
+            doStart(props);
+          });
+        } else {
+          doStart(props);
+        }
       } else {
-        startActivity(props);
+        doStart(props);
       }
-    } else {
-      startActivity(props);
-    }
+    }, 800);
 
     return () => {
+      clearTimeout(timer);
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
