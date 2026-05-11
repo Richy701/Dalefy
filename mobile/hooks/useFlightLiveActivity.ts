@@ -265,7 +265,18 @@ export function useFlightLiveActivity() {
       }
     }
 
-    Alert.alert("FlightLA", `deviceToday=${deviceToday} flights=${todayFlights.length} trips=${trips.length}`);
+    const allFlights: string[] = [];
+    for (const trip of trips) {
+      const tz = getDestinationTz(trip.destination);
+      const useTripTz = tz && deviceToday > trip.start;
+      const today2 = todayInTz(useTripTz ? tz : undefined);
+      for (const ev of trip.events) {
+        if (ev.type === "flight") {
+          allFlights.push(`${ev.flightNum || ev.title} d=${ev.date} t=${ev.time} today=${today2} match=${ev.date === today2 || ev.date === deviceToday}`);
+        }
+      }
+    }
+    Alert.alert("FlightLA", `deviceToday=${deviceToday} flights=${todayFlights.length} trips=${trips.length}\n\nALL flights:\n${allFlights.join("\n") || "none"}`);
 
     // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
     const now = Date.now();
