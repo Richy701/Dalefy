@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
+import * as Updates from "expo-updates";
 import * as SystemUI from "expo-system-ui";
 let NavigationBar: any = null;
 try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available */ }
@@ -56,8 +57,7 @@ import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useTripReminders } from "@/hooks/useTripReminders";
 import { useTripNotifications } from "@/hooks/useTripNotifications";
-import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
-import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
+import { useLiveActivities } from "@/hooks/useLiveActivities";
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
@@ -167,9 +167,8 @@ function AppStack() {
   // Seed in-app notification list from current trip state (landed flights, today's events, etc.)
   useTripNotifications();
 
-  // Start/update/end iOS Live Activities for today's flights
-  useFlightLiveActivity();
-  useUpcomingEventLiveActivity();
+  // Start/update/end iOS Live Activities for today's flights + upcoming events
+  useLiveActivities();
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
