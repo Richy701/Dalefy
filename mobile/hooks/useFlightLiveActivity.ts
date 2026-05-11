@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
@@ -248,12 +248,10 @@ export function useFlightLiveActivity() {
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !FlightTracker) {
-      Alert.alert("FlightLA", `Skip: ios=${Platform.OS === "ios"} mod=${!!FlightTracker}`);
       return;
     }
 
     if (prefs.liveActivity === false) {
-      Alert.alert("FlightLA", "Live Activity disabled in prefs");
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
@@ -280,7 +278,6 @@ export function useFlightLiveActivity() {
       }
     }
 
-    Alert.alert("FlightLA", `deviceToday=${deviceToday} flights=${todayFlights.length} trips=${trips.length}`);
 
     // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
     const now = Date.now();
@@ -296,7 +293,6 @@ export function useFlightLiveActivity() {
     }
 
     if (!bestFlight) {
-      Alert.alert("FlightLA", `No best flight. todayFlights checked: ${todayFlights.map(e => `${e.title} date=${e.date} time=${e.time} dur=${e.duration}`).join(" | ")}`);
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
@@ -307,7 +303,6 @@ export function useFlightLiveActivity() {
     const props = eventToProps(bestFlight);
     const flightRef = bestFlight;
 
-    Alert.alert("FlightLA", `Found: ${bestFlight.title} ${bestFlight.flightNum || ""} from=${props.from} to=${props.to} date=${bestFlight.date} time=${bestFlight.time}`);
 
     // Delay start so UpcomingEvent hook's cleanup finishes first
     // (both widgets share the same NativeLiveActivity type)
@@ -327,9 +322,7 @@ export function useFlightLiveActivity() {
         try {
           const activity = FlightTracker.start(p, `/trip/day?date=${flightRef.date}`);
           activityRef.current = { eventId: flightRef.id, activity };
-          Alert.alert("FlightLA", "Started Live Activity!");
-        } catch (err: any) {
-          Alert.alert("FlightLA", `FAILED to start: ${err?.message || err}`);
+        } catch {
         }
       };
 
