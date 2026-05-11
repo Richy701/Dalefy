@@ -146,6 +146,8 @@ export function useTripNotifications() {
           if (ev.type !== "flight") continue;
           const status = ev.status?.toLowerCase() ?? "";
           if (status.includes("landed") || status.includes("arrived")) {
+            const evDt = eventDateTime(ev);
+            if (evDt && evDt.getTime() > now.getTime()) continue;
             const label = ev.flightNum || ev.title;
             const dest = ev.location ? friendlyDestination(ev.location) : null;
             add({
