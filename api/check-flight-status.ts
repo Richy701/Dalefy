@@ -56,6 +56,7 @@ export default async function handler(req: any, res: any) {
         if (result.arriveTime) rawEvents[i].endTime = result.arriveTime;
         if (result.depAirport) rawEvents[i].depAirport = result.depAirport;
         if (result.arrAirport) rawEvents[i].arrAirport = result.arrAirport;
+        if (result.aircraft) rawEvents[i].aircraft = result.aircraft;
         // Backfill location with route if it was missing
         if (result.depAirport && result.arrAirport && !rawEvents[i].location?.includes(" to ")) {
           rawEvents[i].location = `${result.depAirport} to ${result.arrAirport}`;
@@ -119,6 +120,7 @@ interface LiveFlightData {
   arriveTime: string;
   depAirport: string;
   arrAirport: string;
+  aircraft: string;
 }
 
 // ── AeroDataBox lookup ─────────────────────────────────────────────────────
@@ -159,6 +161,7 @@ async function lookupFlight(
       arriveTime: formatTime(arr.scheduledTime?.local ?? arr.actualTime?.local ?? ""),
       depAirport: dep.airport?.iata ?? "",
       arrAirport: arr.airport?.iata ?? "",
+      aircraft: f.aircraft?.model ?? "",
     };
   } catch {
     return null;
