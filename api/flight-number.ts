@@ -51,6 +51,8 @@ export default async function handler(req: any, res: any) {
         status: f.status ?? "",
         terminal: dep.terminal ?? "",
         arrTerminal: arr.terminal ?? "",
+        gate: dep.gate ?? "",
+        aircraft: f.aircraft?.model ?? "",
       };
     });
 
