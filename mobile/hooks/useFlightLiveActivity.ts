@@ -220,10 +220,15 @@ export function useFlightLiveActivity() {
     function syncActivity(ev: TravelEvent, props: FlightTrackerProps) {
       const existing = current.find(a => a.eventId === ev.id);
       const status = ev.status?.toLowerCase() ?? "";
-      const depTime = ev.time?.match(/(\d{1,2}):(\d{2})/);
-      const depDate = new Date(`${ev.date}T${depTime ? `${depTime[1].padStart(2, "0")}:${depTime[2]}` : "23:59"}:00`);
-      const hasActuallyDeparted = depDate.getTime() < Date.now();
-      const isEnded = hasActuallyDeparted && (status.includes("landed") || status.includes("arrived") || status.includes("cancel"));
+      const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+      const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+      const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
+      const depMs = depMatch
+        ? new Date(`${ev.date}T${depMatch[1].padStart(2, "0")}:${depMatch[2]}:00`).getTime()
+        : new Date(`${ev.date}T23:59:00`).getTime();
+      const arrivalMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
+      const hasActuallyArrived = Date.now() > arrivalMs;
+      const isEnded = hasActuallyArrived && (status.includes("landed") || status.includes("arrived") || status.includes("cancel"));
 
       if (existing) {
         if (isEnded) {
