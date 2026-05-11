@@ -57,7 +57,8 @@ import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useTripReminders } from "@/hooks/useTripReminders";
 import { useTripNotifications } from "@/hooks/useTripNotifications";
-import { useLiveActivities } from "@/hooks/useLiveActivities";
+import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
+import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
 /** Uses stored orgId from preferences (set during onboarding), falls back to trip org */
 function BrandBridge({ children }: { children: React.ReactNode }) {
@@ -167,8 +168,9 @@ function AppStack() {
   // Seed in-app notification list from current trip state (landed flights, today's events, etc.)
   useTripNotifications();
 
-  // Start/update/end iOS Live Activities for today's flights + upcoming events
-  useLiveActivities();
+  // Start/update/end iOS Live Activities for today's flights
+  useFlightLiveActivity();
+  useUpcomingEventLiveActivity();
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
