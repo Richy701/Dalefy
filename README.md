@@ -17,7 +17,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Mobile Preview** -- Live phone-frame preview in the workspace showing how the trip looks on mobile. Supports independent dark/light theme toggle and updates in real-time as you edit
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
-- **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
+- **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan, with choreographed success animation and trip preview
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
 - **Transport Types** -- Transfer events support sub-types (Car, Train, Bus, Ferry, Cruise) with matching icons and labels
@@ -29,6 +29,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **iOS Home Screen Widget** -- Trip countdown widget with radial progress ring, destination name, start date, and upcoming events. Dynamically scales the countdown ring based on days remaining, auto-transitions between upcoming/active/empty states via WidgetKit timeline entries (up to 30 days)
 - **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts for today's flights and updates live via the flight status cron
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
+- **Notification Center** -- Grouped by date (Today, Yesterday, Earlier) with type-based icons, unread indicators, swipe-to-archive, and empty state. Tappable rows with context menus
 - **Push Notifications** -- Real-time push notifications via Firebase Cloud Function when itineraries are published, plus flight status alerts from the cron job. Local scheduled reminders for upcoming trips, flights, hotels, and events
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
@@ -67,7 +68,15 @@ npm install
 npx expo start --ios
 ```
 
-The mobile app is traveler-facing — no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
+The mobile app is traveler-facing -- no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
+
+### Join Trip Flow
+
+Travelers join trips via three methods: 6-digit PIN, QR scan, or invite link paste. The PIN entry has focus-aware cells with teal glow, a paste button for clipboard, shake animation on invalid codes, and iOS `oneTimeCode` auto-fill. On success, a choreographed reveal plays -- blur-up hero image, centered checkmark with spring bounce, personalised welcome copy ("Welcome to {destination}"), staggered metadata pills, and a manual "See itinerary" CTA.
+
+### Shared Trip Preview
+
+The preview screen shows the trip itinerary with day-by-day summaries. Each day card displays the formatted date, "Day N" label, mint-coloured event type pills with counts, and a cleaned title preview (redundant type prefixes stripped). Tapping expands inline events. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
 
 ### Media Uploads
 
@@ -125,7 +134,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 - **Storage rules** — org admin required for logo uploads, image types only (no SVG)
 - **Email verification** — new email/password signups receive verification emails, banner shown until verified
 - **Password reset** — secure reset via Firebase sendPasswordResetEmail with rate-limit handling
-- **Trip PINs** — 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I)
+- **Trip PINs** -- 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I), focus-aware input with paste support, shake animation on error, iOS oneTimeCode auto-fill
 - **SVG sanitization** — DOMPurify with filters disabled to prevent external resource loading
 
 ## Environment Variables
