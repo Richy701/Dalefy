@@ -20,9 +20,21 @@ export default async function handler(req: any, res: any) {
     });
     const data = await resp.json();
 
-    const raw = (Array.isArray(data) ? data : [])
-      .filter((f: any) => f.codeshareStatus !== "IsCodeshared")
-      .slice(0, 8);
+    const filtered = (Array.isArray(data) ? data : [])
+      .filter((f: any) => f.codeshareStatus !== "IsCodeshared");
+
+    // Prefer non-arrived flights when duplicates exist (daily flights return yesterday + today)
+    const hasActive = filtered.some((f: any) => {
+      const s = (f.status ?? "").toLowerCase();
+      return !s.includes("arrived") && !s.includes("landed");
+    });
+    const raw = (hasActive
+      ? filtered.filter((f: any) => {
+          const s = (f.status ?? "").toLowerCase();
+          return !s.includes("arrived") && !s.includes("landed");
+        })
+      : filtered
+    ).slice(0, 8);
 
     const flights = raw.map((f: any) => {
       const dep = f.departure ?? {};
