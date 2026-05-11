@@ -207,8 +207,7 @@ export function useFlightLiveActivity() {
       const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
-        console.log(`[FlightLiveActivity] Flight: ${ev.flightNum} date=${ev.date} depAirport=${ev.depAirport} arrAirport=${ev.arrAirport} location=${ev.location}`);
-        if (ev.date === today || ev.date === tomorrow) {
+        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday) {
           todayFlights.push(ev);
         }
       }
