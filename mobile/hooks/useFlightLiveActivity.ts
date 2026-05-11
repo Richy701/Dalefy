@@ -173,6 +173,18 @@ function depTimeToMs(ev: TravelEvent): number {
   return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;
 }
 
+function yesterdayInTz(tz?: string): string {
+  const yesterday = new Date(Date.now() - 86400000);
+  if (!tz) {
+    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(yesterday);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
   let from = "";
   let to = "";
@@ -257,26 +269,18 @@ export function useFlightLiveActivity() {
       const useTripTz = tz && deviceToday > trip.start;
       const today = todayInTz(useTripTz ? tz : undefined);
       const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
+      const yesterday = yesterdayInTz(useTripTz ? tz : undefined);
+      const deviceYesterday = yesterdayInTz(undefined);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
-        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday) {
+        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday
+            || ev.date === yesterday || ev.date === deviceYesterday) {
           todayFlights.push(ev);
         }
       }
     }
 
-    const allFlights: string[] = [];
-    for (const trip of trips) {
-      const tz = getDestinationTz(trip.destination);
-      const useTripTz = tz && deviceToday > trip.start;
-      const today2 = todayInTz(useTripTz ? tz : undefined);
-      for (const ev of trip.events) {
-        if (ev.type === "flight") {
-          allFlights.push(`${ev.flightNum || ev.title} d=${ev.date} t=${ev.time} today=${today2} match=${ev.date === today2 || ev.date === deviceToday}`);
-        }
-      }
-    }
-    Alert.alert("FlightLA", `deviceToday=${deviceToday} flights=${todayFlights.length} trips=${trips.length}\n\nALL flights:\n${allFlights.join("\n") || "none"}`);
+    Alert.alert("FlightLA", `deviceToday=${deviceToday} flights=${todayFlights.length} trips=${trips.length}`);
 
     // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
     const now = Date.now();
