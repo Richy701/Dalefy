@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText } from "@phosphor-icons/react";
+import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText, Paperclip } from "@phosphor-icons/react";
 import { Linkify } from "@/lib/linkify";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
@@ -28,6 +28,7 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     travelerIds: (row.traveler_ids as string[]) ?? undefined,
     travelers: (row.travelers as Trip["travelers"]) ?? undefined,
     info: ((row.info as Trip["info"]) ?? [])?.filter(i => !i.leaderOnly),
+    documents: (row.documents as Trip["documents"]) ?? undefined,
   };
 }
 
@@ -351,22 +352,43 @@ export function SharedTripPage() {
             </div>
           )}
 
-          {trip.info && trip.info.length > 0 && (
+          {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && (
             <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="h-3.5 w-3.5 text-brand" />
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {trip.info.map(item => (
-                  <div key={item.id} className="rounded-xl p-3.5 bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a]">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-1">{item.title}</p>
-                    {item.body && (
-                      <p className="text-[11px] leading-relaxed text-slate-600 dark:text-[#999] whitespace-pre-wrap"><Linkify text={item.body} /></p>
-                    )}
+              {trip.info && trip.info.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="h-3.5 w-3.5 text-brand" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {trip.info.map(item => (
+                      <div key={item.id} className="rounded-xl p-3.5 bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a]">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-1">{item.title}</p>
+                        {item.body && (
+                          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-[#999] whitespace-pre-wrap"><Linkify text={item.body} /></p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {trip.documents && trip.documents.length > 0 && (
+                <div className={trip.info && trip.info.length > 0 ? "mt-4" : ""}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Paperclip className="h-3.5 w-3.5 text-brand" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Documents</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {trip.documents.map(doc => (
+                      <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                        <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-[#555] font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
