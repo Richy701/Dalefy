@@ -189,8 +189,8 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
           }
         }
       }).catch(err => {
-        logger.error("syncToCloud", "upsert failed:", err);
-        toast.error("Failed to sync changes to cloud");
+        console.error("[syncToCloud] upsert failed:", err);
+        toast.error(`Sync failed: ${err?.message || err}`);
       });
     }
   }
