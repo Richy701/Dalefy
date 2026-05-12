@@ -4,6 +4,8 @@ const API_BASE = "https://dalefy.vercel.app/api";
 
 interface FlightLiveData {
   gate: string;
+  arrGate: string;
+  baggageBelt: string;
   aircraft: string;
   terminal: string;
   arrTerminal: string;
@@ -32,6 +34,8 @@ export function useFlightLiveData(flightNum?: string, date?: string) {
           const f = json.flights[0];
           setData({
             gate: f.gate || "",
+            arrGate: f.arrGate || "",
+            baggageBelt: f.baggageBelt || "",
             aircraft: f.aircraft || "",
             terminal: f.terminal || "",
             arrTerminal: f.arrTerminal || "",

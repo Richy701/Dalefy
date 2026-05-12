@@ -31,6 +31,8 @@ export interface TravelEvent {
   terminal?: string;
   arrTerminal?: string;
   gate?: string;
+  arrGate?: string;
+  baggageBelt?: string;
   seatDetails?: string;
   duration?: string;
   status?: string;

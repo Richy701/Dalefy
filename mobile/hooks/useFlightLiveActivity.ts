@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Platform, AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
@@ -257,11 +257,12 @@ export function useFlightLiveActivity() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
   const activityRef = useRef<LiveActivityRef | null>(null);
+  const tripsRef = useRef(trips);
+  tripsRef.current = trips;
+  const updateRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== "ios" || !FlightTracker) {
-      return;
-    }
+    if (Platform.OS !== "ios" || !FlightTracker) return;
 
     if (prefs.liveActivity === false) {
       if (activityRef.current) {
@@ -271,76 +272,70 @@ export function useFlightLiveActivity() {
       return;
     }
 
-    // Collect today's flight events across all trips
-    const todayFlights: TravelEvent[] = [];
-    const deviceToday = todayInTz(undefined);
-    for (const trip of trips) {
-      const tz = getDestinationTz(trip.destination);
-      const useTripTz = tz && deviceToday > trip.start;
-      const today = todayInTz(useTripTz ? tz : undefined);
-      const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
-      const yesterday = yesterdayInTz(useTripTz ? tz : undefined);
-      const deviceYesterday = yesterdayInTz(undefined);
-      for (const ev of trip.events) {
-        if (ev.type !== "flight") continue;
-        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday
-            || ev.date === yesterday || ev.date === deviceYesterday) {
-          todayFlights.push(ev);
+    function update() {
+      const currentTrips = tripsRef.current;
+      const todayFlights: TravelEvent[] = [];
+      const deviceToday = todayInTz(undefined);
+      for (const trip of currentTrips) {
+        const tz = getDestinationTz(trip.destination);
+        const useTripTz = tz && deviceToday > trip.start;
+        const today = todayInTz(useTripTz ? tz : undefined);
+        const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
+        const yesterday = yesterdayInTz(useTripTz ? tz : undefined);
+        const deviceYesterday = yesterdayInTz(undefined);
+        for (const ev of trip.events) {
+          if (ev.type !== "flight") continue;
+          if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday
+              || ev.date === yesterday || ev.date === deviceYesterday) {
+            todayFlights.push(ev);
+          }
         }
       }
-    }
 
-
-    // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
-    const now = Date.now();
-    let bestFlight: TravelEvent | null = null;
-    for (const ev of todayFlights) {
-      const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
-      const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
-      const depMs = depTimeToMs(ev);
-      const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
-      if (now > arrMs) continue;
-      bestFlight = ev;
-      break;
-    }
-
-    if (!bestFlight) {
-      if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("default"));
-        activityRef.current = null;
-      }
-      return;
-    }
-
-    const props = eventToProps(bestFlight);
-    props.progress = getFlightProgress(bestFlight);
-    const flightRef = bestFlight;
-
-    // Delay start so UpcomingEvent hook's cleanup finishes first
-    // (both widgets share the same NativeLiveActivity type)
-    const timer = setTimeout(() => {
-      // End previous flight activity if switching flights
-      if (activityRef.current && activityRef.current.eventId !== flightRef.id) {
-        safe(() => activityRef.current!.activity.end("default"));
-        activityRef.current = null;
+      const now = Date.now();
+      let bestFlight: TravelEvent | null = null;
+      for (const ev of todayFlights) {
+        const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+        const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+        const depMs = depTimeToMs(ev);
+        const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
+        if (now > arrMs) continue;
+        bestFlight = ev;
+        break;
       }
 
-      if (activityRef.current) {
+      if (!bestFlight) {
+        if (activityRef.current) {
+          safe(() => activityRef.current!.activity.end("default"));
+          activityRef.current = null;
+        }
+        return;
+      }
+
+      const props = eventToProps(bestFlight);
+      props.progress = getFlightProgress(bestFlight);
+
+      if (activityRef.current && activityRef.current.eventId === bestFlight.id) {
         safe(() => activityRef.current!.activity.update(props));
         return;
       }
 
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
+
+      const flight = bestFlight;
       const doStart = (p: FlightTrackerProps) => {
         try {
-          const activity = FlightTracker.start(p, `/trip/day?date=${flightRef.date}`);
-          activityRef.current = { eventId: flightRef.id, activity };
-        } catch {
-        }
+          const activity = FlightTracker.start(p, `/trip/day?date=${flight.date}`);
+          activityRef.current = { eventId: flight.id, activity };
+        } catch {}
       };
 
       if (props.from === "---" || props.to === "---") {
-        if (flightRef.flightNum) {
-          fetchAirportCodes(flightRef.flightNum, flightRef.date).then(codes => {
+        if (flight.flightNum) {
+          fetchAirportCodes(flight.flightNum, flight.date).then(codes => {
             if (codes) { props.from = codes.from; props.to = codes.to; }
             doStart(props);
           });
@@ -350,14 +345,30 @@ export function useFlightLiveActivity() {
       } else {
         doStart(props);
       }
-    }, 800);
+    }
+
+    updateRef.current = update;
+    // Delay initial start so UpcomingEvent hook's cleanup finishes first
+    const startTimer = setTimeout(update, 800);
+
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") update();
+    });
+    const progressInterval = setInterval(update, 60000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(startTimer);
+      sub.remove();
+      clearInterval(progressInterval);
+      updateRef.current = null;
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
     };
-  }, [trips, prefs.liveActivity]);
+  }, [prefs.liveActivity]);
+
+  useEffect(() => {
+    updateRef.current?.();
+  }, [trips]);
 }
