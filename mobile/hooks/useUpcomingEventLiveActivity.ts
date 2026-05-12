@@ -183,11 +183,13 @@ export function useUpcomingEventLiveActivity() {
   const { prefs } = usePreferences();
   const activityRef = useRef<{ eventId: string; activity: any } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tripsRef = useRef(trips);
+  tripsRef.current = trips;
+  const updateRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !UpcomingEvent) return;
 
-    // If Live Activity is disabled, end our own and bail
     if (prefs.liveActivity === false) {
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
@@ -197,58 +199,43 @@ export function useUpcomingEventLiveActivity() {
     }
 
     function update() {
-      // Collect today's non-flight events across all trips, sorted by time
-      // Use destination timezone so events match local time at the destination
+      const currentTrips = tripsRef.current;
       const todayEvents: TravelEvent[] = [];
-      let skipped = 0;
       let tz: string | undefined;
-
       const deviceToday = nowInTz(undefined).dateStr;
 
-      for (const trip of trips) {
+      for (const trip of currentTrips) {
         const tripTz = getDestinationTz(trip.destination);
-        // Only use destination TZ after the start day — on departure day the traveler is still at origin
         const useTripTz = tripTz && deviceToday > trip.start;
-        const { dateStr: todayStr, minutes: now } = nowInTz(useTripTz ? tripTz : undefined);
+        const { dateStr: todayStr } = nowInTz(useTripTz ? tripTz : undefined);
 
         for (const ev of trip.events) {
-          if (ev.date !== todayStr) { skipped++; continue; }
-          if (ev.type === "flight") continue; // handled by FlightTracker
+          if (ev.date !== todayStr) continue;
+          if (ev.type === "flight") continue;
           const mins = timeToMinutes(ev.time);
-          if (mins < 0) continue; // skip events with unparseable times
+          if (mins < 0) continue;
           todayEvents.push(ev);
           if (!tz && useTripTz) tz = tripTz;
         }
       }
 
-      const { dateStr: todayStr, minutes: now } = nowInTz(tz);
-      console.log(`[UpcomingEventLA] update() today=${todayStr} now=${now}min tz=${tz ?? "device"} found=${todayEvents.length} skipped=${skipped}`);
-
+      const { minutes: now } = nowInTz(tz);
       todayEvents.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
-      // Find the next event within a 90-min window: up to 60 min ahead, 30 min behind
       const upcoming = todayEvents.find(ev => {
         const mins = timeToMinutes(ev.time);
         return mins > now - 30 && mins <= now + 60;
       });
 
-      // End our own previous activity before starting the next one
-      if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("immediate"));
-        activityRef.current = null;
-      }
-
-      // Find next event outside the window to schedule a wake-up when it enters
-      const nextOutsideWindow = todayEvents.find(ev => {
-        const mins = timeToMinutes(ev.time);
-        return mins > now + 60;
-      });
+      const nextOutsideWindow = todayEvents.find(ev => timeToMinutes(ev.time) > now + 60);
 
       if (timerRef.current) clearTimeout(timerRef.current);
 
       if (!upcoming) {
-        activityRef.current = null;
-        // Wake up when the next event enters the 60-min look-ahead, or at midnight
+        if (activityRef.current) {
+          safe(() => activityRef.current!.activity.end("immediate"));
+          activityRef.current = null;
+        }
         const minsToMid = minutesUntilMidnight(tz);
         const wakeIn = nextOutsideWindow
           ? Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now)
@@ -257,34 +244,46 @@ export function useUpcomingEventLiveActivity() {
         return;
       }
 
-      const props = eventToProps(upcoming);
+      // Same event still active — just schedule next check, don't restart
+      if (activityRef.current && activityRef.current.eventId === upcoming.id) {
+        const eventMins = timeToMinutes(upcoming.time);
+        const minsUntilPast = eventMins + 30 - now;
+        const minsToMid = minutesUntilMidnight(tz);
+        const candidates = [minsToMid + 1];
+        if (minsUntilPast > 0) candidates.push(minsUntilPast);
+        else candidates.push(1);
+        if (nextOutsideWindow) candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
+        timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
+        return;
+      }
 
-      // Start fresh activity for the current event
-      try {
-        const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
-        activityRef.current = { eventId: upcoming.id, activity };
-        console.log(`[UpcomingEventLA] Started: "${upcoming.title}" date=${upcoming.date}`);
-      } catch (err) {
-        console.warn("[UpcomingEventLiveActivity] Failed to start:", err);
+      // Different event — end old, start new
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("immediate"));
         activityRef.current = null;
       }
 
-      // Schedule next check: event window expiry, next event entering window, or midnight
+      const props = eventToProps(upcoming);
+      try {
+        const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
+        activityRef.current = { eventId: upcoming.id, activity };
+      } catch {
+        activityRef.current = null;
+      }
+
       const eventMins = timeToMinutes(upcoming.time);
       const minsUntilPast = eventMins + 30 - now;
       const minsToMid = minutesUntilMidnight(tz);
       const candidates = [minsToMid + 1];
       if (minsUntilPast > 0) candidates.push(minsUntilPast);
-      else candidates.push(1); // window already expired, re-check in 1 min to dismiss
-      if (nextOutsideWindow) {
-        candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
-      }
+      else candidates.push(1);
+      if (nextOutsideWindow) candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
       timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
     }
 
+    updateRef.current = update;
     update();
 
-    // Re-check when app comes to foreground
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") update();
     });
@@ -292,10 +291,15 @@ export function useUpcomingEventLiveActivity() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       sub.remove();
+      updateRef.current = null;
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
     };
-  }, [trips, prefs.liveActivity]);
+  }, [prefs.liveActivity]);
+
+  useEffect(() => {
+    updateRef.current?.();
+  }, [trips]);
 }
