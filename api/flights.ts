@@ -1,4 +1,5 @@
 import { validateIata, validateDate, requireRapidApi } from "./_validate.js";
+import { airportTz } from "./_airportTz.js";
 
 export default async function handler(req: any, res: any) {
   const { from, to, date } = req.query as Record<string, string>;
@@ -50,6 +51,8 @@ export default async function handler(req: any, res: any) {
         logo: "",
         status: f.status ?? "",
         terminal: mov.terminal ?? "",
+        depTz: airportTz(from) ?? "",
+        arrTz: airportTz(mov.airport?.iata ?? to) ?? "",
       };
     });
 

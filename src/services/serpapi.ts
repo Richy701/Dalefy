@@ -13,6 +13,9 @@ export interface FlightResult {
   logo: string;
   status?: string;
   terminal?: string;
+  arrTerminal?: string;
+  depTz?: string;
+  arrTz?: string;
 }
 
 export interface HotelResult {

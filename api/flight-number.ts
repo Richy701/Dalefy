@@ -1,4 +1,5 @@
 import { validateFlightNum, validateDate, requireRapidApi, scoreAeroFlight } from "./_validate.js";
+import { airportTz } from "./_airportTz.js";
 
 export default async function handler(req: any, res: any) {
   const { number, date } = req.query as Record<string, string>;
@@ -69,6 +70,8 @@ export default async function handler(req: any, res: any) {
         arrGate: arr.gate ?? "",
         baggageBelt: arr.baggageBelt ?? "",
         aircraft: f.aircraft?.model ?? "",
+        depTz: airportTz(dep.airport?.iata ?? "") ?? "",
+        arrTz: airportTz(arr.airport?.iata ?? "") ?? "",
       };
     });
 

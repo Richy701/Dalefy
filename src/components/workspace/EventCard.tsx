@@ -2,6 +2,7 @@ import { memo } from "react";
 import { AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor, MapPin, Clock, DotsThreeVertical, Gear, Trash, Copy, ArrowRight, Image as ImageIcon, Video, Paperclip } from "@phosphor-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { TravelEvent } from "@/types";
+import { tzAbbr } from "@/lib/timezone";
 
 interface AssignedPerson { initials: string; name: string }
 
@@ -172,7 +173,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: {
             <AirplaneTilt className="h-3.5 w-3.5" />
           </div>
           <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time.split(" ")[0]}</span>
-          <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>
+          <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.depTz ? tzAbbr(event.depTz, event.date) : event.time.split(" ")[1]}</span>
         </div>
 
         {/* Route visualization */}

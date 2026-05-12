@@ -68,7 +68,9 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
       supplier: f.airline,
       status: f.status || undefined,
       terminal: f.terminal || undefined,
-      arrTerminal: (f as any).arrTerminal || undefined,
+      arrTerminal: f.arrTerminal || undefined,
+      depTz: f.depTz || undefined,
+      arrTz: f.arrTz || undefined,
     });
   };
 

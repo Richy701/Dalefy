@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
+import { tzAbbr } from "@/lib/timezone";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -282,8 +283,8 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
-                {ev.time}
-                {ev.endTime && <> — {ev.endTime}</>}
+                {ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : ""}
+                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : ""}</>}
               </span>
             )}
             {ev.location && (
