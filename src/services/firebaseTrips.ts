@@ -541,7 +541,7 @@ function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
 }
 
 function tripToDoc(trip: Trip): Record<string, unknown> {
-  return stripUndefined({
+  const raw = stripUndefined({
     name: trip.name,
     attendees: trip.attendees ?? "",
     destination: trip.destination ?? null,
@@ -553,7 +553,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     end_date: trip.end,
     status: trip.status,
     image: trip.image ?? "",
-    events: (trip.events ?? []).map(e => JSON.parse(JSON.stringify(e))),
+    events: trip.events ?? [],
     media: trip.media ?? null,
     short_code: trip.shortCode ?? null,
     organization_id: trip.organizationId ?? null,
@@ -564,6 +564,9 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     documents: trip.documents ?? null,
     published_snapshot: trip.publishedSnapshot ?? null,
   });
+  // Deep-clean: Firestore rejects undefined at any nesting depth.
+  // JSON round-trip drops undefined values and deep-clones everything.
+  return JSON.parse(JSON.stringify(raw));
 }
 
 function docToTrip(id: string, data: Record<string, unknown>): Trip {
