@@ -53,6 +53,7 @@ import { ActivitySearch } from "@/components/workspace/ActivitySearch";
 import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
 import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
+import { lookupFlight } from "@/services/serpapi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
@@ -187,6 +188,50 @@ export function WorkspacePage() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [trip, searchParams, setSearchParams]);
+
+  // On-demand flight status check: refresh flights within 48 hours of now
+  const flightCheckRan = useRef(false);
+  useEffect(() => {
+    if (!trip || flightCheckRan.current) return;
+    const now = Date.now();
+    const H48 = 48 * 60 * 60 * 1000;
+    const upcomingFlights = trip.events.filter(ev => {
+      if (ev.type !== "flight" || !ev.flightNum || !ev.date) return false;
+      const evTime = new Date(`${ev.date}T${ev.time || "12:00"}`).getTime();
+      return evTime > now - H48 && evTime < now + H48;
+    });
+    if (upcomingFlights.length === 0) return;
+    flightCheckRan.current = true;
+
+    (async () => {
+      for (const ev of upcomingFlights) {
+        try {
+          const results = await lookupFlight(ev.flightNum!, ev.date);
+          const match = results[0];
+          if (!match) continue;
+
+          const updates: Partial<TravelEvent> = {};
+          if (match.status && match.status !== ev.status) updates.status = match.status;
+          if (match.terminal && match.terminal !== ev.terminal) updates.terminal = match.terminal;
+          if (match.arrTerminal && match.arrTerminal !== ev.arrTerminal) updates.arrTerminal = match.arrTerminal;
+          if (match.gate && match.gate !== ev.gate) updates.gate = match.gate;
+          if (match.arrGate && match.arrGate !== ev.arrGate) updates.arrGate = match.arrGate;
+          if (match.baggageBelt && match.baggageBelt !== ev.baggageBelt) updates.baggageBelt = match.baggageBelt;
+          if (match.departTime && match.departTime !== ev.time) updates.time = match.departTime;
+          if (match.arriveTime && match.arriveTime !== ev.endTime) updates.endTime = match.arriveTime;
+          if (match.aircraft && match.aircraft !== ev.aircraft) updates.aircraft = match.aircraft;
+          if (match.depTz && match.depTz !== ev.depTz) updates.depTz = match.depTz;
+          if (match.arrTz && match.arrTz !== ev.arrTz) updates.arrTz = match.arrTz;
+
+          if (Object.keys(updates).length > 0) {
+            updateEvent(trip.id, { ...ev, ...updates });
+          }
+        } catch {
+          // best-effort, don't block the page
+        }
+      }
+    })();
+  }, [trip, updateEvent]);
 
   const [showMap, setShowMap] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
