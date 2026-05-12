@@ -305,6 +305,7 @@ export function WorkspacePage() {
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
   const [tripDocDragOver, setTripDocDragOver] = useState(false);
   const tripDocInputRef = useRef<HTMLInputElement>(null);
+  const tripDocInputRef2 = useRef<HTMLInputElement>(null);
   const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -1306,7 +1307,8 @@ export function WorkspacePage() {
                       {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0) || !isViewer) && (
                         <div
                           className={`group/info rounded-2xl bg-white dark:bg-[#111111] border overflow-hidden transition-colors ${tripDocDragOver ? "border-brand bg-brand/5 dark:bg-brand/5" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"}`}
-                          onDragOver={(e) => { e.preventDefault(); setTripDocDragOver(true); }}
+                          onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setTripDocDragOver(true); }}
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setTripDocDragOver(false); }}
                           onDrop={handleTripDocDrop}
                         >
@@ -2774,10 +2776,10 @@ export function WorkspacePage() {
                     ))}
                   </div>
                 )}
-                <input ref={tripDocInputRef} type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={handleTripDocInput} className="hidden" />
+                <input ref={tripDocInputRef2} type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={handleTripDocInput} className="hidden" />
                 <button
                   type="button"
-                  onClick={() => tripDocInputRef.current?.click()}
+                  onClick={() => tripDocInputRef2.current?.click()}
                   className="w-full py-4 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
                 >
                   <Upload className="h-5 w-5 text-slate-300 dark:text-[#333]" />

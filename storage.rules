@@ -53,6 +53,14 @@ service firebase.storage {
         && request.resource.contentType.matches('(image|video)/.*');
     }
 
+    // Trip-level documents (PDFs, vouchers, etc.)
+    match /trips/{tripId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 50 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
+
     // Deny everything else by default
     match /{allPaths=**} {
       allow read, write: if false;
