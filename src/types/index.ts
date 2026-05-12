@@ -119,6 +119,7 @@ export interface TripTask {
 export interface PublishedSnapshot {
   events: TravelEvent[];
   info?: TripInfo[];
+  documents?: EventDocument[];
   organizer?: TripOrganizer;
   image: string;
   name: string;
@@ -152,6 +153,7 @@ export interface Trip {
   shortCode?: string;
   organizer?: TripOrganizer;
   info?: TripInfo[];
+  documents?: EventDocument[];
   tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
 }

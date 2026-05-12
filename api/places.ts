@@ -63,14 +63,15 @@ export default async function handler(req: any, res: any) {
 
     const places = data.places ?? [];
 
+    const photoUrl = (photoName: string) =>
+      `/api/image-proxy?url=${encodeURIComponent(`https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`)}`;
+
     if (type === "activities") {
       const activities = places.map((a: any) => ({
         name: a.displayName?.text ?? "",
         rating: a.rating ?? 0,
         reviews: a.userRatingCount ?? 0,
-        image: a.photos?.[0]?.name
-          ? `https://places.googleapis.com/v1/${a.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`
-          : "",
+        image: a.photos?.[0]?.name ? photoUrl(a.photos[0].name) : "",
         address: a.formattedAddress ?? "",
         type: (a.primaryType ?? "").replace(/_/g, " "),
         openStatus: a.currentOpeningHours?.openNow ? "Open" : "",
@@ -83,9 +84,7 @@ export default async function handler(req: any, res: any) {
         name: r.displayName?.text ?? "",
         rating: r.rating ?? 0,
         reviews: r.userRatingCount ?? 0,
-        image: r.photos?.[0]?.name
-          ? `https://places.googleapis.com/v1/${r.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`
-          : "",
+        image: r.photos?.[0]?.name ? photoUrl(r.photos[0].name) : "",
         address: r.formattedAddress ?? "",
         priceTag: PRICE_MAP[r.priceLevel] ?? "",
         cuisines: r.primaryType ? [(r.primaryType as string).replace(/_/g, " ")] : [],
@@ -99,9 +98,7 @@ export default async function handler(req: any, res: any) {
       name: h.displayName?.text ?? "",
       rating: h.rating ?? 0,
       reviews: h.userRatingCount ?? 0,
-      image: h.photos?.[0]?.name
-        ? `https://places.googleapis.com/v1/${h.photos[0].name}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`
-        : "",
+      image: h.photos?.[0]?.name ? photoUrl(h.photos[0].name) : "",
       checkin: check_in,
       checkout: check_out,
       amenities: [] as string[],

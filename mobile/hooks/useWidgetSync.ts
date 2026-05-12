@@ -2,62 +2,13 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-
-function timeToMinutes(t: string): number {
-  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
-  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return 720;
-  let h = parseInt(m[1]);
-  const min = parseInt(m[2]);
-  const pm = m[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
-  return h * 60 + min;
-}
+import { getDestinationTz, todayInTz, timeToMinutes } from "@/shared/timezones";
 
 let TripCountdown: any = null;
 try {
   TripCountdown = require("@/widgets/TripCountdown").default;
 } catch {
   /* widget module not available in Expo Go or Android */
-}
-
-const DEST_TZ: Record<string, string> = {
-  seoul: "Asia/Seoul", korea: "Asia/Seoul",
-  tokyo: "Asia/Tokyo", japan: "Asia/Tokyo",
-  bangkok: "Asia/Bangkok", thailand: "Asia/Bangkok",
-  bali: "Asia/Makassar", singapore: "Asia/Singapore",
-  dubai: "Asia/Dubai",
-  istanbul: "Europe/Istanbul", turkey: "Europe/Istanbul",
-  london: "Europe/London", paris: "Europe/Paris", rome: "Europe/Rome",
-  nairobi: "Africa/Nairobi", kenya: "Africa/Nairobi",
-  "new york": "America/New_York", "los angeles": "America/Los_Angeles",
-  sydney: "Australia/Sydney", amalfi: "Europe/Rome",
-  iceland: "Atlantic/Reykjavik", "cape town": "Africa/Johannesburg",
-  cancun: "America/Cancun", "hong kong": "Asia/Hong_Kong",
-  maldives: "Indian/Maldives", fiji: "Pacific/Fiji",
-};
-
-function getDestinationTz(destination?: string): string | undefined {
-  if (!destination) return undefined;
-  const lower = destination.toLowerCase();
-  for (const [key, tz] of Object.entries(DEST_TZ)) {
-    if (lower.includes(key)) return tz;
-  }
-  return undefined;
-}
-
-function todayInTz(tz?: string): string {
-  const now = new Date();
-  if (!tz) {
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
-  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function daysUntil(dateStr: string) {

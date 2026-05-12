@@ -17,10 +17,13 @@ export default async function handler(req: any, res: any) {
 
   try {
     // AeroDataBox limits to 12hr windows, so fetch two halves of the day
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const [r1, r2] = await Promise.all([
-      fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T00:00/${date}T11:59?direction=Departure`, { headers }),
-      fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T12:00/${date}T23:59?direction=Departure`, { headers }),
+      fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T00:00/${date}T11:59?direction=Departure`, { headers, signal: controller.signal }),
+      fetch(`https://aerodatabox.p.rapidapi.com/flights/airports/iata/${from}/${date}T12:00/${date}T23:59?direction=Departure`, { headers, signal: controller.signal }),
     ]);
+    clearTimeout(timeout);
 
     const d1 = r1.ok ? await r1.json() : {};
     const d2 = r2.ok ? await r2.json() : {};

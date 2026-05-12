@@ -4,6 +4,7 @@ import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, Notification } from "@/shared/types";
+import { getDepAirportTz, getDestinationTz, getUtcOffsetMins, todayInTz, tomorrowInTz } from "@/shared/timezones";
 
 const SEED_KEY = "daf-notif-seeded";
 
@@ -48,17 +49,6 @@ function friendlyDestination(location: string): string | null {
   return null;
 }
 
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function tomorrowStr(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function daysUntil(dateStr: string): number {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -82,52 +72,13 @@ function parseTime(time: string): { hours: number; mins: number } | null {
   return { hours, mins };
 }
 
-const IATA_TZ: Record<string, string> = {
-  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
-  CDG: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
-  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
-  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
-  KEF: "Atlantic/Reykjavik",
-  JFK: "America/New_York", EWR: "America/New_York", LAX: "America/Los_Angeles",
-  ORD: "America/Chicago", MIA: "America/New_York", SFO: "America/Los_Angeles",
-  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
-  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
-  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", ICN: "Asia/Seoul", DPS: "Asia/Makassar",
-  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
-  ACC: "Africa/Accra", NBO: "Africa/Nairobi", MLE: "Indian/Maldives",
-};
-
-function getDepAirportTz(ev: TravelEvent): string | undefined {
-  const code = ev.depAirport?.toUpperCase()
-    || ev.location?.match(/^([A-Z]{3})\s+to\s+/i)?.[1]?.toUpperCase();
-  return code ? IATA_TZ[code] : undefined;
-}
-
-function getUtcOffsetMins(tz: string, dateStr: string): number {
-  try {
-    const d = new Date(dateStr + "T12:00:00Z");
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(d);
-    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
-    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
-    const utcDay = d.getUTCDate();
-    let offsetMins = (localH * 60 + localM) - (12 * 60);
-    if (localDay > utcDay) offsetMins += 1440;
-    else if (localDay < utcDay) offsetMins -= 1440;
-    return offsetMins;
-  } catch { return 0; }
-}
-
-function eventDateTime(ev: TravelEvent): Date | null {
+function eventDateTime(ev: TravelEvent, tripDestTz?: string): Date | null {
   const d = new Date(ev.date);
   if (isNaN(d.getTime())) return null;
   if (ev.time) {
     const t = parseTime(ev.time);
     if (!t) return d;
-    const tz = ev.type === "flight" ? getDepAirportTz(ev) : undefined;
+    const tz = ev.type === "flight" ? getDepAirportTz(ev) : tripDestTz;
     if (tz) {
       const offsetMins = getUtcOffsetMins(tz, ev.date);
       const utcMs = new Date(`${ev.date}T${String(t.hours).padStart(2, "0")}:${String(t.mins).padStart(2, "0")}:00Z`).getTime() - offsetMins * 60000;
@@ -153,9 +104,9 @@ export function useTripNotifications() {
     if (seeded.current || trips.length === 0) return;
     seeded.current = true;
 
-    const today = todayStr();
+    const deviceToday = todayInTz(undefined);
     AsyncStorage.getItem(SEED_KEY).then(lastSeeded => {
-      if (lastSeeded === today) return;
+      if (lastSeeded === deviceToday) return;
       if (notifications.length > 0) clearAll();
 
       const now = new Date();
@@ -168,6 +119,8 @@ export function useTripNotifications() {
       };
 
       for (const trip of trips) {
+        const tripDestTz = getDestinationTz(trip.destination);
+        const today = tripDestTz && deviceToday > trip.start ? todayInTz(tripDestTz) : deviceToday;
         const isActive = trip.start <= today && trip.end >= today;
         const startedToday = trip.start === today;
 
@@ -196,7 +149,7 @@ export function useTripNotifications() {
           if (ev.type !== "flight") continue;
           const status = ev.status?.toLowerCase() ?? "";
           if (status.includes("landed") || status.includes("arrived")) {
-            const evDt = eventDateTime(ev);
+            const evDt = eventDateTime(ev, tripDestTz);
             if (evDt && evDt.getTime() > now.getTime()) continue;
             const label = ev.flightNum || ev.title;
             const dest = ev.location ? friendlyDestination(ev.location) : null;
@@ -217,7 +170,7 @@ export function useTripNotifications() {
             });
           }
           if (ev.date === today) {
-            const evDt = eventDateTime(ev);
+            const evDt = eventDateTime(ev, tripDestTz);
             if (evDt && evDt.getTime() > now.getTime()) {
               const label = ev.flightNum || ev.title;
               const dest = ev.location ? friendlyDestination(ev.location) : null;
@@ -234,7 +187,7 @@ export function useTripNotifications() {
         if (isActive) {
           const todayEvents = trip.events.filter(ev => ev.date === today);
           for (const ev of todayEvents) {
-            const evTime = eventDateTime(ev);
+            const evTime = eventDateTime(ev, tripDestTz);
             if (!evTime || evTime.getTime() < now.getTime()) continue;
 
             const timeStr = ev.time || "";
@@ -271,7 +224,7 @@ export function useTripNotifications() {
         }
 
         // ── Tomorrow preview ──
-        const tomorrow = tomorrowStr();
+        const tomorrow = tripDestTz && deviceToday > trip.start ? tomorrowInTz(tripDestTz) : tomorrowInTz(undefined);
         if (tomorrow <= trip.end) {
           const tomorrowEvents = trip.events.filter(ev => ev.date === tomorrow);
           if (tomorrowEvents.length > 0) {
@@ -306,7 +259,7 @@ export function useTripNotifications() {
         }
       }
 
-      AsyncStorage.setItem(SEED_KEY, today);
+      AsyncStorage.setItem(SEED_KEY, deviceToday);
     });
   }, [trips, notifications, addNotification]);
 }

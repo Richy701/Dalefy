@@ -258,6 +258,8 @@ export function WorkspacePage() {
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
+  const [tripDocDragOver, setTripDocDragOver] = useState(false);
+  const tripDocInputRef = useRef<HTMLInputElement>(null);
   const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
@@ -405,6 +407,7 @@ export function WorkspacePage() {
     const snapshot = {
       events: trip.events,
       info: trip.info,
+      documents: trip.documents,
       organizer: trip.organizer,
       image: trip.image,
       name: trip.name,
@@ -753,6 +756,56 @@ export function WorkspacePage() {
     updateTrip(trip.id, { info: cleaned.length > 0 ? cleaned : undefined });
     setEditInfoOpen(false);
     toast.success("Information updated");
+  };
+
+  const TRIP_DOC_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,.csv,.ppt,.pptx,image/*";
+
+  const handleTripDocFiles = async (files: File[]) => {
+    if (!files.length || !trip) return;
+    if (demoGate()) return;
+    const MAX_SIZE = isFirebaseConfigured() && user?.id !== "demo" ? 50 * 1024 * 1024 : MAX_DOC_BYTES;
+    const oversized = files.filter(f => f.size > MAX_SIZE);
+    if (oversized.length) {
+      toast.error(`${oversized.length} file(s) over ${MAX_SIZE >= 50 * 1024 * 1024 ? "50MB" : "8MB"} were skipped`);
+    }
+    const accepted = files.filter(f => f.size <= MAX_SIZE);
+    if (!accepted.length) return;
+    const uploads = accepted.map(async (file) => {
+      const ext = file.name.split(".").pop();
+      const path = `trips/${tripId}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const url = await uploadToStorage(file, path);
+      return {
+        id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        url,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+    });
+    try {
+      const newDocs = await Promise.all(uploads);
+      updateTrip(trip.id, { documents: [...(trip.documents || []), ...newDocs] });
+      toast.success(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploaded`);
+    } catch { toast.error("Document upload failed"); }
+  };
+
+  const handleTripDocDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setTripDocDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleTripDocFiles(files);
+  };
+
+  const handleTripDocInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    handleTripDocFiles(files);
+    e.target.value = "";
+  };
+
+  const handleRemoveTripDoc = (docId: string) => {
+    if (!trip || demoGate()) return;
+    updateTrip(trip.id, { documents: (trip.documents || []).filter(d => d.id !== docId) });
   };
 
   const handleOpenEditTrip = () => {
@@ -1160,7 +1213,7 @@ export function WorkspacePage() {
                 <div className="px-3 sm:px-4 lg:px-10 pt-6 sm:pt-10 pb-32 w-full relative">
 
                   {/* ── Organizer & Info strip (Travefy-inspired) ── */}
-                  {(trip.organizer?.name || (trip.info && trip.info.length > 0)) && (
+                  {(trip.organizer?.name || (trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0) || !isViewer) && (
                     <div className="mb-8 space-y-3">
                       {/* Organizer contact card */}
                       {trip.organizer?.name && (
@@ -1205,18 +1258,26 @@ export function WorkspacePage() {
                       )}
 
                       {/* Information & Documents card */}
-                      {trip.info && trip.info.length > 0 && (
-                        <div className="group/info rounded-2xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden hover:border-brand/30 transition-colors">
+                      {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0) || !isViewer) && (
+                        <div
+                          className={`group/info rounded-2xl bg-white dark:bg-[#111111] border overflow-hidden transition-colors ${tripDocDragOver ? "border-brand bg-brand/5 dark:bg-brand/5" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"}`}
+                          onDragOver={(e) => { e.preventDefault(); setTripDocDragOver(true); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setTripDocDragOver(false); }}
+                          onDrop={handleTripDocDrop}
+                        >
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-3.5 w-3.5 text-brand" />
                               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</span>
-                              <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">{trip.info.length}</span>
+                              <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center gap-1.5 text-slate-400 dark:text-[#555] hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
                               </button>
                             </div>
+
+                            {/* Info pages */}
+                            {trip.info && trip.info.length > 0 && (
                             <div className="space-y-2">
                               {trip.info.map(item => {
                                 const isExpanded = expandedInfoIds.has(item.id);
@@ -1247,6 +1308,55 @@ export function WorkspacePage() {
                                 );
                               })}
                             </div>
+                            )}
+
+                            {/* Trip-level documents */}
+                            {trip.documents && trip.documents.length > 0 && (
+                              <div className={trip.info && trip.info.length > 0 ? "mt-4" : ""}>
+                                {trip.info && trip.info.length > 0 && (
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Documents</span>
+                                    <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                                  </div>
+                                )}
+                                <div className="space-y-1.5">
+                                  {trip.documents.map(doc => (
+                                    <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                      <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                                        <Paperclip className="h-3.5 w-3.5 text-brand" />
+                                      </div>
+                                      <button type="button" onClick={() => handleOpenDocument(doc.url)} className="min-w-0 flex-1 text-left">
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-[#555] font-medium">{formatFileSize(doc.size)}</p>
+                                      </button>
+                                      {!isViewer && (
+                                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                                          <Trash className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Drop zone */}
+                            {!isViewer && (
+                              <div className={`${(trip.info?.length || trip.documents?.length) ? "mt-4" : ""}`}>
+                                <input ref={tripDocInputRef} type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={handleTripDocInput} className="hidden" />
+                                <button
+                                  type="button"
+                                  onClick={() => tripDocInputRef.current?.click()}
+                                  className={`w-full py-4 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center gap-1.5 ${tripDocDragOver ? "border-brand bg-brand/10 dark:bg-brand/10" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808]"}`}
+                                >
+                                  <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-slate-300 dark:text-[#333]"}`} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">
+                                    {tripDocDragOver ? "Drop to upload" : "Drop files here or click to upload"}
+                                  </span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -2595,6 +2705,40 @@ export function WorkspacePage() {
                   ))}
                 </SortableContext>
               </DndContext>
+
+              {/* Documents section inside edit dialog */}
+              <div className="mt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Documents</span>
+                  <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                </div>
+                {trip.documents && trip.documents.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    {trip.documents.map(doc => (
+                      <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                        <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
+                        <button type="button" onClick={() => handleOpenDocument(doc.url)} className="min-w-0 flex-1 text-left">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white truncate block">{doc.name}</span>
+                        </button>
+                        <span className="text-[10px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                          <Trash className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input ref={tripDocInputRef} type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={handleTripDocInput} className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => tripDocInputRef.current?.click()}
+                  className="w-full py-4 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
+                >
+                  <Upload className="h-5 w-5 text-slate-300 dark:text-[#333]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">Drop files here or click to upload</span>
+                </button>
+              </div>
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
