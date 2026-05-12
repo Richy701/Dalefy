@@ -126,41 +126,25 @@ function FlightTrackerActivity(
         <VStack>
           <HStack alignment="center">
             {doneW > 0 ? (
-              <VStack
+              <HStack
                 modifiers={[
-                  frame({ width: doneW, height: 12 }),
+                  frame({ width: doneW, height: 3 }),
+                  background(teal, shapes.capsule()),
                 ]}
               >
                 <Spacer />
-                <HStack
-                  modifiers={[
-                    frame({ height: 3 }),
-                    background(teal, shapes.capsule()),
-                  ]}
-                >
-                  <Spacer />
-                </HStack>
-                <Spacer />
-              </VStack>
+              </HStack>
             ) : null}
             <Image systemName="airplane" size={12} color={teal} />
             {todoW > 0 ? (
-              <VStack
+              <HStack
                 modifiers={[
-                  frame({ width: todoW, height: 12 }),
+                  frame({ width: todoW, height: 3 }),
+                  background("#ffffff30", shapes.capsule()),
                 ]}
               >
                 <Spacer />
-                <HStack
-                  modifiers={[
-                    frame({ height: 3 }),
-                    background("#ffffff30", shapes.capsule()),
-                  ]}
-                >
-                  <Spacer />
-                </HStack>
-                <Spacer />
-              </VStack>
+              </HStack>
             ) : null}
           </HStack>
           {props.duration ? (
@@ -264,41 +248,25 @@ function FlightTrackerActivity(
     <VStack modifiers={[padding({ all: 4 })]}>
       <HStack alignment="center">
         {doneW > 0 ? (
-          <VStack
+          <HStack
             modifiers={[
-              frame({ width: Math.round(doneW * 0.5), height: 9 }),
+              frame({ width: Math.round(doneW * 0.5), height: 2 }),
+              background(teal, shapes.capsule()),
             ]}
           >
             <Spacer />
-            <HStack
-              modifiers={[
-                frame({ height: 2 }),
-                background(teal, shapes.capsule()),
-              ]}
-            >
-              <Spacer />
-            </HStack>
-            <Spacer />
-          </VStack>
+          </HStack>
         ) : null}
         <Image systemName="airplane" size={9} color={teal} />
         {todoW > 0 ? (
-          <VStack
+          <HStack
             modifiers={[
-              frame({ width: Math.round(todoW * 0.5), height: 9 }),
+              frame({ width: Math.round(todoW * 0.5), height: 2 }),
+              background("#ffffff30", shapes.capsule()),
             ]}
           >
             <Spacer />
-            <HStack
-              modifiers={[
-                frame({ height: 2 }),
-                background("#ffffff30", shapes.capsule()),
-              ]}
-            >
-              <Spacer />
-            </HStack>
-            <Spacer />
-          </VStack>
+          </HStack>
         ) : null}
       </HStack>
       <Text modifiers={[font({ size: 10, weight: "semibold" }), foregroundStyle(hierarchicalTertiary)]}>
