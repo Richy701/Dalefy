@@ -14,6 +14,10 @@ export interface FlightResult {
   status?: string;
   terminal?: string;
   arrTerminal?: string;
+  gate?: string;
+  arrGate?: string;
+  baggageBelt?: string;
+  aircraft?: string;
   depTz?: string;
   arrTz?: string;
 }
