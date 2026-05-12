@@ -13,12 +13,16 @@ export default async function handler(req: any, res: any) {
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${number}/${date}`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const resp = await fetch(url, {
       headers: {
         "x-rapidapi-key": key,
         "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     const data = await resp.json();
 
     const filtered = (Array.isArray(data) ? data : [])

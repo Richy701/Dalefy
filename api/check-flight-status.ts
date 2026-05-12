@@ -145,12 +145,16 @@ async function lookupFlight(
   const url = `https://aerodatabox.p.rapidapi.com/flights/number/${clean}/${date}`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const resp = await fetch(url, {
       headers: {
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!resp.ok) return null;
     const data = await resp.json();
 

@@ -45,120 +45,16 @@ async function fetchAirportCodes(flightNum: string, date: string): Promise<{ fro
   }
 }
 
-/** Map destination string to IANA timezone. */
-const DEST_TZ: Record<string, string> = {
-  seoul: "Asia/Seoul",
-  korea: "Asia/Seoul",
-  tokyo: "Asia/Tokyo",
-  japan: "Asia/Tokyo",
-  bangkok: "Asia/Bangkok",
-  thailand: "Asia/Bangkok",
-  bali: "Asia/Makassar",
-  singapore: "Asia/Singapore",
-  dubai: "Asia/Dubai",
-  istanbul: "Europe/Istanbul",
-  turkey: "Europe/Istanbul",
-  antalya: "Europe/Istanbul",
-  london: "Europe/London",
-  paris: "Europe/Paris",
-  rome: "Europe/Rome",
-  nairobi: "Africa/Nairobi",
-  kenya: "Africa/Nairobi",
-  "new york": "America/New_York",
-  "los angeles": "America/Los_Angeles",
-  sydney: "Australia/Sydney",
-  amalfi: "Europe/Rome",
-  iceland: "Atlantic/Reykjavik",
-  reykjavik: "Atlantic/Reykjavik",
-  "cape town": "Africa/Johannesburg",
-  marrakech: "Africa/Casablanca",
-  cancun: "America/Cancun",
-  mexico: "America/Mexico_City",
-  "hong kong": "Asia/Hong_Kong",
-  maldives: "Indian/Maldives",
-  mauritius: "Indian/Mauritius",
-  fiji: "Pacific/Fiji",
-};
-
-function getDestinationTz(destination?: string): string | undefined {
-  if (!destination) return undefined;
-  const lower = destination.toLowerCase();
-  for (const [key, tz] of Object.entries(DEST_TZ)) {
-    if (lower.includes(key)) return tz;
-  }
-  return undefined;
-}
-
-/** Get today's date string in a timezone. */
-function todayInTz(tz?: string): string {
-  const now = new Date();
-  if (!tz) {
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(now);
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
-/** Get tomorrow's date string in a timezone. */
-function tomorrowInTz(tz?: string): string {
-  const tomorrow = new Date(Date.now() + 86400000);
-  if (!tz) {
-    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
-  }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(tomorrow);
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
-const IATA_TZ: Record<string, string> = {
-  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
-  CDG: "Europe/Paris", ORY: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
-  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
-  LIS: "Europe/Lisbon", ZRH: "Europe/Zurich", VIE: "Europe/Vienna", DUB: "Europe/Dublin",
-  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
-  KEF: "Atlantic/Reykjavik",
-  JFK: "America/New_York", EWR: "America/New_York", LGA: "America/New_York",
-  BOS: "America/New_York", MIA: "America/New_York", ATL: "America/New_York",
-  ORD: "America/Chicago", DFW: "America/Chicago",
-  DEN: "America/Denver",
-  LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SEA: "America/Los_Angeles",
-  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
-  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
-  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", KIX: "Asia/Tokyo",
-  ICN: "Asia/Seoul", DPS: "Asia/Makassar",
-  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
-  ACC: "Africa/Accra", LOS: "Africa/Lagos", NBO: "Africa/Nairobi",
-  MLE: "Indian/Maldives",
-};
+import {
+  IATA_TZ, getDestinationTz, getUtcOffsetMins,
+  todayInTz, tomorrowInTz, yesterdayInTz,
+} from "@/shared/timezones";
 
 function getDepAirportCode(ev: TravelEvent): string | null {
   if (ev.depAirport) return ev.depAirport.toUpperCase();
   const locRoute = ev.location?.match(/^([A-Z]{3})\s+to\s+/i);
   if (locRoute) return locRoute[1].toUpperCase();
   return null;
-}
-
-function getUtcOffsetMins(tz: string, dateStr: string): number {
-  try {
-    const d = new Date(dateStr + "T12:00:00Z");
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(d);
-    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
-    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
-    const utcDay = d.getUTCDate();
-    let offsetMins = (localH * 60 + localM) - (12 * 60);
-    if (localDay > utcDay) offsetMins += 1440;
-    else if (localDay < utcDay) offsetMins -= 1440;
-    return offsetMins;
-  } catch { return 0; }
 }
 
 function depTimeToMs(ev: TravelEvent): number {
@@ -183,18 +79,6 @@ function getFlightProgress(ev: TravelEvent): number {
   if (now <= depMs) return 0;
   if (now >= arrMs) return 1;
   return (now - depMs) / (arrMs - depMs);
-}
-
-function yesterdayInTz(tz?: string): string {
-  const yesterday = new Date(Date.now() - 86400000);
-  if (!tz) {
-    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-  }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(yesterday);
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
-  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function eventToProps(ev: TravelEvent): FlightTrackerProps {

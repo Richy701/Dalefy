@@ -20,86 +20,8 @@ const TYPE_ICONS: Record<string, string> = {
   flight: "airplane",
 };
 
-function timeToMinutes(t: string): number {
-  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
-  const m12 = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m12) return -1;
-  let h = parseInt(m12[1]);
-  const min = parseInt(m12[2]);
-  const pm = m12[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
-  return h * 60 + min;
-}
+import { getDestinationTz, nowInTz, timeToMinutes } from "@/shared/timezones";
 
-/** Map destination string to IANA timezone. */
-const DEST_TZ: Record<string, string> = {
-  seoul: "Asia/Seoul",
-  korea: "Asia/Seoul",
-  tokyo: "Asia/Tokyo",
-  japan: "Asia/Tokyo",
-  bangkok: "Asia/Bangkok",
-  thailand: "Asia/Bangkok",
-  bali: "Asia/Makassar",
-  singapore: "Asia/Singapore",
-  dubai: "Asia/Dubai",
-  istanbul: "Europe/Istanbul",
-  turkey: "Europe/Istanbul",
-  antalya: "Europe/Istanbul",
-  london: "Europe/London",
-  paris: "Europe/Paris",
-  rome: "Europe/Rome",
-  nairobi: "Africa/Nairobi",
-  kenya: "Africa/Nairobi",
-  "new york": "America/New_York",
-  "los angeles": "America/Los_Angeles",
-  sydney: "Australia/Sydney",
-  amalfi: "Europe/Rome",
-  iceland: "Atlantic/Reykjavik",
-  reykjavik: "Atlantic/Reykjavik",
-  "cape town": "Africa/Johannesburg",
-  marrakech: "Africa/Casablanca",
-  cancun: "America/Cancun",
-  mexico: "America/Mexico_City",
-  "hong kong": "Asia/Hong_Kong",
-  maldives: "Indian/Maldives",
-  mauritius: "Indian/Mauritius",
-  fiji: "Pacific/Fiji",
-};
-
-function getDestinationTz(destination?: string): string | undefined {
-  if (!destination) return undefined;
-  const lower = destination.toLowerCase();
-  for (const [key, tz] of Object.entries(DEST_TZ)) {
-    if (lower.includes(key)) return tz;
-  }
-  return undefined;
-}
-
-/** Get "now" in a specific timezone as { dateStr, minutes }. */
-function nowInTz(tz?: string): { dateStr: string; minutes: number } {
-  const now = new Date();
-  if (!tz) {
-    return {
-      dateStr: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
-      minutes: now.getHours() * 60 + now.getMinutes(),
-    };
-  }
-  // Use Intl to get the current date/time in the destination timezone
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "numeric", minute: "numeric", hour12: false,
-  }).formatToParts(now);
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
-  return {
-    dateStr: `${get("year")}-${get("month")}-${get("day")}`,
-    minutes: parseInt(get("hour")) * 60 + parseInt(get("minute")),
-  };
-}
-
-/** Minutes remaining until midnight in a timezone. */
 function minutesUntilMidnight(tz?: string): number {
   const { minutes } = nowInTz(tz);
   return (24 * 60) - minutes;

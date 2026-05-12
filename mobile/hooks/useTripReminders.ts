@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { Trip, TravelEvent } from "@/shared/types";
+import { getDepAirportTz, getDestinationTz, getUtcOffsetMins } from "@/shared/timezones";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 try {
@@ -12,39 +13,6 @@ try {
 }
 
 const REMINDER_PREFIX = "daf-reminder-";
-
-const IATA_TZ: Record<string, string> = {
-  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
-  CDG: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
-  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
-  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
-  KEF: "Atlantic/Reykjavik",
-  JFK: "America/New_York", EWR: "America/New_York", LAX: "America/Los_Angeles",
-  ORD: "America/Chicago", MIA: "America/New_York", SFO: "America/Los_Angeles",
-  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
-  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
-  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", ICN: "Asia/Seoul", DPS: "Asia/Makassar",
-  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
-  ACC: "Africa/Accra", NBO: "Africa/Nairobi", MLE: "Indian/Maldives",
-};
-
-function getUtcOffsetMins(tz: string, dateStr: string): number {
-  try {
-    const d = new Date(dateStr + "T12:00:00Z");
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-    }).formatToParts(d);
-    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
-    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
-    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
-    const utcDay = d.getUTCDate();
-    let offsetMins = (localH * 60 + localM) - (12 * 60);
-    if (localDay > utcDay) offsetMins += 1440;
-    else if (localDay < utcDay) offsetMins -= 1440;
-    return offsetMins;
-  } catch { return 0; }
-}
 
 function deviceTodayStr(): string {
   const d = new Date();
@@ -104,8 +72,8 @@ function countNights(start: string, end: string): number | null {
 }
 
 /** Find the next event after a given event in chronological order */
-function findNextEvent(events: TravelEvent[], afterEvent: TravelEvent): TravelEvent | null {
-  const afterTime = parseEventDateTime(afterEvent);
+function findNextEvent(events: TravelEvent[], afterEvent: TravelEvent, tripDestTz?: string): TravelEvent | null {
+  const afterTime = parseEventDateTime(afterEvent, tripDestTz);
   if (!afterTime) return null;
 
   let closest: TravelEvent | null = null;
@@ -113,7 +81,7 @@ function findNextEvent(events: TravelEvent[], afterEvent: TravelEvent): TravelEv
 
   for (const ev of events) {
     if (ev.id === afterEvent.id) continue;
-    const t = parseEventDateTime(ev);
+    const t = parseEventDateTime(ev, tripDestTz);
     if (!t) continue;
     const diff = t.getTime() - afterTime.getTime();
     if (diff > 0 && diff < closestTime) {
@@ -196,6 +164,7 @@ async function scheduleReminders(trips: Trip[]) {
 
   for (const trip of trips) {
     if (trip.status === "Draft") continue;
+    const tripDestTz = getDestinationTz(trip.destination);
 
     // --- Trip starts tomorrow (9 AM day before) ---
     const tripStart = parseDate(trip.start);
@@ -266,7 +235,7 @@ async function scheduleReminders(trips: Trip[]) {
 
     // --- Per-event reminders ---
     for (const ev of trip.events) {
-      const evDate = parseEventDateTime(ev);
+      const evDate = parseEventDateTime(ev, tripDestTz);
       if (!evDate || evDate.getTime() <= now) continue;
 
       if (ev.type === "flight") {
@@ -284,7 +253,7 @@ async function scheduleReminders(trips: Trip[]) {
           if (details.length) body += `\n${details.join(" · ")}`;
 
           // Show what's next after this flight
-          const next = findNextEvent(trip.events, ev);
+          const next = findNextEvent(trip.events, ev, tripDestTz);
           if (next) {
             body += `\nNext: ${next.title} at ${next.time}`;
           }
@@ -329,7 +298,7 @@ async function scheduleReminders(trips: Trip[]) {
           let body = ev.location
             ? `Pickup at ${ev.location}`
             : "Your transfer is coming up, be ready!";
-          const next = findNextEvent(trip.events, ev);
+          const next = findNextEvent(trip.events, ev, tripDestTz);
           if (next) body += `\nHeading to: ${next.title}`;
 
           await scheduleOne(
@@ -388,8 +357,10 @@ function parseDate(str: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** Combine event date + time ("HH:MM" or "H:MM AM/PM") into a Date */
-function parseEventDateTime(ev: TravelEvent): Date | null {
+/** Combine event date + time ("HH:MM" or "H:MM AM/PM") into a Date.
+ *  Uses event timezone (flights) or trip destination timezone (other types)
+ *  so reminders fire at the correct absolute time. */
+function parseEventDateTime(ev: TravelEvent, tripDestTz?: string): Date | null {
   const d = parseDate(ev.date);
   if (!d) return null;
 
@@ -402,16 +373,12 @@ function parseEventDateTime(ev: TravelEvent): Date | null {
       if (ampm === "PM" && hours < 12) hours += 12;
       if (ampm === "AM" && hours === 12) hours = 0;
 
-      if (ev.type === "flight") {
-        const code = ev.depAirport?.toUpperCase()
-          || ev.location?.match(/^([A-Z]{3})\s+to\s+/i)?.[1]?.toUpperCase();
-        const tz = code ? IATA_TZ[code] : undefined;
-        if (tz) {
-          const offsetMins = getUtcOffsetMins(tz, ev.date);
-          const h = String(hours).padStart(2, "0");
-          const m = String(mins).padStart(2, "0");
-          return new Date(new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000);
-        }
+      const tz = ev.type === "flight" ? getDepAirportTz(ev) : tripDestTz;
+      if (tz) {
+        const offsetMins = getUtcOffsetMins(tz, ev.date);
+        const h = String(hours).padStart(2, "0");
+        const m = String(mins).padStart(2, "0");
+        return new Date(new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000);
       }
 
       d.setHours(hours, mins, 0, 0);
