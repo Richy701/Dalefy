@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
       apiRoutesPlugin(env),
       VitePWA({
         registerType: "autoUpdate",
+        injectRegister: "inline",
         includeAssets: ["favicon.svg"],
         manifest: {
           name: "Dalefy",
