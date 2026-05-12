@@ -7,16 +7,15 @@ export default async function handler(req: any, res: any) {
   if (err) return res.status(400).json({ error: err });
 
   const tryGoogle = async () => {
-    const key = process.env.RAPIDAPI_KEY;
+    const key = process.env.SERPAPI_KEY;
     if (!key) return false;
     try {
-      const params = new URLSearchParams({ query: q, num: per_page });
-      const resp = await fetch(`https://real-time-image-search.p.rapidapi.com/search?${params}`, {
-        headers: { "x-rapidapi-key": key, "x-rapidapi-host": "real-time-image-search.p.rapidapi.com" },
-      });
+      const start = (parseInt(page) - 1) * parseInt(per_page);
+      const params = new URLSearchParams({ engine: "google_images", q, num: per_page, ijn: String(Math.floor(start / 100)), api_key: key });
+      const resp = await fetch(`https://serpapi.com/search.json?${params}`);
       if (resp.ok) {
         const data = await resp.json();
-        const urls = (data.data ?? []).map((i: any) => i.thumbnail_url).filter((u: string) => u && !u.includes('encrypted-tbn'));
+        const urls = (data.images_results ?? []).slice(0, parseInt(per_page)).map((i: any) => i.original).filter(Boolean);
         if (urls.length) { res.json({ urls, source: "google" }); return true; }
       }
     } catch {}
