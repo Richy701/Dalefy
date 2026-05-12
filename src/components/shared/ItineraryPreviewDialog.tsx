@@ -284,8 +284,8 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
-                {ev.time}{(() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })()}
-                {ev.endTime && <> — {ev.endTime}{(() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })()}</>}
+                {ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}
+                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</>}
               </span>
             )}
             {ev.location && (
