@@ -389,16 +389,15 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             const json = (d: any) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(d)) }
 
             const tryGoogle = async () => {
-              const rKey = env.RAPIDAPI_KEY
-              if (!rKey) return false
+              const sKey = env.SERPAPI_KEY
+              if (!sKey) return false
               try {
-                const params = new URLSearchParams({ query: q, num: perPage })
-                const resp = await fetch(`https://real-time-image-search.p.rapidapi.com/search?${params}`, {
-                  headers: { "x-rapidapi-key": rKey, "x-rapidapi-host": "real-time-image-search.p.rapidapi.com" },
-                })
+                const start = (parseInt(page) - 1) * parseInt(perPage)
+                const params = new URLSearchParams({ engine: "google_images", q, num: perPage, ijn: String(Math.floor(start / 100)), api_key: sKey })
+                const resp = await fetch(`https://serpapi.com/search.json?${params}`)
                 if (resp.ok) {
-                  const data = await resp.json()
-                  const urls = (data.data ?? []).map((i: any) => i.thumbnail_url).filter((u: string) => u && !u.includes('encrypted-tbn'))
+                  const data: any = await resp.json()
+                  const urls = (data.images_results ?? []).slice(0, parseInt(perPage)).map((i: any) => i.original).filter(Boolean)
                   if (urls.length) { json({ urls, source: "google" }); return true }
                 }
               } catch {}
