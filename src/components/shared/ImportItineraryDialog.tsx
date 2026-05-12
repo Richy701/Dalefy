@@ -1194,9 +1194,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           if (f.airline) ev.airline = f.airline;
           if (f.flightNum) ev.flightNum = f.flightNum;
           if (f.terminal) ev.terminal = f.terminal;
-          if ((f as any).arrTerminal) ev.arrTerminal = (f as any).arrTerminal;
+          if (f.arrTerminal) ev.arrTerminal = f.arrTerminal;
           if (f.durationMins > 0) ev.duration = `${Math.floor(f.durationMins / 60)}h ${f.durationMins % 60}m`;
           if (f.fromCode && f.toCode) ev.location = `${f.from || f.fromCode} to ${f.to || f.toCode}`;
+          if (f.fromCode) ev.depAirport = f.fromCode;
+          if (f.toCode) ev.arrAirport = f.toCode;
+          if (f.depTz) ev.depTz = f.depTz;
+          if (f.arrTz) ev.arrTz = f.arrTz;
           if (f.status) ev.status = f.status;
           logger.log("Import", "enriched flight:", num, "→", f.departTime, f.terminal);
         }

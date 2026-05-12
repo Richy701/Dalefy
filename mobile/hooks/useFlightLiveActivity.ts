@@ -167,7 +167,7 @@ function depTimeToMs(ev: TravelEvent): number {
   const h = depMatch[1].padStart(2, "0");
   const m = depMatch[2];
   const code = getDepAirportCode(ev);
-  const tz = code ? IATA_TZ[code] : undefined;
+  const tz = ev.depTz || (code ? IATA_TZ[code] : undefined);
   if (!tz) return new Date(`${ev.date}T${h}:${m}:00`).getTime();
   const offsetMins = getUtcOffsetMins(tz, ev.date);
   return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;

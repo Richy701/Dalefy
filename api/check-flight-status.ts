@@ -1,5 +1,6 @@
 import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
+import { airportTz } from "./_airportTz.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on today's flights,
@@ -61,6 +62,8 @@ export default async function handler(req: any, res: any) {
         if (result.depAirport) rawEvents[i].depAirport = result.depAirport;
         if (result.arrAirport) rawEvents[i].arrAirport = result.arrAirport;
         if (result.aircraft) rawEvents[i].aircraft = result.aircraft;
+        if (result.depTz) rawEvents[i].depTz = result.depTz;
+        if (result.arrTz) rawEvents[i].arrTz = result.arrTz;
         // Backfill location with route if it was missing
         if (result.depAirport && result.arrAirport && !rawEvents[i].location?.includes(" to ")) {
           rawEvents[i].location = `${result.depAirport} to ${result.arrAirport}`;
@@ -127,6 +130,8 @@ interface LiveFlightData {
   depAirport: string;
   arrAirport: string;
   aircraft: string;
+  depTz: string;
+  arrTz: string;
 }
 
 // ── AeroDataBox lookup ─────────────────────────────────────────────────────
@@ -170,6 +175,8 @@ async function lookupFlight(
       depAirport: dep.airport?.iata ?? "",
       arrAirport: arr.airport?.iata ?? "",
       aircraft: f.aircraft?.model ?? "",
+      depTz: airportTz(dep.airport?.iata ?? "") ?? "",
+      arrTz: airportTz(arr.airport?.iata ?? "") ?? "",
     };
   } catch {
     return null;
