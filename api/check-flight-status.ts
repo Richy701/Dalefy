@@ -17,6 +17,7 @@ export default async function handler(req: any, res: any) {
   if (!rapidApiKey) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
 
   const today = new Date().toISOString().slice(0, 10);
+  const yesterday = prevDay(today);
   const tomorrow = nextDay(today);
 
   try {
@@ -35,9 +36,9 @@ export default async function handler(req: any, res: any) {
         const ev = rawEvents[i];
         if (ev.type !== "flight" || !ev.flightNum || !ev.date) continue;
 
-        // Only check flights happening today or tomorrow
+        // Check yesterday (long-haul landing today), today, and tomorrow
         const eventDate = (ev.date as string).slice(0, 10);
-        if (eventDate !== today && eventDate !== tomorrow) continue;
+        if (eventDate !== yesterday && eventDate !== today && eventDate !== tomorrow) continue;
 
         // Query AeroDataBox
         const result = await lookupFlight(ev.flightNum, eventDate, rapidApiKey);
@@ -256,5 +257,11 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
 function nextDay(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function prevDay(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00Z");
+  d.setDate(d.getDate() - 1);
   return d.toISOString().slice(0, 10);
 }
