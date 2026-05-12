@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
-  CaretRight, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
-  DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold,
+  CaretRight, CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
+  DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold, Paperclip,
 } from "@phosphor-icons/react";
 import { useBrand } from "@/context/BrandContext";
 import type { Trip, TravelEvent, TripOrganizer, TripInfo } from "@/types";
@@ -404,19 +404,68 @@ function OrganizerSection({ org, c }: { org: TripOrganizer; c: C }) {
   );
 }
 
-function InfoDocsSection({ info, c }: { info: TripInfo[]; c: C }) {
-  const visibleCount = info.filter(i => !i.leaderOnly).length;
-  if (visibleCount === 0) return null;
+function InfoDocsSection({ info, documents, c }: { info: TripInfo[]; documents: import("@/types").EventDocument[]; c: C }) {
+  const [open, setOpen] = useState(false);
+  const visibleInfo = info.filter(i => !i.leaderOnly);
+  const totalCount = visibleInfo.length + documents.length;
+  if (totalCount === 0) return null;
+
+  const formatSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
+
   return (
-    <div style={{ margin: "10px 14px 0", padding: "12px 12px", background: c.card, borderRadius: 20, display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 12, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <FileText size={15} color={c.teal} />
+    <div style={{ margin: "10px 14px 0" }}>
+      <div
+        onClick={() => setOpen(p => !p)}
+        style={{ padding: "12px 12px", background: c.card, borderRadius: open ? "20px 20px 0 0" : 20, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+      >
+        <div style={{ width: 38, height: 38, borderRadius: 12, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <FileText size={15} color={c.teal} />
+        </div>
+        <span style={{ fontSize: 10, fontWeight: 700, color: c.textSecondary, letterSpacing: 1, flex: 1 }}>INFORMATION & DOCUMENTS</span>
+        <div style={{ background: c.tealDim, borderRadius: 10, padding: "2px 6px" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 0.5 }}>{totalCount}</span>
+        </div>
+        {open ? <CaretDown size={14} color={c.textTertiary} /> : <CaretRight size={14} color={c.textTertiary} />}
       </div>
-      <span style={{ fontSize: 10, fontWeight: 700, color: c.textSecondary, letterSpacing: 1, flex: 1 }}>INFORMATION & DOCUMENTS</span>
-      <div style={{ background: c.tealDim, borderRadius: 10, padding: "2px 6px" }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 0.5 }}>{visibleCount}</span>
-      </div>
-      <CaretRight size={14} color={c.textTertiary} />
+      {open && (
+        <div style={{ background: c.card, borderRadius: "0 0 20px 20px", padding: "0 12px 12px" }}>
+          {visibleInfo.map(item => (
+            <div key={item.id} style={{ padding: "8px 10px", background: c.bg, borderRadius: 12, marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: c.text }}>{item.title || "Untitled"}</span>
+              {item.body && <p style={{ fontSize: 10, color: c.textSecondary, margin: "4px 0 0", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{item.body.length > 120 ? item.body.slice(0, 120) + "..." : item.body}</p>}
+              {item.documents && item.documents.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  {item.documents.map(doc => (
+                    <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
+                      <Paperclip size={10} color={c.teal} />
+                      <span style={{ fontSize: 9, fontWeight: 700, color: c.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
+                      <span style={{ fontSize: 8, color: c.textTertiary }}>{formatSize(doc.size)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {documents.length > 0 && (
+            <>
+              {visibleInfo.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0" }}>
+                  <div style={{ height: 1, flex: 1, background: c.border }} />
+                  <span style={{ fontSize: 8, fontWeight: 700, color: c.textTertiary, letterSpacing: 1 }}>DOCUMENTS</span>
+                  <div style={{ height: 1, flex: 1, background: c.border }} />
+                </div>
+              )}
+              {documents.map(doc => (
+                <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: c.bg, borderRadius: 10, marginBottom: 4 }}>
+                  <Paperclip size={12} color={c.teal} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: c.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
+                  <span style={{ fontSize: 9, color: c.textTertiary }}>{formatSize(doc.size)}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -810,7 +859,7 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
                 {trip.organizer && <OrganizerSection org={trip.organizer} c={c} />}
 
                 {/* Info */}
-                {trip.info && trip.info.length > 0 && <InfoDocsSection info={trip.info} c={c} />}
+                {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && <InfoDocsSection info={trip.info ?? []} documents={trip.documents ?? []} c={c} />}
 
                 {/* Day list */}
                 <DayListSection events={trip.events} trip={trip} c={c} isDark={isDark} />
