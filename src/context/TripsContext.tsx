@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { useAuth } from "@/context/AuthContext";
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useTravelerMigration } from "@/hooks/useTravelerMigration";
+import { toast } from "sonner";
 
 // ── Context type ──────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
           try {
             const stored: Trip[] = JSON.parse(localStorage.getItem(STORAGE.TRIPS) || "[]");
             const idx = stored.findIndex(t => t.id === cleaned.id);
-            if (idx >= 0) { stored[idx] = { ...stored[idx], image: cleaned.image, events: cleaned.events }; }
+            if (idx >= 0) { stored[idx] = { ...stored[idx], image: cleaned.image, events: cleaned.events, info: cleaned.info, documents: cleaned.documents, travelers: cleaned.travelers, travelerIds: cleaned.travelerIds, organizer: cleaned.organizer, attendees: cleaned.attendees }; }
             else { stored.push(cleaned); }
             localStorage.setItem(STORAGE.TRIPS, JSON.stringify(stored));
             logger.log("syncToCloud", "wrote download URLs back to localStorage for", cleaned.id);
@@ -187,7 +188,10 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
             );
           }
         }
-      }).catch(err => logger.error("syncToCloud", "upsert failed:", err));
+      }).catch(err => {
+        logger.error("syncToCloud", "upsert failed:", err);
+        toast.error("Failed to sync changes to cloud");
+      });
     }
   }
 
@@ -315,6 +319,35 @@ export function TripsProvider({ children }: { children: ReactNode }) {
     backfillOrgId(orgId).catch(err => logger.error("TripsProvider", "org backfill failed:", err));
     repairTripOwnership(orgId).catch(err => logger.error("TripsProvider", "ownership repair failed:", err));
   }, [useCloud, orgId, cloud.ready]);
+
+  // One-time cleanup: strip structured fields from localStorage that belong in
+  // Firestore. Prevents stale localStorage from resurrecting deleted data.
+  const localCleanupRan = useRef(false);
+  useEffect(() => {
+    if (!useCloud || !cloud.ready || localCleanupRan.current) return;
+    localCleanupRan.current = true;
+    try {
+      const raw = localStorage.getItem(STORAGE.TRIPS);
+      if (!raw) return;
+      const stored: Trip[] = JSON.parse(raw);
+      let changed = false;
+      const cleaned = stored.map(t => {
+        if (t.info || t.documents || t.organizer) {
+          changed = true;
+          const c = { ...t };
+          delete (c as Record<string, unknown>).info;
+          delete (c as Record<string, unknown>).documents;
+          delete (c as Record<string, unknown>).organizer;
+          return c;
+        }
+        return t;
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE.TRIPS, JSON.stringify(cleaned));
+        logger.log("TripsProvider", "cleaned stale structured data from localStorage");
+      }
+    } catch { /* ignore */ }
+  }, [useCloud, cloud.ready]);
 
   // Side-effect hooks (extracted)
   useCloudSync(useCloud, isLocalOnly, cloud.ready, cloud.trips, local.trips, cloud.setTrips, orgId);
