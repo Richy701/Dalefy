@@ -52,9 +52,9 @@ function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
-            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{(() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })()}</span>}
+            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}</span>}
             {ev.endTime && <span className="text-slate-400 dark:text-[#666]">-</span>}
-            {ev.endTime && <span>{ev.endTime}{(() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })()}</span>}
+            {ev.endTime && <span>{ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</span>}
             {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
             {ev.duration && <span>{ev.duration}</span>}
           </div>
