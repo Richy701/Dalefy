@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  CaretLeft, MapPin, Users, Moon, MapTrifold, ArrowRight,
+  CaretLeft, CaretRight, MapPin, Users, Moon, MapTrifold,
   Airplane, Bed, ForkKnife, Car, Compass, Train, Bus, Boat,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
@@ -222,7 +222,7 @@ export default function TripScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <View style={styles.safe}>
       <Stack.Screen options={{
         headerShown: true,
         headerTransparent: true,
@@ -276,7 +276,7 @@ export default function TripScreen() {
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
@@ -467,10 +467,8 @@ export default function TripScreen() {
           <DayList grouped={grouped} trip={trip} C={C} isDark={isDark} isLeader={isLeader} start={start} end={end} nights={nights} />
         </View>
 
-        {/* Terminal element clearance */}
-        <View style={{ height: 16 }} />
       </Animated.ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -499,35 +497,23 @@ function typeCounts(events: any[]): Array<{ key: string; Icon: React.ComponentTy
   return result.slice(0, 4);
 }
 
-function extractCity(loc: string): string {
-  return loc.replace(/\s+to\s+.*/i, "").split(",")[0].trim();
-}
+function dayProgress(events: any[], now: Date, dateStr: string): number {
+  if (!events.length) return 0;
+  const sorted = [...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  const firstMin = timeToMinutes(sorted[0].time);
+  const lastEv = sorted[sorted.length - 1];
+  const lastMin = timeToMinutes(lastEv.endTime || lastEv.time);
 
-function daySummary(events: any[]): { label: string; isFlight: boolean } | null {
-  const cities: string[] = [];
-  let hasFlight = false;
+  const dayDate = new Date(dateStr + "T00:00:00");
+  const firstMs = dayDate.getTime() + firstMin * 60_000;
+  const lastMs = dayDate.getTime() + lastMin * 60_000;
+  const nowMs = now.getTime();
 
-  for (const e of events) {
-    if (e.type === "flight") {
-      hasFlight = true;
-      const m = (e.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
-      if (m) {
-        const dep = m[1].toUpperCase();
-        const arr = m[2].toUpperCase();
-        if (!cities.includes(dep)) cities.push(dep);
-        if (!cities.includes(arr)) cities.push(arr);
-        continue;
-      }
-    }
-    if (!e.location) continue;
-    const city = extractCity(e.location);
-    if (city && !cities.includes(city)) cities.push(city);
-  }
-
-  if (cities.length === 0) return null;
-  if (cities.length > 1) return { label: `${cities[0]} → ${cities[cities.length - 1]}`, isFlight: hasFlight };
-  if (events.length >= 4) return { label: `${cities[0]} · ${events.length} stops`, isFlight: false };
-  return { label: cities[0], isFlight: false };
+  if (nowMs >= lastMs) return 1;
+  if (nowMs <= firstMs) return 0;
+  const total = lastMs - firstMs;
+  if (total <= 0) return 0;
+  return (nowMs - firstMs) / total;
 }
 
 function hashStr(s: string): number {
@@ -552,14 +538,13 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
   nights: number;
 }) {
   const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [openDay, setOpenDay] = useState<string | null>(null);
-
-  const maxEvents = useMemo(
-    () => Math.max(...sortedDays.map(([, evs]) => evs.length), 1),
-    [sortedDays],
-  );
 
   const totalDays = nights + 1;
   const currentDayIdx = sortedDays.findIndex(([d]) => d >= todayStr);
@@ -584,12 +569,6 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
     }
     return 0;
   })();
-
-  const daySummaries = useMemo(() => {
-    const out: Record<string, { label: string; isFlight: boolean } | null> = {};
-    for (const [date, events] of sortedDays) out[date] = daySummary(events);
-    return out;
-  }, [sortedDays]);
 
   const toggle = (date: string) => {
     Haptics.selectionAsync();
@@ -669,11 +648,11 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
             ? events[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
             : null;
 
-          const barPct = (events.length / maxEvents) * 100;
+          const barPct = dayProgress(events, now, date) * 100;
           const barColor = isToday
             ? C.teal
             : isPast
-              ? (isDark ? C.elevated : "#d4d4d8")
+              ? (isDark ? "#3f3f46" : "#a1a1aa")
               : "transparent";
           const barBg = isDark ? C.elevated : "#e4e4e7";
 
@@ -701,16 +680,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
           const photo = events.find((e: any) => e.image)?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[events[0]?.type] || MapTrifold;
 
-          const summary = daySummaries[date];
-          const prevSummary = dayIdx > 0 ? daySummaries[sortedDays[dayIdx - 1][0]] : null;
-          const showLocChip = summary && (
-            summary.isFlight || events.length >= 4 ||
-            dayIdx === 0 || summary.label !== prevSummary?.label
-          );
-          const PillIcon = summary?.isFlight ? Airplane : (summary?.label.includes("→") ? ArrowRight : MapPin);
-
-          const thumbCity = summary?.label.split("→")[0].split("·")[0].trim() || "";
-          const gradHue = hashStr(thumbCity) % 360;
+          const gradHue = hashStr(events[0]?.title || date) % 360;
 
           return (
             <View key={date}>
@@ -723,6 +693,8 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                   backgroundColor: pressed
                     ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)")
                     : "transparent",
+                  opacity: pressed ? 0.6 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -752,32 +724,12 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                       )}
                     </View>
 
-                    {/* Row 2: Location pill */}
-                    {showLocChip && (
-                      <View style={{
-                        flexDirection: "row", alignItems: "center", gap: 4,
-                        alignSelf: "flex-start",
-                        maxWidth: "75%",
-                        paddingHorizontal: 8, paddingVertical: 3,
-                        borderRadius: R.full, marginTop: 4,
-                        backgroundColor: isDark ? C.elevated : "#f4f4f5",
-                        borderWidth: StyleSheet.hairlineWidth,
-                        borderColor: dividerColor,
-                      }}>
-                        <PillIcon size={11} color={isDark ? C.textTertiary : "#71717a"} weight={summary?.isFlight ? "bold" : "fill"} />
-                        <Text numberOfLines={1} style={{
-                          fontSize: 10.5, fontWeight: "500", flexShrink: 1,
-                          color: isDark ? C.textTertiary : "#52525b",
-                        }}>{summary!.label}</Text>
-                      </View>
-                    )}
-
-                    {/* Row 3: Date + event count */}
+                    {/* Row 2: Date + event count */}
                     <Text style={{
                       fontSize: 11, fontWeight: "500", color: subColor, marginTop: 3,
                     }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
 
-                    {/* Row 4: Type icons with counts */}
+                    {/* Type icons with counts */}
                     {icons.length > 0 && (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
                         {icons.map(({ key, Icon, count }) => (
@@ -821,6 +773,14 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                       }}>{firstTime}</Text>
                     )}
                   </View>
+
+                  {/* Chevron */}
+                  <CaretRight
+                    size={16}
+                    color={isPast ? (isDark ? C.textDim : "#a1a1aa") : (isDark ? "#71717a" : "#a1a1aa")}
+                    weight="bold"
+                    style={{ marginLeft: 6 }}
+                  />
                 </View>
 
                 {/* Density bar */}

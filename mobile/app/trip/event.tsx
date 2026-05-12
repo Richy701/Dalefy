@@ -308,7 +308,7 @@ export default function EventDetailScreen() {
   if (isLeader && ev.confNumber) detailRows.push({ icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: copyConf });
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <View style={styles.safe}>
       <Stack.Screen options={{
         headerShown: true,
         title: "",
@@ -335,7 +335,7 @@ export default function EventDetailScreen() {
       <View style={{ flex: 1 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: showActionBar ? 80 : 16 }}
+        contentContainerStyle={{ paddingBottom: showActionBar ? 80 : insets.bottom + 24 }}
       >
         {/* Hero — photo only, no overlay text */}
         <View style={styles.heroWrap}>
@@ -534,7 +534,7 @@ export default function EventDetailScreen() {
         </View>
       )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -632,7 +632,7 @@ function FlightDetailScreen({
   const fs = useMemo(() => makeFlightStyles(C), [C]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["bottom"]}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Screen options={{
         headerShown: true,
         title: "",
@@ -659,7 +659,7 @@ function FlightDetailScreen({
       <View style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >
           {/* 1. Map hero */}
           <View style={{ position: "relative" }}>
@@ -860,6 +860,12 @@ function FlightDetailScreen({
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.gate || ev.gate}</Text>
                   ) : <TbaText C={C} />}
                 </View>
+                <View style={fs.termField}>
+                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Check-in</Text>
+                  {ev.checkin ? (
+                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{ev.checkin}</Text>
+                  ) : <TbaText C={C} />}
+                </View>
               </View>
 
               <View style={[fs.termCard, { backgroundColor: C.card }]}>
@@ -940,7 +946,7 @@ function FlightDetailScreen({
         </ScrollView>
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

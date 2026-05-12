@@ -1,7 +1,7 @@
 import {
   View, Text, ScrollView, Pressable, StyleSheet, Platform, Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
@@ -47,6 +47,7 @@ export default function DayDetailScreen() {
   const router = useRouter();
   const { C, isDark } = useTheme();
   const { isLeader } = useTripRole(tripId);
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
   const [sheetEvent, setSheetEvent] = useState<TravelEvent | null>(null);
 
@@ -96,7 +97,7 @@ export default function DayDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <View style={styles.safe}>
       <Stack.Screen options={{
         headerShown: true,
         title: `Day ${dayIndex}`,
@@ -110,7 +111,7 @@ export default function DayDetailScreen() {
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
       }} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} contentInsetAdjustmentBehavior="automatic">
         {/* Day title section */}
         <View style={styles.titleSection}>
           <Text style={styles.dayTitle}>{weekday}</Text>
@@ -213,7 +214,7 @@ export default function DayDetailScreen() {
           />
         )}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

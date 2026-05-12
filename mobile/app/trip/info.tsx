@@ -140,7 +140,7 @@ export default function InfoScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <View style={styles.safe}>
       <Stack.Screen options={{
         headerShown: true,
         title: "Information",
@@ -153,7 +153,7 @@ export default function InfoScreen() {
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
       }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} contentInsetAdjustmentBehavior="automatic">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} contentInsetAdjustmentBehavior="automatic">
 
         <View style={styles.content}>
           {infoItems.map((item, idx) => {
@@ -270,9 +270,8 @@ export default function InfoScreen() {
           })}
         </View>
 
-        <View style={{ height: 16 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
