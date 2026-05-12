@@ -1,4 +1,4 @@
-import { validateFlightNum, validateDate, requireRapidApi } from "./_validate.js";
+import { validateFlightNum, validateDate, requireRapidApi, scoreAeroFlight } from "./_validate.js";
 
 export default async function handler(req: any, res: any) {
   const { number, date } = req.query as Record<string, string>;
@@ -34,7 +34,9 @@ export default async function handler(req: any, res: any) {
           return !s.includes("arrived") && !s.includes("landed");
         })
       : filtered
-    ).slice(0, 8);
+    )
+      .sort((a: any, b: any) => scoreAeroFlight(b) - scoreAeroFlight(a))
+      .slice(0, 8);
 
     const flights = raw.map((f: any) => {
       const dep = f.departure ?? {};
