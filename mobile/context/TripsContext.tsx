@@ -155,7 +155,7 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const trips = useMemo(() => rawTrips.map(t => {
     const snap = t.publishedSnapshot;
     if (!snap) return t;
-    return { ...t, events: snap.events, info: snap.info, organizer: snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
+    return { ...t, events: snap.events, info: t.info ?? snap.info, organizer: t.organizer ?? snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
   }), [rawTrips]);
   const hasCachedTrips = localCache !== null && localCache.length > 0;
   const ready = hasCachedTrips || isSuccess || isError || networkDown;
