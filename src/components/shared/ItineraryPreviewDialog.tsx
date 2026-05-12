@@ -186,7 +186,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
                     {/* Events */}
                     <div className={cn("border rounded-xl sm:rounded-2xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] divide-slate-100 dark:divide-[#1a1a1a]")}>
                       {events.map(ev => (
-                        <PreviewEventCard key={ev.id} ev={ev} forPrint={forPrint} />
+                        <PreviewEventCard key={ev.id} ev={ev} forPrint={forPrint} tripTz={tripTz} />
                       ))}
                     </div>
                   </div>
@@ -257,7 +257,7 @@ function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.Componen
 }
 
 /* ── Event card ── */
-function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolean }) {
+function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?: boolean; tripTz?: string }) {
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
   const typeLabel = ev.type === "flight" ? "Flight" : ev.type === "hotel" ? "Stay" : ev.type === "dining" ? "Dining" : "Activity";
 

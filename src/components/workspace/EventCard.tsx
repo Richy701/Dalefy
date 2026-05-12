@@ -94,7 +94,7 @@ function CardMenu({ onClick, onDuplicate, onDelete }: { onClick: () => void; onD
 }
 
 function eventTzLabel(event: TravelEvent, tripTz?: string): string {
-  if (event.type === "flight") return event.depTz ? tzAbbr(event.depTz, event.date) : "";
+  if (event.type === "flight") return event.depTz ? tzAbbr(event.depTz, event.date) : tripTz ? tzAbbr(tripTz, event.date) : "";
   return tripTz ? tzAbbr(tripTz, event.date) : "";
 }
 
