@@ -435,10 +435,9 @@ export default function EventDetailScreen() {
                     i < detailRows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
-                  <RowIcon size={16} color={C.teal} weight="regular" />
-                  <Text style={[styles.detailListLabel, { color: C.textTertiary }]}>{row.label}</Text>
-                  <View style={{ flex: 1 }} />
-                  <Text style={[styles.detailListValue, { color: C.textPrimary }]}>{row.value}</Text>
+                  <RowIcon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
+                  <Text style={[styles.detailListLabel, { color: C.textTertiary, minWidth: 90 }]}>{row.label}</Text>
+                  <Text style={[styles.detailListValue, { color: C.textPrimary, flex: 1 }]}>{row.value}</Text>
                   {row.onPress && <Copy size={12} color={C.textDim} weight="light" style={{ marginLeft: 6 }} />}
                 </Pressable>
               );
@@ -905,12 +904,11 @@ function FlightDetailScreen({
                     i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
-                  <item.icon size={16} color={C.teal} weight="regular" />
-                  <Text style={[fs.detailLabel, { color: C.textTertiary }]}>{item.label}</Text>
-                  <View style={{ flex: 1 }} />
+                  <item.icon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
+                  <Text style={[fs.detailLabel, { color: C.textTertiary, minWidth: 90 }]}>{item.label}</Text>
                   {item.value ? (
-                    <Text style={[fs.detailValue, { color: C.textPrimary }]}>{item.value}</Text>
-                  ) : <TbaText C={C} />}
+                    <Text style={[fs.detailValue, { color: C.textPrimary, flex: 1 }]}>{item.value}</Text>
+                  ) : <><View style={{ flex: 1 }} /><TbaText C={C} /></>}
                   {item.onPress && <Copy size={12} color={C.textDim} weight="light" style={{ marginLeft: 6 }} />}
                 </Pressable>
               ))}
@@ -1020,7 +1018,7 @@ function makeFlightStyles(C: ThemeColors) {
     termFieldValue: { fontSize: T.sm, fontWeight: T.bold },
 
     detailRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
+      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
       paddingHorizontal: S.lg, paddingVertical: 14,
     },
     detailLabel: { fontSize: T.sm, fontWeight: T.medium },
@@ -1115,7 +1113,7 @@ function makeStyles(C: ThemeColors) {
     sectionLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1.5, marginBottom: S.sm },
 
     detailListRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
+      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
       paddingHorizontal: S.lg, paddingVertical: S.sm + 2,
     },
     detailListLabel: { fontSize: T.sm, fontWeight: "500" },
