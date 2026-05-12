@@ -304,6 +304,7 @@ export function WorkspacePage() {
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
   const [tripDocDragOver, setTripDocDragOver] = useState(false);
+  const [tripDocUploading, setTripDocUploading] = useState(false);
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const tripDocInputRef = useRef<HTMLInputElement>(null);
@@ -818,6 +819,8 @@ export function WorkspacePage() {
     }
     const accepted = files.filter(f => f.size <= MAX_SIZE);
     if (!accepted.length) return;
+    setTripDocUploading(true);
+    const toastId = toast.loading(`Uploading ${accepted.length} file${accepted.length > 1 ? "s" : ""}...`);
     const uploads = accepted.map(async (file) => {
       const ext = file.name.split(".").pop();
       const path = `trips/${tripId}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
@@ -834,8 +837,12 @@ export function WorkspacePage() {
     try {
       const newDocs = await Promise.all(uploads);
       updateTrip(trip.id, { documents: [...(trip.documents || []), ...newDocs] });
-      toast.success(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploaded`);
-    } catch { toast.error("Document upload failed"); }
+      toast.success(`${newDocs.length} document${newDocs.length > 1 ? "s" : ""} uploaded`, { id: toastId });
+    } catch {
+      toast.error("Document upload failed", { id: toastId });
+    } finally {
+      setTripDocUploading(false);
+    }
   };
 
   const handleTripDocDrop = (e: React.DragEvent) => {
