@@ -115,6 +115,88 @@ function tomorrowInTz(tz?: string): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+const IATA_TZ: Record<string, string> = {
+  LHR: "Europe/London", LGW: "Europe/London", STN: "Europe/London", MAN: "Europe/London",
+  CDG: "Europe/Paris", ORY: "Europe/Paris", AMS: "Europe/Amsterdam", FRA: "Europe/Berlin",
+  FCO: "Europe/Rome", NAP: "Europe/Rome", MAD: "Europe/Madrid", BCN: "Europe/Madrid",
+  LIS: "Europe/Lisbon", ZRH: "Europe/Zurich", VIE: "Europe/Vienna", DUB: "Europe/Dublin",
+  IST: "Europe/Istanbul", SAW: "Europe/Istanbul", AYT: "Europe/Istanbul",
+  KEF: "Atlantic/Reykjavik",
+  JFK: "America/New_York", EWR: "America/New_York", LGA: "America/New_York",
+  BOS: "America/New_York", MIA: "America/New_York", ATL: "America/New_York",
+  ORD: "America/Chicago", DFW: "America/Chicago",
+  DEN: "America/Denver",
+  LAX: "America/Los_Angeles", SFO: "America/Los_Angeles", SEA: "America/Los_Angeles",
+  DXB: "Asia/Dubai", DOH: "Asia/Qatar",
+  SIN: "Asia/Singapore", HKG: "Asia/Hong_Kong", BKK: "Asia/Bangkok",
+  HND: "Asia/Tokyo", NRT: "Asia/Tokyo", KIX: "Asia/Tokyo",
+  ICN: "Asia/Seoul", DPS: "Asia/Makassar",
+  SYD: "Australia/Sydney", MEL: "Australia/Melbourne",
+  ACC: "Africa/Accra", LOS: "Africa/Lagos", NBO: "Africa/Nairobi",
+  MLE: "Indian/Maldives",
+};
+
+function getDepAirportCode(ev: TravelEvent): string | null {
+  if (ev.depAirport) return ev.depAirport.toUpperCase();
+  const locRoute = ev.location?.match(/^([A-Z]{3})\s+to\s+/i);
+  if (locRoute) return locRoute[1].toUpperCase();
+  return null;
+}
+
+function getUtcOffsetMins(tz: string, dateStr: string): number {
+  try {
+    const d = new Date(dateStr + "T12:00:00Z");
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(d);
+    const localH = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    const localM = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+    const localDay = parseInt(parts.find(p => p.type === "day")?.value || "0", 10);
+    const utcDay = d.getUTCDate();
+    let offsetMins = (localH * 60 + localM) - (12 * 60);
+    if (localDay > utcDay) offsetMins += 1440;
+    else if (localDay < utcDay) offsetMins -= 1440;
+    return offsetMins;
+  } catch { return 0; }
+}
+
+function depTimeToMs(ev: TravelEvent): number {
+  const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
+  if (!depMatch) return new Date(`${ev.date}T23:59:00`).getTime();
+  const h = depMatch[1].padStart(2, "0");
+  const m = depMatch[2];
+  const code = getDepAirportCode(ev);
+  const tz = code ? IATA_TZ[code] : undefined;
+  if (!tz) return new Date(`${ev.date}T${h}:${m}:00`).getTime();
+  const offsetMins = getUtcOffsetMins(tz, ev.date);
+  return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;
+}
+
+function getFlightProgress(ev: TravelEvent): number {
+  const depMs = depTimeToMs(ev);
+  const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+  const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+  if (durMins <= 0) return 0;
+  const arrMs = depMs + durMins * 60000;
+  const now = Date.now();
+  if (now <= depMs) return 0;
+  if (now >= arrMs) return 1;
+  return (now - depMs) / (arrMs - depMs);
+}
+
+function yesterdayInTz(tz?: string): string {
+  const yesterday = new Date(Date.now() - 86400000);
+  if (!tz) {
+    return `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(yesterday);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
   let from = "";
   let to = "";
@@ -154,7 +236,7 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
     to: to || "---",
     departTime: ev.time || "",
     arriveTime: ev.endTime || "",
-    status: ev.status || "Scheduled",
+    status: "Scheduled",
     gate: ev.gate || "",
     duration: ev.duration || "",
   };
@@ -174,30 +256,22 @@ function safe(fn: () => unknown) {
 export function useFlightLiveActivity() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
-  const activitiesRef = useRef<LiveActivityRef[]>([]);
-  const didCleanup = useRef(false);
+  const activityRef = useRef<LiveActivityRef | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== "ios" || !FlightTracker) return;
-
-    // If Live Activity is disabled, end all and bail
-    if (prefs.liveActivity === false) {
-      for (const r of activitiesRef.current) safe(() => r.activity.end("default"));
-      activitiesRef.current = [];
+    if (Platform.OS !== "ios" || !FlightTracker) {
       return;
     }
 
-    // End any stale Live Activities from previous sessions on first run
-    if (!didCleanup.current) {
-      didCleanup.current = true;
-      try {
-        const stale = FlightTracker.getInstances();
-        for (const a of stale) safe(() => a.end("immediate"));
-        console.log(`[FlightLiveActivity] Cleaned up ${stale.length} stale activities`);
-      } catch {}
+    if (prefs.liveActivity === false) {
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
+      return;
     }
 
-    // Collect today's flight events across all trips (timezone-aware)
+    // Collect today's flight events across all trips
     const todayFlights: TravelEvent[] = [];
     const deviceToday = todayInTz(undefined);
     for (const trip of trips) {
@@ -205,69 +279,85 @@ export function useFlightLiveActivity() {
       const useTripTz = tz && deviceToday > trip.start;
       const today = todayInTz(useTripTz ? tz : undefined);
       const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
+      const yesterday = yesterdayInTz(useTripTz ? tz : undefined);
+      const deviceYesterday = yesterdayInTz(undefined);
       for (const ev of trip.events) {
         if (ev.type !== "flight") continue;
-        console.log(`[FlightLiveActivity] Flight: ${ev.flightNum} date=${ev.date} depAirport=${ev.depAirport} arrAirport=${ev.arrAirport} location=${ev.location}`);
-        if (ev.date === today || ev.date === tomorrow) {
+        if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday
+            || ev.date === yesterday || ev.date === deviceYesterday) {
           todayFlights.push(ev);
         }
       }
     }
-    console.log(`[FlightLiveActivity] ${trips.length} trips, ${todayFlights.length} today flights`);
 
-    const current = activitiesRef.current;
 
-    function syncActivity(ev: TravelEvent, props: FlightTrackerProps) {
-      const existing = current.find(a => a.eventId === ev.id);
-      const status = ev.status?.toLowerCase() ?? "";
-      const isEnded = status.includes("landed") || status.includes("arrived") || status.includes("cancel");
-
-      if (existing) {
-        if (isEnded) {
-          safe(() => existing.activity.end("default", props));
-          activitiesRef.current = current.filter(a => a.eventId !== ev.id);
-        } else {
-          safe(() => existing.activity.update(props));
-        }
-      } else if (!isEnded) {
-        try {
-          const activity = FlightTracker.start(props, `/trip/day?date=${ev.date}`);
-          activitiesRef.current.push({ eventId: ev.id, activity });
-        } catch (err) {
-          console.warn("[FlightLiveActivity] Failed to start:", err);
-        }
-      }
+    // Find the best flight to show (prefer in-flight, then upcoming, skip arrived)
+    const now = Date.now();
+    let bestFlight: TravelEvent | null = null;
+    for (const ev of todayFlights) {
+      const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+      const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+      const depMs = depTimeToMs(ev);
+      const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
+      if (now > arrMs) continue;
+      bestFlight = ev;
+      break;
     }
 
-    // Start/update live activities, fetching airport codes from API if missing
-    for (const ev of todayFlights) {
-      const props = eventToProps(ev);
+    if (!bestFlight) {
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
+      return;
+    }
+
+    const props = eventToProps(bestFlight);
+    props.progress = getFlightProgress(bestFlight);
+    const flightRef = bestFlight;
+
+    // Delay start so UpcomingEvent hook's cleanup finishes first
+    // (both widgets share the same NativeLiveActivity type)
+    const timer = setTimeout(() => {
+      // End previous flight activity if switching flights
+      if (activityRef.current && activityRef.current.eventId !== flightRef.id) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
+      }
+
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.update(props));
+        return;
+      }
+
+      const doStart = (p: FlightTrackerProps) => {
+        try {
+          const activity = FlightTracker.start(p, `/trip/day?date=${flightRef.date}`);
+          activityRef.current = { eventId: flightRef.id, activity };
+        } catch {
+        }
+      };
 
       if (props.from === "---" || props.to === "---") {
-        // Airport codes missing — fetch from API then update
-        if (ev.flightNum) {
-          fetchAirportCodes(ev.flightNum, ev.date).then(codes => {
-            if (codes) {
-              props.from = codes.from;
-              props.to = codes.to;
-            }
-            syncActivity(ev, props);
+        if (flightRef.flightNum) {
+          fetchAirportCodes(flightRef.flightNum, flightRef.date).then(codes => {
+            if (codes) { props.from = codes.from; props.to = codes.to; }
+            doStart(props);
           });
         } else {
-          syncActivity(ev, props);
+          doStart(props);
         }
       } else {
-        syncActivity(ev, props);
+        doStart(props);
       }
-    }
+    }, 800);
 
-    // End activities for flights no longer in today's list
-    const todayIds = new Set(todayFlights.map(e => e.id));
-    for (const r of current) {
-      if (!todayIds.has(r.eventId)) {
-        safe(() => r.activity.end("default"));
-        activitiesRef.current = activitiesRef.current.filter(a => a.eventId !== r.eventId);
+    return () => {
+      clearTimeout(timer);
+      if (activityRef.current) {
+        safe(() => activityRef.current!.activity.end("default"));
+        activityRef.current = null;
       }
-    }
+    };
   }, [trips, prefs.liveActivity]);
 }

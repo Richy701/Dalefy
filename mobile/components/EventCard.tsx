@@ -1,11 +1,12 @@
-import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, Platform } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import {
   Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  MapPin, ArrowRight, Hash, FileText, Info,
+  MapPin, ArrowRight, Hash, FileText,
 } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent, EventDocument } from "@/shared/types";
@@ -54,6 +55,41 @@ const IATA_CITY: Record<string, string> = {
   MEX: "Mexico City", LIM: "Lima", SCL: "Santiago", YYZ: "Toronto", YVR: "Vancouver",
   ACC: "Accra", LOS: "Lagos", NBO: "Nairobi", ADD: "Addis Ababa",
 };
+
+const TYPE_LABELS: Record<string, string> = {
+  flight: "Flight", hotel: "Hotel", activity: "Activity",
+  dining: "Dining", transfer: "Transfer",
+  car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise",
+};
+
+function cleanTitle(title: string, type: string, transferType?: string): string {
+  const labels = [TYPE_LABELS[transferType || ""] || "", TYPE_LABELS[type] || ""];
+  for (const l of labels) {
+    if (!l) continue;
+    const re = new RegExp(`^${l}\\s*[-–·:]\\s*`, "i");
+    title = title.replace(re, "");
+  }
+  return title;
+}
+
+const MONO = Platform.OS === "ios" ? "Menlo" : "monospace";
+
+function statusPill(status: string, C: ThemeColors) {
+  const s = status.toLowerCase();
+  let color: string, bg: string, border: string, label: string;
+  if (s.includes("confirm") || s === "expected") {
+    color = C.teal; bg = C.tealDim; border = C.tealMid; label = "Confirmed";
+  } else if (s.includes("pend") || s.includes("hold")) {
+    color = C.amber; bg = C.amberDim; border = "rgba(245,158,11,0.25)"; label = "Pending";
+  } else if (s.includes("cancel")) {
+    color = C.red; bg = C.redDim; border = "rgba(239,68,68,0.25)"; label = "Cancelled";
+  } else if (s.includes("done") || s.includes("complet")) {
+    color = C.textDim; bg = C.elevated; border = C.border; label = "Done";
+  } else {
+    color = C.textTertiary; bg = C.elevated; border = C.border; label = status;
+  }
+  return { color, bg, border, label };
+}
 
 // ── Flight Card ──────────────────────────────────────────────────────────────
 function parseFlightCities(title: string): { from: string; to: string } {
@@ -147,10 +183,7 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
 
           {/* Center connector */}
           <View style={fs.connector}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              {flightLabel ? <Text style={[fs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
-              <Info size={14} color={C.textTertiary} weight="regular" />
-            </View>
+            {flightLabel ? <Text style={[fs.flightNum, { color: C.textTertiary }]}>{flightLabel}</Text> : null}
             <View style={fs.lineRow}>
               <View style={[fs.line, { backgroundColor: C.flight + "55" }]} />
               <Airplane size={18} color={C.flight} weight="fill" style={{ transform: [{ rotate: "90deg" }] }} />
@@ -251,21 +284,38 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
       style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
     >
       {ev.image && (
-        <CachedImage uri={ev.image} style={cs.imageBanner} />
+        <View>
+          <CachedImage uri={ev.image} style={cs.imageBanner} />
+          <LinearGradient
+            colors={["rgba(10,10,11,0.05)", "rgba(10,10,11,0.45)"]}
+            style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
+          />
+          <View style={cs.photoOverlay}>
+            <View style={cs.glassPill}>
+              <Bed size={11} color={C.teal} weight="regular" />
+              <Text style={[cs.glassPillText, { color: C.teal }]}>{ev.isOvernight ? "OVERNIGHT" : "STAY"}</Text>
+            </View>
+            {!ev.isOvernight && ev.time && (
+              <View style={cs.glassPill}>
+                <Text style={[cs.glassPillText, { color: "#f4f4f5" }]}>{ev.time}</Text>
+              </View>
+            )}
+          </View>
+        </View>
       )}
 
       <View style={cs.content}>
-        {/* Header */}
-        <View style={cs.header}>
-          <View style={[cs.iconBox, { backgroundColor: C.hotel + "18" }]}>
-            <Bed size={12} color={C.hotel} weight="regular" />
+        {!ev.image && (
+          <View style={cs.header}>
+            <View style={[cs.iconBox, { backgroundColor: C.tealDim }]}>
+              <Bed size={12} color={C.teal} weight="regular" />
+            </View>
+            <Text style={[cs.smallLabel, { color: C.teal, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
+            {!ev.isOvernight && ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
           </View>
-          <Text style={[cs.smallLabel, { color: C.hotel, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
-          {!ev.isOvernight && ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
-          <Info size={16} color={C.textTertiary} weight="regular" style={{ marginLeft: 4 }} />
-        </View>
+        )}
 
-        <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{ev.title}</Text>
+        <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{cleanTitle(ev.title, ev.type)}</Text>
 
         {ev.location && (
           <View style={cs.locationRow}>
@@ -318,13 +368,11 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
 
 // ── Activity / Dining Card ───────────────────────────────────────────────────
 function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
-  const isDining = ev.type === "dining";
   const isTransfer = ev.type === "transfer";
   const transferIcons: Record<string, typeof Car> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
   const transferLabels: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
-  const color = isDining ? C.dining : isTransfer ? (C as any).transfer ?? C.activity : C.activity;
-  const Icon = isTransfer ? (transferIcons[ev.transferType || "car"] || Car) : isDining ? ForkKnife : Compass;
-  const label = isTransfer ? (transferLabels[ev.transferType || "car"] || "Transfer") : isDining ? "Dining" : "Activity";
+  const Icon = isTransfer ? (transferIcons[ev.transferType || "car"] || Car) : ev.type === "dining" ? ForkKnife : Compass;
+  const label = isTransfer ? (transferLabels[ev.transferType || "car"] || "Transfer") : ev.type === "dining" ? "Dining" : "Activity";
 
   const router = useRouter();
   const handlePress = () => {
@@ -333,34 +381,51 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
     if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`);
   };
 
+  const timeStr = ev.time ? (ev.endTime ? `${ev.time} – ${ev.endTime}` : ev.time) : null;
+
   return (
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
     >
       {ev.image && (
-        <CachedImage uri={ev.image} style={cs.imageBanner} />
+        <View>
+          <CachedImage uri={ev.image} style={cs.imageBanner} />
+          <LinearGradient
+            colors={["rgba(10,10,11,0.05)", "rgba(10,10,11,0.45)"]}
+            style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
+          />
+          <View style={cs.photoOverlay}>
+            <View style={cs.glassPill}>
+              <Icon size={11} color={C.teal} weight="regular" />
+              <Text style={[cs.glassPillText, { color: C.teal }]}>{label.toUpperCase()}</Text>
+            </View>
+            {timeStr && (
+              <View style={cs.glassPill}>
+                <Text style={[cs.glassPillText, { color: "#f4f4f5" }]}>{timeStr}</Text>
+              </View>
+            )}
+          </View>
+        </View>
       )}
 
       <View style={cs.content}>
-        {/* Header */}
-        <View style={cs.header}>
-          <View style={[cs.iconBox, { backgroundColor: color + "18" }]}>
-            <Icon size={12} color={color} weight="regular" />
+        {!ev.image && (
+          <View style={cs.header}>
+            <View style={[cs.iconBox, { backgroundColor: C.tealDim }]}>
+              <Icon size={12} color={C.teal} weight="regular" />
+            </View>
+            <Text style={[cs.smallLabel, { color: C.teal, flex: 1 }]}>{label}</Text>
+            {timeStr && (
+              <Text style={[cs.meta, { color: C.textTertiary }]}>{timeStr}</Text>
+            )}
           </View>
-          <Text style={[cs.smallLabel, { color, flex: 1 }]}>{label}</Text>
-          {ev.time && (
-            <Text style={[cs.meta, { color: C.textTertiary }]}>
-              {ev.time}{ev.endTime ? ` – ${ev.endTime}` : ""}
-            </Text>
-          )}
-          <Info size={16} color={C.textTertiary} weight="regular" style={{ marginLeft: 4 }} />
-        </View>
+        )}
 
-        <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{ev.title}</Text>
+        <Text style={[cs.title, { color: C.textPrimary }]} numberOfLines={2}>{cleanTitle(ev.title, ev.type, ev.transferType)}</Text>
 
         {ev.description && (
-          <Text style={[cs.desc, { color: C.textTertiary }]}>{ev.description}</Text>
+          <Text style={[cs.desc, { color: C.textTertiary }]} numberOfLines={2}>{ev.description}</Text>
         )}
 
         {ev.location && (
@@ -371,17 +436,23 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
         )}
 
         {ev.notes && (
-          <Text style={[cs.notesFlat, { color: C.textTertiary }]}>{ev.notes}</Text>
+          <Text style={[cs.notesFlat, { color: C.textTertiary }]} numberOfLines={2}>{ev.notes}</Text>
         )}
 
         {/* Footer */}
         {(ev.status || ev.price || ev.confNumber) && (
           <View style={[cs.footer, { marginTop: S.sm }]}>
-            {ev.status && (
-              <Text style={[cs.statusInline, { color: C.textDim }]}>{ev.status.toUpperCase()}</Text>
-            )}
+            {ev.status && (() => {
+              const sp = statusPill(ev.status, C);
+              return (
+                <View style={[cs.statusPill, { backgroundColor: sp.bg, borderColor: sp.border }]}>
+                  <View style={[cs.statusDot, { backgroundColor: sp.color }]} />
+                  <Text style={[cs.statusPillText, { color: sp.color }]}>{sp.label}</Text>
+                </View>
+              );
+            })()}
             {ev.price && (
-              <Text style={[cs.priceText, { color }]}>{ev.price}</Text>
+              <Text style={[cs.priceText, { color: C.teal }]}>{ev.price}</Text>
             )}
             <View style={{ flex: 1 }} />
             {ev.confNumber && (
@@ -450,10 +521,34 @@ const cs = StyleSheet.create({
   notesFlat: { fontSize: T.sm, lineHeight: 20, marginTop: S.xs },
 
   footer: { flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" },
-  statusInline: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.6 },
   priceText: { fontSize: T.sm, fontWeight: T.bold },
   confRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   confText: { fontSize: 10, fontWeight: T.bold, letterSpacing: 0.8 },
+
+  photoOverlay: {
+    position: "absolute", top: S.sm, left: S.sm, right: S.sm,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
+  },
+  glassPill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: R.full,
+    backgroundColor: "rgba(9,9,11,0.65)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  glassPillText: {
+    fontSize: 9.5, fontWeight: T.semibold, letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  statusPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: R.full,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusPillText: { fontSize: 10.5, fontWeight: T.medium },
 });
 
 // ── Compat exports ───────────────────────────────────────────────────────────

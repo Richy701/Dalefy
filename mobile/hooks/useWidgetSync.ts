@@ -23,6 +23,43 @@ try {
   /* widget module not available in Expo Go or Android */
 }
 
+const DEST_TZ: Record<string, string> = {
+  seoul: "Asia/Seoul", korea: "Asia/Seoul",
+  tokyo: "Asia/Tokyo", japan: "Asia/Tokyo",
+  bangkok: "Asia/Bangkok", thailand: "Asia/Bangkok",
+  bali: "Asia/Makassar", singapore: "Asia/Singapore",
+  dubai: "Asia/Dubai",
+  istanbul: "Europe/Istanbul", turkey: "Europe/Istanbul",
+  london: "Europe/London", paris: "Europe/Paris", rome: "Europe/Rome",
+  nairobi: "Africa/Nairobi", kenya: "Africa/Nairobi",
+  "new york": "America/New_York", "los angeles": "America/Los_Angeles",
+  sydney: "Australia/Sydney", amalfi: "Europe/Rome",
+  iceland: "Atlantic/Reykjavik", "cape town": "Africa/Johannesburg",
+  cancun: "America/Cancun", "hong kong": "Asia/Hong_Kong",
+  maldives: "Indian/Maldives", fiji: "Pacific/Fiji",
+};
+
+function getDestinationTz(destination?: string): string | undefined {
+  if (!destination) return undefined;
+  const lower = destination.toLowerCase();
+  for (const [key, tz] of Object.entries(DEST_TZ)) {
+    if (lower.includes(key)) return tz;
+  }
+  return undefined;
+}
+
+function todayInTz(tz?: string): string {
+  const now = new Date();
+  if (!tz) {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "0";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 function daysUntil(dateStr: string) {
   const target = new Date(dateStr + "T00:00:00");
   const now = new Date();
@@ -84,7 +121,10 @@ export function useWidgetSync() {
       const currentDay = -daysUntil(active.start) + 1;
       const city = (active.destination || active.name).split(",")[0].trim();
 
-      const todayStr = new Date().toISOString().split("T")[0];
+      const tripTz = getDestinationTz(active.destination);
+      const deviceToday = todayInTz(undefined);
+      const useTripTz = tripTz && deviceToday > active.start;
+      const todayStr = todayInTz(useTripTz ? tripTz : undefined);
       const todayEvents = active.events
         .filter((e) => e.date === todayStr)
         .sort((a, b) => timeToMinutes(a.time || "") - timeToMinutes(b.time || ""))

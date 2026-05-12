@@ -260,7 +260,7 @@ export default function SharedTripScreen() {
               </View>
               <View style={styles.pickerTextWrap}>
                 <Text style={styles.pickerLabel}>
-                  {viewAsId ? "VIEWING AS" : "WHO ARE YOU?"}
+                  {viewAsId ? "Viewing as" : "Personalise your view"}
                 </Text>
                 <Text style={[styles.pickerName, { color: C.textPrimary }]} numberOfLines={1}>
                   {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
@@ -328,14 +328,14 @@ export default function SharedTripScreen() {
         {/* Itinerary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Compass size={13} color={C.teal} weight="regular" />
-            <Text style={styles.sectionEyebrow}>ITINERARY</Text>
+            <Text style={styles.sectionEyebrow}>Itinerary</Text>
           </View>
 
           <View style={styles.dayRows}>
             {(() => {
               const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-              const todayStr = new Date().toISOString().split("T")[0];
+              const _now = new Date();
+              const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
               return sortedDays.map(([date, events], dayIdx) => (
                 <View key={date}>
                   <DaySummaryRow
@@ -352,11 +352,10 @@ export default function SharedTripScreen() {
                     <View style={styles.expandedEvents}>
                       {[...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)).map(ev => {
                         const Icon = EVENT_ICONS[ev.type] ?? Compass;
-                        const color = (C as any)[ev.type] ?? C.teal;
                         return (
                           <View key={ev.id} style={styles.inlineEvent}>
-                            <View style={[styles.inlineEventIcon, { backgroundColor: `${color}12` }]}>
-                              <Icon size={13} color={color} weight="regular" />
+                            <View style={[styles.inlineEventIcon, { backgroundColor: C.tealDim }]}>
+                              <Icon size={13} color={C.teal} weight="regular" />
                             </View>
                             <View style={styles.inlineEventContent}>
                               <Text style={styles.inlineEventTitle} numberOfLines={1}>{ev.title}</Text>
@@ -467,11 +466,11 @@ function makeStyles(C: ThemeColors) {
     },
 
     sectionHeader: {
-      flexDirection: "row", alignItems: "center", gap: 6,
       paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm,
     },
     sectionEyebrow: {
-      fontSize: 10, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 1.5,
+      fontSize: 10, fontWeight: T.bold, color: C.textTertiary,
+      letterSpacing: 1.5, textTransform: "uppercase",
     },
 
     section: { paddingBottom: S.md },

@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useMemo } from "react";
 import { AirplaneTilt, Bed, Compass, ForkKnife, Car, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { type ThemeColors, T, R, S } from "@/constants/theme";
 import type { TravelEvent } from "@/shared/types";
 import { useHaptic } from "@/hooks/useHaptic";
 import { ScalePress } from "@/components/ScalePress";
@@ -15,12 +15,19 @@ const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  flight: "FLIGHT",
-  hotel: "HOTEL",
-  activity: "ACTIVITY",
-  dining: "DINING",
-  transfer: "TRANSFER",
+  flight: "Flight", hotel: "Hotel", activity: "Activity",
+  dining: "Dining", transfer: "Transfer",
+  car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise",
 };
+
+function cleanTitle(title: string, type: string): string {
+  const label = TYPE_LABELS[type] || "";
+  if (label) {
+    const re = new RegExp(`^${label}\\s*[-–·:]\\s*`, "i");
+    title = title.replace(re, "");
+  }
+  return title;
+}
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -50,8 +57,7 @@ export function DaySummaryRow({
   dayIndex, date, events, C, isToday, isFirst, isLast, onPress,
 }: DaySummaryRowProps) {
   const d = new Date(date + "T12:00:00");
-  const weekday = d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-  const fullDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const fullDate = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   const s = useMemo(() => makeStyles(C), [C]);
   const haptic = useHaptic();
 
@@ -60,25 +66,13 @@ export function DaySummaryRow({
     onPress();
   };
 
-  // Collect event types with counts
   const typeCounts: Record<string, number> = {};
   for (const ev of events) {
     typeCounts[ev.type] = (typeCounts[ev.type] || 0) + 1;
   }
 
-  // First event preview (sorted by time)
   const sorted = [...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
   const firstEvent = sorted[0];
-  const lastEvent = sorted[sorted.length - 1];
-
-  // Time span text
-  const timeSpan = firstEvent?.time && lastEvent?.time && events.length > 1
-    ? `${firstEvent.time} — ${lastEvent.time}`
-    : firstEvent?.time || "";
-
-  // Dominant event type (most frequent) for accent
-  const dominantType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "activity";
-  const accentColor = (C as any)[dominantType] ?? C.teal;
 
   return (
     <ScalePress
@@ -87,51 +81,41 @@ export function DaySummaryRow({
       accessibilityRole="button"
       accessibilityLabel={`Day ${dayIndex}, ${fullDate}, ${events.length} events`}
     >
-          {/* Day number — large typographic element */}
-          <View style={s.dayCol}>
-            <Text style={[s.dayNum, { color: isToday ? C.teal : C.textPrimary }]}>{dayIndex}</Text>
-            <Text style={[s.dayLabel, { color: isToday ? C.teal : C.textTertiary }]}>{weekday}</Text>
-          </View>
-
-          {/* Center: date + event pills + preview */}
-          <View style={s.center}>
-            {/* Date + time span */}
-            <View style={s.dateRow}>
-              <Text style={s.dateText}>{fullDate}</Text>
-              {timeSpan ? (
-                <Text style={s.timeSpan}>{timeSpan}</Text>
-              ) : null}
+          <View style={s.content}>
+            {/* Header row — formatted date left, Day N right */}
+            <View style={s.headerRow}>
+              <Text style={[s.dateText, isToday && { color: C.teal }]}>{fullDate}</Text>
+              <Text style={[s.dayLabel, isToday && { color: C.teal }]}>Day {dayIndex}</Text>
             </View>
 
-            {/* Event type icons */}
+            {/* Event type pills — all mint */}
             <View style={s.pillsRow}>
               {Object.entries(typeCounts).map(([type, count]) => {
-                const color = (C as any)[type] ?? C.teal;
                 const Icon = TYPE_ICONS[type] ?? Compass;
                 return (
-                  <View key={type} style={[s.pill, { backgroundColor: `${color}15` }]}>
-                    <Icon size={11} color={color} weight="regular" />
-                    {count > 1 && <Text style={[s.pillText, { color }]}>{count}</Text>}
+                  <View key={type} style={s.pill}>
+                    <Icon size={11} color={C.teal} weight="regular" />
+                    {count > 1 && <Text style={s.pillCount}>{count}</Text>}
                   </View>
                 );
               })}
             </View>
 
-            {/* First event preview */}
-            {firstEvent && (
-              <Text style={s.preview} numberOfLines={1}>
-                {firstEvent.title}
-                {events.length > 1 ? ` +${events.length - 1} more` : ""}
-              </Text>
-            )}
-          </View>
+            {/* First event preview — cleaned title, clamped */}
+            <View style={s.previewRow}>
+              {firstEvent && (
+                <Text style={s.preview} numberOfLines={2}>
+                  {cleanTitle(firstEvent.title, firstEvent.type)}
+                  {events.length > 1 ? ` +${events.length - 1} more` : ""}
+                </Text>
+              )}
 
-          {/* Right: count + chevron */}
-          <View style={s.right}>
-            <View style={[s.countBadge, isToday && { backgroundColor: C.tealDim, borderColor: C.tealMid }]}>
-              <Text style={[s.countNum, isToday && { color: C.teal }]}>{events.length}</Text>
+              {/* Count + chevron — no pill background */}
+              <View style={s.right}>
+                <Text style={[s.countText, isToday && { color: C.teal }]}>{events.length}</Text>
+                <CaretRight size={14} color={isToday ? C.teal : C.textTertiary} weight="regular" />
+              </View>
             </View>
-            <CaretRight size={14} color={isToday ? C.teal : C.textTertiary} weight="regular" />
           </View>
     </ScalePress>
   );
@@ -139,15 +123,12 @@ export function DaySummaryRow({
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    // Card
     cardOuter: {
       flex: 1,
       marginBottom: S.sm,
     },
     card: {
       flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
       backgroundColor: C.card,
       borderRadius: R.xl,
       overflow: "hidden",
@@ -158,56 +139,34 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: `${C.teal}08`,
     },
 
-    // Day number column
-    dayCol: {
-      width: 52,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: S.md,
-    },
-    dayNum: {
-      fontSize: T["2xl"],
-      fontWeight: T.bold,
-      letterSpacing: -0.3,
-      lineHeight: 28,
-    },
-    dayLabel: {
-      fontSize: 10,
-      fontWeight: T.semibold,
-      letterSpacing: 1.2,
-      marginTop: 2,
+    content: {
+      padding: S.md,
     },
 
-    // Center content
-    center: {
-      flex: 1,
-      paddingVertical: S.md,
-      paddingRight: S.xs,
-    },
-    dateRow: {
+    headerRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      marginBottom: 5,
+      justifyContent: "space-between",
+      marginBottom: 6,
     },
     dateText: {
       fontSize: T.sm,
-      fontWeight: T.bold,
-      color: C.textPrimary,
+      fontWeight: "600",
+      color: C.textSecondary,
     },
-    timeSpan: {
+    dayLabel: {
       fontSize: 10,
-      fontWeight: T.bold,
+      fontWeight: "700",
       color: C.textTertiary,
-      letterSpacing: 0.3,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
     },
 
-    // Event type pills
     pillsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 4,
-      marginBottom: 5,
+      marginBottom: 6,
     },
     pill: {
       flexDirection: "row",
@@ -216,38 +175,38 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: 7,
       paddingVertical: 4,
       borderRadius: R.full,
+      backgroundColor: `${C.teal}15`,
     },
-    pillText: {
+    pillCount: {
       fontSize: 11,
-      fontWeight: T.bold,
+      fontWeight: "700",
+      color: C.teal,
+      fontVariant: ["tabular-nums"],
     },
 
-    // First event preview
+    previewRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
     preview: {
+      flex: 1,
       fontSize: T.xs,
-      fontWeight: T.medium,
+      fontWeight: "500",
       color: C.textTertiary,
-      lineHeight: 15,
+      lineHeight: 17,
     },
 
-    // Right column
     right: {
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      paddingRight: S.sm,
     },
-    countBadge: {
-      backgroundColor: C.elevated,
-      borderRadius: R.sm,
-      paddingHorizontal: 7,
-      paddingVertical: 4,
-    },
-    countNum: {
+    countText: {
       fontSize: T.sm,
-      fontWeight: T.bold,
+      fontWeight: "700",
       color: C.textSecondary,
-      letterSpacing: -0.2,
+      fontVariant: ["tabular-nums"],
     },
   });
 }

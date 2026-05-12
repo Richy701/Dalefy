@@ -14,10 +14,10 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
 - **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
 - **Draft/Publish System** -- Edits stay as drafts until explicitly published. Mobile travelers only see the last published version, not work-in-progress changes. Amber indicator shows when unpublished changes exist
-- **Mobile Preview** -- Live phone-frame preview in the workspace showing how the trip looks on mobile. Supports independent dark/light theme toggle and updates in real-time as you edit
+- **Mobile Preview** -- Live phone-frame preview in the workspace matching the actual mobile trip detail screen. Includes brand eyebrow, parallax-style hero, trip header with progress bar, collapsible day rows with thumbnails, density bars, temporal coloring (today/past/future), type icons with counts, and glass pill overlays on event images. Independent dark/light theme toggle
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
-- **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan
+- **Mobile Companion** -- Expo React Native app for travelers to join trips via PIN code or QR scan, with choreographed success animation and trip preview
 - **Interactive Maps** -- Mapbox-powered trip maps with animated routes and destination explorer
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
 - **Transport Types** -- Transfer events support sub-types (Car, Train, Bus, Ferry, Cruise) with matching icons and labels
@@ -29,6 +29,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **iOS Home Screen Widget** -- Trip countdown widget with radial progress ring, destination name, start date, and upcoming events. Dynamically scales the countdown ring based on days remaining, auto-transitions between upcoming/active/empty states via WidgetKit timeline entries (up to 30 days)
 - **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts for today's flights and updates live via the flight status cron
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
+- **Notification Center** -- Grouped by date (Today, Yesterday, Earlier) with type-based icons, unread indicators, swipe-to-archive, and empty state. Tappable rows with context menus
 - **Push Notifications** -- Real-time push notifications via Firebase Cloud Function when itineraries are published, plus flight status alerts from the cron job. Local scheduled reminders for upcoming trips, flights, hotels, and events
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
@@ -67,7 +68,23 @@ npm install
 npx expo start --ios
 ```
 
-The mobile app is traveler-facing — no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
+The mobile app is traveler-facing -- no admin features, PIN-based trip joining, and branding inherited from the trip's organization.
+
+### Join Trip Flow
+
+Travelers join trips via three methods: 6-digit PIN, QR scan, or invite link paste. The PIN entry has focus-aware cells with teal glow, a paste button for clipboard, shake animation on invalid codes, and iOS `oneTimeCode` auto-fill. On success, a choreographed reveal plays -- blur-up hero image, centered checkmark with spring bounce, personalised welcome copy ("Welcome to {destination}"), staggered metadata pills, and a manual "See itinerary" CTA.
+
+### Shared Trip Preview
+
+The preview screen shows the trip itinerary with day-by-day summaries. Each day row displays the weekday, date in monospace, type icons with counts, a 40x40 thumbnail, density bar, and temporal coloring (today in teal with "Today" pill, past days dimmed, future days neutral). Multi-city trips show location chips when the city changes between days. Tapping expands inline event cards. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
+
+### Today Tab
+
+Three-state daily schedule view:
+
+- **Active trip** -- Compact map (140px) with event pins, trip name with stats strip (flights, hotels, events, days), weather data, "Next Up" countdown card, trip info and organizer cards, timeline with NOW divider and past-event dimming, "See full itinerary" button
+- **Upcoming trip** -- "Your next trip" headline, hero card with countdown badge and weather forecast, first-day event preview with cleaned titles, trip info and organizer shortcuts, stats footer
+- **Empty** -- Compass icon in teal circle, "No trips yet" with "Join a trip" CTA button
 
 ### Media Uploads
 
@@ -86,6 +103,27 @@ The web Travelers page shows all mobile users who have joined trips via PIN. Adm
 
 Name and avatar changes on mobile sync to Firebase `trip_members` in real time.
 
+### Profile
+
+The profile tab shows the traveler's avatar, name, and trip status. Features include:
+
+- **Gradient avatar** -- deterministic two-tone gradient derived from the user's name, with centered initials
+- **Trip status pill** -- shows next upcoming trip or "No trips yet"
+- **Toggle subtitles** -- each setting row shows a subtitle with the current value (e.g. "Dark", "Enabled")
+- **In-app browser** -- external links (Help, Privacy, Terms) open in an in-app Safari sheet via `expo-web-browser`
+- **Tappable version** -- tap the version number to copy it to clipboard with a toast confirmation
+
+### Onboarding
+
+Three-step welcome flow for new travelers (agency lookup, photo, name):
+
+- **Progress indicator** -- three segmented bars with "1/3" counter, filling as steps complete
+- **Top-left navigation** -- chevron to go back between steps, X button to close when editing
+- **Agency input** -- placeholder text, inline loading spinner during lookup, border color states (default, focused, error, success), helper text
+- **Avatar placeholder** -- elevated background with camera icon and "Add photo" label, no border
+- **Name input** -- iOS `textContentType="name"` for autofill support
+- **Preview mode** -- `?preview=1` query param to demo the full onboarding without resetting user data
+
 ### Live Activities & Dynamic Island
 
 Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock Screen and Dynamic Island:
@@ -93,6 +131,7 @@ Flight tracking runs as an iOS Live Activity, showing real-time data on the Lock
 - **Dynamic Island expanded**: Airport codes (leading/trailing), flight number + airplane icon (center), departure/arrival times + status pill (bottom)
 - **Dynamic Island compact**: Airplane icon + departure code (leading), arrival code (trailing)
 - **Lock Screen banner**: Full flight board with route, times, gate, and status
+- **Timezone offsets**: Uses Intl.DateTimeFormat `shortOffset` for reliable GMT offset labels (e.g. GMT+8) on Hermes
 
 The `useFlightLiveActivity` hook automatically starts activities for today's flights, updates them when Firestore data changes, and ends them when a flight lands or is cancelled. Airport codes are resolved from Firestore fields (`depAirport`/`arrAirport`), location parsing, or a fallback API call.
 
@@ -125,7 +164,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 - **Storage rules** — org admin required for logo uploads, image types only (no SVG)
 - **Email verification** — new email/password signups receive verification emails, banner shown until verified
 - **Password reset** — secure reset via Firebase sendPasswordResetEmail with rate-limit handling
-- **Trip PINs** — 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I)
+- **Trip PINs** -- 6-character alphanumeric codes (no ambiguous chars like 0/O/1/I), focus-aware input with paste support, shake animation on error, iOS oneTimeCode auto-fill
 - **SVG sanitization** — DOMPurify with filters disabled to prevent external resource loading
 
 ## Environment Variables

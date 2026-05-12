@@ -2,17 +2,17 @@ import { useMemo, useState, useRef, useCallback } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Image,
-  ActionSheetIOS, Alert, Dimensions,
+  ActionSheetIOS, Alert, Dimensions, ActivityIndicator,
 } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, ArrowLeft, Camera, User, Buildings, Check, AirplaneTilt } from "phosphor-react-native";
+import { ArrowRight, CaretLeft, Camera, User, Buildings, Check, X } from "phosphor-react-native";
 import Animated, {
   FadeIn, FadeInUp, FadeInDown,
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
@@ -36,15 +36,18 @@ export default function WelcomeScreen() {
   const { brand, refreshBranding } = useBrand();
   const { prefs, setPref } = usePreferences();
   const router = useRouter();
+  const { preview } = useLocalSearchParams<{ preview?: string }>();
   const haptic = useHaptic();
   const { toast } = useToast();
-  const isEdit = !!(prefs.name);
+  const isEdit = !!(prefs.name) && !preview;
 
   const initialStep: Step = isEdit
     ? "profile"
-    : prefs.orgId
-      ? "profile"
-      : "welcome";
+    : preview
+      ? "welcome"
+      : prefs.orgId
+        ? "profile"
+        : "welcome";
 
   const [step, setStep] = useState<Step>(initialStep);
   const [agencyCode, setAgencyCode] = useState(prefs.orgSlug || "");
@@ -227,7 +230,7 @@ export default function WelcomeScreen() {
                 entering={FadeInUp.duration(500).delay(550)}
                 style={styles.heroSub}
               >
-                Flights, hotels, activities - everything in one place.
+                Flights, hotels, activities — everything in one place.
               </Animated.Text>
 
               <Animated.View entering={FadeInUp.duration(400).delay(700)} style={styles.ctaWrap}>
@@ -269,10 +272,14 @@ export default function WelcomeScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Step label */}
-              <Animated.View entering={FadeIn.duration(300)} style={styles.stepLabel}>
-                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
-                <View style={[styles.stepDot, { backgroundColor: C.elevated }]} />
+              {/* Progress */}
+              <Animated.View entering={FadeIn.duration(300)} style={styles.progressRow}>
+                <View style={styles.progressBars}>
+                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
+                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
+                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
+                </View>
+                <Text style={styles.progressCount}>1 / 3</Text>
               </Animated.View>
 
               {/* Big heading */}
@@ -292,13 +299,13 @@ export default function WelcomeScreen() {
 
               {/* Input */}
               <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
-                <View style={styles.inputRow}>
+                <View style={[styles.inputRow, agencyError ? { borderColor: "#ef4444" } : agencySuccess ? { borderColor: C.teal } : undefined]}>
                   <Buildings size={18} color={C.textTertiary} weight="light" />
                   <TextInput
                     ref={agencyRef}
                     value={agencyCode}
                     onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); setAgencySuccess(false); }}
-                    placeholder="Agency code"
+                    placeholder="e.g. dalefy"
                     placeholderTextColor={C.textDim}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -307,6 +314,7 @@ export default function WelcomeScreen() {
                     maxLength={60}
                     style={styles.input}
                   />
+                  {agencyLoading && <ActivityIndicator size="small" color={C.teal} />}
                   {agencySuccess && (
                     <View style={[styles.checkBadge, { backgroundColor: C.teal }]}>
                       <Check size={12} color="#000" weight="bold" />
@@ -315,7 +323,11 @@ export default function WelcomeScreen() {
                 </View>
                 {agencyError ? (
                   <Text style={styles.errorText}>{agencyError}</Text>
-                ) : null}
+                ) : (
+                  <Text style={styles.helperText}>
+                    Your travel agent should have given you a short code.
+                  </Text>
+                )}
               </Animated.View>
             </ScrollView>
 
@@ -367,16 +379,47 @@ export default function WelcomeScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
         >
+          {/* Top-left nav button */}
+          {!isEdit ? (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.topNav}>
+              <Pressable
+                onPress={goBackToAgency}
+                style={({ pressed }) => [styles.topNavBtn, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={8}
+              >
+                <CaretLeft size={18} color={C.textPrimary} weight="regular" />
+              </Pressable>
+            </Animated.View>
+          ) : (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.topNav}>
+              <Pressable
+                onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
+                style={({ pressed }) => [styles.topNavBtn, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={8}
+              >
+                <X size={18} color={C.textPrimary} weight="regular" />
+              </Pressable>
+            </Animated.View>
+          )}
+
           <ScrollView
             contentContainerStyle={styles.stepScroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Step label */}
+            {/* Progress */}
             {!isEdit && (
-              <Animated.View entering={FadeIn.duration(300)} style={styles.stepLabel}>
-                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
-                <View style={[styles.stepDot, { backgroundColor: C.teal }]} />
+              <Animated.View entering={FadeIn.duration(300)} style={styles.progressRow}>
+                <View style={styles.progressBars}>
+                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
+                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
+                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
+                </View>
+                <Text style={styles.progressCount}>2 / 3</Text>
               </Animated.View>
             )}
 
@@ -407,13 +450,18 @@ export default function WelcomeScreen() {
                   {avatar ? (
                     <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
                   ) : (
-                    <User size={32} color={C.textDim} weight="thin" />
+                    <User size={36} color={C.textDim} weight="thin" />
                   )}
                 </View>
-                <View style={styles.cameraBadge}>
+                <View style={[styles.cameraBadge, { backgroundColor: C.teal }]}>
                   <Camera size={11} color="#000" weight="bold" />
                 </View>
               </Pressable>
+              {!avatar && (
+                <Pressable onPress={pickAvatar} style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.teal }}>Add photo</Text>
+                </Pressable>
+              )}
             </Animated.View>
 
             {/* Big heading */}
@@ -445,6 +493,7 @@ export default function WelcomeScreen() {
                   placeholderTextColor={C.textDim}
                   autoCapitalize="words"
                   autoCorrect={false}
+                  textContentType="name"
                   returnKeyType="done"
                   onSubmitEditing={submit}
                   maxLength={40}
@@ -456,16 +505,6 @@ export default function WelcomeScreen() {
 
           {/* CTA */}
           <Animated.View entering={FadeInUp.duration(400).delay(500)} style={styles.footer}>
-            {!isEdit && (
-              <Pressable
-                onPress={goBackToAgency}
-                style={styles.backRow}
-                accessibilityRole="button"
-              >
-                <ArrowLeft size={14} color={C.textTertiary} weight="regular" />
-                <Text style={styles.skipText}>Back</Text>
-              </Pressable>
-            )}
             <Pressable
               onPress={submit}
               disabled={!canSubmit}
@@ -481,7 +520,7 @@ export default function WelcomeScreen() {
                 {isEdit ? "Save" : "Let's Go"}
               </Text>
               {!isEdit && (
-                <AirplaneTilt size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
+                <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
               )}
             </Pressable>
           </Animated.View>
@@ -519,15 +558,33 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       marginBottom: S.xl,
     },
 
+    // ── Top nav ──
+    topNav: {
+      paddingHorizontal: S.lg, paddingTop: S.xs,
+    },
+    topNavBtn: {
+      width: 36, height: 36, borderRadius: R.full,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+    },
+
     // ── Step screens ──
     stepScroll: {
-      paddingHorizontal: S.xl, paddingTop: S.lg, flexGrow: 1,
+      paddingHorizontal: S.xl, paddingTop: S.sm, flexGrow: 1,
     },
-    stepLabel: {
-      flexDirection: "row", gap: 6, marginBottom: S.xl,
+    progressRow: {
+      flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.xl,
     },
-    stepDot: {
-      width: 20, height: 3, borderRadius: 1.5,
+    progressBars: {
+      flexDirection: "row", flex: 1, gap: 4,
+    },
+    progressBar: {
+      flex: 1, height: 3, borderRadius: 1.5,
+    },
+    progressCount: {
+      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
+      fontVariant: ["tabular-nums"],
+      letterSpacing: 0.5,
     },
     stepTitle: {
       fontSize: 36, fontWeight: "800",
@@ -590,8 +647,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     avatarCircle: {
       width: 88, height: 88, borderRadius: 44,
-      backgroundColor: C.card,
-      borderWidth: 1, borderColor: C.borderLight,
+      backgroundColor: isDark ? C.elevated : "#f0f1f5",
       alignItems: "center", justifyContent: "center",
       overflow: "hidden",
     },
@@ -601,15 +657,19 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     cameraBadge: {
       position: "absolute", bottom: 0, right: -2,
       width: 28, height: 28, borderRadius: 14,
-      backgroundColor: C.teal,
       alignItems: "center", justifyContent: "center",
       borderWidth: 3, borderColor: C.bg,
     },
 
-    // ── Error ──
+    // ── Error / helper ──
     errorText: {
       fontSize: T.xs, color: "#ef4444",
       fontWeight: T.medium, marginTop: S.xs,
+      paddingHorizontal: S.xs,
+    },
+    helperText: {
+      fontSize: T.xs, color: C.textTertiary,
+      fontWeight: T.regular, marginTop: S.xs,
       paddingHorizontal: S.xs,
     },
 
@@ -639,10 +699,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     skipText: {
       fontSize: T.sm, fontWeight: T.medium,
       color: C.textTertiary,
-    },
-    backRow: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 6, paddingVertical: S.sm, marginBottom: S.xs,
     },
   });
 }

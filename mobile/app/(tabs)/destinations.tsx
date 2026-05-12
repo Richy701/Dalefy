@@ -19,6 +19,28 @@ import { type ThemeColors, T, R, S, eventColor } from "@/constants/theme";
 import { Illustration } from "@/components/Illustration";
 import type { TravelEvent, Trip } from "@/shared/types";
 
+const TYPE_LABELS: Record<string, string> = {
+  flight: "Flight", hotel: "Hotel", activity: "Activity",
+  dining: "Dining", transfer: "Transfer",
+  car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise",
+};
+
+function cleanTitle(title: string, type: string, transferType?: string): string {
+  const labels = [TYPE_LABELS[transferType || ""] || "", TYPE_LABELS[type] || ""];
+  for (const l of labels) {
+    if (!l) continue;
+    const re = new RegExp(`^${l}\\s*[-–·:]\\s*`, "i");
+    title = title.replace(re, "");
+  }
+  return title;
+}
+
+function normaliseTitle(title: string, type: string, transferType?: string): string {
+  let t = cleanTitle(title, type, transferType);
+  t = t.replace(/\s*[-–·:]\s*/g, " — ");
+  return t;
+}
+
 let MapboxGL: any = null;
 try {
   MapboxGL = require("@rnmapbox/maps").default;
@@ -266,14 +288,15 @@ export default function TodayScreen() {
   const weatherTrip = activeTrip ?? upcomingTrip;
   const [weather, setWeather] = useState<WeatherData | null>(null);
   useEffect(() => {
-    if (!weatherTrip?.destination) return;
+    const dest = weatherTrip?.destination;
+    if (!dest) return;
     setWeather(null);
     if (activeTrip) {
-      fetchCurrentWeather(weatherTrip.destination).then(setWeather);
+      fetchCurrentWeather(dest).then(setWeather);
     } else {
-      fetchForecastWeather(weatherTrip.destination, weatherTrip.start).then(w => {
+      fetchForecastWeather(dest, weatherTrip.start).then(w => {
         if (w) setWeather(w);
-        else fetchCurrentWeather(weatherTrip.destination).then(setWeather);
+        else fetchCurrentWeather(dest).then(setWeather);
       });
     }
   }, [weatherTrip?.destination, !!activeTrip]);
@@ -333,11 +356,13 @@ export default function TodayScreen() {
           {/* Header */}
           <View style={styles.headerSection}>
             <Text style={[styles.dateLabel, { color: C.textTertiary }]}>{dateLabel}</Text>
-            <Text style={[styles.tripName, { color: C.textPrimary }]}>Nothing on today</Text>
           </View>
 
           {upcomingTrip ? (
             <View style={styles.emptyContent}>
+              {/* Headline */}
+              <Text style={[styles.upcomingHeadline, { color: C.textPrimary }]}>Your next trip</Text>
+
               {/* Trip hero */}
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${upcomingTrip.id}`); }}
@@ -351,7 +376,7 @@ export default function TodayScreen() {
                       {daysUntilNext === 1 ? "Tomorrow" : `In ${daysUntilNext} days`}
                     </Text>
                   </View>
-                  <Text style={styles.heroName} numberOfLines={1}>{upcomingTrip.name}</Text>
+                  <Text style={styles.heroName} numberOfLines={2}>{upcomingTrip.name}</Text>
                   {upcomingTrip.destination && !upcomingTrip.name.toLowerCase().includes(upcomingTrip.destination.split(",")[0].toLowerCase()) && (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <MapPin size={11} color="rgba(255,255,255,0.7)" weight="fill" />
@@ -416,7 +441,7 @@ export default function TodayScreen() {
                               <Icon size={16} color={C.teal} weight="regular" />
                             </View>
                             <View style={{ flex: 1, marginRight: S.sm }}>
-                              <Text style={[styles.previewTitle, { color: C.textPrimary }]} numberOfLines={1}>{ev.title}</Text>
+                              <Text style={[styles.previewTitle, { color: C.textPrimary }]} numberOfLines={2}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
                               {ev.location && (
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
                                   <MapPin size={10} color={C.textTertiary} weight="regular" />
@@ -437,11 +462,12 @@ export default function TodayScreen() {
                         <View style={[styles.previewDivider, { backgroundColor: C.border }]} />
                         <Pressable
                           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${upcomingTrip.id}`); }}
-                          style={({ pressed }) => [styles.previewRow, { opacity: pressed ? 0.7 : 1, justifyContent: "center" }]}
+                          style={({ pressed }) => [styles.seeAllBtn, { opacity: pressed ? 0.85 : 1 }]}
                         >
-                          <Text style={{ fontSize: T.sm, fontWeight: "600", color: C.teal }}>
+                          <Text style={[styles.seeAllBtnText, { color: C.teal }]}>
                             See all {upcomingTrip.events.filter(e => e.date === upcomingTrip.start).length} events
                           </Text>
+                          <CaretRight size={14} color={C.teal} weight="bold" />
                         </Pressable>
                       </>
                     )}
@@ -507,12 +533,20 @@ export default function TodayScreen() {
             </View>
           ) : (
             <View style={styles.emptyContent}>
-              <View style={{ paddingTop: 60, alignItems: "center", gap: S.xs }}>
-                <Compass size={28} color={C.textDim} weight="regular" />
+              <View style={{ paddingTop: 80, alignItems: "center", gap: S.sm }}>
+                <View style={[styles.emptyIconWrap, { backgroundColor: C.tealDim }]}>
+                  <Compass size={32} color={C.teal} weight="regular" />
+                </View>
                 <Text style={styles.emptyTitle}>No trips yet</Text>
                 <Text style={[styles.emptyText, { textAlign: "center" }]}>
-                  Join a trip and your daily schedule will appear here
+                  When you join a trip, your schedule{"\n"}and daily plans will appear here.
                 </Text>
+                <Pressable
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push("/(tabs)"); }}
+                  style={({ pressed }) => [styles.emptyCta, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <Text style={styles.emptyCtaText}>Join a trip</Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -618,12 +652,11 @@ export default function TodayScreen() {
           </View>
           <Pressable
             onPress={() => {
-
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push(`/trip/${activeTrip.id}`);
             }}
           >
-            <Text style={[styles.tripName, { color: C.textPrimary }]}>{activeTrip.name}</Text>
+            <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={2}>{activeTrip.name}</Text>
           </Pressable>
           {activeTrip.destination && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
@@ -631,6 +664,25 @@ export default function TodayScreen() {
               <Text style={[styles.destination, { color: C.textSecondary }]}>{activeTrip.destination}</Text>
             </View>
           )}
+          {/* Stats strip */}
+          {(() => {
+            const s = tripStats(activeTrip);
+            return (
+              <View style={styles.activeStatsStrip}>
+                <Airplane size={12} color={C.textTertiary} weight="bold" />
+                <Text style={styles.activeStatsText}>{s.flights}</Text>
+                <View style={styles.activeStatsDot} />
+                <Bed size={12} color={C.textTertiary} weight="bold" />
+                <Text style={styles.activeStatsText}>{s.hotels}</Text>
+                <View style={styles.activeStatsDot} />
+                <CalendarDots size={12} color={C.textTertiary} weight="bold" />
+                <Text style={styles.activeStatsText}>{s.totalEvents} events</Text>
+                <View style={styles.activeStatsDot} />
+                <Calendar size={12} color={C.textTertiary} weight="bold" />
+                <Text style={styles.activeStatsText}>{s.totalDays} days</Text>
+              </View>
+            );
+          })()}
           {weather && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
               <CloudSun size={13} color={C.textTertiary} weight="bold" />
@@ -664,7 +716,6 @@ export default function TodayScreen() {
         {next && (
           <Pressable
             onPress={() => {
-
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push({ pathname: "/trip/event", params: { tripId: activeTrip.id, eventId: next.event.id } });
             }}
@@ -672,7 +723,7 @@ export default function TodayScreen() {
           >
             <View style={styles.nextLeft}>
               <Text style={[styles.nextLabel, { color: C.teal }]}>NEXT UP</Text>
-              <Text style={[styles.nextTitle, { color: C.textPrimary }]} numberOfLines={1}>{next.event.title}</Text>
+              <Text style={[styles.nextTitle, { color: C.textPrimary }]} numberOfLines={2}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
               {next.event.location && (
                 <Text style={[styles.nextLocation, { color: C.textSecondary }]} numberOfLines={1}>{next.event.location}</Text>
               )}
@@ -681,6 +732,46 @@ export default function TodayScreen() {
               <Text style={styles.nextCountdownText}>{formatCountdown(next.minsUntil)}</Text>
             </View>
           </Pressable>
+        )}
+
+        {/* Trip info + organizer between NEXT UP and schedule */}
+        {(activeTrip.info?.length ?? 0) > 0 && (
+          <Pressable
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/info", params: { tripId: activeTrip.id } }); }}
+            style={({ pressed }) => [styles.infoRow, { backgroundColor: C.card, marginHorizontal: S.md, marginTop: S.sm, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <View style={[styles.previewIcon, { backgroundColor: `${C.teal}15` }]}>
+              <Globe size={16} color={C.teal} weight="regular" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.previewTitle, { color: C.textPrimary }]}>Trip information</Text>
+              <Text style={[styles.previewLocation, { color: C.textTertiary, marginTop: 2 }]}>Contacts, details, and more</Text>
+            </View>
+            <CaretRight size={16} color={C.textDim} weight="bold" />
+          </Pressable>
+        )}
+        {activeTrip.organizer?.name && (
+          <View style={[styles.infoRow, { backgroundColor: C.card, marginHorizontal: S.md, marginTop: S.sm }]}>
+            <View style={[styles.previewIcon, { backgroundColor: `${C.teal}15` }]}>
+              <Suitcase size={16} color={C.teal} weight="regular" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.previewTitle, { color: C.textPrimary }]}>{activeTrip.organizer.name}</Text>
+              <Text style={[styles.previewLocation, { color: C.textTertiary, marginTop: 2 }]}>
+                {activeTrip.organizer.role || "Trip organizer"}
+              </Text>
+            </View>
+            {activeTrip.organizer.phone && (
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`tel:${activeTrip.organizer!.phone}`); }}
+                hitSlop={8}
+              >
+                <View style={[styles.previewIcon, { backgroundColor: `${C.teal}15` }]}>
+                  <NavigationArrow size={14} color={C.teal} weight="bold" style={{ transform: [{ rotate: "90deg" }] }} />
+                </View>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {/* Schedule */}
@@ -705,7 +796,6 @@ export default function TodayScreen() {
                 <View key={ev.id}>
                   <Pressable
                     onPress={() => {
-        
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push({ pathname: "/trip/event", params: { tripId: activeTrip.id, eventId: ev.id } });
                     }}
@@ -716,8 +806,8 @@ export default function TodayScreen() {
                         <Icon size={16} color={C.teal} weight="regular" />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={1}>
-                          {ev.title}
+                        <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={2}>
+                          {normaliseTitle(ev.title, ev.type, ev.transferType)}
                         </Text>
                         {ev.location && (
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
@@ -744,6 +834,16 @@ export default function TodayScreen() {
                 </View>
               );
             })}
+            {/* See full itinerary */}
+            <View style={{ marginTop: S.md }}>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${activeTrip.id}`); }}
+                style={({ pressed }) => [styles.seeAllBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={[styles.seeAllBtnText, { color: C.teal }]}>See full itinerary</Text>
+                <CaretRight size={14} color={C.teal} weight="bold" />
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={styles.noEventsWrap}>
@@ -764,13 +864,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     screenTitle: {
       fontSize: 22, fontWeight: "800",
-      color: C.teal, paddingHorizontal: S.md,
+      color: C.textPrimary, paddingHorizontal: S.md,
       paddingVertical: 10,
     },
 
     // Map
     mapWrap: {
-      height: 240, overflow: "hidden",
+      height: 140, overflow: "hidden",
       backgroundColor: C.card,
     },
 
@@ -839,12 +939,47 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     noEventsText: { fontSize: T.sm, fontWeight: "500" },
 
+    // Active stats strip
+    activeStatsStrip: {
+      flexDirection: "row", alignItems: "center",
+      gap: 5, marginTop: 6,
+    },
+    activeStatsText: { fontSize: T.xs, fontWeight: "600", color: C.textTertiary },
+    activeStatsDot: {
+      width: 3, height: 3, borderRadius: 1.5,
+      backgroundColor: C.textTertiary, opacity: 0.4,
+    },
+
+    // Upcoming headline
+    upcomingHeadline: {
+      fontSize: T["2xl"], fontWeight: "800", letterSpacing: -0.3,
+      marginBottom: S.md,
+    },
+
+    // See all button
+    seeAllBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 4, paddingVertical: 12, borderRadius: R.xl,
+    },
+    seeAllBtnText: { fontSize: T.sm, fontWeight: "700" },
+
     // Empty state
     emptyContent: {
       paddingHorizontal: S.md, paddingTop: S.sm,
     },
+    emptyIconWrap: {
+      width: 64, height: 64, borderRadius: 32,
+      alignItems: "center", justifyContent: "center",
+      marginBottom: S.xs,
+    },
     emptyTitle: { fontSize: T.xl, fontWeight: "800", color: C.textPrimary, letterSpacing: -0.3 },
     emptyText: { fontSize: T.sm, color: C.textTertiary, lineHeight: 20, marginTop: 4 },
+    emptyCta: {
+      marginTop: S.md,
+      paddingHorizontal: S.xl, paddingVertical: 12,
+      borderRadius: R.full,
+    },
+    emptyCtaText: { fontSize: T.base, fontWeight: "700", color: "#000" },
 
     // Hero trip card
     heroCard: {

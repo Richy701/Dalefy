@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
+import * as Updates from "expo-updates";
 import * as SystemUI from "expo-system-ui";
 let NavigationBar: any = null;
 try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available */ }
