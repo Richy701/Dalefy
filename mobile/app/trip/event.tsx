@@ -894,8 +894,16 @@ function FlightDetailScreen({
                   ) : <TbaText C={C} />}
                 </View>
                 <View style={fs.termField}>
+                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Gate</Text>
+                  {(live?.arrGate || ev.arrGate) ? (
+                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.arrGate || ev.arrGate}</Text>
+                  ) : <TbaText C={C} />}
+                </View>
+                <View style={fs.termField}>
                   <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Belt</Text>
-                  <TbaText C={C} />
+                  {(live?.baggageBelt || ev.baggageBelt) ? (
+                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.baggageBelt || ev.baggageBelt}</Text>
+                  ) : <TbaText C={C} />}
                 </View>
               </View>
             </Animated.View>

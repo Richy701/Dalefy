@@ -52,6 +52,8 @@ export default async function handler(req: any, res: any) {
         if (result.terminal) rawEvents[i].terminal = result.terminal;
         if (result.arrTerminal) rawEvents[i].arrTerminal = result.arrTerminal;
         if (result.gate) rawEvents[i].gate = result.gate;
+        if (result.arrGate) rawEvents[i].arrGate = result.arrGate;
+        if (result.baggageBelt) rawEvents[i].baggageBelt = result.baggageBelt;
         if (result.departTime) rawEvents[i].time = result.departTime;
         if (result.arriveTime) rawEvents[i].endTime = result.arriveTime;
         if (result.depAirport) rawEvents[i].depAirport = result.depAirport;
@@ -116,6 +118,8 @@ interface LiveFlightData {
   terminal: string;
   arrTerminal: string;
   gate: string;
+  arrGate: string;
+  baggageBelt: string;
   departTime: string;
   arriveTime: string;
   depAirport: string;
@@ -157,6 +161,8 @@ async function lookupFlight(
       terminal: dep.terminal ?? "",
       arrTerminal: arr.terminal ?? "",
       gate: dep.gate ?? "",
+      arrGate: arr.gate ?? "",
+      baggageBelt: arr.baggageBelt ?? "",
       departTime: formatTime(dep.scheduledTime?.local ?? dep.actualTime?.local ?? ""),
       arriveTime: formatTime(arr.scheduledTime?.local ?? arr.actualTime?.local ?? ""),
       depAirport: dep.airport?.iata ?? "",
@@ -189,6 +195,12 @@ function detectChanges(stored: any, live: LiveFlightData): string[] {
   }
   if (live.gate && live.gate !== stored.gate) {
     changes.push(`Gate: ${live.gate}`);
+  }
+  if (live.arrGate && live.arrGate !== stored.arrGate) {
+    changes.push(`Arrival gate: ${live.arrGate}`);
+  }
+  if (live.baggageBelt && live.baggageBelt !== stored.baggageBelt) {
+    changes.push(`Baggage belt: ${live.baggageBelt}`);
   }
   if (live.departTime && live.departTime !== stored.time) {
     changes.push(`Departure: ${live.departTime}`);

@@ -64,6 +64,8 @@ export default async function handler(req: any, res: any) {
         terminal: dep.terminal ?? "",
         arrTerminal: arr.terminal ?? "",
         gate: dep.gate ?? "",
+        arrGate: arr.gate ?? "",
+        baggageBelt: arr.baggageBelt ?? "",
         aircraft: f.aircraft?.model ?? "",
       };
     });
