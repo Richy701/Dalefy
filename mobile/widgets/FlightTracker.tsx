@@ -41,7 +41,7 @@ function FlightTrackerActivity(
   const hierarchicalTertiary = { type: "hierarchical" as const, style: "tertiary" as const };
 
   const progress = Math.max(0, Math.min(1, props.progress ?? 0));
-  const trackW = 100;
+  const trackW = 60;
   const doneW = Math.round(progress * trackW);
   const todoW = trackW - doneW;
 
@@ -124,12 +124,13 @@ function FlightTrackerActivity(
 
         <Spacer />
         <VStack>
-          <HStack alignment="center">
+          <HStack>
             {doneW > 0 ? (
               <HStack
                 modifiers={[
-                  frame({ width: doneW, height: 3 }),
+                  frame({ width: doneW, height: 2 }),
                   background(teal, shapes.capsule()),
+                  padding({ vertical: 5 }),
                 ]}
               >
                 <Spacer />
@@ -139,8 +140,9 @@ function FlightTrackerActivity(
             {todoW > 0 ? (
               <HStack
                 modifiers={[
-                  frame({ width: todoW, height: 3 }),
+                  frame({ width: todoW, height: 2 }),
                   background("#ffffff30", shapes.capsule()),
+                  padding({ vertical: 5 }),
                 ]}
               >
                 <Spacer />
@@ -246,12 +248,13 @@ function FlightTrackerActivity(
   // ── Expanded: center — plane + flight number ──
   const expandedCenter = (
     <VStack modifiers={[padding({ all: 4 })]}>
-      <HStack alignment="center">
+      <HStack>
         {doneW > 0 ? (
           <HStack
             modifiers={[
               frame({ width: Math.round(doneW * 0.5), height: 2 }),
               background(teal, shapes.capsule()),
+              padding({ vertical: 4 }),
             ]}
           >
             <Spacer />
@@ -263,6 +266,7 @@ function FlightTrackerActivity(
             modifiers={[
               frame({ width: Math.round(todoW * 0.5), height: 2 }),
               background("#ffffff30", shapes.capsule()),
+              padding({ vertical: 4 }),
             ]}
           >
             <Spacer />
