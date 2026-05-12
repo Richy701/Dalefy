@@ -173,6 +173,18 @@ function depTimeToMs(ev: TravelEvent): number {
   return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;
 }
 
+function getFlightProgress(ev: TravelEvent): number {
+  const depMs = depTimeToMs(ev);
+  const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
+  const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
+  if (durMins <= 0) return 0;
+  const arrMs = depMs + durMins * 60000;
+  const now = Date.now();
+  if (now <= depMs) return 0;
+  if (now >= arrMs) return 1;
+  return (now - depMs) / (arrMs - depMs);
+}
+
 function yesterdayInTz(tz?: string): string {
   const yesterday = new Date(Date.now() - 86400000);
   if (!tz) {
@@ -301,8 +313,8 @@ export function useFlightLiveActivity() {
     }
 
     const props = eventToProps(bestFlight);
+    props.progress = getFlightProgress(bestFlight);
     const flightRef = bestFlight;
-
 
     // Delay start so UpcomingEvent hook's cleanup finishes first
     // (both widgets share the same NativeLiveActivity type)
