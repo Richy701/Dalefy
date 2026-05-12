@@ -44,7 +44,7 @@ const TripsContext = createContext<TripsContextType>({
 
 function useCloudTrips(uid: string | null, orgId?: string | null) {
   const qc = useQueryClient();
-  const skipNextSnapshot = useRef(false);
+  const recentLocalEdits = useRef<Set<string>>(new Set());
   const pendingDeletes = useRef<Set<string>>(new Set());
   const queryKey = ["trips", orgId || uid];
 
@@ -59,15 +59,26 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
   useEffect(() => {
     if (!uid) return;
     const unsub = subscribeToTrips((updated) => {
-      if (skipNextSnapshot.current) {
-        skipNextSnapshot.current = false;
-        return;
-      }
       // Filter out trips that are pending deletion to prevent snapshot revert
-      const filtered = pendingDeletes.current.size > 0
+      let incoming = pendingDeletes.current.size > 0
         ? updated.filter(t => !pendingDeletes.current.has(t.id))
         : updated;
-      qc.setQueryData<Trip[]>(queryKey, filtered);
+
+      // For trips we just edited locally, keep our version to avoid bounce;
+      // accept cloud version for everything else (e.g. other users' changes)
+      if (recentLocalEdits.current.size > 0) {
+        const local = qc.getQueryData<Trip[]>(queryKey) ?? [];
+        const localMap = new Map(local.map(t => [t.id, t]));
+        incoming = incoming.map(t => {
+          if (recentLocalEdits.current.has(t.id)) {
+            return localMap.get(t.id) ?? t;
+          }
+          return t;
+        });
+        recentLocalEdits.current.clear();
+      }
+
+      qc.setQueryData<Trip[]>(queryKey, incoming);
     }, orgId);
     return () => unsub();
   }, [qc, uid, orgId]);
@@ -81,13 +92,20 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
     for (const t of prev) {
       if (!nextIds.has(t.id)) {
         pendingDeletes.current.add(t.id);
-        // Clear after cloud sync has time to complete
         setTimeout(() => pendingDeletes.current.delete(t.id), 10_000);
       }
     }
 
+    // Track which trips we just modified so the next snapshot keeps our version
+    for (const trip of next) {
+      const old = prev.find(t => t.id === trip.id);
+      if (!old || JSON.stringify(old) !== JSON.stringify(trip)) {
+        recentLocalEdits.current.add(trip.id);
+      }
+    }
+    setTimeout(() => recentLocalEdits.current.clear(), 5000);
+
     qc.setQueryData<Trip[]>(queryKey, next);
-    skipNextSnapshot.current = true;
     syncToCloud(prev, next, orgId);
   }, [qc, uid, orgId]);
 
