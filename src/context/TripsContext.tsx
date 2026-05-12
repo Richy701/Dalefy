@@ -244,12 +244,8 @@ function mergeLocalMedia(cloud: Trip, local: Trip): Trip {
     patched = true;
   }
 
-  // Other fields that may be missing from cloud
-  if (!result.travelerIds?.length && local.travelerIds?.length) { result.travelerIds = local.travelerIds; patched = true; }
-  if (!result.travelers?.length && local.travelers?.length) { result.travelers = local.travelers; patched = true; }
-  if ((!result.attendees || result.attendees === "Imported Group") && local.attendees) { result.attendees = local.attendees; patched = true; }
-  if (!result.info?.length && local.info?.length) { result.info = local.info; patched = true; }
-  if (!result.organizer && local.organizer) { result.organizer = local.organizer; patched = true; }
+  // Structured fields (info, travelers, organizer) live in Firestore — never
+  // restore them from localStorage, which can be stale or quota-capped.
 
   return patched ? result : cloud;
 }
