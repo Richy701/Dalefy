@@ -506,6 +506,11 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
     );
   }
 
+  // Trip-level documents — filter out base64 data URLs (already in Firebase Storage)
+  if (clean.documents?.length) {
+    clean.documents = clean.documents.filter(d => !isBase64(d.url));
+  }
+
   // Events — upload base64 or external image URLs
   clean.events = await Promise.all(clean.events.map(async (ev, i) => {
     const e = { ...ev };
@@ -556,6 +561,7 @@ function tripToDoc(trip: Trip): Record<string, unknown> {
     travelers: trip.travelers ?? null,
     organizer: trip.organizer ?? null,
     info: trip.info ?? null,
+    documents: trip.documents ?? null,
     published_snapshot: trip.publishedSnapshot ?? null,
   });
 }
@@ -581,6 +587,7 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     travelers: (data.travelers as Trip["travelers"]) ?? undefined,
     organizer: (data.organizer as Trip["organizer"]) ?? undefined,
     info: (data.info as Trip["info"]) ?? undefined,
+    documents: (data.documents as Trip["documents"]) ?? undefined,
     organizationId: (data.organization_id as string) ?? undefined,
     publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
   };
