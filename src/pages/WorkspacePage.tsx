@@ -875,6 +875,7 @@ export function WorkspacePage() {
     const accepted = files.filter(f => f.size <= MAX_SIZE);
     if (files.length > accepted.length) toast.error(`${files.length - accepted.length} file(s) too large, skipped`);
     if (!accepted.length) return;
+    const toastId = toast.loading(`Uploading ${accepted.length} file${accepted.length > 1 ? "s" : ""}...`);
     const uploads = accepted.map(async (file) => {
       const ext = file.name.split(".").pop();
       const path = `trips/${tripId}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
@@ -895,8 +896,8 @@ export function WorkspacePage() {
         updated[pageIdx] = { ...updated[pageIdx], documents: [...(updated[pageIdx].documents || []), ...newDocs] };
         return updated;
       });
-      toast.success(`${newDocs.length} file${newDocs.length > 1 ? "s" : ""} attached`);
-    } catch { toast.error("Upload failed"); }
+      toast.success(`${newDocs.length} file${newDocs.length > 1 ? "s" : ""} attached`, { id: toastId });
+    } catch { toast.error("Upload failed", { id: toastId }); }
   };
 
   const handleOpenEditTrip = () => {
