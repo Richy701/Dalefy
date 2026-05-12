@@ -911,10 +911,10 @@ function FlightDetailScreen({
                   ]}
                 >
                   <item.icon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
-                  <Text style={[fs.detailLabel, { color: C.textTertiary, minWidth: 90 }]}>{item.label}</Text>
+                  <Text style={[fs.detailLabel, { color: C.textTertiary, flex: 1 }]}>{item.label}</Text>
                   {item.value ? (
-                    <Text style={[fs.detailValue, { color: C.textPrimary, flex: 1 }]}>{item.value}</Text>
-                  ) : <><View style={{ flex: 1 }} /><TbaText C={C} /></>}
+                    <Text style={[fs.detailValue, { color: C.textPrimary, textAlign: "right" }]}>{item.value}</Text>
+                  ) : <TbaText C={C} />}
                   {item.onPress && <Copy size={12} color={C.textDim} weight="light" style={{ marginLeft: 6 }} />}
                 </Pressable>
               ))}
