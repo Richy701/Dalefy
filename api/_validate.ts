@@ -39,6 +39,32 @@ export function requireRapidApi(res: any): string | null {
   return key;
 }
 
+/** Score an AeroDataBox flight entry by data completeness. Higher = more complete. */
+export function scoreAeroFlight(f: any): number {
+  let s = 0;
+  const dep = f.departure ?? {};
+  const arr = f.arrival ?? {};
+  if (dep.actualTime?.utc) s += 10;
+  if (arr.actualTime?.utc) s += 10;
+  if (arr.baggageBelt) s += 3;
+  if (dep.terminal) s += 1;
+  if (dep.gate) s += 1;
+  if (arr.terminal) s += 1;
+  if (arr.gate) s += 1;
+  if (f.aircraft?.model) s += 1;
+  const st = (f.status ?? "").toLowerCase();
+  if (st.includes("arrived") || st.includes("landed")) s += 5;
+  else if (st.includes("departed") || st.includes("boarding")) s += 3;
+  return s;
+}
+
+/** Pick the most complete flight from an AeroDataBox result array. */
+export function pickBestFlight(flights: any[]): any | null {
+  if (flights.length === 0) return null;
+  if (flights.length === 1) return flights[0];
+  return flights.reduce((best, f) => scoreAeroFlight(f) > scoreAeroFlight(best) ? f : best);
+}
+
 /** Require GOOGLE_API_KEY env var — returns the key or sends 500 */
 export function requireGoogleApi(res: any): string | null {
   const key = process.env.GOOGLE_API_KEY;

@@ -1,4 +1,5 @@
 import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { pickBestFlight } from "./_validate.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on today's flights,
@@ -153,7 +154,7 @@ async function lookupFlight(
 
     if (flights.length === 0) return null;
 
-    const f = flights[0];
+    const f = pickBestFlight(flights);
     const dep = f.departure ?? {};
     const arr = f.arrival ?? {};
 

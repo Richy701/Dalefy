@@ -295,6 +295,8 @@ export function useFlightLiveActivity() {
       const now = Date.now();
       let bestFlight: TravelEvent | null = null;
       for (const ev of todayFlights) {
+        const st = (ev as any).status?.toLowerCase() ?? "";
+        if (st.includes("landed") || st.includes("arrived") || st.includes("cancelled")) continue;
         const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
         const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
         const depMs = depTimeToMs(ev);
