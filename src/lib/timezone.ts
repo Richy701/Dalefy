@@ -20,7 +20,12 @@ const DEST_TZ: Record<string, string> = {
   mauritius: "Indian/Mauritius", fiji: "Pacific/Fiji",
   amsterdam: "Europe/Amsterdam", barcelona: "Europe/Madrid", madrid: "Europe/Madrid",
   lisbon: "Europe/Lisbon", zurich: "Europe/Zurich", vienna: "Europe/Vienna",
-  dublin: "Europe/Dublin", brussels: "Europe/Brussels", berlin: "Europe/Berlin",
+  dublin: "Europe/Dublin", edinburgh: "Europe/London", glasgow: "Europe/London",
+  manchester: "Europe/London", birmingham: "Europe/London", bristol: "Europe/London",
+  liverpool: "Europe/London", leeds: "Europe/London", cardiff: "Europe/London",
+  belfast: "Europe/London", heathrow: "Europe/London", gatwick: "Europe/London", stansted: "Europe/London",
+  luton: "Europe/London",
+  brussels: "Europe/Brussels", berlin: "Europe/Berlin",
   copenhagen: "Europe/Copenhagen", oslo: "Europe/Oslo", stockholm: "Europe/Stockholm",
   helsinki: "Europe/Helsinki", athens: "Europe/Athens",
   "kuala lumpur": "Asia/Kuala_Lumpur", manila: "Asia/Manila", jakarta: "Asia/Jakarta",
@@ -38,6 +43,23 @@ export function destinationTz(dest: string | undefined): string | undefined {
     if (lower.includes(key)) return tz;
   }
   return undefined;
+}
+
+/**
+ * Resolve timezone for a single event by checking its own location fields
+ * before falling back to the trip-level destination timezone.
+ */
+export function eventTz(
+  ev: { type: string; location?: string; depAirport?: string; arrAirport?: string; depTz?: string; arrTz?: string },
+  tripTz?: string,
+  which: "dep" | "arr" = "dep"
+): string | undefined {
+  if (ev.type === "flight") {
+    const locParts = ev.location?.split(/\s+to\s+|→/i);
+    if (which === "arr") return ev.arrTz || destinationTz(ev.arrAirport) || destinationTz(locParts?.[1]?.trim()) || tripTz;
+    return ev.depTz || destinationTz(ev.depAirport) || destinationTz(locParts?.[0]?.trim()) || tripTz;
+  }
+  return destinationTz(ev.location) || tripTz;
 }
 
 export function tzAbbr(iana: string | undefined, date: string): string {

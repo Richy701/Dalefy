@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
-import { tzAbbr, destinationTz } from "@/lib/timezone";
+import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -284,8 +284,8 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
-                {ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.date)}` : ""}
-                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.endDate || ev.date)}` : ""}</>}
+                {ev.time}{(() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })()}
+                {ev.endTime && <> — {ev.endTime}{(() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })()}</>}
               </span>
             )}
             {ev.location && (
