@@ -473,7 +473,9 @@ export function WorkspacePage() {
     showToast("Trip published successfully");
     toast.success("Trip published successfully");
     addNotification({ message: "Trip published", detail: trip.name, time: "Just now", type: "success" });
-    notifyTripUpdate(trip.id, trip.name, ["Trip published"]);
+    if (trip.status !== "Published") {
+      notifyTripUpdate(trip.id, trip.name, ["Trip published"]);
+    }
     setShareOpen(true);
   };
 
