@@ -304,6 +304,8 @@ export function WorkspacePage() {
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
   const [tripDocDragOver, setTripDocDragOver] = useState(false);
+  const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const tripDocInputRef = useRef<HTMLInputElement>(null);
   const tripDocInputRef2 = useRef<HTMLInputElement>(null);
   const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
@@ -792,13 +794,13 @@ export function WorkspacePage() {
 
   const handleOpenEditInfo = () => {
     if (demoGate()) return;
-    setEditInfoData(trip.info ? trip.info.map(i => ({ ...i })) : []);
+    setEditInfoData(trip.info ? trip.info.map(i => ({ ...i, documents: i.documents ? [...i.documents] : undefined })) : []);
     setEditInfoOpen(true);
   };
   const handleSaveInfo = (e: React.FormEvent) => {
     e.preventDefault();
     if (demoGate()) return;
-    const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim());
+    const cleaned = editInfoData.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
     updateTrip(trip.id, { info: cleaned.length > 0 ? cleaned : undefined });
     setEditInfoOpen(false);
     toast.success("Information updated");
@@ -854,6 +856,42 @@ export function WorkspacePage() {
     updateTrip(trip.id, { documents: (trip.documents || []).filter(d => d.id !== docId) });
   };
 
+  const handleRenameTripDoc = (docId: string, newName: string) => {
+    if (!trip || demoGate() || !newName.trim()) return;
+    updateTrip(trip.id, { documents: (trip.documents || []).map(d => d.id === docId ? { ...d, name: newName.trim() } : d) });
+  };
+
+  const handleInfoPageDocFiles = async (files: File[], pageIdx: number) => {
+    if (!files.length || !trip) return;
+    if (demoGate()) return;
+    const MAX_SIZE = isFirebaseConfigured() && user?.id !== "demo" ? 50 * 1024 * 1024 : MAX_DOC_BYTES;
+    const accepted = files.filter(f => f.size <= MAX_SIZE);
+    if (files.length > accepted.length) toast.error(`${files.length - accepted.length} file(s) too large, skipped`);
+    if (!accepted.length) return;
+    const uploads = accepted.map(async (file) => {
+      const ext = file.name.split(".").pop();
+      const path = `trips/${tripId}/docs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      const url = await uploadToStorage(file, path);
+      return {
+        id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        url,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+    });
+    try {
+      const newDocs = await Promise.all(uploads);
+      setEditInfoData(prev => {
+        const updated = [...prev];
+        updated[pageIdx] = { ...updated[pageIdx], documents: [...(updated[pageIdx].documents || []), ...newDocs] };
+        return updated;
+      });
+      toast.success(`${newDocs.length} file${newDocs.length > 1 ? "s" : ""} attached`);
+    } catch { toast.error("Upload failed"); }
+  };
+
   const handleOpenEditTrip = () => {
     if (demoGate()) return;
     setEditingTrip({
@@ -883,7 +921,7 @@ export function WorkspacePage() {
     }
     // Filter out empty info entries
     if (cleaned.info) {
-      cleaned.info = cleaned.info.filter(i => i.title.trim() || i.body.trim());
+      cleaned.info = cleaned.info.filter(i => i.title.trim() || i.body.trim() || (i.documents && i.documents.length > 0));
       if (cleaned.info.length === 0) cleaned.info = undefined;
     }
     updateTrip(trip.id, cleaned);
@@ -1347,10 +1385,24 @@ export function WorkspacePage() {
                                         {item.body && (
                                           <p className={`text-xs text-slate-500 dark:text-[#888] font-medium mt-1 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
                                         )}
+                                        {item.documents && item.documents.length > 0 && !isExpanded && (
+                                          <p className="text-[10px] text-brand font-bold mt-1">{item.documents.length} attachment{item.documents.length > 1 ? "s" : ""}</p>
+                                        )}
                                       </div>
                                       <CaretRight className={`h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                                     </div>
                                   </button>
+                                  {isExpanded && item.documents && item.documents.length > 0 && (
+                                    <div className="px-3.5 pb-3 space-y-1">
+                                      {item.documents.map(doc => (
+                                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                          <Paperclip className="h-3 w-3 text-brand shrink-0" />
+                                          <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
+                                          <span className="text-[9px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 );
                               })}
@@ -1373,10 +1425,23 @@ export function WorkspacePage() {
                                       <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
                                         <Paperclip className="h-3.5 w-3.5 text-brand" />
                                       </div>
-                                      <button type="button" onClick={() => handleOpenDocument(doc.url)} className="min-w-0 flex-1 text-left">
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                                      <div className="min-w-0 flex-1">
+                                        {renamingDocId === doc.id ? (
+                                          <input
+                                            autoFocus
+                                            value={renameValue}
+                                            onChange={e => setRenameValue(e.target.value)}
+                                            onBlur={() => { handleRenameTripDoc(doc.id, renameValue); setRenamingDocId(null); }}
+                                            onKeyDown={e => { if (e.key === "Enter") { handleRenameTripDoc(doc.id, renameValue); setRenamingDocId(null); } if (e.key === "Escape") setRenamingDocId(null); }}
+                                            className="text-sm font-bold text-slate-900 dark:text-white bg-transparent border-0 border-b border-brand outline-none w-full p-0"
+                                          />
+                                        ) : (
+                                          <button type="button" onClick={() => handleOpenDocument(doc.url)} onDoubleClick={(e) => { e.stopPropagation(); setRenamingDocId(doc.id); setRenameValue(doc.name); }} className="text-left w-full">
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
+                                          </button>
+                                        )}
                                         <p className="text-[10px] text-slate-400 dark:text-[#555] font-medium">{formatFileSize(doc.size)}</p>
-                                      </button>
+                                      </div>
                                       {!isViewer && (
                                         <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                                           <Trash className="h-3 w-3" />
@@ -2734,7 +2799,7 @@ export function WorkspacePage() {
                             <Trash className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="p-4 sm:p-5">
+                        <div className="p-4 sm:p-5 space-y-3">
                           <Textarea
                             value={item.body}
                             onChange={e => {
@@ -2746,6 +2811,61 @@ export function WorkspacePage() {
                             rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
                             className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] text-slate-700 dark:text-[#ccc] resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                           />
+                          {/* Per-page attachments */}
+                          {item.documents && item.documents.length > 0 && (
+                            <div className="space-y-1.5">
+                              {item.documents.map((doc, docIdx) => (
+                                <div key={doc.id} className="group/pdoc flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                  <Paperclip className="h-3 w-3 text-brand shrink-0" />
+                                  {renamingDocId === doc.id ? (
+                                    <input
+                                      autoFocus
+                                      value={renameValue}
+                                      onChange={e => setRenameValue(e.target.value)}
+                                      onBlur={() => {
+                                        if (renameValue.trim()) {
+                                          const updated = [...editInfoData];
+                                          const docs = [...(updated[idx].documents || [])];
+                                          docs[docIdx] = { ...docs[docIdx], name: renameValue.trim() };
+                                          updated[idx] = { ...updated[idx], documents: docs };
+                                          setEditInfoData(updated);
+                                        }
+                                        setRenamingDocId(null);
+                                      }}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                        if (e.key === "Escape") setRenamingDocId(null);
+                                      }}
+                                      className="text-xs font-bold text-slate-900 dark:text-white bg-transparent border-0 border-b border-brand outline-none flex-1 p-0"
+                                    />
+                                  ) : (
+                                    <span
+                                      className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1 cursor-pointer"
+                                      onDoubleClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name); }}
+                                      title="Double-click to rename"
+                                    >{doc.name}</span>
+                                  )}
+                                  <span className="text-[9px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...editInfoData];
+                                      updated[idx] = { ...updated[idx], documents: (updated[idx].documents || []).filter(d => d.id !== doc.id) };
+                                      setEditInfoData(updated);
+                                    }}
+                                    className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/pdoc:opacity-100 transition-all"
+                                  >
+                                    <Trash className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <label className="flex items-center gap-2 cursor-pointer text-slate-400 dark:text-[#555] hover:text-brand transition-colors">
+                            <input type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={e => { handleInfoPageDocFiles(Array.from(e.target.files || []), idx); e.target.value = ""; }} className="hidden" />
+                            <Paperclip className="h-3 w-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Attach files</span>
+                          </label>
                         </div>
                       </div>
                     </SortableItem>
@@ -2765,9 +2885,24 @@ export function WorkspacePage() {
                     {trip.documents.map(doc => (
                       <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
                         <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
-                        <button type="button" onClick={() => handleOpenDocument(doc.url)} className="min-w-0 flex-1 text-left">
-                          <span className="text-sm font-bold text-slate-900 dark:text-white truncate block">{doc.name}</span>
-                        </button>
+                        <div className="min-w-0 flex-1">
+                          {renamingDocId === doc.id ? (
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={e => setRenameValue(e.target.value)}
+                              onBlur={() => { handleRenameTripDoc(doc.id, renameValue); setRenamingDocId(null); }}
+                              onKeyDown={e => { if (e.key === "Enter") { handleRenameTripDoc(doc.id, renameValue); setRenamingDocId(null); } if (e.key === "Escape") setRenamingDocId(null); }}
+                              className="text-sm font-bold text-slate-900 dark:text-white bg-transparent border-0 border-b border-brand outline-none w-full p-0"
+                            />
+                          ) : (
+                            <span
+                              className="text-sm font-bold text-slate-900 dark:text-white truncate block cursor-pointer"
+                              onDoubleClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name); }}
+                              title="Double-click to rename"
+                            >{doc.name}</span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
                         <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                           <Trash className="h-3 w-3" />

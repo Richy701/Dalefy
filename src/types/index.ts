@@ -85,6 +85,7 @@ export interface TripInfo {
   notes?: string[];
   completed?: boolean;
   completedAt?: string;
+  documents?: EventDocument[];
 }
 
 export interface Organization {

@@ -367,6 +367,16 @@ export function SharedTripPage() {
                         {item.body && (
                           <p className="text-[11px] leading-relaxed text-slate-600 dark:text-[#999] whitespace-pre-wrap"><Linkify text={item.body} /></p>
                         )}
+                        {item.documents && item.documents.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {item.documents.map(doc => (
+                              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                <Paperclip className="h-3 w-3 text-brand shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
