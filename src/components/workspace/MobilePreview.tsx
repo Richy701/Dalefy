@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
@@ -110,14 +110,21 @@ function typeCounts(events: TravelEvent[]): Array<{ key: string; Icon: React.Com
   return result.length <= 5 ? result : result.slice(0, 4);
 }
 
-function resolveLocation(events: TravelEvent[]): string | null {
-  for (const e of events) {
-    if (!e.location) continue;
-    const loc = e.location.replace(/\s+to\s+.*/i, "").trim();
-    const city = loc.split(",")[0].trim();
-    if (city) return city;
-  }
-  return null;
+function dayProgress(events: TravelEvent[], now: Date, dateStr: string): number {
+  if (!events.length) return 0;
+  const sorted = [...events].sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
+  const firstMin = timeToMin(sorted[0].time);
+  const lastEv = sorted[sorted.length - 1];
+  const lastMin = timeToMin(lastEv.endTime || lastEv.time);
+  const dayDate = new Date(dateStr + "T00:00:00");
+  const firstMs = dayDate.getTime() + firstMin * 60_000;
+  const lastMs = dayDate.getTime() + lastMin * 60_000;
+  const nowMs = now.getTime();
+  if (nowMs >= lastMs) return 1;
+  if (nowMs <= firstMs) return 0;
+  const total = lastMs - firstMs;
+  if (total <= 0) return 0;
+  return (nowMs - firstMs) / total;
 }
 
 function TransferIcon({ transferType, color }: { transferType?: string; color: string }) {
@@ -507,18 +514,11 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
     return 0;
   })();
 
-  const maxEvents = Math.max(...groups.map(([, evs]) => evs.length), 1);
-
-  const dayLocations = useMemo(() => {
-    const locs: Record<string, string | null> = {};
-    for (const [date, evs] of groups) locs[date] = resolveLocation(evs);
-    return locs;
-  }, [groups]);
-
-  const isMultiCity = useMemo(() => {
-    const unique = new Set(Object.values(dayLocations).filter(Boolean));
-    return unique.size >= 2;
-  }, [dayLocations]);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const dividerColor = isDark ? c.border : "#e4e4e7";
   const progressBg = isDark ? c.elevated : "#e4e4e7";
@@ -586,7 +586,11 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
             ? evs[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
             : null;
 
-          const barPct = (evs.length / maxEvents) * 100;
+          const barPct = isPast
+            ? 100
+            : isToday
+              ? dayProgress(evs, now, date) * 100
+              : 0;
 
           const dayNameColor = isToday
             ? (isDark ? c.teal : "#059669")
@@ -611,15 +615,11 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
           const barColor = isToday
             ? c.teal
             : isPast
-              ? (isDark ? c.elevated : "#d4d4d8")
-              : (isDark ? c.textDim : "#a1a1aa");
+              ? (isDark ? "#3f3f46" : "#a1a1aa")
+              : "transparent";
 
           const photo = evs.find(e => e.image)?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[evs[0]?.type] || MapTrifold;
-
-          const dayLoc = dayLocations[date];
-          const prevLoc = dayIdx > 0 ? dayLocations[groups[dayIdx - 1][0]] : null;
-          const showLocChip = isMultiCity && dayLoc && (dayIdx === 0 || dayLoc !== prevLoc);
 
           return (
             <div key={date}>
@@ -635,8 +635,8 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
                 <div style={{ display: "flex", alignItems: "flex-start" }}>
                   {/* Left: day info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1: Weekday + Today pill + location chip */}
-                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                    {/* Row 1: Weekday + Today pill */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontSize: 18, fontWeight: 600, color: dayNameColor, letterSpacing: -0.2 }}>
                         {weekday}
                       </span>
@@ -651,19 +651,6 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
                           textTransform: "uppercase", letterSpacing: 1.5,
                         }}>
                           Today
-                        </span>
-                      )}
-                      {showLocChip && (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 3,
-                          padding: "2px 7px", borderRadius: 100,
-                          background: isDark ? c.elevated : "#f4f4f5",
-                          border: `0.5px solid ${dividerColor}`,
-                        }}>
-                          <MapPin size={10} color={isDark ? c.textTertiary : "#71717a"} weight="fill" />
-                          <span style={{ fontSize: 10.5, fontWeight: 500, color: isDark ? c.textTertiary : "#52525b" }}>
-                            {dayLoc}
-                          </span>
                         </span>
                       )}
                     </div>
@@ -688,25 +675,28 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
                     )}
                   </div>
 
-                  {/* Right: thumbnail + time */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginLeft: 12, gap: 4 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 12, overflow: "hidden",
-                      background: isDark ? c.elevated : "#f4f4f5",
-                      opacity: isPast ? 0.5 : 1,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {photo ? (
-                        <img src={photo} alt="" style={{ width: 40, height: 40, objectFit: "cover" }} />
-                      ) : (
-                        <FallbackIcon size={16} color={isDark ? c.textDim : "#a1a1aa"} />
+                  {/* Right: thumbnail + time + chevron */}
+                  <div style={{ display: "flex", alignItems: "center", marginLeft: 12, gap: 8 }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12, overflow: "hidden",
+                        background: isDark ? c.elevated : "#f4f4f5",
+                        opacity: isPast ? 0.5 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {photo ? (
+                          <img src={photo} alt="" style={{ width: 40, height: 40, objectFit: "cover" }} />
+                        ) : (
+                          <FallbackIcon size={16} color={isDark ? c.textDim : "#a1a1aa"} />
+                        )}
+                      </div>
+                      {firstTime && (
+                        <span style={{ fontFamily: MONO, fontSize: 10, color: isDark ? c.textDim : "#a1a1aa" }}>
+                          {firstTime}
+                        </span>
                       )}
                     </div>
-                    {firstTime && (
-                      <span style={{ fontFamily: MONO, fontSize: 10, color: isDark ? c.textDim : "#a1a1aa" }}>
-                        {firstTime}
-                      </span>
-                    )}
+                    <CaretRight size={14} color={isDark ? c.textDim : "#a1a1aa"} />
                   </div>
                 </div>
 

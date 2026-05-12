@@ -18,6 +18,7 @@ import { type ThemeColors, T, R, S, F } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
 import * as Haptics from "expo-haptics";
 import type { Trip, TravelEvent } from "@/shared/types";
+import { StatusIndicator } from "@/components/StatusIndicator";
 
 const LOOKAHEAD_DAYS = 4; // today + 3
 
@@ -244,9 +245,11 @@ export default function ScheduleScreen() {
             <View key={day.label} style={styles.dayGroup}>
               {/* Day header */}
               <View style={styles.dayHeader}>
-                <View style={[styles.dayDot, {
-                  backgroundColor: isToday ? C.teal : C.border,
-                }]} />
+                <StatusIndicator
+                  state={isToday ? "live" : "upcoming"}
+                  size={8}
+                  color={isToday ? C.teal : C.border}
+                />
                 <Text style={[styles.dayLabel, {
                   color: isToday ? C.teal : C.textPrimary,
                 }]}>

@@ -25,6 +25,8 @@ import { LOCATION_COORDS } from "@/shared/coordinates";
 import { useMemo, useCallback, useState } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
+import { openDocument } from "@/services/openDocument";
+import { StatusIndicator } from "@/components/StatusIndicator";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -217,11 +219,11 @@ function cleanEventTitle(title: string, type: string, transferType?: string): st
 
 function eventStatusPill(status: string | undefined, C: ThemeColors) {
   const s = (status || "confirmed").toLowerCase();
-  if (s.includes("cancel")) return { color: C.red, bg: C.redDim, border: "rgba(239,68,68,0.25)", label: "Cancelled" };
-  if (s.includes("delay")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Delayed" };
-  if (s.includes("pend") || s.includes("hold")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Pending" };
-  if (s.includes("done") || s.includes("complet")) return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done" };
-  return { color: C.teal, bg: C.tealDim, border: C.tealMid, label: "Confirmed" };
+  if (s.includes("cancel")) return { color: C.red, bg: C.redDim, border: "rgba(239,68,68,0.25)", label: "Cancelled", state: "destructive" as const };
+  if (s.includes("delay")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Delayed", state: "warning" as const };
+  if (s.includes("pend") || s.includes("hold")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Pending", state: "warning" as const };
+  if (s.includes("done") || s.includes("complet")) return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done", state: "past" as const };
+  return { color: C.teal, bg: C.tealDim, border: C.tealMid, label: "Confirmed", state: "upcoming" as const };
 }
 
 function parseDocFilename(filename: string, size: number) {
@@ -364,7 +366,7 @@ export default function EventDetailScreen() {
         {/* Pill row: Status + Date + Time */}
         <Animated.View entering={FadeInDown.delay(50).duration(300)} style={styles.chipWrap}>
           <View style={[styles.statusChip, { backgroundColor: sp.bg, borderColor: sp.border }]}>
-            <View style={[styles.statusDotSmall, { backgroundColor: sp.color }]} />
+            <StatusIndicator state={sp.state} size={10} color={sp.color} />
             <Text style={[styles.statusChipText, { color: sp.color }]}>{sp.label}</Text>
           </View>
           {ev.date && (
@@ -470,7 +472,7 @@ export default function EventDetailScreen() {
               return (
                 <Pressable
                   key={doc.id}
-                  onPress={() => Linking.openURL(doc.url).catch(() => {})}
+                  onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
                   style={({ pressed }) => [
                     styles.detailListRow,
                     { backgroundColor: pressed ? C.elevated : "transparent" },
@@ -514,7 +516,7 @@ export default function EventDetailScreen() {
                 </Pressable>
                 {hasDocs && (
                   <Pressable
-                    onPress={() => ev.documents?.[0] && Linking.openURL(ev.documents[0].url).catch(() => {})}
+                    onPress={() => ev.documents?.[0] && openDocument(ev.documents[0].url, ev.documents[0].name).catch(() => {})}
                     style={({ pressed }) => [styles.secondaryBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
                   >
                     <FileText size={18} color={C.teal} weight="regular" />
@@ -523,7 +525,7 @@ export default function EventDetailScreen() {
               </>
             ) : hasDocs ? (
               <Pressable
-                onPress={() => ev.documents?.[0] && Linking.openURL(ev.documents[0].url).catch(() => {})}
+                onPress={() => ev.documents?.[0] && openDocument(ev.documents[0].url, ev.documents[0].name).catch(() => {})}
                 style={({ pressed }) => [styles.primaryBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1, flex: 1 }]}
               >
                 <FileText size={16} color="#000" weight="bold" />
@@ -754,15 +756,22 @@ function FlightDetailScreen({
             <Animated.View entering={FadeInDown.delay(100).duration(400)} style={fs.pillRow}>
               {ev.status && (
                 <View style={[fs.pill, { backgroundColor: statusBg }]}>
-                  {(statusLabel === "On Time" || statusLabel === "Landed") && (
-                    <View style={[fs.statusDot, { backgroundColor: statusColor }]} />
-                  )}
+                  <StatusIndicator
+                    state={
+                      statusLabel === "Cancelled" ? "destructive"
+                      : statusLabel === "Delayed" ? "warning"
+                      : statusLabel === "Landed" ? "completed"
+                      : "upcoming"
+                    }
+                    size={10}
+                    color={statusColor}
+                  />
                   <Text style={[fs.pillText, { color: statusColor }]}>{statusLabel}</Text>
                 </View>
               )}
               {countdown && (
                 <View style={[fs.pill, { backgroundColor: C.elevated }]}>
-                  <Timer size={12} color={C.textSecondary} weight="bold" />
+                  <StatusIndicator state="upcoming" size={12} color={C.textSecondary} />
                   <Text style={[fs.pillText, { color: C.textSecondary }]}>Departs in {countdown}</Text>
                 </View>
               )}
@@ -927,7 +936,7 @@ function FlightDetailScreen({
                 {ev.documents.map(doc => (
                   <Pressable
                     key={doc.id}
-                    onPress={() => Linking.openURL(doc.url).catch(() => {})}
+                    onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
                     style={({ pressed }) => [fs.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
                   >
                     <View style={[fs.docIcon, { backgroundColor: C.tealDim }]}>

@@ -16,6 +16,7 @@ import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { useMemo, useCallback, useState } from "react";
 import type { TripInfo } from "@/shared/types";
+import { openDocument } from "@/services/openDocument";
 
 const URL_RE = /(https?:\/\/[^\s),]+)/g;
 
@@ -251,7 +252,7 @@ export default function InfoScreen() {
                           {item.documents.map(d => (
                             <Pressable
                               key={d.id}
-                              onPress={() => Linking.openURL(d.url)}
+                              onPress={() => openDocument(d.url, d.name).catch(() => {})}
                               style={({ pressed }) => [styles.attachmentRow, { opacity: pressed ? 0.7 : 1 }]}
                             >
                               <Paperclip size={14} color={C.teal} weight="bold" />

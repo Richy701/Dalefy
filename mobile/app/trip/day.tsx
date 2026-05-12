@@ -15,6 +15,7 @@ import { T, R, S, type ThemeColors, eventColor } from "@/constants/theme";
 import { EventCard, DocsRow } from "@/components/EventCard";
 import { useMemo, useCallback, useState } from "react";
 import type { TravelEvent } from "@/shared/types";
+import { StatusIndicator } from "@/components/StatusIndicator";
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -279,10 +280,19 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
         )}
         {ev.status && (
           <View style={ss.detailRow}>
-            <View style={[ss.statusDot, {
-              backgroundColor: ev.status.toLowerCase().includes("cancel") ? "#ef4444"
+            <StatusIndicator
+              state={
+                ev.status.toLowerCase().includes("cancel") ? "destructive"
+                : ev.status.toLowerCase().includes("delay") ? "warning"
+                : ev.status.toLowerCase().includes("done") || ev.status.toLowerCase().includes("complet") || ev.status.toLowerCase().includes("land") ? "completed"
+                : "upcoming"
+              }
+              size={10}
+              color={
+                ev.status.toLowerCase().includes("cancel") ? "#ef4444"
                 : ev.status.toLowerCase().includes("delay") ? "#f59e0b" : "#22c55e"
-            }]} />
+              }
+            />
             <Text style={[ss.detailText, { color: C.textSecondary }]}>{ev.status}</Text>
           </View>
         )}

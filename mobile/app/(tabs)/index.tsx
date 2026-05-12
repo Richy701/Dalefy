@@ -47,6 +47,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, TAB_BAR_HEIGHT } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
+import { StatusIndicator } from "@/components/StatusIndicator";
 
 
 let CameraView: any = null;
@@ -904,7 +905,11 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             {(nextTrip.destination || nextTrip.name).toUpperCase()}
           </Text>
           <View style={[styles.statusPill, isActive && styles.statusPillActive]}>
-            {isActive && <View style={styles.statusPillDot} />}
+            {isActive ? (
+              <StatusIndicator state="live" size={6} color="#000" />
+            ) : days === 0 ? (
+              <StatusIndicator state="upcoming" size={10} color={C.textTertiary} />
+            ) : null}
             <Text style={[styles.statusPillText, isActive && styles.statusPillTextActive]}>
               {isActive
                 ? `ON TRIP · DAY ${dayOfTrip} OF ${totalDays}`
@@ -1457,7 +1462,7 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
       <View style={styles.content}>
         {countdown && (
           <View style={styles.countdownRow}>
-            <View style={styles.countdownDot} />
+            <StatusIndicator state={countdown === "Now" ? "live" : "upcoming"} size={10} color={C.teal} />
             <Text style={styles.countdownText}>{countdown}</Text>
           </View>
         )}
@@ -1605,7 +1610,7 @@ function TripRow({ trip }: { trip: Trip }) {
         </View>
       ) : (
         <View style={[styles.statusBadgeRow, isActive ? styles.statusBadgeRowActive : styles.statusBadgeRowDraft]}>
-          {isActive && <View style={styles.rowActiveDot} />}
+          {isActive && <StatusIndicator state="live" size={5} color="#000" />}
           <Text style={[styles.statusRowText, { color: isActive ? "#000" : C.textTertiary }]}>
             {isActive ? "Active" : trip.status}
           </Text>
