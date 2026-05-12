@@ -93,9 +93,14 @@ function CardMenu({ onClick, onDuplicate, onDelete }: { onClick: () => void; onD
   );
 }
 
+function eventTzLabel(event: TravelEvent, tripTz?: string): string {
+  if (event.type === "flight") return event.depTz ? tzAbbr(event.depTz, event.date) : "";
+  return tripTz ? tzAbbr(tripTz, event.date) : "";
+}
+
 // ─── Compact Row — used when event data is sparse ─────────────────────────────
 function CompactCard({
-  event, onClick, onDuplicate, onDelete, Icon, label, assignedPeople,
+  event, onClick, onDuplicate, onDelete, Icon, label, assignedPeople, tripTz,
 }: {
   event: TravelEvent;
   onClick: () => void;
@@ -105,6 +110,7 @@ function CompactCard({
   label: string;
   originCode?: string;
   assignedPeople?: AssignedPerson[];
+  tripTz?: string;
 }) {
   return (
     <div
@@ -121,7 +127,7 @@ function CompactCard({
       {event.time && (
         <div className="shrink-0 flex flex-col leading-none">
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">{event.time.split(" ")[0]}</span>
-          {event.time.split(" ")[1] && <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">{event.time.split(" ")[1]}</span>}
+          {(eventTzLabel(event, tripTz) || event.time.split(" ")[1]) && <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">{eventTzLabel(event, tripTz) || event.time.split(" ")[1]}</span>}
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -139,7 +145,7 @@ function CompactCard({
 }
 
 // ─── Flight Card ──────────────────────────────────────────────────────────────
-function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[]; tripTz?: string }) {
   const parts = event.location?.match(/^(.+?)\s+to\s+(.+)$/i);
   const from = event.depAirport || parts?.[1]?.trim() || event.location || "";
   const to = event.arrAirport || parts?.[2]?.trim() || "";
@@ -150,7 +156,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: {
       <CompactCard
         event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete}
         Icon={AirplaneTilt} label="Flight"
-        assignedPeople={assignedPeople}
+        assignedPeople={assignedPeople} tripTz={tripTz}
       />
     );
   }
@@ -173,7 +179,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: {
             <AirplaneTilt className="h-3.5 w-3.5" />
           </div>
           <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time.split(" ")[0]}</span>
-          <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.depTz ? tzAbbr(event.depTz, event.date) : event.time.split(" ")[1]}</span>
+          <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{event.depTz ? tzAbbr(event.depTz, event.date) : tripTz ? tzAbbr(tripTz, event.date) : event.time.split(" ")[1]}</span>
         </div>
 
         {/* Route visualization */}
@@ -220,13 +226,13 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: {
 }
 
 // ─── Hotel Card ───────────────────────────────────────────────────────────────
-function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[]; tripTz?: string }) {
   const isSparse = !event.checkin && !event.checkout && !event.roomType && !event.location;
   if (isSparse) {
     return (
       <CompactCard
         event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
-        Icon={Bed} label="Accommodation"
+        Icon={Bed} label="Accommodation" tripTz={tripTz}
       />
     );
   }
@@ -268,14 +274,14 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { 
             {!event.isOvernight && event.time && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time}</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time}{tripTz ? ` ${tzAbbr(tripTz, event.date)}` : ""}</p>
               </div>
             )}
             {!event.isOvernight && event.time && event.endTime && <ArrowRight className="h-3.5 w-3.5 text-brand shrink-0" />}
             {!event.isOvernight && event.endTime && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.endTime}</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.endTime}{tripTz ? ` ${tzAbbr(tripTz, event.endDate || event.date)}` : ""}</p>
               </div>
             )}
             {event.isOvernight && (
@@ -295,7 +301,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { 
 }
 
 // ─── Activity / Dining Card ───────────────────────────────────────────────────
-function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
+function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[]; tripTz?: string }) {
   const isDining = event.type === "dining";
   const isTransfer = event.type === "transfer";
   const transferIcons: Record<string, React.ComponentType<{ className?: string }>> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
@@ -308,7 +314,7 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }:
     return (
       <CompactCard
         event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople}
-        Icon={Icon} label={typeLabel}
+        Icon={Icon} label={typeLabel} tripTz={tripTz}
       />
     );
   }
@@ -352,9 +358,9 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }:
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{event.time}</span>
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{event.time}{tripTz ? ` ${tzAbbr(tripTz, event.date)}` : ""}</span>
             {event.endTime && (
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">→ {event.endTime}</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">→ {event.endTime}{tripTz ? ` ${tzAbbr(tripTz, event.endDate || event.date)}` : ""}</span>
             )}
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />
@@ -367,8 +373,8 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople }:
 }
 
 // ─── Public export ────────────────────────────────────────────────────────────
-export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, onDelete, assignedPeople }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[] }) {
-  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
-  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
-  return <ActivityCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} />;
+export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tripTz }: { event: TravelEvent; onClick: () => void; onDuplicate: () => void; onDelete: () => void; assignedPeople?: AssignedPerson[]; tripTz?: string }) {
+  if (event.type === "flight") return <FlightCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} tripTz={tripTz} />;
+  if (event.type === "hotel") return <HotelCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} tripTz={tripTz} />;
+  return <ActivityCard event={event} onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} assignedPeople={assignedPeople} tripTz={tripTz} />;
 });

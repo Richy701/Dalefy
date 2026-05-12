@@ -65,6 +65,7 @@ import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { Linkify } from "@/lib/linkify";
+import { destinationTz } from "@/lib/timezone";
 import { usePresence } from "@/hooks/usePresence";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
@@ -172,6 +173,7 @@ export function WorkspacePage() {
   const { others: presenceUsers, updateActivity } = usePresence(tripId);
 
   const trip = useMemo(() => trips.find(t => t.id === tripId) || null, [trips, tripId]);
+  const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
 
   // Auto-open event from ?event= query param (e.g. from Dashboard event cards)
   useEffect(() => {
@@ -1274,6 +1276,7 @@ export function WorkspacePage() {
                                           })
                                         : undefined
                                     }
+                                    tripTz={tripTz}
                                   />
                                 ))}
                               </div>

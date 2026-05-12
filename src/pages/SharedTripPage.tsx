@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText } from "@phosphor-icons/react";
 import { Linkify } from "@/lib/linkify";
-import { tzAbbr } from "@/lib/timezone";
+import { tzAbbr, destinationTz } from "@/lib/timezone";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { Trip, TravelEvent } from "@/types";
@@ -31,7 +31,7 @@ function rowToTrip(row: Record<string, unknown>): Trip {
   };
 }
 
-function EventRow({ ev }: { ev: TravelEvent }) {
+function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
   const [open, setOpen] = useState(false);
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
   const color = EVENT_HEX[ev.type] ?? "#0bd2b5";
@@ -52,9 +52,9 @@ function EventRow({ ev }: { ev: TravelEvent }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
-            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : ""}</span>}
+            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.date)}` : ""}</span>}
             {ev.endTime && <span className="text-slate-400 dark:text-[#666]">-</span>}
-            {ev.endTime && <span>{ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : ""}</span>}
+            {ev.endTime && <span>{ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.endDate || ev.date)}` : ""}</span>}
             {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
             {ev.duration && <span>{ev.duration}</span>}
           </div>
@@ -107,7 +107,7 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function DaySection({ date, events, dayIdx }: { date: string; events: TravelEvent[]; dayIdx: number }) {
+function DaySection({ date, events, dayIdx, tripTz }: { date: string; events: TravelEvent[]; dayIdx: number; tripTz?: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const d = new Date(date + "T12:00:00");
 
@@ -138,7 +138,7 @@ function DaySection({ date, events, dayIdx }: { date: string; events: TravelEven
         {!collapsed && (
           <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
             {events.map(ev => (
-              <EventRow key={ev.id} ev={ev} />
+              <EventRow key={ev.id} ev={ev} tripTz={tripTz} />
             ))}
           </div>
         )}
@@ -186,6 +186,7 @@ export function SharedTripPage() {
     fetchBrandingForTrip(tripId).then(b => setOrgBranding(b));
   }, [tripId]);
 
+  const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
   const hasTravelers = (trip?.travelers?.length ?? 0) > 0;
   const viewAsTraveler = useMemo(() => {
     if (!viewAsId || !trip?.travelers) return null;
@@ -371,7 +372,7 @@ export function SharedTripPage() {
 
           <div className="space-y-6">
             {grouped.map(([date, events], dayIdx) => (
-              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} />
+              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} tripTz={tripTz} />
             ))}
           </div>
         </div>
