@@ -23,8 +23,11 @@ const DEST_TZ: Record<string, string> = {
   dublin: "Europe/Dublin", edinburgh: "Europe/London", glasgow: "Europe/London",
   manchester: "Europe/London", birmingham: "Europe/London", bristol: "Europe/London",
   liverpool: "Europe/London", leeds: "Europe/London", cardiff: "Europe/London",
-  belfast: "Europe/London", heathrow: "Europe/London", gatwick: "Europe/London", stansted: "Europe/London",
-  luton: "Europe/London",
+  belfast: "Europe/London",
+  heathrow: "Europe/London", gatwick: "Europe/London", stansted: "Europe/London", luton: "Europe/London",
+  "st pancras": "Europe/London", "kings cross": "Europe/London", "king's cross": "Europe/London",
+  euston: "Europe/London", paddington: "Europe/London", waterloo: "Europe/London",
+  "victoria station": "Europe/London",
   brussels: "Europe/Brussels", berlin: "Europe/Berlin",
   copenhagen: "Europe/Copenhagen", oslo: "Europe/Oslo", stockholm: "Europe/Stockholm",
   helsinki: "Europe/Helsinki", athens: "Europe/Athens",
@@ -54,10 +57,16 @@ export function eventTz(
   tripTz?: string,
   which: "dep" | "arr" = "dep"
 ): string | undefined {
-  if (ev.type === "flight") {
+  const isRoute = ev.type === "flight" || ev.type === "transfer";
+  if (isRoute) {
     const locParts = ev.location?.split(/\s+to\s+|→/i);
     if (which === "arr") return ev.arrTz || destinationTz(ev.arrAirport) || destinationTz(locParts?.[1]?.trim()) || tripTz;
     return ev.depTz || destinationTz(ev.depAirport) || destinationTz(locParts?.[0]?.trim()) || tripTz;
+  }
+  const routeParts = ev.location?.split(/\s+to\s+|→/i);
+  if (routeParts && routeParts.length > 1) {
+    const tz = which === "arr" ? destinationTz(routeParts[1]?.trim()) : destinationTz(routeParts[0]?.trim());
+    if (tz) return tz;
   }
   return destinationTz(ev.location) || tripTz;
 }
