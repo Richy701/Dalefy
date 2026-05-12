@@ -21,7 +21,7 @@ service cloud.firestore {
     // ── System cron user (flight status checker) ──────────────────────────
     function isCronUser() {
       return request.auth != null
-             && request.auth.token.email == "cron@dalefy.com";
+             && request.auth.token.email == "cron@dalefy.app";
     }
 
     // ── Helper: check if the caller is a trip member (by auth UID) ──────

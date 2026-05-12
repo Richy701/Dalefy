@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
-import { tzAbbr } from "@/lib/timezone";
+import { tzAbbr, destinationTz } from "@/lib/timezone";
 
 interface ItineraryPreviewContentProps {
   trip: Trip;
@@ -46,6 +46,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
     return `${fmt(new Date(trip.start))} — ${fmt(new Date(trip.end))}, ${year}`;
   }, [trip.start, trip.end]);
 
+  const tripTz = useMemo(() => destinationTz(trip.destination), [trip.destination]);
   const hasMeta = trip.paxCount || trip.budget || trip.tripType || trip.organizer?.name;
   const travelerInfo = trip.info?.filter(i => !i.leaderOnly) ?? [];
   const hasInfo = travelerInfo.length > 0;
@@ -283,8 +284,8 @@ function PreviewEventCard({ ev, forPrint }: { ev: TravelEvent; forPrint?: boolea
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
-                {ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : ""}
-                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : ""}</>}
+                {ev.time}{ev.type === "flight" && ev.depTz ? ` ${tzAbbr(ev.depTz, ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.date)}` : ""}
+                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" && ev.arrTz ? ` ${tzAbbr(ev.arrTz, ev.endDate || ev.date)}` : tripTz ? ` ${tzAbbr(tripTz, ev.endDate || ev.date)}` : ""}</>}
               </span>
             )}
             {ev.location && (
