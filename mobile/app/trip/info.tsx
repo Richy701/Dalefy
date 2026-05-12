@@ -8,7 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   CaretDown, CaretRight, Calendar, Clock, Check,
-  Warning, WarningCircle, ArrowSquareOut,
+  Warning, WarningCircle, ArrowSquareOut, Paperclip,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -245,6 +245,23 @@ export default function InfoScreen() {
                         />
                       ) : null}
 
+                      {/* 5. Attachments */}
+                      {item.documents && item.documents.length > 0 && (
+                        <View style={styles.attachments}>
+                          {item.documents.map(d => (
+                            <Pressable
+                              key={d.id}
+                              onPress={() => Linking.openURL(d.url)}
+                              style={({ pressed }) => [styles.attachmentRow, { opacity: pressed ? 0.7 : 1 }]}
+                            >
+                              <Paperclip size={14} color={C.teal} weight="bold" />
+                              <Text style={styles.attachmentName} numberOfLines={1}>{d.name}</Text>
+                              <CaretRight size={14} color={C.textDim} weight="regular" />
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
+
                     </View>
                   )}
                 </View>
@@ -374,6 +391,26 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       lineHeight: 22,
       fontWeight: T.regular,
       marginBottom: S.sm,
+    },
+
+    attachments: {
+      gap: 6,
+      marginTop: S.xs,
+    },
+    attachmentRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: S.md,
+      borderRadius: R.lg,
+      backgroundColor: isDark ? C.card : "#f4f4f5",
+    },
+    attachmentName: {
+      flex: 1,
+      fontSize: T.sm,
+      fontWeight: T.medium as any,
+      color: C.textPrimary,
     },
 
   });
