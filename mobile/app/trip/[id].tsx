@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  CaretLeft, MapPin, Users, Moon, MapTrifold,
+  CaretLeft, MapPin, Users, Moon, MapTrifold, ArrowRight,
   Airplane, Bed, ForkKnife, Car, Compass, Train, Bus, Boat,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
@@ -499,14 +499,41 @@ function typeCounts(events: any[]): Array<{ key: string; Icon: React.ComponentTy
   return result.slice(0, 4);
 }
 
-function resolveLocation(events: any[]): string | null {
+function extractCity(loc: string): string {
+  return loc.replace(/\s+to\s+.*/i, "").split(",")[0].trim();
+}
+
+function daySummary(events: any[]): { label: string; isFlight: boolean } | null {
+  const cities: string[] = [];
+  let hasFlight = false;
+
   for (const e of events) {
+    if (e.type === "flight") {
+      hasFlight = true;
+      const m = (e.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
+      if (m) {
+        const dep = m[1].toUpperCase();
+        const arr = m[2].toUpperCase();
+        if (!cities.includes(dep)) cities.push(dep);
+        if (!cities.includes(arr)) cities.push(arr);
+        continue;
+      }
+    }
     if (!e.location) continue;
-    const loc = e.location.replace(/\s+to\s+.*/i, "").trim();
-    const city = loc.split(",")[0].trim();
-    if (city) return city;
+    const city = extractCity(e.location);
+    if (city && !cities.includes(city)) cities.push(city);
   }
-  return null;
+
+  if (cities.length === 0) return null;
+  if (cities.length > 1) return { label: `${cities[0]} → ${cities[cities.length - 1]}`, isFlight: hasFlight };
+  if (events.length >= 4) return { label: `${cities[0]} · ${events.length} stops`, isFlight: false };
+  return { label: cities[0], isFlight: false };
+}
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
 
 const DAY_THUMB_ICONS: Record<string, React.ComponentType<any>> = {
@@ -558,16 +585,11 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
     return 0;
   })();
 
-  const dayLocations = useMemo(() => {
-    const locs: Record<string, string | null> = {};
-    for (const [date, events] of sortedDays) locs[date] = resolveLocation(events);
-    return locs;
+  const daySummaries = useMemo(() => {
+    const out: Record<string, { label: string; isFlight: boolean } | null> = {};
+    for (const [date, events] of sortedDays) out[date] = daySummary(events);
+    return out;
   }, [sortedDays]);
-
-  const isMultiCity = useMemo(() => {
-    const unique = new Set(Object.values(dayLocations).filter(Boolean));
-    return unique.size >= 2;
-  }, [dayLocations]);
 
   const toggle = (date: string) => {
     Haptics.selectionAsync();
@@ -594,17 +616,17 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
         }}>{trip.name}</Text>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+          <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
             {dateRange}
           </Text>
           <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
-          <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+          <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
             {totalDays} days
           </Text>
           {travelerCount > 0 && (
             <>
               <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
-              <Text style={{ fontFamily: mono, fontSize: 11, color: C.textTertiary }}>
+              <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
                 {travelerCount} traveler{travelerCount !== 1 ? "s" : ""}
               </Text>
             </>
@@ -621,7 +643,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
             <Text style={{
               fontFamily: mono,
               fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: 1.5,
-            }}>{completed}/{totalEvents} events</Text>
+            }}>{completed} of {totalEvents} done</Text>
           </View>
           <View style={{ height: 3, backgroundColor: progressBg, borderRadius: R.full, overflow: "hidden" }}>
             <View style={{
@@ -633,7 +655,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
       </View>
 
       {/* ── Day rows ── */}
-      <View style={{ paddingHorizontal: S.md }}>
+      <View style={{ paddingHorizontal: S.md, gap: S.sm }}>
         {sortedDays.map(([date, events], dayIdx) => {
           const dt = new Date(date + "T12:00:00");
           const isToday = date === todayStr;
@@ -643,7 +665,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
           const isOpen = openDay === date;
           const icons = typeCounts(events);
 
-          const firstTime = !isPast && events[0]?.time
+          const firstTime = events[0]?.time
             ? events[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
             : null;
 
@@ -652,7 +674,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
             ? C.teal
             : isPast
               ? (isDark ? C.elevated : "#d4d4d8")
-              : (isDark ? C.textDim : "#a1a1aa");
+              : "transparent";
           const barBg = isDark ? C.elevated : "#e4e4e7";
 
           const dayNameColor = isToday
@@ -669,19 +691,26 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
             ? (isDark ? C.teal : "#059669")
             : isPast
               ? (isDark ? C.textDim : "#a1a1aa")
-              : (isDark ? C.textDim : "#71717a");
+              : (isDark ? `${C.teal}99` : "#059669aa");
           const countColor = isToday
             ? (isDark ? C.teal : "#047857")
             : isPast
               ? (isDark ? C.textDim : "#a1a1aa")
-              : (isDark ? C.textTertiary : "#52525b");
+              : (isDark ? `${C.teal}99` : "#047857aa");
 
           const photo = events.find((e: any) => e.image)?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[events[0]?.type] || MapTrifold;
 
-          const dayLoc = dayLocations[date];
-          const prevLoc = dayIdx > 0 ? dayLocations[sortedDays[dayIdx - 1][0]] : null;
-          const showLocChip = isMultiCity && dayLoc && (dayIdx === 0 || dayLoc !== prevLoc);
+          const summary = daySummaries[date];
+          const prevSummary = dayIdx > 0 ? daySummaries[sortedDays[dayIdx - 1][0]] : null;
+          const showLocChip = summary && (
+            summary.isFlight || events.length >= 4 ||
+            dayIdx === 0 || summary.label !== prevSummary?.label
+          );
+          const PillIcon = summary?.isFlight ? Airplane : (summary?.label.includes("→") ? ArrowRight : MapPin);
+
+          const thumbCity = summary?.label.split("→")[0].split("·")[0].trim() || "";
+          const gradHue = hashStr(thumbCity) % 360;
 
           return (
             <View key={date}>
@@ -699,7 +728,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   {/* Left: day info */}
                   <View style={{ flex: 1 }}>
-                    {/* Row 1: Day name + Today pill + location chip */}
+                    {/* Row 1: Day name + Today pill */}
                     <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                       <Text style={{
                         fontSize: T.xl, fontWeight: "600",
@@ -721,31 +750,34 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                           }}>Today</Text>
                         </View>
                       )}
-                      {showLocChip && (
-                        <View style={{
-                          flexDirection: "row", alignItems: "center", gap: 3,
-                          paddingHorizontal: 7, paddingVertical: 2,
-                          borderRadius: R.full,
-                          backgroundColor: isDark ? C.elevated : "#f4f4f5",
-                          borderWidth: StyleSheet.hairlineWidth,
-                          borderColor: dividerColor,
-                        }}>
-                          <MapPin size={10} color={isDark ? C.textTertiary : "#71717a"} weight="fill" />
-                          <Text style={{
-                            fontSize: 10.5, fontWeight: "500",
-                            color: isDark ? C.textTertiary : "#52525b",
-                          }}>{dayLoc}</Text>
-                        </View>
-                      )}
                     </View>
 
-                    {/* Row 2: Date + event count */}
+                    {/* Row 2: Location pill */}
+                    {showLocChip && (
+                      <View style={{
+                        flexDirection: "row", alignItems: "center", gap: 4,
+                        alignSelf: "flex-start",
+                        maxWidth: "75%",
+                        paddingHorizontal: 8, paddingVertical: 3,
+                        borderRadius: R.full, marginTop: 4,
+                        backgroundColor: isDark ? C.elevated : "#f4f4f5",
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderColor: dividerColor,
+                      }}>
+                        <PillIcon size={11} color={isDark ? C.textTertiary : "#71717a"} weight={summary?.isFlight ? "bold" : "fill"} />
+                        <Text numberOfLines={1} style={{
+                          fontSize: 10.5, fontWeight: "500", flexShrink: 1,
+                          color: isDark ? C.textTertiary : "#52525b",
+                        }}>{summary!.label}</Text>
+                      </View>
+                    )}
+
+                    {/* Row 3: Date + event count */}
                     <Text style={{
-                      fontFamily: mono,
-                      fontSize: 11, color: subColor, marginTop: 3,
+                      fontSize: 11, fontWeight: "500", color: subColor, marginTop: 3,
                     }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
 
-                    {/* Row 3: Type icons with counts */}
+                    {/* Row 4: Type icons with counts */}
                     {icons.length > 0 && (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
                         {icons.map(({ key, Icon, count }) => (
@@ -764,17 +796,22 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                   {/* Right: thumbnail + time */}
                   <View style={{ alignItems: "flex-end", marginLeft: S.sm, gap: 4 }}>
                     <View style={{
-                      width: 40, height: 40, borderRadius: R.md,
+                      width: 56, height: 56, borderRadius: R.lg,
                       overflow: "hidden",
                       backgroundColor: isDark ? C.elevated : "#f4f4f5",
                       opacity: isPast ? 0.5 : 1,
                     }}>
                       {photo ? (
-                        <CachedImage uri={photo} style={{ width: 40, height: 40 }} />
+                        <CachedImage uri={photo} style={{ width: 56, height: 56 }} />
                       ) : (
-                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                          <FallbackIcon size={16} color={isDark ? C.textDim : "#a1a1aa"} weight="regular" />
-                        </View>
+                        <LinearGradient
+                          colors={[`hsl(${gradHue}, 30%, 25%)`, `hsl(${(gradHue + 30) % 360}, 30%, 15%)`]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+                        >
+                          <FallbackIcon size={20} color="rgba(255,255,255,0.4)" weight="regular" />
+                        </LinearGradient>
                       )}
                     </View>
                     {firstTime && (
@@ -798,15 +835,6 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
                   }} />
                 </View>
               </Pressable>
-
-              {/* Divider */}
-              {!isOpen && (
-                <View style={{
-                  height: StyleSheet.hairlineWidth,
-                  backgroundColor: dividerColor,
-                  marginHorizontal: S.sm,
-                }} />
-              )}
 
               {/* Expanded events */}
               {isOpen && (
