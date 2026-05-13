@@ -29,9 +29,11 @@ export function CachedImage({
   accessibilityLabel,
   blurhash,
 }: Props) {
-  const [failed, setFailed] = useState(false);
+  const [retries, setRetries] = useState(0);
+  const maxRetries = 2;
+  const failed = retries > maxRetries;
 
-  // No URI or load failed — show blurhash placeholder
+  // No URI or exhausted retries — show blurhash placeholder
   if (!uri || failed) {
     if (ExpoImage) {
       return (
@@ -50,6 +52,7 @@ export function CachedImage({
   if (ExpoImage) {
     return (
       <ExpoImage
+        key={retries}
         source={{ uri }}
         style={style}
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
@@ -59,7 +62,7 @@ export function CachedImage({
         contentFit="cover"
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
-        onError={() => setFailed(true)}
+        onError={() => setRetries(r => r + 1)}
       />
     );
   }
@@ -70,7 +73,7 @@ export function CachedImage({
       resizeMode="cover"
       accessible={accessible}
       accessibilityLabel={accessibilityLabel}
-      onError={() => setFailed(true)}
+      onError={() => setRetries(r => r + 1)}
     />
   );
 }
