@@ -507,7 +507,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C }: {
+function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C, index = 0 }: {
   item: TripMedia;
   width: number;
   height: number;
@@ -516,8 +516,15 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
   onPress: () => void;
   onDelete: () => void;
   C: ThemeColors;
+  index?: number;
 }) {
   const isLarge = width > GRID_ITEM_SIZE + 1;
+  const [ready, setReady] = useState(index < 4);
+  useEffect(() => {
+    if (ready) return;
+    const t = setTimeout(() => setReady(true), index * 120);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <ContextMenu
       actions={[
@@ -543,7 +550,7 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
       }}
     >
       {item.type === "image" ? (
-        <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} />
+        ready ? <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} /> : <View style={{ width: "100%", height: "100%" }} />
       ) : (
         <View style={{ width: "100%", height: "100%", backgroundColor: `${C.teal}12`, alignItems: "center", justifyContent: "center" }}>
           <View style={{
@@ -979,19 +986,24 @@ export default function MediaScreen() {
                     const DUO_H = Math.floor(GRID_ITEM_SIZE * 1.35);
                     const FEATURE_H = Math.floor(CONTENT_W * 0.5);
 
-                    const makeItem = (m: typeof visible[number], w: number, h: number, isLastItem: boolean) => (
-                      <GridItem
-                        key={m.id}
-                        item={m}
-                        width={w}
-                        height={h}
-                        isLast={isLastItem && remaining > 0}
-                        remaining={isLastItem ? remaining : 0}
-                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
-                        onDelete={() => handleDelete({ ...m, tripId: trip.id })}
-                        C={C}
-                      />
-                    );
+                    let itemCounter = 0;
+                    const makeItem = (m: typeof visible[number], w: number, h: number, isLastItem: boolean) => {
+                      const idx = itemCounter++;
+                      return (
+                        <GridItem
+                          key={m.id}
+                          item={m}
+                          width={w}
+                          height={h}
+                          isLast={isLastItem && remaining > 0}
+                          remaining={isLastItem ? remaining : 0}
+                          onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
+                          onDelete={() => handleDelete({ ...m, tripId: trip.id })}
+                          C={C}
+                          index={idx}
+                        />
+                      );
+                    };
 
                     const isLast = (rowIdx: number, itemIdx: number, rowLen: number) =>
                       rowIdx === rows.length - 1 && itemIdx === rowLen - 1;
