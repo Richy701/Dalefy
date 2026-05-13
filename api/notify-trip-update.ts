@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { tripId, tripName, changes } = req.body ?? {};
+  const { tripId, tripName, changes, excludeDeviceId } = req.body ?? {};
   if (!tripId || !tripName || !Array.isArray(changes) || !changes.length) {
     return res.status(400).json({ error: "tripId, tripName, and changes[] required" });
   }
@@ -38,7 +38,7 @@ export default async function handler(req: any, res: any) {
       const fields = doc.fields ?? {};
       const docTripId = decodeValue(fields.trip_id);
       const deviceId = decodeValue(fields.device_id);
-      if (docTripId === tripId && deviceId) {
+      if (docTripId === tripId && deviceId && deviceId !== excludeDeviceId) {
         memberDeviceIds.add(deviceId);
       }
     }

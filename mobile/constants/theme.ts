@@ -107,11 +107,11 @@ export const T = {
 };
 
 export const R = {
-  sm: 10,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  "2xl": 26,
+  sm: 12,
+  md: 14,
+  lg: 18,
+  xl: 22,
+  "2xl": 28,
   full: 100,
 };
 

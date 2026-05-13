@@ -34,6 +34,7 @@ import {
   ArrowUpRight, Heart, ShareNetwork, Compass, Bed, ForkKnife, AirplaneTilt,
   Bell, Sun, Moon, Plus, X as XIcon, Scan, Link as LinkIcon, Hash,
   Check, Clock, WifiSlash, ClipboardText, WarningCircle, Question,
+  Images, Info, Camera,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -76,7 +77,7 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
   let t = cleanTitle(title, type, transferType);
-  t = t.replace(/\s*[-–·:]\s*/g, " — ");
+  t = t.replace(/\s+[-–·:]\s+/g, " — ").replace(/\s+/g, " ").trim();
   return t;
 }
 
@@ -85,6 +86,19 @@ function daysUntil(dateStr: string) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   return Math.round((target.getTime() - now.getTime()) / 86400000);
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 
@@ -1299,11 +1313,11 @@ function CompactEventRow({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
       }]}
     >
       <View style={{
-        width: 36, height: 36, borderRadius: R.md,
+        width: 42, height: 42, borderRadius: R.lg,
         backgroundColor: C.tealDim,
         alignItems: "center" as const, justifyContent: "center" as const,
       }}>
-        <Icon size={16} color={C.teal} weight="regular" />
+        <Icon size={18} color={C.teal} weight="regular" />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 18 }} numberOfLines={2}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
@@ -1379,11 +1393,11 @@ function makeUpcomingCardStyles(C: ThemeColors) {
     card: {
       flexDirection: "row", alignItems: "center", gap: S.md,
       backgroundColor: C.card, borderRadius: R["2xl"],
-      padding: S.md, marginHorizontal: S.md,
+      padding: S.lg, marginHorizontal: S.md,
       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
     },
-    thumb: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.elevated },
+    thumb: { width: 72, height: 72, borderRadius: R.xl, backgroundColor: C.elevated },
     body: { flex: 1 },
     dest: {
       fontSize: 9, fontWeight: T.bold, letterSpacing: 1,
@@ -1525,6 +1539,44 @@ function makeSpotlightCardStyles(C: ThemeColors) {
     },
     infoText: { fontSize: 11, fontWeight: "500" as const, color: C.textTertiary, maxWidth: 120 },
   });
+}
+
+// ── Past Trip Tile (horizontal scroll) ────────────────────────────────────────
+function PastTripTile({ trip }: { trip: Trip }) {
+  const { C } = useTheme();
+  const end = new Date(trip.end);
+  const monthYear = end.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return (
+    <Link href={`/trip/${trip.id}`} asChild>
+    <ScalePress
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+      style={{
+        width: 130, gap: 8,
+      }}
+    >
+      <View style={{
+        width: 130, height: 130, borderRadius: R["2xl"], overflow: "hidden",
+        backgroundColor: C.elevated,
+      }}>
+        {Platform.OS === "ios" && Link.AppleZoom ? (
+          <Link.AppleZoom><CachedImage uri={trip.image} style={{ width: "100%", height: "100%" }} /></Link.AppleZoom>
+        ) : (
+          <CachedImage uri={trip.image} style={{ width: "100%", height: "100%" }} />
+        )}
+      </View>
+      <View style={{ paddingHorizontal: 2 }}>
+        <Text
+          style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 16 }}
+          numberOfLines={1}
+        >{trip.destination || trip.name}</Text>
+        <Text
+          style={{ fontSize: T.xs, color: C.textTertiary, marginTop: 2 }}
+          numberOfLines={1}
+        >{monthYear}</Text>
+      </View>
+    </ScalePress>
+    </Link>
+  );
 }
 
 // ── Trip Row (All Trips list) ──────────────────────────────────────────────────
@@ -1691,6 +1743,33 @@ export default function HomeScreen() {
     sorted.filter(t => !upcomingIds.has(t.id)),
     [sorted, upcomingIds]);
 
+  // Past trips for horizontal scroll row
+  const pastTrips = useMemo(() =>
+    sorted.filter(t => daysUntil(t.end) < 0).reverse(),
+    [sorted]);
+
+  // Latest photos — diversify across uploaders, then fill chronologically
+  const latestPhotos = useMemo(() => {
+    if (!spotlightTrip?.media?.length) return [];
+    const all = [...spotlightTrip.media]
+      .filter(m => m.type === "image" && m.url?.startsWith("https://"))
+      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    const seen = new Set<string>();
+    const picks: typeof all = [];
+    for (const m of all) {
+      const key = m.uploadedBy || m.uploaderId || "";
+      if (!seen.has(key)) { seen.add(key); picks.push(m); }
+      if (picks.length >= 8) break;
+    }
+    if (picks.length < 8) {
+      for (const m of all) {
+        if (!picks.includes(m)) picks.push(m);
+        if (picks.length >= 8) break;
+      }
+    }
+    return picks;
+  }, [spotlightTrip]);
+
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       {/* ── Greeting Hero (fixed, doesn't scroll) ── */}
@@ -1720,8 +1799,9 @@ export default function HomeScreen() {
         {!ready ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Trip</Text>
-              <Text style={styles.sectionSub}>Loading your trips…</Text>
+              <View style={styles.sectionHeaderLeft}>
+                <Text style={styles.sectionTitle}>Upcoming</Text>
+              </View>
             </View>
             <View style={styles.upcomingList}>
               <TripCardSkeleton />
@@ -1732,8 +1812,9 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <FadeIn delay={0}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Upcoming Trip</Text>
-                <Text style={styles.sectionSub}>Departing within 30 days</Text>
+                <View style={styles.sectionHeaderLeft}>
+                  <Text style={styles.sectionTitle}>Upcoming</Text>
+                </View>
               </View>
             </FadeIn>
             <View style={styles.upcomingList}>
@@ -1750,8 +1831,10 @@ export default function HomeScreen() {
         {!ready ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>For your Trip</Text>
-              <Text style={styles.sectionSub}>Key events on your itinerary</Text>
+              <View style={styles.sectionHeaderLeft}>
+                <Text style={styles.sectionTitle}>For your Trip</Text>
+                <Text style={styles.sectionSub}>Key events on your itinerary</Text>
+              </View>
             </View>
             <View style={styles.spotList}>
               <SpotlightCardSkeleton />
@@ -1762,14 +1845,19 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <FadeIn delay={200}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                  {"For your "}
-                  <Text style={styles.spotlightDest}>
-                    {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}
+                <View style={styles.sectionHeaderLeft}>
+                  <Text style={styles.sectionTitle}>
+                    {"For your "}
+                    <Text style={styles.spotlightDest}>
+                      {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}
+                    </Text>
+                    {" Trip"}
                   </Text>
-                  {" Trip"}
-                </Text>
-                <Text style={styles.sectionSub}>Key events on your itinerary</Text>
+                  <Text style={styles.sectionSub}>Key events on your itinerary</Text>
+                </View>
+                <View style={styles.sectionChevron}>
+                  <CaretRight size={16} color={C.textTertiary} weight="bold" />
+                </View>
               </View>
             </FadeIn>
 
@@ -1796,16 +1884,140 @@ export default function HomeScreen() {
                 </Pressable>
               </FadeIn>
             )}
+
+            {/* Quick actions */}
+            <FadeIn delay={450}>
+              <View style={styles.quickActions}>
+                <ScalePress
+                  style={styles.quickCard}
+                  onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${spotlightTrip.id}`); }}
+                >
+                  <View style={styles.quickIconWrap}>
+                    <CalendarDots size={20} color={C.teal} weight="regular" />
+                  </View>
+                  <Text style={styles.quickTitle}>Schedule</Text>
+                </ScalePress>
+                <ScalePress
+                  style={styles.quickCard}
+                  onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                >
+                  <View style={styles.quickIconWrap}>
+                    <Images size={20} color={C.teal} weight="regular" />
+                  </View>
+                  <Text style={styles.quickTitle}>Gallery</Text>
+                </ScalePress>
+                <ScalePress
+                  style={styles.quickCard}
+                  onPress={() => { Haptics.selectionAsync(); router.push(`/trip/info?id=${spotlightTrip.id}`); }}
+                >
+                  <View style={styles.quickIconWrap}>
+                    <Info size={20} color={C.teal} weight="regular" />
+                  </View>
+                  <Text style={styles.quickTitle}>Info</Text>
+                </ScalePress>
+              </View>
+            </FadeIn>
+
+            {/* Latest photos */}
+            <FadeIn delay={600}>
+              <View style={styles.latestSection}>
+                {latestPhotos.length > 0 ? (
+                  <>
+                    <View style={styles.latestHeader}>
+                      <Text style={styles.stripLabel}>Latest</Text>
+                      <Pressable
+                        onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.seeAll}>See all</Text>
+                      </Pressable>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 10, paddingHorizontal: S.md }}
+                    >
+                      {latestPhotos.map((photo) => {
+                        const firstName = (photo.uploadedBy || "").split(/\s+/)[0];
+                        const initial = firstName ? firstName[0].toUpperCase() : "";
+                        return (
+                          <Pressable
+                            key={photo.id}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/media"); }}
+                            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+                          >
+                            <CachedImage
+                              uri={photo.url}
+                              style={styles.latestPhoto}
+                            />
+                            {firstName ? (
+                              <View style={styles.photoCaption}>
+                                <View style={styles.photoCaptionAvatar}>
+                                  <Text style={styles.photoCaptionInitial}>{initial}</Text>
+                                </View>
+                                <Text style={styles.photoCaptionText} numberOfLines={1}>
+                                  {firstName} · {relativeTime(photo.uploadedAt)}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </>
+                ) : (
+                  <View style={styles.latestEmpty}>
+                    <Camera size={24} color={C.textTertiary} weight="light" />
+                    <Text style={styles.latestEmptyTitle}>No photos yet</Text>
+                    <Text style={styles.latestEmptySub}>Be the first to share a moment from this trip.</Text>
+                    <Pressable
+                      onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                    >
+                      <Text style={styles.latestEmptyCta}>Add a photo</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            </FadeIn>
           </View>
         ) : null}
+
+        {/* ── Past Trips (horizontal scroll) ── */}
+        {pastTrips.length > 0 && (
+          <FadeIn delay={350}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderLeft}>
+                  <Text style={styles.sectionTitle}>Past Trips</Text>
+                </View>
+                <View style={styles.sectionChevron}>
+                  <CaretRight size={16} color={C.textTertiary} weight="bold" />
+                </View>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: S.md, gap: S.sm }}
+              >
+                {pastTrips.map(trip => (
+                  <PastTripTile key={trip.id} trip={trip} />
+                ))}
+              </ScrollView>
+            </View>
+          </FadeIn>
+        )}
 
         {/* ── All Trips ── */}
         {allTrips.length > 0 && (
           <FadeIn delay={400}>
             <View style={styles.section}>
               <View style={styles.eyebrowRow}>
-                <Text style={styles.eyebrow}>ALL TRIPS</Text>
-                <Text style={styles.countChip}>{allTrips.length}</Text>
+                <View style={styles.eyebrowLeft}>
+                  <Text style={styles.eyebrow}>All Trips</Text>
+                  <Text style={styles.countChip}>{allTrips.length}</Text>
+                </View>
+                <CaretRight size={16} color={C.textTertiary} weight="bold" />
               </View>
               <View style={styles.listCard}>
                 {allTrips.map((trip, i) => (
@@ -1852,34 +2064,48 @@ function makeStyles(C: ThemeColors) {
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
 
-    section: { marginTop: S["2xl"] },
+    section: { marginTop: 28 },
 
-    sectionHeader: { paddingHorizontal: S.md, marginBottom: S.md },
-    sectionTitle: {
-      fontSize: T.xl + 1, fontWeight: T.bold,
-      color: C.textPrimary, letterSpacing: -0.3,
+    sectionHeader: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: S.md, marginBottom: S.lg,
     },
-    sectionSub: { fontSize: T.sm, color: C.textTertiary, marginTop: 4, lineHeight: 20, fontWeight: T.medium },
+    sectionHeaderLeft: { flex: 1 },
+    sectionTitle: {
+      fontSize: T["2xl"], fontWeight: T.bold,
+      color: C.textPrimary, letterSpacing: -0.5,
+    },
+    sectionSub: { fontSize: T.sm, color: C.textTertiary, marginTop: 3, lineHeight: 20, fontWeight: T.medium },
+    sectionChevron: {
+      flexDirection: "row", alignItems: "center", gap: 2,
+      paddingLeft: S.sm,
+    },
+    sectionChevronText: {
+      fontSize: T.sm, fontWeight: T.semibold, color: C.textTertiary,
+    },
     spotlightDest: { color: C.teal },
 
-    upcomingList: { gap: S.sm },
+    upcomingList: { gap: S.md },
 
     eyebrowRow: {
-      flexDirection: "row", alignItems: "center",
-      paddingHorizontal: S.md, marginBottom: S.xs, gap: S.xs,
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: S.md, marginBottom: S.sm,
+    },
+    eyebrowLeft: {
+      flexDirection: "row", alignItems: "center", gap: S.xs,
     },
     eyebrow: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 1.5, textTransform: "uppercase",
+      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
+      letterSpacing: -0.2,
     },
     countChip: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      backgroundColor: C.tealDim, paddingHorizontal: 6, paddingVertical: 2,
+      backgroundColor: C.tealDim, paddingHorizontal: 7, paddingVertical: 2,
       borderRadius: R.full,
     },
 
     // ── Spotlight ──
-    spotList: { paddingHorizontal: S.md, gap: S.md },
+    spotList: { paddingHorizontal: S.md, gap: S.sm },
     spotEmpty: {
       marginHorizontal: S.md, backgroundColor: C.card,
       borderRadius: R.xl,
@@ -1899,12 +2125,12 @@ function makeStyles(C: ThemeColors) {
       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
     },
-    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md },
+    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: 14 },
     rowDivider: {
       height: StyleSheet.hairlineWidth, backgroundColor: C.border,
-      marginLeft: S.sm + 60 + S.sm,
+      marginLeft: S.md + 72 + S.md,
     },
-    rowThumb: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.elevated },
+    rowThumb: { width: 72, height: 72, borderRadius: R.xl, backgroundColor: C.elevated },
     rowBody: { flex: 1 },
     rowDest: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
@@ -1957,6 +2183,54 @@ function makeStyles(C: ThemeColors) {
       marginTop: 2,
     },
     quickSub: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary },
+
+    // ── Section strips ──
+    stripLabel: {
+      fontSize: T.xs, fontWeight: T.semibold,
+      color: C.textTertiary, marginBottom: S.sm,
+    },
+
+    // ── Latest photos ──
+    latestSection: {
+      marginTop: 28,
+    },
+    latestHeader: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: S.md, marginBottom: S.sm,
+    },
+    seeAll: {
+      fontSize: T.sm, fontWeight: T.semibold, color: C.teal,
+    },
+    latestPhoto: {
+      width: 120, height: 160, borderRadius: R.lg,
+      backgroundColor: C.elevated,
+    },
+    photoCaption: {
+      flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6,
+    },
+    photoCaptionAvatar: {
+      width: 16, height: 16, borderRadius: 8,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+    },
+    photoCaptionInitial: {
+      fontSize: 8, fontWeight: T.semibold, color: C.textSecondary,
+    },
+    photoCaptionText: {
+      fontSize: T.xs, color: C.textTertiary, maxWidth: 100,
+    },
+    latestEmpty: {
+      alignItems: "center", paddingVertical: S.xl, paddingHorizontal: S.md, gap: 6,
+    },
+    latestEmptyTitle: {
+      fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, marginTop: 4,
+    },
+    latestEmptySub: {
+      fontSize: T.xs, color: C.textTertiary, textAlign: "center", lineHeight: 18, maxWidth: 240,
+    },
+    latestEmptyCta: {
+      fontSize: T.xs, fontWeight: T.semibold, color: C.teal, marginTop: 4,
+    },
 
     // ── Offline banner ──
     offlineBanner: {
