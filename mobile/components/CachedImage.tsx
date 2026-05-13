@@ -68,7 +68,7 @@ export function CachedImage({
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
         placeholderContentFit="cover"
         transition={transition}
-        cachePolicy="memory"
+        cachePolicy="memory-disk"
         contentFit="cover"
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
