@@ -1908,7 +1908,7 @@ export default function HomeScreen() {
                 </ScalePress>
                 <ScalePress
                   style={styles.quickCard}
-                  onPress={() => { Haptics.selectionAsync(); router.push(`/trip/info?id=${spotlightTrip.id}`); }}
+                  onPress={() => { Haptics.selectionAsync(); router.push(`/trip/info?tripId=${spotlightTrip.id}`); }}
                 >
                   <View style={styles.quickIconWrap}>
                     <Info size={20} color={C.teal} weight="regular" />
