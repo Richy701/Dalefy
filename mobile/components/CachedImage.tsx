@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Image as RNImage, View, type ImageStyle as RNImageStyle } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { Image as RNImage, View, Platform, type ImageStyle as RNImageStyle } from "react-native";
 import type { StyleProp } from "react-native";
 
 let ExpoImage: any = null;
@@ -7,8 +7,6 @@ try {
   ExpoImage = require("expo-image").Image;
 } catch {}
 
-// Subtle warm-neutral blurhash placeholder — resolves to a soft blur before the
-// real image loads, eliminating the "pop from nothing" effect.
 const DEFAULT_BLURHASH = "L6PZfS~q-;j[j[j[fQj[j[fQj[";
 
 interface Props {
@@ -17,7 +15,6 @@ interface Props {
   transition?: number;
   accessible?: boolean;
   accessibilityLabel?: string;
-  /** Blurhash string for blur-up placeholder (uses default if omitted) */
   blurhash?: string | null;
 }
 
@@ -30,10 +27,23 @@ export function CachedImage({
   blurhash,
 }: Props) {
   const [retries, setRetries] = useState(0);
-  const maxRetries = 2;
+  const maxRetries = 3;
   const failed = retries > maxRetries;
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // No URI or exhausted retries — show blurhash placeholder
+  useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
+
+  const handleError = () => {
+    if (retries < maxRetries) {
+      retryTimer.current = setTimeout(() => setRetries(r => r + 1), 800 * (retries + 1));
+    } else {
+      setRetries(r => r + 1);
+    }
+  };
+
+  // Bust expo-image disk cache on retry by appending a param
+  const resolvedUri = retries > 0 ? `${uri}${uri.includes("?") ? "&" : "?"}_r=${retries}` : uri;
+
   if (!uri || failed) {
     if (ExpoImage) {
       return (
@@ -53,27 +63,27 @@ export function CachedImage({
     return (
       <ExpoImage
         key={retries}
-        source={{ uri }}
+        source={{ uri: resolvedUri }}
         style={style}
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
         placeholderContentFit="cover"
         transition={transition}
-        cachePolicy="memory-disk"
+        cachePolicy={Platform.OS === "android" ? "memory" : "memory-disk"}
         contentFit="cover"
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
-        onError={() => setRetries(r => r + 1)}
+        onError={handleError}
       />
     );
   }
   return (
     <RNImage
-      source={{ uri }}
+      source={{ uri: resolvedUri }}
       style={style}
       resizeMode="cover"
       accessible={accessible}
       accessibilityLabel={accessibilityLabel}
-      onError={() => setRetries(r => r + 1)}
+      onError={handleError}
     />
   );
 }
