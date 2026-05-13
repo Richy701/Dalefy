@@ -515,10 +515,6 @@ export function MediaPage() {
         {allItems.length > 0 && <div className="flex items-center justify-between gap-4">
           {/* Trip chips — horizontally scrollable with fade edges */}
           <div className="relative flex-1 min-w-0">
-            {/* Left fade */}
-            <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-slate-50 dark:from-[#050505] to-transparent z-10 pointer-events-none" />
-            {/* Right fade */}
-            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-slate-50 dark:from-[#050505] to-transparent z-10 pointer-events-none" />
 
             <div
               ref={chipScrollRef}
@@ -527,10 +523,10 @@ export function MediaPage() {
             >
               <button
                 onClick={() => setActiveTripFilter("all")}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border shrink-0 ${
+                className={`px-4 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
                   activeTripFilter === "all"
-                    ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
-                    : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40 shadow-sm dark:shadow-none"
+                    ? "bg-brand text-black border-transparent"
+                    : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
                 }`}
               >
                 All · {allItems.length}
@@ -539,10 +535,10 @@ export function MediaPage() {
                 <button
                   key={t.id}
                   onClick={() => setActiveTripFilter(t.id)}
-                  className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-1.5 shrink-0 ${
+                  className={`px-4 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
-                      ? "bg-brand text-black border-transparent shadow-md shadow-brand/20"
-                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40 shadow-sm dark:shadow-none"
+                      ? "bg-brand text-black border-transparent"
+                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
                   }`}
                 >
                   {t.name} · {t.media!.length}
