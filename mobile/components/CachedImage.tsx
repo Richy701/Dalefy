@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Image as RNImage, View, Platform, type ImageStyle as RNImageStyle } from "react-native";
+import { Image as RNImage, View, type ImageStyle as RNImageStyle } from "react-native";
 import type { StyleProp } from "react-native";
 
 let ExpoImage: any = null;
@@ -68,7 +68,7 @@ export function CachedImage({
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
         placeholderContentFit="cover"
         transition={transition}
-        cachePolicy={Platform.OS === "android" ? "memory" : "memory-disk"}
+        cachePolicy="memory"
         contentFit="cover"
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
