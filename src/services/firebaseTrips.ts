@@ -427,7 +427,7 @@ function isBase64(url?: string): boolean {
 }
 
 function isFirebaseStorageUrl(url?: string): boolean {
-  return !!url && url.includes("firebasestorage.googleapis.com");
+  return !!url && url.includes("firebasestorage");
 }
 
 /** Returns true for external HTTP URLs that should be re-uploaded to Firebase Storage */

@@ -1,16 +1,22 @@
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
-  View, Text, ScrollView, Image, StyleSheet, Dimensions, FlatList,
+  View, Text, ScrollView, StyleSheet, Dimensions, FlatList,
   Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash,
-  VideoCamera, CaretRight, Aperture,
+  VideoCamera, CaretRight, Aperture, User,
 } from "phosphor-react-native";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS,
+  interpolate, Extrapolation,
+} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
@@ -24,10 +30,32 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
 import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
+import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+const API_BASE = "https://dalefy.vercel.app/api";
+
+async function notifyTripMembers(tripId: string, tripName: string, uploaderName: string, count: number, senderDeviceId: string | null) {
+  try {
+    await waitForAuth();
+    const idToken = await firebaseAuth().currentUser?.getIdToken();
+    if (!idToken) return;
+    const s = count === 1 ? "" : "s";
+    await fetch(`${API_BASE}/notify-trip-update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({
+        tripId,
+        tripName,
+        changes: [`${uploaderName} added ${count} photo${s}`],
+        excludeDeviceId: senderDeviceId,
+      }),
+    });
+  } catch {}
+}
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const GRID_GAP = 6;
 const GRID_COLS = 3;
 const GRID_ITEM_SIZE = (SCREEN_W - S.md * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
@@ -48,6 +76,15 @@ function formatSize(bytes: number) {
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function formatDateCompact(iso: string) {
+  const d = new Date(iso);
+  const day = d.getDate();
+  const mon = d.toLocaleDateString("en-GB", { month: "short" });
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return `${day} ${mon}, ${h}:${m}`;
 }
 
 /**
@@ -153,6 +190,92 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
   );
 }
 
+// ── Zoomable Image ──────────────────────────────────────────────────────────
+
+function ZoomableImage({ uri, width, height, onTap }: {
+  uri: string; width: number; height: number; onTap: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => { scale.value = savedScale.value * e.scale; })
+    .onEnd(() => {
+      if (scale.value < 1) {
+        scale.value = withSpring(1, { damping: 15, stiffness: 120 });
+        translateX.value = withSpring(0, { damping: 15, stiffness: 120 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 120 });
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else if (scale.value > 4) {
+        scale.value = withSpring(4, { damping: 15, stiffness: 120 });
+        savedScale.value = 4;
+      } else {
+        savedScale.value = scale.value;
+      }
+    });
+
+  const pan = Gesture.Pan()
+    .minPointers(2)
+    .onUpdate((e) => {
+      if (savedScale.value > 1) {
+        translateX.value = savedTranslateX.value + e.translationX;
+        translateY.value = savedTranslateY.value + e.translationY;
+      }
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd((_e, success) => {
+      if (!success) return;
+      if (savedScale.value > 1) {
+        scale.value = withSpring(1, { damping: 15, stiffness: 120 });
+        translateX.value = withSpring(0, { damping: 15, stiffness: 120 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 120 });
+        savedScale.value = 1;
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+      } else {
+        scale.value = withSpring(2.5, { damping: 15, stiffness: 120 });
+        savedScale.value = 2.5;
+      }
+    });
+
+  const singleTap = Gesture.Tap()
+    .numberOfTaps(1)
+    .onEnd((_e, success) => { if (success) runOnJS(onTap)(); });
+
+  const composed = Gesture.Race(
+    Gesture.Simultaneous(pinch, pan),
+    Gesture.Exclusive(doubleTap, singleTap),
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={composed}>
+      <Animated.View style={[{ width, height, justifyContent: "center", alignItems: "center" }, animStyle]}>
+        <ExpoImage source={{ uri }} style={{ width, height }} contentFit="contain" cachePolicy="memory-disk" />
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
 function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
@@ -165,110 +288,219 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 }) {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [chromeVisible, setChromeVisible] = useState(true);
   const flatListRef = useRef<FlatList>(null);
 
-  // Sync when opening on a new item
+  const dismissY = useSharedValue(0);
+  const bgOpacity = useSharedValue(1);
+
   useEffect(() => {
     if (visible && initialIndex >= 0) {
       setActiveIndex(initialIndex);
+      setChromeVisible(true);
+      dismissY.value = 0;
+      bgOpacity.value = 1;
       setTimeout(() => flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false }), 50);
     }
   }, [visible, initialIndex]);
 
+  const handleDismiss = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onClose();
+  }, [onClose]);
+
+  const swipeToDismiss = Gesture.Pan()
+    .minPointers(1)
+    .activeOffsetY([-20, 20])
+    .failOffsetX([-10, 10])
+    .onUpdate((e) => {
+      dismissY.value = e.translationY;
+      bgOpacity.value = interpolate(
+        Math.abs(e.translationY), [0, 300], [1, 0.2], Extrapolation.CLAMP,
+      );
+    })
+    .onEnd((e) => {
+      if (Math.abs(e.translationY) > 120 || Math.abs(e.velocityY) > 800) {
+        bgOpacity.value = withTiming(0, { duration: 200 });
+        dismissY.value = withTiming(
+          e.translationY > 0 ? SCREEN_H : -SCREEN_H,
+          { duration: 200 },
+          () => runOnJS(handleDismiss)(),
+        );
+      } else {
+        dismissY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
+      }
+    });
+
+  const dismissStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: dismissY.value },
+      { scale: interpolate(Math.abs(dismissY.value), [0, 400], [1, 0.85], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const bgStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(0,0,0,${bgOpacity.value})`,
+  }));
+
+  const chromeOpacity = useAnimatedStyle(() => ({
+    opacity: withTiming(chromeVisible ? 1 : 0, { duration: 200 }),
+    pointerEvents: chromeVisible ? "auto" as const : "none" as const,
+  }));
+
   if (!visible || items.length === 0) return null;
   const current = items[activeIndex] ?? items[0];
 
+  const toggleChrome = () => setChromeVisible(v => !v);
+
   const renderItem = ({ item }: { item: TripMedia & { tripName: string } }) => (
-    <View style={{ width: SCREEN_W, height: "100%", justifyContent: "center", alignItems: "center" }}>
+    <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: "center", alignItems: "center" }}>
       {item.type === "image" ? (
-        <Image source={{ uri: item.url }} style={{ width: SCREEN_W, height: "100%" }} resizeMode="contain" />
+        <ZoomableImage uri={item.url} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} />
       ) : (
-        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+        <Pressable onPress={toggleChrome} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Play size={28} color="#fff" weight="fill" />
-        </View>
+        </Pressable>
       )}
     </View>
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
-        <FlatList
-          ref={flatListRef}
-          data={items}
-          renderItem={renderItem}
-          keyExtractor={(m) => m.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={initialIndex}
-          getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
-          onMomentumScrollEnd={(e) => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-            setActiveIndex(idx);
-          }}
-        />
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Animated.View style={[{ flex: 1 }, bgStyle]}>
+          <GestureDetector gesture={swipeToDismiss}>
+            <Animated.View style={[{ flex: 1 }, dismissStyle]}>
+              <FlatList
+                ref={flatListRef}
+                data={items}
+                renderItem={renderItem}
+                keyExtractor={(m) => m.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={initialIndex}
+                getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+                  setActiveIndex(idx);
+                }}
+              />
+            </Animated.View>
+          </GestureDetector>
 
-        {/* Top bar */}
-        <LinearGradient
-          colors={["rgba(0,0,0,0.7)", "transparent"]}
-          pointerEvents="box-none"
-          style={{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: insets.top + S.xs, paddingHorizontal: S.md, paddingBottom: S.xl }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Pressable
-              onPress={onClose}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
+          {/* Top chrome */}
+          <Animated.View style={[{
+            position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+          }, chromeOpacity]}>
+            <LinearGradient
+              colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.3)", "transparent"]}
+              style={{ paddingTop: insets.top + 8, paddingHorizontal: S.md, paddingBottom: 32 }}
             >
-              <X size={18} color="#fff" weight="regular" />
-            </Pressable>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: "rgba(255,255,255,0.6)" }}>
-                {activeIndex + 1} / {items.length}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Pressable
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }}
+                  hitSlop={12}
+                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <X size={18} color="#fff" weight="bold" />
+                </Pressable>
+
+                <View style={{
+                  backgroundColor: "rgba(255,255,255,0.12)", borderRadius: R.full,
+                  paddingHorizontal: 12, paddingVertical: 6,
+                }}>
+                  <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: "#fff", letterSpacing: 0.5 }}>
+                    {activeIndex + 1} <Text style={{ color: "rgba(255,255,255,0.4)" }}>/</Text> {items.length}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={() => onDelete(current)}
+                  hitSlop={12}
+                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(239,68,68,0.2)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Trash size={16} color="#ef4444" weight="bold" />
+                </Pressable>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          {/* Bottom chrome */}
+          <Animated.View style={[{
+            position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
+          }, chromeOpacity]}>
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.8)"]}
+              style={{ paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: 48 }}
+            >
+              {current.uploadedBy && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <View style={{
+                    width: 22, height: 22, borderRadius: 11,
+                    backgroundColor: "rgba(255,255,255,0.12)",
+                    alignItems: "center", justifyContent: "center",
+                  }}>
+                    <User size={12} color="rgba(255,255,255,0.7)" weight="bold" />
+                  </View>
+                  <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.6)", fontWeight: T.medium }}>
+                    {current.uploadedBy}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={{ fontSize: T.lg, fontWeight: T.bold, color: "#fff", marginBottom: 4, letterSpacing: -0.3 }} numberOfLines={1}>
+                {current.name}
               </Text>
-              <Pressable
-                onPress={() => onDelete(current)}
-                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(239,68,68,0.3)", alignItems: "center", justifyContent: "center" }}
-              >
-                <Trash size={16} color="#ef4444" weight="regular" />
-              </Pressable>
-            </View>
-          </View>
-        </LinearGradient>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  {current.tripName}
+                </Text>
+                {current.size > 0 && (
+                  <>
+                    <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.3)" }} />
+                    <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatSize(current.size)}</Text>
+                  </>
+                )}
+                {current.uploadedAt && (
+                  <>
+                    <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.3)" }} />
+                    <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatDate(current.uploadedAt)}</Text>
+                  </>
+                )}
+              </View>
 
-        {/* Bottom info */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.8)"]}
-          pointerEvents="none"
-          style={{ position: "absolute", bottom: 0, left: 0, right: 0, paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: S.xl }}
-        >
-          <Text style={{ fontSize: T.base, fontWeight: T.bold, color: "#fff", marginBottom: 4 }} numberOfLines={1}>{current.name}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-            <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 0.8, textTransform: "uppercase" }}>{current.tripName}</Text>
-            {current.size > 0 && (
-              <>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.4)" }}>·</Text>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatSize(current.size)}</Text>
-              </>
-            )}
-            {current.uploadedAt && (
-              <>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.4)" }}>·</Text>
-                <Text style={{ fontSize: T.xs, color: "rgba(255,255,255,0.5)", fontWeight: T.medium }}>{formatDate(current.uploadedAt)}</Text>
-              </>
-            )}
-          </View>
-        </LinearGradient>
-
-        {/* Page dots */}
-        {items.length > 1 && items.length <= 12 && (
-          <View style={{ position: "absolute", bottom: insets.bottom + S.md + 60, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 4 }}>
-            {items.map((_, i) => (
-              <View key={i} style={{ width: i === activeIndex ? 16 : 6, height: 6, borderRadius: 3, backgroundColor: i === activeIndex ? C.teal : "rgba(255,255,255,0.3)" }} />
-            ))}
-          </View>
-        )}
-      </View>
+              {/* Scroll indicator */}
+              {items.length > 1 && (
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 14 }}>
+                  {items.length <= 20 ? (
+                    items.map((_, i) => (
+                      <View key={i} style={{
+                        width: i === activeIndex ? 18 : 5, height: 5,
+                        borderRadius: 2.5,
+                        backgroundColor: i === activeIndex ? C.teal : "rgba(255,255,255,0.25)",
+                      }} />
+                    ))
+                  ) : (
+                    <View style={{
+                      width: 120, height: 3, borderRadius: 1.5,
+                      backgroundColor: "rgba(255,255,255,0.15)", overflow: "hidden",
+                    }}>
+                      <View style={{
+                        width: Math.max(20, 120 / items.length),
+                        height: 3, borderRadius: 1.5,
+                        backgroundColor: C.teal,
+                        marginLeft: (120 - Math.max(20, 120 / items.length)) * (activeIndex / (items.length - 1)),
+                      }} />
+                    </View>
+                  )}
+                </View>
+              )}
+            </LinearGradient>
+          </Animated.View>
+        </Animated.View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -323,15 +555,34 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
         </View>
       )}
 
-      {item.type === "video" && (
-        <View style={{
-          position: "absolute", bottom: 6, left: 6,
-          flexDirection: "row", alignItems: "center", gap: 3,
-          backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.full,
-          paddingHorizontal: 6, paddingVertical: 3,
-        }}>
-          <VideoCamera size={9} color="#fff" weight="fill" />
-        </View>
+      {!(isLast && remaining > 0) && (item.uploadedBy || item.uploadedAt || item.type === "video") && (
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.7)"]}
+          style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            paddingHorizontal: isLarge ? 8 : 6, paddingBottom: isLarge ? 7 : 5, paddingTop: isLarge ? 24 : 16,
+            borderBottomLeftRadius: R.lg, borderBottomRightRadius: R.lg,
+          }}
+        >
+          {item.uploadedBy && (
+            <Text style={{
+              fontSize: isLarge ? T.sm : 11, fontWeight: T.bold, color: "#fff",
+              letterSpacing: 0.1, marginBottom: 1,
+            }} numberOfLines={1}>
+              {item.uploadedBy.split(" ")[0]}
+            </Text>
+          )}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+            {item.type === "video" && <VideoCamera size={isLarge ? 10 : 8} color="rgba(255,255,255,0.7)" weight="fill" />}
+            {item.uploadedAt && (
+              <Text style={{
+                fontSize: isLarge ? T.xs : 10, color: "rgba(255,255,255,0.55)", fontWeight: T.medium,
+              }} numberOfLines={1}>
+                {formatDateCompact(item.uploadedAt)}
+              </Text>
+            )}
+          </View>
+        </LinearGradient>
       )}
 
       {isLast && remaining > 0 && (
@@ -399,17 +650,23 @@ export default function MediaScreen() {
     setRefreshing(false);
   }, [reload, setPendingMedia]);
 
-  // Clean up pending items that have been uploaded or removed
+  // Clean up pending items that have been uploaded, are stale, or have dead local URIs
   useEffect(() => {
     let changed = false;
+    const staleMs = 60 * 60 * 1000; // 1 hour
+    const now = Date.now();
     const cleaned: Record<string, TripMedia[]> = {};
     for (const [tripId, items] of Object.entries(pendingMedia)) {
       const trip = trips.find(t => t.id === tripId);
       const existingIds = new Set((trip?.media ?? []).map(m => m.id));
-      // Keep only items not yet in Firestore and not already uploaded
-      const remaining = items.filter(m =>
-        !existingIds.has(m.id) && !m.url.includes("firebasestorage.googleapis.com")
-      );
+      const remaining = items.filter(m => {
+        if (existingIds.has(m.id)) return false;
+        if (m.url.includes("firebasestorage")) return false;
+        // Drop local URIs older than 1h — iOS reclaims temp files
+        const age = m.uploadedAt ? now - new Date(m.uploadedAt).getTime() : staleMs + 1;
+        if (!m.url.startsWith("https://") && age > staleMs) return false;
+        return true;
+      });
       if (remaining.length !== items.length) changed = true;
       if (remaining.length > 0) cleaned[tripId] = remaining;
     }
@@ -422,7 +679,7 @@ export default function MediaScreen() {
 
   const mergedTrips = useMemo(() =>
     trips.map(t => {
-      const ownMedia = (t.media ?? []).filter(m => isValidMediaUrl(m.url));
+      const ownMedia = (t.media ?? []).filter(m => m.url?.startsWith("https://"));
       const pending = pendingMedia[t.id];
       if (!pending?.length) return { ...t, media: ownMedia };
       const existingIds = new Set(ownMedia.map(m => m.id));
@@ -478,7 +735,7 @@ export default function MediaScreen() {
           const existingMedia = freshTrip.media ?? [];
           // Deduplicate by id in case of retry
           const existingIds = new Set(existingMedia.map(m => m.id));
-          const newMedia = uploaded.filter(m => !existingIds.has(m.id));
+          const newMedia = uploaded.filter(m => !existingIds.has(m.id) && m.url.startsWith("https://"));
           const finalMedia = [...existingMedia, ...newMedia];
           const finalTrip = { ...freshTrip, media: finalMedia };
 
@@ -498,6 +755,12 @@ export default function MediaScreen() {
               return { ...prev, [tripId]: remaining };
             });
             toast(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
+
+            // Notify other trip members
+            const uploaderName = prefs.name || "Someone";
+            const count = newMedia.length;
+            const dest = trip.destination || trip.name;
+            notifyTripMembers(tripId, dest, uploaderName, count, deviceId).catch(() => {});
           } catch (err) {
             console.warn("[Media] Firestore write failed:", err);
             // Keep pending items — they'll persist via AsyncStorage
@@ -655,7 +918,7 @@ export default function MediaScreen() {
           <View style={styles.galleryWrap}>
             {filteredTrips.map((trip, tripIndex) => {
               const media = trip.media ?? [];
-              const maxVisible = 8;
+              const maxVisible = 20;
               const visible = media.slice(0, maxVisible);
               const remaining = media.length - maxVisible;
 
@@ -676,61 +939,103 @@ export default function MediaScreen() {
                     </Pressable>
                   </View>
 
-                  {/* Mixed-size first row */}
-                  {visible.length >= 2 ? (
-                    <View style={{ flexDirection: "row", gap: GRID_GAP }}>
-                      <GridItem
-                        item={visible[0]}
-                        width={HERO_LARGE_W}
-                        height={HERO_ROW_H}
-                        isLast={false}
-                        remaining={0}
-                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[0].id))}
-                        onDelete={() => handleDelete({ ...visible[0], tripId: trip.id })}
-                        C={C}
-                      />
-                      <GridItem
-                        item={visible[1]}
-                        width={HERO_SMALL_W}
-                        height={HERO_ROW_H}
-                        isLast={visible.length === 2 && remaining > 0}
-                        remaining={visible.length === 2 ? remaining : 0}
-                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[1].id))}
-                        onDelete={() => handleDelete({ ...visible[1], tripId: trip.id })}
-                        C={C}
-                      />
-                    </View>
-                  ) : visible[0] ? (
-                    <GridItem
-                      item={visible[0]}
-                      width={CONTENT_W}
-                      height={Math.floor(CONTENT_W * 0.55)}
-                      isLast={remaining > 0}
-                      remaining={remaining}
-                      onPress={() => setViewerIndex(allItems.findIndex(a => a.id === visible[0].id))}
-                      onDelete={() => handleDelete({ ...visible[0], tripId: trip.id })}
-                      C={C}
-                    />
-                  ) : null}
+                  {(() => {
+                    const rows: { items: typeof visible; layout: "hero" | "trio" | "duo" | "duo-r" | "feature" }[] = [];
+                    let cursor = 0;
+                    const layouts = ["hero", "trio", "duo", "trio", "duo-r", "trio", "feature", "trio"] as const;
+                    let layoutIdx = 0;
 
-                  {/* 3-column grid */}
-                  {visible.length > 2 && (
-                    <View style={styles.gridWrap}>
-                      {visible.slice(2).map((m, i) => (
-                        <GridItem
-                          key={m.id}
-                          item={m}
-                          width={GRID_ITEM_SIZE}
-                          height={GRID_ITEM_SIZE}
-                          isLast={i === visible.length - 3 && remaining > 0}
-                          remaining={i === visible.length - 3 ? remaining : 0}
-                          onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
-                          onDelete={() => handleDelete({ ...m, tripId: trip.id })}
-                          C={C}
-                        />
-                      ))}
-                    </View>
-                  )}
+                    while (cursor < visible.length) {
+                      const left = visible.length - cursor;
+                      const pattern = layouts[layoutIdx % layouts.length];
+                      layoutIdx++;
+
+                      if (pattern === "hero" && left >= 2) {
+                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: "hero" });
+                        cursor += 2;
+                      } else if (pattern === "trio" && left >= 3) {
+                        rows.push({ items: visible.slice(cursor, cursor + 3), layout: "trio" });
+                        cursor += 3;
+                      } else if ((pattern === "duo" || pattern === "duo-r") && left >= 2) {
+                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: pattern });
+                        cursor += 2;
+                      } else if (pattern === "feature" && left >= 1) {
+                        rows.push({ items: visible.slice(cursor, cursor + 1), layout: "feature" });
+                        cursor += 1;
+                      } else if (left >= 3) {
+                        rows.push({ items: visible.slice(cursor, cursor + 3), layout: "trio" });
+                        cursor += 3;
+                      } else if (left >= 2) {
+                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: "duo" });
+                        cursor += 2;
+                      } else {
+                        rows.push({ items: visible.slice(cursor, cursor + 1), layout: "feature" });
+                        cursor += 1;
+                      }
+                    }
+
+                    const COL2_WIDE = Math.floor((CONTENT_W - GRID_GAP) * 0.62);
+                    const COL2_NARROW = CONTENT_W - COL2_WIDE - GRID_GAP;
+                    const DUO_H = Math.floor(GRID_ITEM_SIZE * 1.35);
+                    const FEATURE_H = Math.floor(CONTENT_W * 0.5);
+
+                    const makeItem = (m: typeof visible[number], w: number, h: number, isLastItem: boolean) => (
+                      <GridItem
+                        key={m.id}
+                        item={m}
+                        width={w}
+                        height={h}
+                        isLast={isLastItem && remaining > 0}
+                        remaining={isLastItem ? remaining : 0}
+                        onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
+                        onDelete={() => handleDelete({ ...m, tripId: trip.id })}
+                        C={C}
+                      />
+                    );
+
+                    const isLast = (rowIdx: number, itemIdx: number, rowLen: number) =>
+                      rowIdx === rows.length - 1 && itemIdx === rowLen - 1;
+
+                    return (
+                      <View style={{ gap: GRID_GAP }}>
+                        {rows.map((row, ri) => {
+                          if (row.layout === "hero") {
+                            return (
+                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
+                                {makeItem(row.items[0], COL2_WIDE, HERO_ROW_H, isLast(ri, 0, 2))}
+                                {makeItem(row.items[1], COL2_NARROW, HERO_ROW_H, isLast(ri, 1, 2))}
+                              </View>
+                            );
+                          }
+                          if (row.layout === "trio") {
+                            return (
+                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
+                                {row.items.map((m, i) => makeItem(m, GRID_ITEM_SIZE, GRID_ITEM_SIZE, isLast(ri, i, 3)))}
+                              </View>
+                            );
+                          }
+                          if (row.layout === "duo") {
+                            return (
+                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
+                                {makeItem(row.items[0], COL2_WIDE, DUO_H, isLast(ri, 0, 2))}
+                                {makeItem(row.items[1], COL2_NARROW, DUO_H, isLast(ri, 1, 2))}
+                              </View>
+                            );
+                          }
+                          if (row.layout === "duo-r") {
+                            return (
+                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
+                                {makeItem(row.items[0], COL2_NARROW, DUO_H, isLast(ri, 0, 2))}
+                                {makeItem(row.items[1], COL2_WIDE, DUO_H, isLast(ri, 1, 2))}
+                              </View>
+                            );
+                          }
+                          // feature
+                          return makeItem(row.items[0], CONTENT_W, FEATURE_H, isLast(ri, 0, 1));
+                        })}
+                      </View>
+                    );
+                  })()}
                 </View>
                 </FadeIn>
               );

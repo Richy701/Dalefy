@@ -133,7 +133,7 @@ export async function uploadTripMedia(
   const results: TripMedia[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (item.url.includes("firebasestorage.googleapis.com")) {
+    if (item.url.includes("firebasestorage")) {
       results.push(item);
     } else {
       const url = await uploadMediaFile(item.url, tripId, item.id);
