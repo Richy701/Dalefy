@@ -932,18 +932,18 @@ export default function MediaScreen() {
               return (
                 <FadeIn key={trip.id} delay={tripIndex * 100}>
                 <View style={styles.tripSection}>
-                  {/* Compact section header */}
+                  {/* Section header */}
                   <View style={styles.tripHeader}>
                     <Text style={styles.tripName} numberOfLines={1}>
                       {trip.destination || trip.name}
-                      <Text style={styles.tripCount}> · {media.length}</Text>
                     </Text>
-                    <Pressable
-                      style={({ pressed }) => [styles.addBtn, { opacity: pressed ? 0.7 : 1 }]}
-                      onPress={() => handleUploadToTrip(trip.id)}
-                    >
-                      <Camera size={14} color={C.teal} weight="regular" />
-                    </Pressable>
+                    <Text style={styles.tripMeta}>
+                      {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {" - "}
+                      {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {"  ·  "}
+                      {media.length} photo{media.length !== 1 ? "s" : ""}
+                    </Text>
                   </View>
 
                   {(() => {
@@ -1155,21 +1155,15 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md,
     },
     tripHeader: {
-      flexDirection: "row", alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 8,
+      marginBottom: 10,
     },
     tripName: {
-      fontSize: T.base, fontWeight: T.bold, color: C.textPrimary,
-      flex: 1,
+      fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary,
+      letterSpacing: -0.3,
     },
-    tripCount: {
-      fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
-    },
-    addBtn: {
-      width: 32, height: 32, borderRadius: R.full,
-      backgroundColor: C.tealDim,
-      alignItems: "center", justifyContent: "center",
+    tripMeta: {
+      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
+      marginTop: 4,
     },
 
     // ── Photo Grid ──
