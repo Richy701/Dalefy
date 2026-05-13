@@ -141,6 +141,7 @@ export function useFlightLiveActivity() {
   const { trips } = useTrips();
   const { prefs } = usePreferences();
   const activityRef = useRef<LiveActivityRef | null>(null);
+  const startingRef = useRef<string | null>(null);
   const tripsRef = useRef(trips);
   tripsRef.current = trips;
   const updateRef = useRef<(() => void) | null>(null);
@@ -149,12 +150,19 @@ export function useFlightLiveActivity() {
     if (Platform.OS !== "ios" || !FlightTracker) return;
 
     if (prefs.liveActivity === false) {
+      startingRef.current = null;
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
       return;
     }
+
+    // Clean up any orphaned activities from previous mount cycles
+    try {
+      const stale = FlightTracker.getInstances();
+      for (const inst of stale) safe(() => inst.end("immediate"));
+    } catch {}
 
     function update() {
       const currentTrips = tripsRef.current;
@@ -191,12 +199,15 @@ export function useFlightLiveActivity() {
       }
 
       if (!bestFlight) {
+        startingRef.current = null;
         if (activityRef.current) {
           safe(() => activityRef.current!.activity.end("default"));
           activityRef.current = null;
         }
         return;
       }
+
+      if (startingRef.current === bestFlight.id) return;
 
       const props = eventToProps(bestFlight);
       props.progress = getFlightProgress(bestFlight);
@@ -211,12 +222,15 @@ export function useFlightLiveActivity() {
         activityRef.current = null;
       }
 
+      startingRef.current = bestFlight.id;
       const flight = bestFlight;
       const doStart = (p: FlightTrackerProps) => {
+        if (startingRef.current !== flight.id) return;
         try {
           const activity = FlightTracker.start(p, `/trip/day?date=${flight.date}`);
           activityRef.current = { eventId: flight.id, activity };
         } catch {}
+        startingRef.current = null;
       };
 
       if (props.from === "---" || props.to === "---") {
@@ -247,10 +261,15 @@ export function useFlightLiveActivity() {
       sub.remove();
       clearInterval(progressInterval);
       updateRef.current = null;
+      startingRef.current = null;
       if (activityRef.current) {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
+      try {
+        const all = FlightTracker.getInstances();
+        for (const inst of all) safe(() => inst.end("immediate"));
+      } catch {}
     };
   }, [prefs.liveActivity]);
 

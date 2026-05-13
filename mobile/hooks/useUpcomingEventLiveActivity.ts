@@ -120,6 +120,12 @@ export function useUpcomingEventLiveActivity() {
       return;
     }
 
+    // Clean up any orphaned activities from previous mount cycles
+    try {
+      const stale = UpcomingEvent.getInstances();
+      for (const inst of stale) safe(() => inst.end("immediate"));
+    } catch {}
+
     function update() {
       const currentTrips = tripsRef.current;
       const todayEvents: TravelEvent[] = [];
@@ -218,6 +224,10 @@ export function useUpcomingEventLiveActivity() {
         safe(() => activityRef.current!.activity.end("default"));
         activityRef.current = null;
       }
+      try {
+        const all = UpcomingEvent.getInstances();
+        for (const inst of all) safe(() => inst.end("immediate"));
+      } catch {}
     };
   }, [prefs.liveActivity]);
 
