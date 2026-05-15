@@ -39,17 +39,9 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
     if (trip.shortCode && trip.shortCode.length >= 6) return;
     if (attemptedRef.current === trip.id) return;
     attemptedRef.current = trip.id;
-    setAllocating(true);
     const code = generateUniqueShortCode();
-    updateTrip(trip.id, { shortCode: code, status: "Published" })
-      .then(() => {
-        setShortCode(code);
-      })
-      .catch(() => {
-        attemptedRef.current = null;
-        toast.error("Couldn't generate trip code - please try again");
-      })
-      .finally(() => setAllocating(false));
+    updateTrip(trip.id, { shortCode: code, status: "Published" });
+    setShortCode(code);
   }, [open, trip, updateTrip]);
 
   const webUrl =
