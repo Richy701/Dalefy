@@ -165,17 +165,8 @@ function randomCode(): string {
   return code;
 }
 
-export async function generateUniqueShortCode(): Promise<string> {
-  for (let i = 0; i < 20; i++) {
-    const candidate = randomCode();
-    const q = query(
-      collection(firebaseDb(), TRIPS),
-      where("short_code", "==", candidate),
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return candidate;
-  }
-  throw new Error("Could not allocate unique trip code");
+export function generateUniqueShortCode(): string {
+  return randomCode();
 }
 
 // ── Trip Members ────────────────────────────────────────────────────────────
