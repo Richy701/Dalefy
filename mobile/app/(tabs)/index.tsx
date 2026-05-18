@@ -602,19 +602,6 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
   return (
     <View style={[styles.outer, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
-      <LinearGradient
-        colors={[`${C.teal}18`, "transparent"]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFillObject, { top: 600 }]}
-      />
-      <Pressable
-        style={({ pressed }) => [styles.illustrationWrap, pressed && { opacity: 0.25 }]}
-        onPress={() => { Haptics.selectionAsync(); if (nextTrip) onPress(nextTrip); }}
-        accessibilityLabel="View trip"
-        hitSlop={8}
-      >
-        <Illustration name="together" width={120} height={100} />
-      </Pressable>
       {/* Top bar — actions */}
       <View style={styles.topBar}>
         <View style={{ flex: 1 }} />
@@ -645,14 +632,41 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         </View>
       </View>
 
-      {/* Greeting */}
-      <Text
-        style={[styles.greeting, { fontSize: greetingFontSize }]}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {greeting}
-      </Text>
+      {/* Greeting + countdown chip */}
+      <View style={styles.greetingRow}>
+        <Text
+          style={[styles.greeting, { fontSize: greetingFontSize }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {greeting}
+        </Text>
+        {nextTrip ? (
+          <Pressable
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(nextTrip); }}
+            style={({ pressed }) => [styles.countdownChip, pressed && { opacity: 0.7 }]}
+            accessibilityLabel={
+              isActive
+                ? dayOfTrip <= 1 ? "On your way" : `Day ${dayOfTrip} in ${nextTrip.destination || nextTrip.name}`
+                : days === 0 ? "Departs today"
+                : days === 1 ? "Departs tomorrow"
+                : `Departs in ${days} days`
+            }
+            hitSlop={6}
+          >
+            <Text style={styles.countdownChipText} numberOfLines={1}>
+              {isActive
+                ? dayOfTrip <= 1
+                  ? "On your way"
+                  : `Day ${dayOfTrip} in ${nextTrip.destination || nextTrip.name}`
+                : days === 0 ? "Departs today"
+                : days === 1 ? "Departs tomorrow"
+                : days <= 7 ? `In ${days} days`
+                : `Departs ${new Date(nextTrip.start + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}`}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
       <Modal
@@ -909,43 +923,6 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           </KeyboardAvoidingView>
       </Modal>
 
-      {nextTrip ? (
-        <ScalePress
-          style={styles.countdownWrap}
-          activeScale={0.98}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(nextTrip); }}
-        >
-          <Text style={styles.bigDest} numberOfLines={1}>
-            {(nextTrip.destination || nextTrip.name).toUpperCase()}
-          </Text>
-          <View style={[styles.statusPill, isActive && styles.statusPillActive]}>
-            {isActive ? (
-              <StatusIndicator state="live" size={6} color="#000" />
-            ) : days === 0 ? (
-              <StatusIndicator state="upcoming" size={10} color={C.textTertiary} />
-            ) : null}
-            <Text style={[styles.statusPillText, isActive && styles.statusPillTextActive]}>
-              {isActive
-                ? `ON TRIP · DAY ${dayOfTrip} OF ${totalDays}`
-                : days === 0 ? "DEPARTING TODAY"
-                : `IN ${days} DAY${days !== 1 ? "S" : ""}`}
-            </Text>
-            <CaretRight size={10} color={isActive ? "#000" : C.textTertiary} weight="bold" />
-          </View>
-        </ScalePress>
-      ) : (
-        <ScalePress
-          style={styles.countdownWrap}
-          activeScale={0.98}
-          onPress={() => { Haptics.selectionAsync(); setCodeOpen(true); }}
-        >
-          <Text style={[styles.bigDest, { fontSize: T["2xl"] }]}>No upcoming trips</Text>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>Tap to join a trip</Text>
-            <CaretRight size={10} color={C.textTertiary} weight="bold" />
-          </View>
-        </ScalePress>
-      )}
     </View>
   );
 }
@@ -953,24 +930,34 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 function makeGreetingStyles(C: ThemeColors) {
   return StyleSheet.create({
     outer: {
-      marginBottom: S.sm,
+      marginBottom: S.xs,
       backgroundColor: C.card,
       overflow: "hidden",
       paddingHorizontal: S.md, paddingBottom: S.sm,
-    },
-    illustrationWrap: {
-      position: "absolute", right: -10, bottom: 0,
-      opacity: 0.45,
     },
     topBar: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       marginBottom: S.xs, zIndex: 2,
     },
+    greetingRow: {
+      flexDirection: "row", alignItems: "baseline", justifyContent: "space-between",
+      gap: 8, marginBottom: S.xs,
+    },
     greeting: {
       fontWeight: T.medium,
       color: C.textSecondary,
       letterSpacing: -0.2,
-      marginBottom: S.sm,
+      flexShrink: 1,
+    },
+    countdownChip: {
+      flexDirection: "row", alignItems: "center",
+      backgroundColor: `${C.teal}10`,
+      paddingHorizontal: 8, paddingVertical: 4,
+      borderRadius: R.full,
+    },
+    countdownChipText: {
+      fontSize: 12, fontWeight: T.semibold,
+      color: C.teal,
     },
     headerActions: {
       flexDirection: "row", alignItems: "center", gap: 4,
@@ -1173,47 +1160,6 @@ function makeGreetingStyles(C: ThemeColors) {
       fontSize: T.sm, fontWeight: T.bold,
       letterSpacing: 1.5, textTransform: "uppercase",
     },
-    countdownWrap: { alignSelf: "flex-start" },
-    countdownEyebrow: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
-      letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4,
-    },
-    countdownNumber: {
-      fontSize: 40, fontWeight: T.semibold, color: C.textPrimary,
-      letterSpacing: -1, lineHeight: 42,
-    },
-    countdownMeta: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-    countdownDest: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textSecondary,
-      letterSpacing: 1.5, maxWidth: 220,
-    },
-    emptyWrap: { alignSelf: "flex-start" },
-    emptyTitle: {
-      fontSize: T["3xl"], fontWeight: T.bold,
-      color: C.textPrimary, letterSpacing: -0.5, lineHeight: T["3xl"] + 4,
-      maxWidth: 220,
-    },
-    bigDest: {
-      fontSize: T["4xl"], fontWeight: T.bold,
-      color: C.textPrimary, letterSpacing: -0.5,
-      marginBottom: S.xs,
-    },
-    statusPill: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      backgroundColor: C.elevated,
-      paddingHorizontal: 12, paddingVertical: 7,
-      borderRadius: R.full, alignSelf: "flex-start",
-    },
-    statusPillActive: { backgroundColor: C.teal },
-    statusPillDot: {
-      width: 6, height: 6, borderRadius: 3, backgroundColor: "#000",
-    },
-    statusPillText: {
-      fontSize: T.xs, fontWeight: T.bold,
-      color: C.textTertiary, letterSpacing: 1.2,
-      textTransform: "uppercase",
-    },
-    statusPillTextActive: { color: "#000" },
   });
 }
 
@@ -1781,7 +1727,7 @@ export default function HomeScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled"
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
@@ -2064,7 +2010,7 @@ function makeStyles(C: ThemeColors) {
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
 
-    section: { marginTop: 28 },
+    section: { marginTop: 36 },
 
     sectionHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
