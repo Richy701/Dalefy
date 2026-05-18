@@ -123,7 +123,7 @@ export default function SharedTripScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         {/* Hero skeleton */}
-        <Skeleton width="100%" height={280} borderRadius={0} />
+        <Skeleton width="100%" height={340} borderRadius={0} />
         <View style={{ padding: S.md, gap: S.md }}>
           <Skeleton width={80} height={12} borderRadius={6} />
           <Skeleton width="75%" height={22} borderRadius={8} />
@@ -186,10 +186,17 @@ export default function SharedTripScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Hero */}
         <View style={styles.hero}>
-          <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+          <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
           <LinearGradient
-            colors={["#00000008", "#00000040", "#000000e8"]}
-            locations={[0, 0.4, 1]}
+            colors={["rgba(0,0,0,0.2)", "transparent"]}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.5)"]}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
 
@@ -426,18 +433,16 @@ function makeStyles(C: ThemeColors) {
       textTransform: "uppercase",
     },
 
-    hero: { height: 340, position: "relative" },
+    hero: { aspectRatio: 16 / 9, position: "relative" },
     backCircle: {
       position: "absolute", left: S.md,
-      width: 44, height: 44, borderRadius: R.full,
-      backgroundColor: "#00000055", alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "#ffffff18",
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
     },
     shareCircle: {
       position: "absolute", right: S.md,
-      width: 44, height: 44, borderRadius: R.full,
-      backgroundColor: "#00000055", alignItems: "center", justifyContent: "center",
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "#ffffff18",
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
     },
 
     heroContent: {

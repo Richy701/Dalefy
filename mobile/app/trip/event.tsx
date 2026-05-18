@@ -365,8 +365,7 @@ export default function EventDetailScreen() {
         title: "",
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTransparent: Platform.OS === "ios",
-        headerBlurEffect: Platform.OS === "ios" ? (isDark ? "dark" : "light") : undefined,
+        headerTransparent: true,
         headerTintColor: "#fff",
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? {
@@ -374,32 +373,42 @@ export default function EventDetailScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
             >
-              <CaretLeft size={22} color="#fff" weight="regular" />
+              <CaretLeft size={20} color="#fff" weight="bold" />
             </Pressable>
           ),
         } : {}),
       }} />
 
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: showActionBar ? 80 : insets.bottom + 24 }}
+        contentContainerStyle={{ paddingBottom: showActionBar ? 80 : insets.bottom + 24, backgroundColor: C.bg }}
       >
         {/* Hero — photo only, no overlay text */}
         <View style={styles.heroWrap}>
           {ev.image ? (
-            <CachedImage uri={ev.image} style={styles.heroImage} />
+            <CachedImage uri={ev.image} style={styles.heroImage} contentPosition={{ top: "35%", left: "50%" }} />
           ) : (
             <View style={[styles.heroImage, { backgroundColor: C.card }]}>
               <Icon size={56} color={C.tealDim} weight="thin" />
             </View>
           )}
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.25)"]}
+            colors={["rgba(0,0,0,0.2)", "transparent"]}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
             style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.5)"]}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
           />
         </View>
 
@@ -1099,7 +1108,7 @@ function makeStyles(C: ThemeColors) {
     errorBtnText: { color: C.bg, fontWeight: "700", fontSize: T.base },
     px: { paddingHorizontal: S.lg, marginBottom: S.md },
 
-    heroWrap: { position: "relative", height: 280, marginBottom: 0 },
+    heroWrap: { position: "relative", aspectRatio: 16 / 9, marginBottom: 0 },
     heroImage: {
       width: "100%", height: "100%",
       alignItems: "center", justifyContent: "center",

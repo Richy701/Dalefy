@@ -16,6 +16,7 @@ interface Props {
   accessible?: boolean;
   accessibilityLabel?: string;
   blurhash?: string | null;
+  contentPosition?: { top?: string; left?: string };
 }
 
 export function CachedImage({
@@ -25,6 +26,7 @@ export function CachedImage({
   accessible,
   accessibilityLabel,
   blurhash,
+  contentPosition,
 }: Props) {
   const [retries, setRetries] = useState(0);
   const maxRetries = 3;
@@ -70,6 +72,7 @@ export function CachedImage({
         transition={transition}
         cachePolicy="memory-disk"
         contentFit="cover"
+        contentPosition={contentPosition}
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
         onError={handleError}

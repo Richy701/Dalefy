@@ -229,17 +229,16 @@ export default function TripScreen() {
         title: "",
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTintColor: C.teal,
+        headerTintColor: "#fff",
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? {
-          headerStyle: { backgroundColor: "transparent" },
           headerLeft: () => (
             <Pressable
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
             >
-              <CaretLeft size={22} color="#fff" weight="regular" />
+              <CaretLeft size={20} color="#fff" weight="bold" />
             </Pressable>
           ),
         } : {}),
@@ -286,20 +285,22 @@ export default function TripScreen() {
           <Animated.View style={[StyleSheet.absoluteFillObject, heroImageStyle]}>
             {Platform.OS === "ios" && Link.AppleZoomTarget ? (
               <Link.AppleZoomTarget>
-                <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+                <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
               </Link.AppleZoomTarget>
             ) : (
-              <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} />
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
             )}
           </Animated.View>
           <LinearGradient
-            colors={["#00000008", "#00000040", "#000000e8"]}
-            locations={[0, 0.4, 1]}
+            colors={["rgba(0,0,0,0.2)", "transparent"]}
+            locations={[0, 1]}
+            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
             style={StyleSheet.absoluteFillObject}
           />
           <LinearGradient
-            colors={["#00000025", "transparent"]}
-            start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+            colors={["transparent", "rgba(0,0,0,0.5)", "rgba(0,0,0,0.85)"]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0.5, y: 0.4 }} end={{ x: 0.5, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
 

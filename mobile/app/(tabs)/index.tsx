@@ -39,6 +39,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
+import { Logo } from "@/components/Logo";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTrips, TRIPS_CTX_VERSION } from "@/context/TripsContext";
@@ -484,8 +485,9 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
-  const greeting = firstName ? `${timeOfDay}, ${firstName}` : timeOfDay;
-  const greetingFontSize = greeting.length > 26 ? 13 : greeting.length > 22 ? 14 : T.base;
+  const greetingPrefix = firstName ? `${timeOfDay}, ` : timeOfDay;
+  const greetingLen = (greetingPrefix + firstName).length;
+  const greetingFontSize = greetingLen > 26 ? 13 : greetingLen > 22 ? 14 : T.base;
   const days = nextTrip ? Math.max(0, daysUntil(nextTrip.start)) : 0;
   const totalDays = nextTrip ? Math.max(1, Math.round((new Date(nextTrip.end + "T00:00:00").getTime() - new Date(nextTrip.start + "T00:00:00").getTime()) / 86400000) + 1) : 0;
   const dayOfTrip = (() => {
@@ -602,17 +604,33 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
 
   return (
     <View style={[styles.outer, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
-      {/* Top bar — actions */}
+      {/* Top bar — avatar (left) · logo (center) · + and bell (right) */}
       <View style={styles.topBar}>
-        <View style={{ flex: 1 }} />
         <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/profile")}
+            style={({ pressed }) => [styles.avatarBtn, { opacity: pressed ? 0.7 : 1 }]}
+            accessibilityLabel="Profile"
+            hitSlop={6}
+          >
+            {prefs.avatar ? (
+              <CachedImage uri={prefs.avatar} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarInitial}>
+                {(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+        <Logo size={24} color={C.teal} />
+        <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
           <Pressable
             onPress={() => setCodeOpen(true)}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
             accessibilityLabel="Enter trip code"
             hitSlop={6}
           >
-            <Plus size={22} color={C.teal} weight="regular" />
+            <Plus size={22} color={C.textSecondary} weight="regular" />
           </Pressable>
           <Pressable
             onPress={() => setNotifOpen(true)}
@@ -620,7 +638,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
             hitSlop={6}
           >
-            <Bell size={21} color={C.textSecondary} weight="regular" />
+            <Bell size={22} color={C.textSecondary} weight="regular" />
             {unreadCount > 0 && (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>
@@ -639,7 +657,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
           numberOfLines={1}
           ellipsizeMode="tail"
         >
-          {greeting}
+          <Text style={{ color: C.textSecondary }}>{greetingPrefix}</Text>
+          {firstName ? <Text style={{ color: C.textPrimary }}>{firstName}</Text> : null}
         </Text>
         {nextTrip ? (
           <Pressable
@@ -944,15 +963,15 @@ function makeGreetingStyles(C: ThemeColors) {
       gap: 8, marginBottom: S.xs,
     },
     greeting: {
-      fontWeight: T.medium,
-      color: C.textSecondary,
+      fontWeight: T.regular,
+      color: C.textPrimary,
       letterSpacing: -0.2,
       flexShrink: 1,
     },
     countdownChip: {
       flexDirection: "row", alignItems: "center",
-      backgroundColor: `${C.teal}10`,
-      paddingHorizontal: 8, paddingVertical: 4,
+      backgroundColor: `${C.teal}08`,
+      paddingHorizontal: 6, paddingVertical: 4,
       borderRadius: R.full,
     },
     countdownChipText: {
@@ -960,11 +979,23 @@ function makeGreetingStyles(C: ThemeColors) {
       color: C.teal,
     },
     headerActions: {
-      flexDirection: "row", alignItems: "center", gap: 4,
+      flex: 1, flexDirection: "row", alignItems: "center", gap: 4,
     },
     headerBtn: {
-      width: 36, height: 36, borderRadius: 18,
+      width: 44, height: 44, borderRadius: 22,
       alignItems: "center", justifyContent: "center",
+    },
+    avatarBtn: {
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
+      overflow: "hidden",
+    },
+    avatarImg: {
+      width: 32, height: 32, borderRadius: 16,
+    },
+    avatarInitial: {
+      fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary,
     },
     unreadBadge: {
       position: "absolute", top: 0, right: -2,
@@ -2010,11 +2041,11 @@ function makeStyles(C: ThemeColors) {
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
 
-    section: { marginTop: 36 },
+    section: { marginTop: 20 },
 
     sectionHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, marginBottom: S.lg,
+      paddingHorizontal: S.md, marginBottom: S.sm,
     },
     sectionHeaderLeft: { flex: 1 },
     sectionTitle: {
