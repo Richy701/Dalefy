@@ -677,7 +677,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
               ? (isDark ? C.textDim : "#a1a1aa")
               : (isDark ? `${C.teal}99` : "#047857aa");
 
-          const photo = events.find((e: any) => e.image)?.image || null;
+          const photo = events.find((e: any) => e.image && e.type !== "flight")?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[events[0]?.type] || MapTrifold;
 
           const gradHue = hashStr(events[0]?.title || date) % 360;
