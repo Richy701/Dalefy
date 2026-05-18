@@ -38,6 +38,8 @@ export interface TravelEvent {
   status?: string;
   depAirport?: string;
   arrAirport?: string;
+  depCoords?: [number, number];
+  arrCoords?: [number, number];
   depTz?: string;
   arrTz?: string;
   checkin?: string;

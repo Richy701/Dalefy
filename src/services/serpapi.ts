@@ -20,6 +20,8 @@ export interface FlightResult {
   aircraft?: string;
   depTz?: string;
   arrTz?: string;
+  depCoords?: [number, number];
+  arrCoords?: [number, number];
 }
 
 export interface HotelResult {

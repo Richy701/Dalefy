@@ -71,6 +71,8 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
       arrTerminal: f.arrTerminal || undefined,
       depTz: f.depTz || undefined,
       arrTz: f.arrTz || undefined,
+      depCoords: f.depCoords || undefined,
+      arrCoords: f.arrCoords || undefined,
     });
   };
 

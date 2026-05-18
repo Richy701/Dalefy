@@ -64,6 +64,8 @@ export default async function handler(req: any, res: any) {
         if (result.aircraft) rawEvents[i].aircraft = result.aircraft;
         if (result.depTz) rawEvents[i].depTz = result.depTz;
         if (result.arrTz) rawEvents[i].arrTz = result.arrTz;
+        if (result.depCoords) rawEvents[i].depCoords = result.depCoords;
+        if (result.arrCoords) rawEvents[i].arrCoords = result.arrCoords;
         // Backfill location with route if it was missing
         if (result.depAirport && result.arrAirport && !rawEvents[i].location?.includes(" to ")) {
           rawEvents[i].location = `${result.depAirport} to ${result.arrAirport}`;
@@ -132,6 +134,8 @@ interface LiveFlightData {
   aircraft: string;
   depTz: string;
   arrTz: string;
+  depCoords?: [number, number];
+  arrCoords?: [number, number];
 }
 
 // ── AeroDataBox lookup ─────────────────────────────────────────────────────
@@ -167,6 +171,8 @@ async function lookupFlight(
     const dep = f.departure ?? {};
     const arr = f.arrival ?? {};
 
+    const depLoc = dep.airport?.location;
+    const arrLoc = arr.airport?.location;
     return {
       status: f.status ?? "",
       terminal: dep.terminal ?? "",
@@ -181,6 +187,8 @@ async function lookupFlight(
       aircraft: f.aircraft?.model ?? "",
       depTz: airportTz(dep.airport?.iata ?? "") ?? "",
       arrTz: airportTz(arr.airport?.iata ?? "") ?? "",
+      depCoords: depLoc ? [depLoc.lat, depLoc.lon] : undefined,
+      arrCoords: arrLoc ? [arrLoc.lat, arrLoc.lon] : undefined,
     };
   } catch {
     return null;

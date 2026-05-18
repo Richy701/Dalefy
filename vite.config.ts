@@ -257,6 +257,8 @@ Return ONLY the JSON object, no markdown fences or explanation.`
                 const depMins = timeToMins(depUtc)
                 const arrMins = timeToMins(arrUtc)
                 const duration = arrMins >= depMins ? arrMins - depMins : arrMins + 1440 - depMins
+                const depLoc = dep.airport?.location
+                const arrLoc = arr.airport?.location
                 return {
                   airline: f.airline?.name ?? "",
                   flightNum: f.number ?? "",
@@ -272,6 +274,8 @@ Return ONLY the JSON object, no markdown fences or explanation.`
                   logo: "",
                   status: f.status ?? "",
                   terminal: dep.terminal ?? "",
+                  depCoords: depLoc ? [depLoc.lat, depLoc.lon] : undefined,
+                  arrCoords: arrLoc ? [arrLoc.lat, arrLoc.lon] : undefined,
                 }
               })
               res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ flights }))

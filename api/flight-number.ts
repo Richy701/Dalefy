@@ -54,6 +54,8 @@ export default async function handler(req: any, res: any) {
       const arrMins = timeToMins(arrUtc);
       const duration = arrMins >= depMins ? arrMins - depMins : arrMins + 1440 - depMins;
 
+      const depLoc = dep.airport?.location;
+      const arrLoc = arr.airport?.location;
       return {
         airline: f.airline?.name ?? "",
         flightNum: f.number ?? "",
@@ -76,6 +78,8 @@ export default async function handler(req: any, res: any) {
         aircraft: f.aircraft?.model ?? "",
         depTz: airportTz(dep.airport?.iata ?? "") ?? "",
         arrTz: airportTz(arr.airport?.iata ?? "") ?? "",
+        depCoords: depLoc ? [depLoc.lat, depLoc.lon] : undefined,
+        arrCoords: arrLoc ? [arrLoc.lat, arrLoc.lon] : undefined,
       };
     });
 
