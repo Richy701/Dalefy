@@ -362,15 +362,12 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
             longitude={pos.lng}
             latitude={pos.lat}
             anchor="center"
+            rotation={pos.bearing}
             style={{ zIndex: 2000 }}
           >
-            <div style={{
-              transform: `rotate(${pos.bearing + 135}deg)`,
-              filter: `drop-shadow(0 0 6px ${ACCENT}88)`,
-              transition: "transform 0.05s linear",
-            }}>
-              <AirplaneTilt size={16} color={ACCENT} fill={ACCENT} strokeWidth={0} />
-            </div>
+            <svg width="14" height="14" viewBox="0 0 14 14" style={{ filter: `drop-shadow(0 0 6px ${ACCENT}88)` }}>
+              <polygon points="7,0 10,12 7,9 4,12" fill={ACCENT} />
+            </svg>
           </Marker>
         ))}
 
