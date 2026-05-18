@@ -385,7 +385,7 @@ export default function EventDetailScreen() {
         } : {}),
       }} />
 
-      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: showActionBar ? 80 : insets.bottom + 24, backgroundColor: C.bg }}

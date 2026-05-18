@@ -52,6 +52,10 @@ export function FlightRouteMap({
   accentColor = "#0bd2b5",
   isDark = true,
 }: Props) {
+  const valid =
+    Number.isFinite(from[0]) && Number.isFinite(from[1]) &&
+    Number.isFinite(to[0]) && Number.isFinite(to[1]);
+
   const [ready, setReady] = useState(false);
   const mapRef = useRef<any>(null);
 
@@ -77,12 +81,13 @@ export function FlightRouteMap({
     } catch {}
   }, []);
 
-  const line = useMemo(() => greatCircle(from, to, { npoints: 100 }), [from, to]);
-  const coords = line.geometry.coordinates;
+  const line = useMemo(() => valid ? greatCircle(from, to, { npoints: 100 }) : null, [from, to, valid]);
+  const coords = line?.geometry.coordinates ?? [];
 
   const crosses = useMemo(() => crossesAntimeridian(coords), [coords]);
 
   const lineShape = useMemo(() => {
+    if (!line) return null;
     if (!crosses) return line;
     const segments = splitLineAtAntimeridian(coords);
     return {
@@ -96,8 +101,8 @@ export function FlightRouteMap({
   }, [line, coords, crosses]);
 
   const camera = useMemo(() => {
+    if (!valid) return { centerCoordinate: [0, 0] as [number, number], zoomLevel: 1 };
     const dist = distance(from, to, { units: "kilometers" });
-    // Short routes (< 2000 km): use tight bounds
     if (dist < 2000) {
       return {
         bounds: {
@@ -116,7 +121,6 @@ export function FlightRouteMap({
         },
       };
     }
-    // Long routes: center on arc midpoint, zoom based on distance
     const midIdx = Math.floor(coords.length / 2);
     const midPt = coords[midIdx] as [number, number];
     const zoom = dist > 10000 ? 1.0 : dist > 6000 ? 1.5 : dist > 4000 ? 2.0 : 2.5;
@@ -124,9 +128,9 @@ export function FlightRouteMap({
       centerCoordinate: midPt,
       zoomLevel: zoom,
     };
-  }, [from, to, coords]);
+  }, [from, to, coords, valid]);
 
-  if (!MapboxGL) return <View style={[styles.fallback, { height }]} />;
+  if (!MapboxGL || !valid) return <View style={[styles.fallback, { height }]} />;
 
   const endpointFeatures = {
     type: "FeatureCollection" as const,
