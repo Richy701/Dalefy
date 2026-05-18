@@ -396,7 +396,7 @@ export function WorkspacePage() {
   useEffect(() => {
     if (!editingEvent || !isEditPanelOpen) return;
     const { title, type } = editingEvent;
-    if (title.length < 3) return;
+    if (title.length < 3 || type === "flight") return;
     if (imageIsAuto) {
       const img = generateEventImage(title, type, imageSeed);
       setEditingEvent(prev => prev ? { ...prev, image: img } : null);
@@ -483,7 +483,7 @@ export function WorkspacePage() {
     if (isViewer) return;
     if (demoGate()) return;
     setImageSeed(0);
-    setImageIsAuto(true);
+    setImageIsAuto(type !== "flight");
     setImageSearch("");
     setImageResults([]);
     setImageSearchSource(null);
@@ -503,7 +503,7 @@ export function WorkspacePage() {
   const handleEditEvent = (event: TravelEvent) => {
     if (isViewer || demoGate()) return;
     setImageSeed(0);
-    setImageIsAuto(!event.image);
+    setImageIsAuto(event.type !== "flight" && !event.image);
     setImageSearch("");
     setImageResults([]);
     setImageSearchSource(null);
@@ -1738,9 +1738,9 @@ export function WorkspacePage() {
             </div>
 
             {/* Body — two columns on desktop, stacked on mobile */}
-            <div className="flex-1 flex flex-col md:grid md:grid-cols-5 min-h-0 overflow-y-auto md:overflow-hidden">
+            <div className={`flex-1 flex flex-col ${editingEvent?.type !== "flight" ? "md:grid md:grid-cols-5" : ""} min-h-0 overflow-y-auto md:overflow-hidden`}>
               {/* Left: core event fields */}
-              <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1f1f1f]">
+              <div className={`${editingEvent?.type !== "flight" ? "md:col-span-3" : ""} md:overflow-y-auto border-b md:border-b-0 ${editingEvent?.type !== "flight" ? "md:border-r" : ""} border-slate-200 dark:border-[#1f1f1f]`}>
                 {/* Category tabs */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-[#1f1f1f]">
                   {([
@@ -2007,8 +2007,8 @@ export function WorkspacePage() {
                 </div>
               </div>
 
-              {/* Right: image search panel */}
-              <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
+              {/* Right: image search panel (hidden for flights) */}
+              {editingEvent?.type !== "flight" && <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
                 {/* Search bar */}
                 <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
                   <div className="flex gap-2">
@@ -2306,7 +2306,7 @@ export function WorkspacePage() {
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
                 </div>{/* end scrollable area */}
-              </div>
+              </div>}
             </div>
 
             {/* Footer */}

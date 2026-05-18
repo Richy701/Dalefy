@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import { Appearance, Platform, View, AppState } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -108,29 +108,6 @@ function AppStack() {
     BarlowCondensed_900Black: require("@expo-google-fonts/barlow-condensed/900Black/BarlowCondensed_900Black.ttf"),
   });
 
-  useEffect(() => {
-    registerForPushNotifications();
-  }, []);
-
-  useEffect(() => {
-    let Updates: typeof import("expo-updates") | null = null;
-    try { Updates = require("expo-updates"); } catch { return; }
-    if (!Updates || Updates.isEmbeddedLaunch === undefined) return;
-
-    const check = async () => {
-      try {
-        const result = await Updates.checkForUpdateAsync();
-        if (result.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          Updates.reloadAsync();
-        }
-      } catch { /* dev or no network */ }
-    };
-    check();
-    const sub = AppState.addEventListener("change", (s) => { if (s === "active") check(); });
-    return () => sub.remove();
-  }, []);
-
   // Sync native root background with theme (status bar area)
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(isDark ? "#09090b" : "#f7f8fb");
@@ -156,25 +133,17 @@ function AppStack() {
     } catch { /* not available */ }
   }, []);
 
-  // Keep the iOS home screen widget in sync with trip data
-  useWidgetSync();
-
-  // Watch flight events for status changes (gate, delay, boarding, landed, cancelled)
-  useFlightAlerts();
-
-  // Schedule local reminders for upcoming trips, flights, hotels, activities
-  useTripReminders();
-
-  // Seed in-app notification list from current trip state (landed flights, today's events, etc.)
-  useTripNotifications();
-
-  // Start/update/end iOS Live Activities for today's flights
-  useFlightLiveActivity();
-  useUpcomingEventLiveActivity();
-
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
   const ready = (fontsLoaded || fontError) && tripsReady && prefsReady;
+
+  // Defer background services until UI is visible
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    const t = setTimeout(() => setSettled(true), 500);
+    return () => clearTimeout(t);
+  }, [ready]);
   const pendingTripNav = useRef<string | null>(null);
 
   useEffect(() => {
@@ -236,6 +205,7 @@ function AppStack() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }} onLayout={onLayoutRootView}>
       <StatusBar style={isDark ? "light" : "dark"} />
+      {settled && <DeferredServices />}
       <ErrorBoundary>
         <Stack
           screenOptions={{
@@ -249,6 +219,40 @@ function AppStack() {
       </ErrorBoundary>
     </View>
   );
+}
+
+function DeferredServices() {
+  useWidgetSync();
+  useFlightAlerts();
+  useTripReminders();
+  useTripNotifications();
+  useFlightLiveActivity();
+  useUpcomingEventLiveActivity();
+
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
+
+  useEffect(() => {
+    let Upd: typeof import("expo-updates") | null = null;
+    try { Upd = require("expo-updates"); } catch { return; }
+    if (!Upd || Upd.isEmbeddedLaunch === undefined) return;
+
+    const check = async () => {
+      try {
+        const result = await Upd!.checkForUpdateAsync();
+        if (result.isAvailable) {
+          await Upd!.fetchUpdateAsync();
+          Upd!.reloadAsync();
+        }
+      } catch { /* dev or no network */ }
+    };
+    check();
+    const sub = AppState.addEventListener("change", (s) => { if (s === "active") check(); });
+    return () => sub.remove();
+  }, []);
+
+  return null;
 }
 
 function RootLayout() {

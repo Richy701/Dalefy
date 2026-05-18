@@ -55,14 +55,15 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   /** True once a remote fetch has succeeded — safe to trust empty results */
   const confirmedOnline = useRef(false);
 
-  // If Firestore hasn't responded within 3s, assume offline
+  const hasCache = _eagerReady && _eagerCache !== null && _eagerCache.length > 0;
+  // If Firestore hasn't responded, assume offline (shorter timeout on cold start with no cache)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!confirmedOnline.current) {
-        console.log("[TripsContext] offline timeout — no response in 3s");
+        console.log("[TripsContext] offline timeout");
         setNetworkDown(true);
       }
-    }, 3000);
+    }, hasCache ? 3000 : 1500);
     return () => clearTimeout(timer);
   }, []);
 
