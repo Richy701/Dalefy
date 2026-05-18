@@ -266,12 +266,15 @@ function cleanEventTitle(title: string, type: string, transferType?: string): st
   return title;
 }
 
-function eventStatusPill(status: string | undefined, C: ThemeColors) {
+function eventStatusPill(status: string | undefined, C: ThemeColors, eventDate?: string) {
   const s = (status || "confirmed").toLowerCase();
   if (s.includes("cancel")) return { color: C.red, bg: C.redDim, border: "rgba(239,68,68,0.25)", label: "Cancelled", state: "destructive" as const };
   if (s.includes("delay")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Delayed", state: "warning" as const };
   if (s.includes("pend") || s.includes("hold")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Pending", state: "warning" as const };
   if (s.includes("done") || s.includes("complet")) return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done", state: "past" as const };
+  if (eventDate && new Date(eventDate + "T23:59:59").getTime() < Date.now()) {
+    return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done", state: "past" as const };
+  }
   return { color: C.teal, bg: C.tealDim, border: C.tealMid, label: "Confirmed", state: "upcoming" as const };
 }
 
@@ -336,7 +339,7 @@ export default function EventDetailScreen() {
   const title = cleanEventTitle(ev.title, ev.type, ev.transferType);
   const isHotel = ev.type === "hotel";
 
-  const sp = eventStatusPill(ev.status, C);
+  const sp = eventStatusPill(ev.status, C, ev.date);
   const hasCoords = !!ev.locationCoords;
   const hasDocs = (ev.documents?.length ?? 0) > 0;
   const showActionBar = hasCoords || hasDocs;
@@ -674,13 +677,18 @@ function FlightDetailScreen({
   const [logoError, setLogoError] = useState(false);
 
   const statusLower = (live?.status || "").toLowerCase();
+  const isPast = useMemo(() => {
+    if (!ev.date) return false;
+    const d = new Date(ev.date + "T23:59:59");
+    return d.getTime() < Date.now();
+  }, [ev.date]);
   const statusColor = statusLower.includes("cancel") ? "#ef4444"
     : statusLower.includes("delay") ? "#f59e0b" : "#22c55e";
   const statusBg = statusLower.includes("cancel") ? "rgba(239,68,68,0.12)"
     : statusLower.includes("delay") ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)";
   const statusLabel = statusLower.includes("cancel") ? "Cancelled"
     : statusLower.includes("delay") ? "Delayed"
-    : (statusLower.includes("land") || statusLower.includes("arrived")) ? "Landed" : "On Time";
+    : (statusLower.includes("land") || statusLower.includes("arrived") || isPast) ? "Landed" : "On Time";
 
   const copyConf = () => {
     if (ev.confNumber) {

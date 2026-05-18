@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import greatCircle from "@turf/great-circle";
+import distance from "@turf/distance";
 
 let MapboxGL: any = null;
 try {
@@ -15,6 +16,31 @@ interface Props {
   height?: number;
   accentColor?: string;
   isDark?: boolean;
+}
+
+function crossesAntimeridian(coords: number[][]): boolean {
+  for (let i = 1; i < coords.length; i++) {
+    if (Math.abs(coords[i][0] - coords[i - 1][0]) > 180) return true;
+  }
+  return false;
+}
+
+function splitLineAtAntimeridian(coords: number[][]) {
+  const segments: number[][][] = [];
+  let current: number[][] = [coords[0]];
+
+  for (let i = 1; i < coords.length; i++) {
+    const prev = coords[i - 1];
+    const curr = coords[i];
+    if (Math.abs(curr[0] - prev[0]) > 180) {
+      segments.push(current);
+      current = [curr];
+    } else {
+      current.push(curr);
+    }
+  }
+  segments.push(current);
+  return segments;
 }
 
 export function FlightRouteMap({
@@ -51,28 +77,56 @@ export function FlightRouteMap({
     } catch {}
   }, []);
 
+  const line = useMemo(() => greatCircle(from, to, { npoints: 100 }), [from, to]);
+  const coords = line.geometry.coordinates;
+
+  const crosses = useMemo(() => crossesAntimeridian(coords), [coords]);
+
+  const lineShape = useMemo(() => {
+    if (!crosses) return line;
+    const segments = splitLineAtAntimeridian(coords);
+    return {
+      type: "FeatureCollection" as const,
+      features: segments.map((seg) => ({
+        type: "Feature" as const,
+        properties: {},
+        geometry: { type: "LineString" as const, coordinates: seg },
+      })),
+    };
+  }, [line, coords, crosses]);
+
+  const camera = useMemo(() => {
+    const dist = distance(from, to, { units: "kilometers" });
+    // Short routes (< 2000 km): use tight bounds
+    if (dist < 2000) {
+      return {
+        bounds: {
+          ne: [
+            Math.max(from[0], to[0]) + 2,
+            Math.max(from[1], to[1]) + 2,
+          ] as [number, number],
+          sw: [
+            Math.min(from[0], to[0]) - 2,
+            Math.min(from[1], to[1]) - 2,
+          ] as [number, number],
+          paddingLeft: 60,
+          paddingRight: 60,
+          paddingTop: 60,
+          paddingBottom: 60,
+        },
+      };
+    }
+    // Long routes: center on arc midpoint, zoom based on distance
+    const midIdx = Math.floor(coords.length / 2);
+    const midPt = coords[midIdx] as [number, number];
+    const zoom = dist > 10000 ? 1.0 : dist > 6000 ? 1.5 : dist > 4000 ? 2.0 : 2.5;
+    return {
+      centerCoordinate: midPt,
+      zoomLevel: zoom,
+    };
+  }, [from, to, coords]);
+
   if (!MapboxGL) return <View style={[styles.fallback, { height }]} />;
-
-  const line = greatCircle(from, to, { npoints: 100 });
-
-  // TODO: render plane along route when flight.state === "in-flight"
-  //       use turf along() with progress fraction to position
-  //       turf bearing() for icon rotation
-
-  const bounds = {
-    ne: [
-      Math.max(from[0], to[0]) + 2,
-      Math.max(from[1], to[1]) + 2,
-    ] as [number, number],
-    sw: [
-      Math.min(from[0], to[0]) - 2,
-      Math.min(from[1], to[1]) - 2,
-    ] as [number, number],
-    paddingLeft: 60,
-    paddingRight: 60,
-    paddingTop: 60,
-    paddingBottom: 60,
-  };
 
   const endpointFeatures = {
     type: "FeatureCollection" as const,
@@ -100,7 +154,7 @@ export function FlightRouteMap({
         onDidFinishLoadingStyle={onStyleLoaded}
       >
         <MapboxGL.Camera
-          bounds={bounds}
+          {...camera}
           animationDuration={0}
         />
 
@@ -118,7 +172,7 @@ export function FlightRouteMap({
           <>
             <MapboxGL.ShapeSource
               id="route-flight-line"
-              shape={line}
+              shape={lineShape}
             >
               <MapboxGL.LineLayer
                 id="route-flight-line-layer"

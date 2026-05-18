@@ -19,7 +19,7 @@ const TYPE_ICONS = {
   transfer: Car,
 } as const;
 
-/** Great-circle arc between two lat/lng points */
+/** Great-circle arc between two [lat, lng] points. Returns [lat, lng][]. */
 function buildArc(from: [number, number], to: [number, number], segments = 50): [number, number][] {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const toDeg = (r: number) => (r * 180) / Math.PI;
@@ -38,9 +38,32 @@ function buildArc(from: [number, number], to: [number, number], segments = 50): 
     const x = a * Math.cos(lat1) * Math.cos(lon1) + b * Math.cos(lat2) * Math.cos(lon2);
     const y = a * Math.cos(lat1) * Math.sin(lon1) + b * Math.cos(lat2) * Math.sin(lon2);
     const z = a * Math.sin(lat1) + b * Math.sin(lat2);
-    points.push([toDeg(Math.atan2(z, Math.sqrt(x * x + y * y))), toDeg(Math.atan2(y, x))]);
+    let lng = toDeg(Math.atan2(y, x));
+    const lat = toDeg(Math.atan2(z, Math.sqrt(x * x + y * y)));
+    if (i > 0) {
+      const prevLng = points[i - 1][1];
+      while (lng - prevLng > 180) lng -= 360;
+      while (lng - prevLng < -180) lng += 360;
+    }
+    points.push([lat, lng]);
   }
   return points;
+}
+
+/** Split a [lng, lat][] GeoJSON coordinate array at the antimeridian for mercator rendering */
+function splitAtAntimeridian(coords: number[][]): number[][][] {
+  const segments: number[][][] = [];
+  let current: number[][] = [coords[0]];
+  for (let i = 1; i < coords.length; i++) {
+    if (Math.abs(coords[i][0] - coords[i - 1][0]) > 180) {
+      segments.push(current);
+      current = [coords[i]];
+    } else {
+      current.push(coords[i]);
+    }
+  }
+  segments.push(current);
+  return segments;
 }
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
@@ -172,17 +195,24 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
   const planeRafRef = useRef<number>(0);
 
-  // Build one arc per flight route
+  // Build one arc per flight route, splitting at antimeridian for mercator
   useEffect(() => {
     if (flightArcs.length === 0) {
       setArcGeoJSON({ type: "FeatureCollection", features: [] });
       return;
     }
-    const features: ArcFeature[] = flightArcs.map(({ from, to }) => ({
-      type: "Feature",
-      geometry: { type: "LineString", coordinates: buildArc(from, to).map(p => [p[1], p[0]]) },
-      properties: {},
-    }));
+    const features: ArcFeature[] = [];
+    for (const { from, to } of flightArcs) {
+      const arcCoords = buildArc(from, to).map(p => [p[1], p[0]]);
+      const needsSplit = arcCoords.some((c, i) => i > 0 && Math.abs(c[0] - arcCoords[i - 1][0]) > 180);
+      if (needsSplit) {
+        for (const seg of splitAtAntimeridian(arcCoords)) {
+          if (seg.length >= 2) features.push({ type: "Feature", geometry: { type: "LineString", coordinates: seg }, properties: {} });
+        }
+      } else {
+        features.push({ type: "Feature", geometry: { type: "LineString", coordinates: arcCoords }, properties: {} });
+      }
+    }
     setArcGeoJSON({ type: "FeatureCollection", features });
   }, [flightArcs]);
 
@@ -214,10 +244,23 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       return;
     }
     const mobile = window.innerWidth < 768;
-    mapRef.current.fitBounds(
-      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding: mobile ? { top: 40, bottom: 100, left: 24, right: 24 } : { top: 120, bottom: 200, left: 120, right: 120 }, maxZoom: 4, duration: 1000 }
-    );
+    const padding = mobile ? { top: 40, bottom: 100, left: 24, right: 24 } : { top: 120, bottom: 200, left: 120, right: 120 };
+    // Check if points span across the antimeridian
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    if (maxLng - minLng > 180) {
+      // Normalize longitudes: shift negatives to 180..540 range
+      const normLngs = lngs.map(lng => lng < 0 ? lng + 360 : lng);
+      const sw: [number, number] = [Math.min(...normLngs), Math.min(...lats)];
+      const ne: [number, number] = [Math.max(...normLngs), Math.max(...lats)];
+      // Unwrap back for Mapbox (it handles >180 correctly)
+      mapRef.current.fitBounds([sw, ne], { padding, maxZoom: 4, duration: 1000 });
+    } else {
+      mapRef.current.fitBounds(
+        [[minLng, Math.min(...lats)], [maxLng, Math.max(...lats)]],
+        { padding, maxZoom: 4, duration: 1000 }
+      );
+    }
   }, [allCoords]);
 
   // Marching-ants arc animation + strip Mapbox built-in POI/transit/place icons
