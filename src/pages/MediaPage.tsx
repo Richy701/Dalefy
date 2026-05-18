@@ -14,6 +14,10 @@ import {
   FilmStrip,
   ArrowUpRight,
   Download,
+  CheckSquare,
+  Square,
+  MinusSquare,
+  Check,
 } from "@phosphor-icons/react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -53,6 +57,8 @@ export function MediaPage() {
   const [uploadTripId, setUploadTripId] = useState<string>(() => trips[0]?.id ?? "");
   const [tripPickerOpen, setTripPickerOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -190,6 +196,68 @@ export function MediaPage() {
     if (!trip) return;
     updateTrip(item.tripId, { media: (trip.media ?? []).filter((m) => m.id !== item.id) });
     toast.success("Removed");
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    setSelected(new Set(filtered.map((m) => m.id)));
+  };
+
+  const selectTrip = (tripId: string) => {
+    const ids = filtered.filter((m) => m.tripId === tripId).map((m) => m.id);
+    const allSelected = ids.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) { ids.forEach((id) => next.delete(id)); } else { ids.forEach((id) => next.add(id)); }
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    if (selected.size === 0) return;
+    const byTrip = new Map<string, Set<string>>();
+    for (const item of filtered) {
+      if (!selected.has(item.id)) continue;
+      const set = byTrip.get(item.tripId) ?? new Set();
+      set.add(item.id);
+      byTrip.set(item.tripId, set);
+    }
+    for (const [tripId, ids] of byTrip) {
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) continue;
+      updateTrip(tripId, { media: (trip.media ?? []).filter((m) => !ids.has(m.id)) });
+    }
+    toast.success(`Deleted ${selected.size} file${selected.size > 1 ? "s" : ""}`);
+    exitSelectMode();
+  };
+
+  const handleBulkDownload = async () => {
+    if (selected.size === 0) return;
+    const items = filtered.filter((m) => selected.has(m.id));
+    for (const item of items) {
+      const a = document.createElement("a");
+      a.href = item.url;
+      a.download = item.name;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    toast.success(`Downloading ${items.length} file${items.length > 1 ? "s" : ""}`);
   };
 
   const getLightboxIndex = (item: FilteredItem) => {
@@ -550,28 +618,82 @@ export function MediaPage() {
             </div>
           </div>
 
-          {/* Type toggle */}
-          <div className="flex items-center gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none shrink-0">
-            {([
-              { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
-              { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
-              { key: "video" as MediaFilter, label: "Videos", icon: <FilmStrip className="h-3.5 w-3.5" /> },
-            ]).map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setMediaFilter(opt.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
-                  mediaFilter === opt.key
-                    ? "bg-brand text-black shadow-sm"
-                    : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white"
-                }`}
-              >
-                {opt.icon}
-                <span className="hidden sm:inline">{opt.label}</span>
-              </button>
-            ))}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Type toggle */}
+            <div className="flex items-center gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none">
+              {([
+                { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
+                { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
+                { key: "video" as MediaFilter, label: "Videos", icon: <FilmStrip className="h-3.5 w-3.5" /> },
+              ]).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setMediaFilter(opt.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                    mediaFilter === opt.key
+                      ? "bg-brand text-black shadow-sm"
+                      : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white"
+                  }`}
+                >
+                  {opt.icon}
+                  <span className="hidden sm:inline">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Select toggle */}
+            <button
+              onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all border ${
+                selectMode
+                  ? "bg-brand text-black border-transparent"
+                  : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white shadow-sm dark:shadow-none"
+              }`}
+            >
+              <CheckSquare className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{selectMode ? "Cancel" : "Select"}</span>
+            </button>
           </div>
         </div>}
+
+        {/* ── Selection toolbar ── */}
+        {selectMode && filtered.length > 0 && (
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-2xl border border-brand/20 bg-brand/5 dark:bg-brand/[0.08]">
+            <button
+              onClick={() => selected.size === filtered.length ? setSelected(new Set()) : selectAllFiltered()}
+              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:text-brand transition-colors"
+            >
+              {selected.size === filtered.length ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
+              {selected.size === filtered.length ? "Deselect All" : "Select All"}
+            </button>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-[#2a2a2a]" />
+
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-brand">
+              {selected.size} selected
+            </span>
+
+            <div className="flex-1" />
+
+            <button
+              onClick={handleBulkDownload}
+              disabled={selected.size === 0}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Download</span>
+            </button>
+
+            <button
+              onClick={handleBulkDelete}
+              disabled={selected.size === 0}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.15em] text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-30"
+            >
+              <Trash className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          </div>
+        )}
 
         {/* ── Gallery grouped by trip ── */}
         {filtered.length > 0 ? (
@@ -581,17 +703,32 @@ export function MediaPage() {
               {filtered.map((item) => {
                 const lbIdx = getLightboxIndex(item);
                 return (
-                  <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} />
+                  <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />
                 );
               })}
             </div>
           ) : (
             /* All trips — grouped with section headers */
             <div className="space-y-10">
-              {groupedByTrip.map((group) => (
+              {groupedByTrip.map((group) => {
+                const groupIds = group.items.map((i) => i.id);
+                const allGroupSelected = groupIds.length > 0 && groupIds.every((id) => selected.has(id));
+                const someGroupSelected = groupIds.some((id) => selected.has(id));
+                return (
                 <section key={group.tripId}>
                   {/* Trip section header */}
                   <div className="flex items-center gap-4 mb-4">
+                    {selectMode && (
+                      <button onClick={() => selectTrip(group.tripId)} className="shrink-0">
+                        {allGroupSelected ? (
+                          <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
+                        ) : someGroupSelected ? (
+                          <MinusSquare className="h-5 w-5 text-brand" weight="fill" />
+                        ) : (
+                          <Square className="h-5 w-5 text-slate-400 dark:text-[#555]" />
+                        )}
+                      </button>
+                    )}
                     <div className="h-10 w-14 rounded-xl overflow-hidden shrink-0">
                       <img src={group.tripImage} alt="" className="h-full w-full object-cover" />
                     </div>
@@ -615,12 +752,13 @@ export function MediaPage() {
                     {group.items.map((item) => {
                       const lbIdx = getLightboxIndex(item);
                       return (
-                        <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} />
+                        <MediaCard key={`${item.tripId}-${item.id}`} item={item} lbIdx={lbIdx} onZoom={setLightboxIndex} onDelete={handleDelete} selectMode={selectMode} isSelected={selected.has(item.id)} onToggleSelect={toggleSelect} />
                       );
                     })}
                   </div>
                 </section>
-              ))}
+                );
+              })}
             </div>
           )
         ) : (
@@ -720,21 +858,31 @@ export function MediaPage() {
 }
 
 /* ── Media Card Component ── */
-function MediaCard({ item, lbIdx, onZoom, onDelete }: {
+function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onToggleSelect }: {
   item: FilteredItem;
   lbIdx: number;
   onZoom: (idx: number) => void;
   onDelete: (item: FilteredItem) => void;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
   return (
-    <div className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none hover:shadow-xl hover:border-brand/30 transition-all duration-300">
+    <div
+      className={`group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border shadow-sm dark:shadow-none hover:shadow-xl transition-all duration-300 ${
+        isSelected
+          ? "border-brand ring-2 ring-brand/30"
+          : "border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/30"
+      }`}
+      onClick={selectMode ? () => onToggleSelect?.(item.id) : undefined}
+    >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
         {item.type === "image" ? (
           <img
             src={item.url}
             alt={item.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
-            onClick={() => onZoom(lbIdx)}
+            className={`w-full h-full object-cover transition-transform duration-500 ${selectMode ? "cursor-pointer" : "group-hover:scale-105 cursor-pointer"}`}
+            onClick={!selectMode ? () => onZoom(lbIdx) : undefined}
           />
         ) : (
           <div className="relative w-full h-full flex items-center justify-center">
@@ -747,13 +895,25 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
           </div>
         )}
 
+        {/* Selection checkbox */}
+        {selectMode && (
+          <div className="absolute top-2 right-2 z-10">
+            <div className={`h-6 w-6 rounded-lg flex items-center justify-center transition-colors ${
+              isSelected ? "bg-brand" : "bg-black/40 backdrop-blur-sm border border-white/30"
+            }`}>
+              {isSelected && <Check className="h-3.5 w-3.5 text-black" weight="bold" />}
+            </div>
+          </div>
+        )}
+
         {/* Type badge */}
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.15em] text-white/90 flex items-center gap-1">
           {item.type === "image" ? <ImageIcon className="h-2.5 w-2.5" /> : <FilmStrip className="h-2.5 w-2.5" />}
           {item.type === "image" ? "Photo" : "Video"}
         </div>
 
-        {/* Hover overlay */}
+        {/* Hover overlay — hidden in select mode */}
+        {!selectMode && (
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
           {item.type === "image" && (
             <button
@@ -779,6 +939,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete }: {
             <Trash className="h-4 w-4" />
           </button>
         </div>
+        )}
       </div>
 
       {/* Footer with metadata */}

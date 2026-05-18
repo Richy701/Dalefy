@@ -2057,11 +2057,17 @@ export function WorkspacePage() {
                       <div className="absolute bottom-2 sm:bottom-3 left-3 right-3">
                         {editingEvent.title && <p className="text-white font-extrabold uppercase text-xs sm:text-base leading-tight drop-shadow-lg line-clamp-1 sm:line-clamp-2">{editingEvent.title}</p>}
                       </div>
-                      {imageIsAuto && (
-                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-brand text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
-                          <MagicWand className="h-2.5 w-2.5" /> Auto
-                        </div>
-                      )}
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                        {imageIsAuto && (
+                          <div className="flex items-center gap-1 bg-brand text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full">
+                            <MagicWand className="h-2.5 w-2.5" /> Auto
+                          </div>
+                        )}
+                        <button type="button" onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: "" } : null); setImageIsAuto(false); }}
+                          className="h-6 w-6 rounded-full bg-black/60 hover:bg-red-500/80 flex items-center justify-center text-white transition-colors" title="Remove image">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">

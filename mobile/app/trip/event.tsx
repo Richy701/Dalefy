@@ -675,17 +675,6 @@ function FlightDetailScreen({
                 accentColor={C.teal}
                 isDark={isDark}
               />
-            ) : ev.image ? (
-              <View style={{ height: 320 }}>
-                <CachedImage uri={ev.image} style={StyleSheet.absoluteFillObject} />
-                <LinearGradient
-                  colors={isDark
-                    ? ["#00000008", "#00000040", "#000000e8"]
-                    : ["#ffffff08", "#ffffff40", "#ffffffd8"]}
-                  locations={[0, 0.4, 1]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </View>
             ) : (
               <View style={{ height: 320, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
                 <AirplaneTilt size={48} color={C.textDim} weight="thin" />
