@@ -192,7 +192,6 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
   type ArcFeature = { type: "Feature"; geometry: { type: "LineString"; coordinates: number[][] }; properties: Record<string, never> };
   const [arcGeoJSON, setArcGeoJSON] = useState<{ type: "FeatureCollection"; features: ArcFeature[] }>({ type: "FeatureCollection", features: [] });
-  const [planePositions, setPlanePositions] = useState<{ lng: number; lat: number; bearing: number }[]>([]);
   const planeRafRef = useRef<number>(0);
 
   // Build one arc per flight route, splitting at antimeridian for mercator
@@ -216,21 +215,29 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     setArcGeoJSON({ type: "FeatureCollection", features });
   }, [flightArcs]);
 
-  // Animate a single plane cycling through all arcs
+  // Animate plane via native Mapbox source (no React re-renders)
   useEffect(() => {
     if (arcGeoJSON.features.length === 0) return;
     const arcs = arcGeoJSON.features.map(f => f.geometry.coordinates);
     const TOTAL_DURATION = arcs.length * ARC_ANIMATION_MS;
 
-    function animatePlanes(ts: number) {
-      const elapsed = ts % TOTAL_DURATION;
-      const arcIdx = Math.min(Math.floor(elapsed / ARC_ANIMATION_MS), arcs.length - 1);
-      const t = (elapsed - arcIdx * ARC_ANIMATION_MS) / ARC_ANIMATION_MS;
-      const pos = interpolateArc(arcs[arcIdx], t);
-      setPlanePositions([pos]);
-      planeRafRef.current = requestAnimationFrame(animatePlanes);
+    function animatePlane(ts: number) {
+      const map = mapRef.current?.getMap();
+      const source = map?.getSource("plane-pos") as { setData: (d: any) => void } | undefined;
+      if (source) {
+        const elapsed = ts % TOTAL_DURATION;
+        const arcIdx = Math.min(Math.floor(elapsed / ARC_ANIMATION_MS), arcs.length - 1);
+        const t = (elapsed - arcIdx * ARC_ANIMATION_MS) / ARC_ANIMATION_MS;
+        const pos = interpolateArc(arcs[arcIdx], t);
+        source.setData({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [pos.lng, pos.lat] },
+          properties: { bearing: pos.bearing },
+        });
+      }
+      planeRafRef.current = requestAnimationFrame(animatePlane);
     }
-    planeRafRef.current = requestAnimationFrame(animatePlanes);
+    planeRafRef.current = requestAnimationFrame(animatePlane);
     return () => cancelAnimationFrame(planeRafRef.current);
   }, [arcGeoJSON]);
 
@@ -264,6 +271,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   }, [allCoords]);
 
   // Marching-ants arc animation + strip Mapbox built-in POI/transit/place icons
+  const accentRef = useRef(ACCENT);
+  accentRef.current = ACCENT;
+
   const startArcAnimation = useCallback(() => {
     const hideClutter = () => {
       const map = mapRef.current?.getMap();
@@ -286,8 +296,38 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     };
 
     const map = mapRef.current?.getMap();
+    if (!map) return;
     hideClutter();
-    map?.on("styledata", hideClutter);
+    map.on("styledata", hideClutter);
+
+    // Set up native plane icon + source + symbol layer (avoids React re-renders)
+    const accent = accentRef.current;
+    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 256 256"><g transform="rotate(-45,128,128)"><path d="M215.52,197.26a8,8,0,0,1-1.86,8.39l-24,24A8,8,0,0,1,184,232a7.09,7.09,0,0,1-.79,0,8,8,0,0,1-5.87-3.52l-44.07-66.12L112,183.59V208a8,8,0,0,1-2.34,5.65s-14,14.06-15.88,15.88A7.91,7.91,0,0,1,91,231.41a8,8,0,0,1-10.41-4.35l-.06-.15-14.7-36.76L29,175.42a8,8,0,0,1-2.69-13.08l16-16A8,8,0,0,1,48,144H72.4l21.27-21.27L27.56,78.65a8,8,0,0,1-1.22-12.32l24-24a8,8,0,0,1,8.39-1.86l85.94,31.25L176.2,40.19a28,28,0,0,1,39.6,39.6l-31.53,31.53Z" fill="${accent}"/></g></svg>`;
+    const img = new Image(32, 32);
+    img.onload = () => {
+      try {
+        if (!map.hasImage("plane-icon")) map.addImage("plane-icon", img);
+        if (!map.getSource("plane-pos")) {
+          map.addSource("plane-pos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        }
+        if (!map.getLayer("plane-symbol")) {
+          map.addLayer({
+            id: "plane-symbol",
+            type: "symbol",
+            source: "plane-pos",
+            layout: {
+              "icon-image": "plane-icon",
+              "icon-size": 0.5,
+              "icon-rotate": ["get", "bearing"],
+              "icon-rotation-alignment": "map",
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+            },
+          });
+        }
+      } catch { /* map may have been removed */ }
+    };
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgStr)}`;
 
     function animate(ts: number) {
       const idx = Math.floor(ts / 50) % DASH_SEQ.length;
@@ -355,23 +395,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           />
         </Source>
 
-        {/* Animated plane icons flying along arcs */}
-        {planePositions.map((pos, i) => (
-          <Marker
-            key={`plane-${i}`}
-            longitude={pos.lng}
-            latitude={pos.lat}
-            anchor="center"
-            style={{ zIndex: 2000 }}
-          >
-            <div style={{
-              transform: `rotate(${pos.bearing - 45}deg)`,
-              filter: `drop-shadow(0 0 6px ${ACCENT}88)`,
-            }}>
-              <AirplaneTilt size={16} color={ACCENT} weight="fill" />
-            </div>
-          </Marker>
-        ))}
+        {/* Plane is rendered natively via Mapbox symbol layer — no React Marker */}
 
         {/* Markers */}
         {points.map(pt => {
