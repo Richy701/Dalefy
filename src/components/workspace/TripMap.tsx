@@ -365,7 +365,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
             style={{ zIndex: 2000 }}
           >
             <div style={{
-              transform: `rotate(${pos.bearing - 45}deg)`,
+              transform: `rotate(${pos.bearing + 135}deg)`,
               filter: `drop-shadow(0 0 6px ${ACCENT}88)`,
               transition: "transform 0.05s linear",
             }}>
