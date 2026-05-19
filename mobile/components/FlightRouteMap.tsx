@@ -81,7 +81,10 @@ export function FlightRouteMap({
     } catch {}
   }, []);
 
-  const line = useMemo(() => valid ? greatCircle(from, to, { npoints: 100 }) : null, [from, to, valid]);
+  const line = useMemo(() => {
+    if (!valid) return null;
+    try { return greatCircle(from, to, { npoints: 100 }); } catch { return null; }
+  }, [from, to, valid]);
   const coords = line?.geometry.coordinates ?? [];
 
   const crosses = useMemo(() => crossesAntimeridian(coords), [coords]);
@@ -101,8 +104,10 @@ export function FlightRouteMap({
   }, [line, coords, crosses]);
 
   const camera = useMemo(() => {
-    if (!valid) return { centerCoordinate: [0, 0] as [number, number], zoomLevel: 1 };
-    const dist = distance(from, to, { units: "kilometers" });
+    const fallback = { centerCoordinate: [0, 0] as [number, number], zoomLevel: 1 };
+    if (!valid) return fallback;
+    let dist: number;
+    try { dist = distance(from, to, { units: "kilometers" }); } catch { return fallback; }
     if (dist < 2000) {
       return {
         bounds: {
@@ -122,7 +127,7 @@ export function FlightRouteMap({
       };
     }
     const midIdx = Math.floor(coords.length / 2);
-    const midPt = coords[midIdx] as [number, number];
+    const midPt = (coords[midIdx] ?? [from[0], from[1]]) as [number, number];
     const zoom = dist > 10000 ? 1.0 : dist > 6000 ? 1.5 : dist > 4000 ? 2.0 : 2.5;
     return {
       centerCoordinate: midPt,
@@ -174,6 +179,7 @@ export function FlightRouteMap({
 
         {ready && (
           <>
+            {lineShape && (
             <MapboxGL.ShapeSource
               id="route-flight-line"
               shape={lineShape}
@@ -188,6 +194,7 @@ export function FlightRouteMap({
                 }}
               />
             </MapboxGL.ShapeSource>
+            )}
 
             <MapboxGL.ShapeSource
               id="route-flight-endpoints"

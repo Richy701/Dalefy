@@ -630,8 +630,12 @@ function FlightDetailScreen({
   const depAirportName = IATA_AIRPORT[depCode] || "";
   const arrAirportName = IATA_AIRPORT[arrCode] || "";
 
-  const depCoords = (LOCATION_COORDS[depCode] as [number, number] | undefined) ?? ev.depCoords;
-  const arrCoords = (LOCATION_COORDS[arrCode] as [number, number] | undefined) ?? ev.arrCoords;
+  const rawDep = (LOCATION_COORDS[depCode] as [number, number] | undefined) ?? ev.depCoords;
+  const rawArr = (LOCATION_COORDS[arrCode] as [number, number] | undefined) ?? ev.arrCoords;
+  const isFiniteCoord = (c: unknown): c is [number, number] =>
+    Array.isArray(c) && c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]);
+  const depCoords = isFiniteCoord(rawDep) ? rawDep : undefined;
+  const arrCoords = isFiniteCoord(rawArr) ? rawArr : undefined;
   const hasMap = !!(depCoords && arrCoords);
 
   // LOCATION_COORDS is [lat, lng], Mapbox needs [lng, lat]
