@@ -1,7 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
-import greatCircle from "@turf/great-circle";
-import distance from "@turf/distance";
 
 let MapboxGL: any = null;
 try {
@@ -16,6 +14,49 @@ interface Props {
   height?: number;
   accentColor?: string;
   isDark?: boolean;
+}
+
+/** Great-circle arc between two [lng, lat] points. Returns [lng, lat][]. */
+function buildArc(from: [number, number], to: [number, number], segments = 100): number[][] {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const lon1 = toRad(from[0]), lat1 = toRad(from[1]);
+  const lon2 = toRad(to[0]),   lat2 = toRad(to[1]);
+  const d = 2 * Math.asin(Math.sqrt(
+    Math.sin((lat2 - lat1) / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2
+  ));
+  if (!Number.isFinite(d) || d < 0.0001) return [from, to];
+  const points: number[][] = [];
+  for (let i = 0; i <= segments; i++) {
+    const f = i / segments;
+    const a = Math.sin((1 - f) * d) / Math.sin(d);
+    const b = Math.sin(f * d) / Math.sin(d);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    const x = a * Math.cos(lat1) * Math.cos(lon1) + b * Math.cos(lat2) * Math.cos(lon2);
+    const y = a * Math.cos(lat1) * Math.sin(lon1) + b * Math.cos(lat2) * Math.sin(lon2);
+    const z = a * Math.sin(lat1) + b * Math.sin(lat2);
+    let lng = toDeg(Math.atan2(y, x));
+    const lat = toDeg(Math.atan2(z, Math.sqrt(x * x + y * y)));
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+    if (points.length > 0) {
+      const prevLng = points[points.length - 1][0];
+      while (lng - prevLng > 180) lng -= 360;
+      while (lng - prevLng < -180) lng += 360;
+    }
+    points.push([lng, lat]);
+  }
+  return points.length >= 2 ? points : [from, to];
+}
+
+/** Haversine distance in km between two [lng, lat] points */
+function haversineKm(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLon = toRad(b[0] - a[0]);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 }
 
 function crossesAntimeridian(coords: number[][]): boolean {
@@ -81,33 +122,36 @@ export function FlightRouteMap({
     } catch {}
   }, []);
 
-  const line = useMemo(() => {
-    if (!valid) return null;
-    try { return greatCircle(from, to, { npoints: 100 }); } catch { return null; }
-  }, [from, to, valid]);
-  const coords = line?.geometry.coordinates ?? [];
-
-  const crosses = useMemo(() => crossesAntimeridian(coords), [coords]);
+  const arcCoords = useMemo(() => valid ? buildArc(from, to) : [], [from, to, valid]);
+  const crosses = useMemo(() => crossesAntimeridian(arcCoords), [arcCoords]);
 
   const lineShape = useMemo(() => {
-    if (!line) return null;
-    if (!crosses) return line;
-    const segments = splitLineAtAntimeridian(coords);
-    return {
-      type: "FeatureCollection" as const,
-      features: segments.map((seg) => ({
+    if (arcCoords.length < 2) return null;
+    if (!crosses) {
+      return {
         type: "Feature" as const,
         properties: {},
-        geometry: { type: "LineString" as const, coordinates: seg },
-      })),
+        geometry: { type: "LineString" as const, coordinates: arcCoords },
+      };
+    }
+    const segments = splitLineAtAntimeridian(arcCoords);
+    return {
+      type: "FeatureCollection" as const,
+      features: segments
+        .filter(seg => seg.length >= 2)
+        .map((seg) => ({
+          type: "Feature" as const,
+          properties: {},
+          geometry: { type: "LineString" as const, coordinates: seg },
+        })),
     };
-  }, [line, coords, crosses]);
+  }, [arcCoords, crosses]);
 
   const camera = useMemo(() => {
     const fallback = { centerCoordinate: [0, 0] as [number, number], zoomLevel: 1 };
     if (!valid) return fallback;
-    let dist: number;
-    try { dist = distance(from, to, { units: "kilometers" }); } catch { return fallback; }
+    const dist = haversineKm(from, to);
+    if (!Number.isFinite(dist)) return fallback;
     if (dist < 2000) {
       return {
         bounds: {
@@ -126,14 +170,14 @@ export function FlightRouteMap({
         },
       };
     }
-    const midIdx = Math.floor(coords.length / 2);
-    const midPt = (coords[midIdx] ?? [from[0], from[1]]) as [number, number];
+    const midIdx = Math.floor(arcCoords.length / 2);
+    const midPt = (arcCoords[midIdx] ?? [from[0], from[1]]) as [number, number];
     const zoom = dist > 10000 ? 1.0 : dist > 6000 ? 1.5 : dist > 4000 ? 2.0 : 2.5;
     return {
       centerCoordinate: midPt,
       zoomLevel: zoom,
     };
-  }, [from, to, coords, valid]);
+  }, [from, to, arcCoords, valid]);
 
   if (!MapboxGL || !valid) return <View style={[styles.fallback, { height }]} />;
 
@@ -180,20 +224,20 @@ export function FlightRouteMap({
         {ready && (
           <>
             {lineShape && (
-            <MapboxGL.ShapeSource
-              id="route-flight-line"
-              shape={lineShape}
-            >
-              <MapboxGL.LineLayer
-                id="route-flight-line-layer"
-                style={{
-                  lineColor: accentColor,
-                  lineWidth: 2,
-                  lineOpacity: 0.8,
-                  lineDasharray: [3, 3],
-                }}
-              />
-            </MapboxGL.ShapeSource>
+              <MapboxGL.ShapeSource
+                id="route-flight-line"
+                shape={lineShape}
+              >
+                <MapboxGL.LineLayer
+                  id="route-flight-line-layer"
+                  style={{
+                    lineColor: accentColor,
+                    lineWidth: 2,
+                    lineOpacity: 0.8,
+                    lineDasharray: [3, 3],
+                  }}
+                />
+              </MapboxGL.ShapeSource>
             )}
 
             <MapboxGL.ShapeSource
