@@ -151,13 +151,46 @@ private struct EventLine: View {
   }
 }
 
+private enum WidgetImageCache {
+  private static var containerURL: URL? {
+    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.dafadventures.app")
+  }
+
+  private static func cacheFileURL(for urlString: String) -> URL? {
+    guard let container = containerURL else { return nil }
+    let dir = container.appendingPathComponent("widget-images", isDirectory: true)
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let hash = urlString.data(using: .utf8)!.base64EncodedString()
+      .replacingOccurrences(of: "/", with: "_")
+      .prefix(64)
+    return dir.appendingPathComponent(String(hash) + ".jpg")
+  }
+
+  static func cachedImage(for urlString: String) -> UIImage? {
+    guard !urlString.isEmpty,
+          let fileURL = cacheFileURL(for: urlString),
+          FileManager.default.fileExists(atPath: fileURL.path),
+          let data = try? Data(contentsOf: fileURL),
+          let img = UIImage(data: data)
+    else { return nil }
+    return img
+  }
+
+  static func prefetch(_ urlString: String) {
+    guard !urlString.isEmpty,
+          let fileURL = cacheFileURL(for: urlString),
+          !FileManager.default.fileExists(atPath: fileURL.path),
+          let url = URL(string: urlString),
+          let data = try? Data(contentsOf: url),
+          let img = UIImage(data: data),
+          let jpegData = img.jpegData(compressionQuality: 0.8)
+    else { return }
+    try? jpegData.write(to: fileURL)
+  }
+}
+
 private func loadRemoteImage(_ urlString: String) -> UIImage? {
-  guard !urlString.isEmpty,
-        let url = URL(string: urlString),
-        let data = try? Data(contentsOf: url),
-        let img = UIImage(data: data)
-  else { return nil }
-  return img
+  return WidgetImageCache.cachedImage(for: urlString)
 }
 
 private struct TripBackground: View {
@@ -187,10 +220,38 @@ private struct TripBackground: View {
 
 // MARK: - Widget
 
+private struct ImagePrefetchingProvider: TimelineProvider {
+  let inner = WidgetsTimelineProvider(name: "TripCountdown")
+
+  func placeholder(in context: Context) -> WidgetsTimelineEntry {
+    inner.placeholder(in: context)
+  }
+
+  func getSnapshot(in context: Context, completion: @escaping @Sendable (WidgetsTimelineEntry) -> Void) {
+    inner.getSnapshot(in: context) { entry in
+      if let url = entry.props?["tripImage"] as? String {
+        WidgetImageCache.prefetch(url)
+      }
+      completion(entry)
+    }
+  }
+
+  func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<WidgetsTimelineEntry>) -> Void) {
+    inner.getTimeline(in: context) { timeline in
+      for entry in timeline.entries {
+        if let url = entry.props?["tripImage"] as? String {
+          WidgetImageCache.prefetch(url)
+        }
+      }
+      completion(timeline)
+    }
+  }
+}
+
 struct TripCountdown: Widget {
   let name: String = "TripCountdown"
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: name, provider: WidgetsTimelineProvider(name: name)) { entry in
+    StaticConfiguration(kind: name, provider: ImagePrefetchingProvider()) { entry in
       Router(entry: entry)
     }
     .configurationDisplayName("Trip Countdown")
