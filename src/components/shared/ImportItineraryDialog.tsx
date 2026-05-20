@@ -287,11 +287,27 @@ async function extractFromPptx(file: File): Promise<ExtractionResult> {
   return { text: texts.join("\n"), media };
 }
 
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+
+async function extractFromImage(file: File): Promise<ExtractionResult> {
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target?.result as string ?? "");
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+  return {
+    text: "",
+    media: [{ name: file.name, type: "image", dataUrl, size: file.size }],
+  };
+}
+
 async function extractContent(file: File): Promise<ExtractionResult> {
   const ext = file.name.split(".").pop()?.toLowerCase();
   if (ext === "pdf") return extractFromPdf(file);
   if (ext === "docx") return extractFromDocx(file);
   if (ext === "pptx") return extractFromPptx(file);
+  if (ext && IMAGE_EXTENSIONS.has(ext)) return extractFromImage(file);
   const text = await new Promise<string>((res, rej) => {
     const reader = new FileReader();
     reader.onload = e => res(e.target?.result as string ?? "");
@@ -1009,10 +1025,14 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 // ─── AI-powered parser (Claude Haiku 4.5) ────────────────────────────────────
 
 async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = []): Promise<ParsedTrip> {
+  const images = extractedMedia
+    .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
+    .map(m => m.dataUrl);
+
   const resp = await fetch("/api/parse-itinerary", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text: text || undefined, images: images.length > 0 ? images : undefined }),
   });
 
   if (!resp.ok) throw new Error(`AI parse failed: ${resp.status}`);
@@ -1083,7 +1103,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialFile]);
 
-  const ACCEPTED = ".pdf,.docx,.pptx,.txt,.doc";
+  const ACCEPTED = ".pdf,.docx,.pptx,.txt,.doc,.jpg,.jpeg,.png,.webp";
 
   const reset = () => {
     setStep("upload");
@@ -1127,7 +1147,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setStep("extracting");
     try {
       const { text, media } = await extractContent(file);
-      if (!text.trim()) throw new Error("No readable text found in this file.");
+      if (!text.trim() && media.length === 0) throw new Error("No readable text found in this file.");
       await processText(text, media);
     } catch (e: any) {
       setError(e.message ?? "Could not read this file.");
@@ -1400,7 +1420,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em]">
-            {step === "upload" && "PDF · Word · PowerPoint · Text"}
+            {step === "upload" && "PDF · Word · PowerPoint · Text · Images"}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
               {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found — review before importing`}
@@ -1432,7 +1452,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </button>
               <div className="text-center">
                 <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Click the icon or drop a file</p>
-                <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT</p>
+                <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT · JPG · PNG</p>
               </div>
             </div>
             {createPortal(

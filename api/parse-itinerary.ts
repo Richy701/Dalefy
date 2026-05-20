@@ -1,8 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert travel itinerary parser. Extract EVERY event and detail from itinerary text.
+const SYSTEM_PROMPT = `You are an expert travel itinerary parser. Extract EVERY event and detail from the provided content. The input may be text, images (photos/screenshots of itineraries, booking confirmations, travel documents), or both. Read and extract all information regardless of format.
 
 Return a JSON object with this exact schema:
 {
@@ -98,20 +100,38 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
   }
 
-  const { text } = req.body ?? {};
-  if (!text || typeof text !== "string") {
-    return res.status(400).json({ error: "Missing 'text' in request body" });
+  const { text, images } = req.body ?? {};
+  if ((!text || typeof text !== "string") && (!images || !Array.isArray(images) || images.length === 0)) {
+    return res.status(400).json({ error: "Missing 'text' or 'images' in request body" });
   }
 
-  // Cap input to ~50k chars to avoid excessive token usage
-  const trimmed = text.slice(0, 50_000);
+  const contentBlocks: any[] = [];
+
+  if (images && Array.isArray(images)) {
+    for (const dataUrl of images.slice(0, 5)) {
+      const match = dataUrl.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/);
+      if (!match) continue;
+      contentBlocks.push({
+        type: "image",
+        source: { type: "base64", media_type: match[1], data: match[2] },
+      });
+    }
+  }
+
+  if (text && typeof text === "string") {
+    contentBlocks.push({ type: "text", text: text.slice(0, 50_000) });
+  }
+
+  if (contentBlocks.length === 0) {
+    return res.status(400).json({ error: "No valid content to parse" });
+  }
 
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: trimmed }],
+      messages: [{ role: "user", content: contentBlocks }],
     });
 
     const content = message.content[0];

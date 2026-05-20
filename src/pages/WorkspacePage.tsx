@@ -249,6 +249,7 @@ export function WorkspacePage() {
   const [imagePage, setImagePage] = useState(1);
   const [imageLastQuery, setImageLastQuery] = useState("");
   const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
+  const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
   const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
   const allTravelers = useMemo(() => {
@@ -523,6 +524,41 @@ export function WorkspacePage() {
     setEditingEvent(null);
     showToast("Event saved");
     toast.success("Event saved");
+  };
+
+  const handleAiAssist = async () => {
+    if (!editingEvent || aiAssistLoading) return;
+    if (!editingEvent.title && !editingEvent.location) {
+      toast.error("Add a title or location first");
+      return;
+    }
+    setAiAssistLoading(true);
+    try {
+      const resp = await fetch("/api/assist-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: editingEvent.type,
+          title: editingEvent.title,
+          location: editingEvent.location,
+          date: editingEvent.date,
+          time: editingEvent.time,
+          destination: trip.destination,
+        }),
+      });
+      if (!resp.ok) throw new Error("AI assist failed");
+      const data = await resp.json();
+      setEditingEvent(prev => prev ? {
+        ...prev,
+        description: data.description || prev.description,
+        notes: data.notes || prev.notes,
+      } : null);
+      toast.success("AI filled in description and notes");
+    } catch {
+      toast.error("AI assist unavailable");
+    } finally {
+      setAiAssistLoading(false);
+    }
   };
 
   const handleDuplicateEvent = (eventId: string) => {
@@ -2298,6 +2334,19 @@ export function WorkspacePage() {
                       )}
                     </div>
                   )}
+                </div>
+
+                {/* AI Assist */}
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111]">
+                  <button
+                    type="button"
+                    onClick={handleAiAssist}
+                    disabled={aiAssistLoading || (!editingEvent?.title && !editingEvent?.location)}
+                    className="w-full h-9 rounded-lg bg-gradient-to-r from-brand/10 to-purple-500/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:from-brand/20 hover:to-purple-500/20 hover:border-brand/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {aiAssistLoading ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <MagicWand className="h-3.5 w-3.5" />}
+                    {aiAssistLoading ? "Generating..." : "AI Assist - Generate Description & Notes"}
+                  </button>
                 </div>
 
                 {/* Description (visible to travelers) */}

@@ -79,12 +79,13 @@ function apiRoutesPlugin(env: Record<string, string>) {
             if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
             let body = ""
             await new Promise<void>((resolve) => { req.on("data", (c: Buffer) => { body += c.toString() }); req.on("end", resolve) })
-            let text: string
-            try { text = JSON.parse(body).text } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
-            if (!text) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Missing 'text' in body" })); return }
+            let parsed: any
+            try { parsed = JSON.parse(body) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
+            const { text, images } = parsed
+            if (!text && (!images || !Array.isArray(images) || images.length === 0)) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Missing 'text' or 'images' in body" })); return }
             try {
               const client = new Anthropic({ apiKey })
-              const systemPrompt = `You are an expert travel itinerary parser. Extract EVERY event and detail from itinerary text.
+              const systemPrompt = `You are an expert travel itinerary parser. Extract EVERY event and detail from the provided content. The input may be text, images (photos/screenshots of itineraries, booking confirmations, travel documents), or both. Read and extract all information regardless of format.
 
 Return a JSON object with this exact schema:
 {
@@ -170,23 +171,69 @@ Info sections — extract ALL of these if present, and rewrite into clear, well-
 
 Return ONLY the JSON object, no markdown fences or explanation.`
 
+              const contentBlocks: any[] = []
+              if (images && Array.isArray(images)) {
+                for (const dataUrl of images.slice(0, 5)) {
+                  const m = dataUrl.match(/^data:(image\/(?:jpeg|png|gif|webp));base64,(.+)$/)
+                  if (!m) continue
+                  contentBlocks.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } })
+                }
+              }
+              if (text) contentBlocks.push({ type: "text", text: text.slice(0, 50_000) })
+
               const message = await client.messages.create({
                 model: "claude-haiku-4-5-20251001",
                 max_tokens: 8192,
                 system: systemPrompt,
-                messages: [{ role: "user", content: text.slice(0, 50_000) }],
+                messages: [{ role: "user", content: contentBlocks.length > 0 ? contentBlocks : "No content provided" }],
               })
               const content = message.content[0]
               if (content.type !== "text") { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Unexpected response" })); return }
               const jsonMatch = content.text.match(/\{[\s\S]*\}/)
               if (!jsonMatch) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "No JSON found in AI response" })); return }
               const raw = jsonMatch[0]
-              const parsed = JSON.parse(raw)
+              const parsedResult = JSON.parse(raw)
               res.setHeader("Content-Type", "application/json")
-              res.end(JSON.stringify({ ...parsed, _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } }))
+              res.end(JSON.stringify({ ...parsedResult, _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } }))
             } catch (err: any) {
               console.error("parse-itinerary error:", err)
               res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI parsing failed", detail: err.message }))
+            }
+          } else if (p === "/api/assist-event") {
+            if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Method not allowed" })); return }
+            const apiKey = env.ANTHROPIC_API_KEY
+            if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
+            let body = ""
+            await new Promise<void>((resolve) => { req.on("data", (c: Buffer) => { body += c.toString() }); req.on("end", resolve) })
+            let data: any
+            try { data = JSON.parse(body) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
+            if (!data.title && !data.location) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Provide at least a title or location" })); return }
+            try {
+              const client = new Anthropic({ apiKey })
+              const prompt = [
+                `Event type: ${data.type || "activity"}`,
+                data.title && `Title: ${data.title}`,
+                data.location && `Location: ${data.location}`,
+                data.date && `Date: ${data.date}`,
+                data.time && `Time: ${data.time}`,
+                data.destination && `Trip destination: ${data.destination}`,
+              ].filter(Boolean).join("\n")
+              const message = await client.messages.create({
+                model: "claude-haiku-4-5-20251001",
+                max_tokens: 1024,
+                system: `You are a travel planning assistant. Given details about a travel event, generate a polished public-facing description and internal agent notes.\n\nReturn a JSON object with exactly these fields:\n{\n  "description": "Warm, helpful public description that travelers will see. 2-3 sentences max.",\n  "notes": "Concise internal/operational notes for the travel agent. 1-2 sentences max. If nothing relevant, return empty string."\n}\n\nWrite warm, professional copy. Never use em dashes - use commas, hyphens, or periods instead.\nReturn ONLY the JSON object, no markdown fences.`,
+                messages: [{ role: "user", content: prompt }],
+              })
+              const content = message.content[0]
+              if (content.type !== "text") { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Unexpected response" })); return }
+              const jsonMatch = content.text.match(/\{[\s\S]*\}/)
+              if (!jsonMatch) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "No JSON in response" })); return }
+              const result = JSON.parse(jsonMatch[0])
+              res.setHeader("Content-Type", "application/json")
+              res.end(JSON.stringify({ description: result.description || "", notes: result.notes || "", _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } }))
+            } catch (err: any) {
+              console.error("assist-event error:", err)
+              res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI assist failed", detail: err.message }))
             }
           } else if (p === "/api/flights") {
             const from = url.searchParams.get("from") ?? ""
