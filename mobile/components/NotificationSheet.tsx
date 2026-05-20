@@ -85,7 +85,7 @@ function getNotifIcon(n: { type: string; message: string }, C: ThemeColors) {
     return { Icon: CheckCircle, color: C.green, bg: C.greenDim };
   if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart"))
     return { Icon: AirplaneTilt, color: C.flight, bg: `${C.flight}18` };
-  return { Icon: Bell, color: C.textTertiary, bg: C.elevated };
+  return { Icon: Bell, color: C.teal, bg: `${C.teal}18` };
 }
 
 /* ── Main sheet ── */
@@ -291,7 +291,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
 
               {/* Type icon */}
               <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-                <Icon size={18} color={color} weight="regular" />
+                <Icon size={18} color={color} weight="duotone" />
               </View>
 
               <View style={styles.itemContent}>
@@ -426,7 +426,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingVertical: 14,
     },
     itemUnread: {
-      backgroundColor: isDark ? `${C.teal}08` : `${C.teal}0A`,
+      backgroundColor: isDark ? `${C.teal}14` : `${C.teal}18`,
     },
     itemPressed: {
       backgroundColor: isDark ? C.elevated : C.elevated,

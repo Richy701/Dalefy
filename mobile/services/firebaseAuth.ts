@@ -6,6 +6,7 @@ import {
   OAuthProvider,
   EmailAuthProvider,
   linkWithCredential,
+  fetchSignInMethodsForEmail,
   sendPasswordResetEmail,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
@@ -61,6 +62,30 @@ async function upsertProfile(fbUser: FbUser, name?: string): Promise<MobileUser>
   return profile;
 }
 
+const LINK_CONFLICT_CODES = new Set([
+  "auth/credential-already-in-use",
+  "auth/email-already-in-use",
+  "auth/account-exists-with-different-credential",
+]);
+
+async function signInOrLink(credential: ReturnType<typeof GoogleAuthProvider.credential>): Promise<FbUser> {
+  const currentUser = firebaseAuth().currentUser;
+  if (currentUser?.isAnonymous) {
+    try {
+      const result = await linkWithCredential(currentUser, credential);
+      return result.user;
+    } catch (err: any) {
+      if (LINK_CONFLICT_CODES.has(err?.code)) {
+        const result = await signInWithCredential(firebaseAuth(), credential);
+        return result.user;
+      }
+      throw err;
+    }
+  }
+  const result = await signInWithCredential(firebaseAuth(), credential);
+  return result.user;
+}
+
 // ── Sign Up ─────────────────────────────────────────────────────────────────
 
 export async function signUp(
@@ -113,17 +138,7 @@ export async function signInWithGoogle(
 
   try {
     const credential = GoogleAuthProvider.credential(idToken);
-    const currentUser = firebaseAuth().currentUser;
-
-    let fbUser: FbUser;
-    if (currentUser?.isAnonymous) {
-      const result = await linkWithCredential(currentUser, credential);
-      fbUser = result.user;
-    } else {
-      const result = await signInWithCredential(firebaseAuth(), credential);
-      fbUser = result.user;
-    }
-
+    const fbUser = await signInOrLink(credential);
     const profile = await upsertProfile(fbUser);
     return { user: profile, error: null };
   } catch (err: unknown) {
@@ -142,17 +157,7 @@ export async function signInWithApple(
   try {
     const provider = new OAuthProvider("apple.com");
     const credential = provider.credential({ idToken, rawNonce: nonce });
-    const currentUser = firebaseAuth().currentUser;
-
-    let fbUser: FbUser;
-    if (currentUser?.isAnonymous) {
-      const result = await linkWithCredential(currentUser, credential);
-      fbUser = result.user;
-    } else {
-      const result = await signInWithCredential(firebaseAuth(), credential);
-      fbUser = result.user;
-    }
-
+    const fbUser = await signInOrLink(credential);
     const profile = await upsertProfile(fbUser);
     return { user: profile, error: null };
   } catch (err: unknown) {
@@ -229,8 +234,19 @@ export async function upgradeWithEmail(
     if (!currentUser?.isAnonymous) return { user: null, error: "Not an anonymous account" };
 
     const credential = EmailAuthProvider.credential(email, password);
-    const result = await linkWithCredential(currentUser, credential);
-    const profile = await upsertProfile(result.user, name);
+    let fbUser: FbUser;
+    try {
+      const result = await linkWithCredential(currentUser, credential);
+      fbUser = result.user;
+    } catch (linkErr: any) {
+      if (linkErr?.code === "auth/credential-already-in-use" || linkErr?.code === "auth/email-already-in-use") {
+        const result = await signInWithCredential(firebaseAuth(), credential);
+        fbUser = result.user;
+      } else {
+        throw linkErr;
+      }
+    }
+    const profile = await upsertProfile(fbUser, name);
     return { user: profile, error: null };
   } catch (err: unknown) {
     return { user: null, error: friendlyError(err) };
@@ -321,6 +337,8 @@ function friendlyError(err: unknown): string {
       return "Too many attempts - try again later";
     case "auth/credential-already-in-use":
       return "This account is already linked to another user";
+    case "auth/account-exists-with-different-credential":
+      return "An account with this email already exists - try a different sign-in method";
     case "auth/network-request-failed":
       return "Network error - check your connection";
     default:

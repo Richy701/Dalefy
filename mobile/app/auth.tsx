@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Envelope, Lock, User, ArrowRight, CaretLeft, GoogleLogo, AppleLogo } from "phosphor-react-native";
+import { Envelope, Lock, User, ArrowRight, CaretLeft } from "phosphor-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
@@ -401,7 +402,7 @@ export default function AuthScreen() {
                       onPress={handleGoogleSignIn}
                       style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
                     >
-                      <GoogleLogo size={18} color={C.textPrimary} weight="bold" />
+                      <Ionicons name="logo-google" size={18} color={C.textPrimary} />
                       <Text style={styles.socialText}>Google</Text>
                     </Pressable>
                   )}
@@ -411,7 +412,7 @@ export default function AuthScreen() {
                       onPress={handleAppleSignIn}
                       style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
                     >
-                      <AppleLogo size={18} color={C.textPrimary} weight="fill" />
+                      <Ionicons name="logo-apple" size={18} color={C.textPrimary} />
                       <Text style={styles.socialText}>Apple</Text>
                     </Pressable>
                   )}
