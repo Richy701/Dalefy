@@ -227,9 +227,6 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "Jeju": [33.4996, 126.5312],
 
   // Japan
-  "NRT": [35.7647, 140.3864],
-  "HND": [35.5494, 139.7798],
-  "KIX": [34.4320, 135.2304],
   "Tokyo": [35.6762, 139.6503],
   "Tokyo, Japan": [35.6762, 139.6503],
   "Osaka": [34.6937, 135.5023],

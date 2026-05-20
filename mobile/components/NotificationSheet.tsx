@@ -4,6 +4,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
+import { useRouter } from "expo-router";
 import ContextMenu from "@/components/ContextMenu";
 import {
   Bell, Trash, AirplaneTilt, AirplaneLanding, AirplaneTakeoff,
@@ -91,10 +92,19 @@ function getNotifIcon(n: { type: string; message: string }, C: ThemeColors) {
 
 export function NotificationSheet({ visible, onClose }: Props) {
   const { C, isDark } = useTheme();
+  const router = useRouter();
   const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearAll } = useNotifications();
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const haptic = useHaptic();
   const sections = useMemo(() => groupNotifications(notifications), [notifications]);
+
+  const handleNavigate = useCallback((n: Notification) => {
+    if (!n.read) markRead(n.id);
+    if (n.tripId) {
+      onClose();
+      setTimeout(() => router.push(`/trip/${n.tripId}`), 300);
+    }
+  }, [markRead, onClose, router]);
 
   return (
     <Modal
@@ -103,8 +113,6 @@ export function NotificationSheet({ visible, onClose }: Props) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      {/* RNGH gestures require a root view per native hierarchy.
-          Modal creates a separate tree, so Swipeable needs its own root. */}
       <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         {/* Native drag indicator */}
@@ -112,7 +120,6 @@ export function NotificationSheet({ visible, onClose }: Props) {
 
         {/* Header */}
         <View style={styles.header}>
-          {/* Left — secondary action */}
           <View style={styles.headerSide}>
             {unreadCount > 0 && (
               <Pressable
@@ -136,10 +143,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
             )}
           </View>
 
-          {/* Centered title — neutral, not accent */}
           <Text style={styles.headerTitle}>Notifications</Text>
 
-          {/* Done — primary action */}
           <View style={[styles.headerSide, { justifyContent: "flex-end" }]}>
             <Pressable
               onPress={onClose}
@@ -188,6 +193,7 @@ export function NotificationSheet({ visible, onClose }: Props) {
                 C={C}
                 isDark={isDark}
                 styles={styles}
+                onPress={() => { haptic.light(); handleNavigate(item); }}
                 onMarkRead={() => { haptic.light(); markRead(item.id); }}
                 onRemove={() => { haptic.medium(); removeNotification(item.id); }}
               />
@@ -209,14 +215,15 @@ interface RowProps {
   C: ThemeColors;
   isDark: boolean;
   styles: ReturnType<typeof makeStyles>;
+  onPress: () => void;
   onMarkRead: () => void;
   onRemove: () => void;
 }
 
-function NotificationRow({ notification: n, C, isDark, styles, onMarkRead, onRemove }: RowProps) {
+function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRead, onRemove }: RowProps) {
   const swipeRef = useRef<Swipeable>(null);
   const { Icon, color, bg } = getNotifIcon(n, C);
-  const navigable = NAVIGABLE_TYPES.has(n.type);
+  const navigable = n.tripId != null;
 
   const actionWidth = n.read ? 56 : 112;
   const renderRightActions = useCallback(() => {
@@ -244,14 +251,16 @@ function NotificationRow({ notification: n, C, isDark, styles, onMarkRead, onRem
 
   const contextActions = [
     ...(!n.read ? [{ title: "Mark as Read", systemIcon: "checkmark.circle" }] : []),
+    ...(navigable ? [{ title: "View Trip", systemIcon: "airplane" }] : []),
     { title: "Delete", systemIcon: "trash", destructive: true },
   ];
 
   const handleContextAction = useCallback((e: any) => {
     const action = e.nativeEvent.name;
     if (action === "Mark as Read") onMarkRead();
+    if (action === "View Trip") onPress();
     if (action === "Delete") onRemove();
-  }, [onMarkRead, onRemove]);
+  }, [onMarkRead, onPress, onRemove]);
 
   return (
     <Swipeable
@@ -262,42 +271,51 @@ function NotificationRow({ notification: n, C, isDark, styles, onMarkRead, onRem
       rightThreshold={40}
       friction={2}
     >
-      {/* Opaque background wrapper — prevents action buttons bleeding through.
-          The item's unread tint is layered as an absolute overlay inside,
-          so this View always remains fully opaque. */}
       <View style={styles.itemOpaqueBase}>
-        {!n.read && <View style={styles.itemUnreadTint} />}
         <ContextMenu
           actions={contextActions}
           onPress={handleContextAction}
           previewBackgroundColor="transparent"
         >
           <Pressable
-            onPress={!n.read ? onMarkRead : undefined}
+            onPress={onPress}
             style={({ pressed }) => [
               styles.item,
-              !n.read && styles.itemUnreadBorder,
-              pressed && !n.read && styles.itemPressed,
+              !n.read && styles.itemUnread,
+              pressed && styles.itemPressed,
             ]}
           >
-            {/* Unread dot */}
-            {!n.read && <View style={styles.unreadDot} />}
-
             <View style={styles.itemRow}>
-              {/* Type icon with tinted background */}
+              {/* Left color accent bar for unread */}
+              {!n.read && <View style={[styles.accentBar, { backgroundColor: color }]} />}
+
+              {/* Type icon */}
               <View style={[styles.iconWrap, { backgroundColor: bg }]}>
                 <Icon size={18} color={color} weight="regular" />
               </View>
 
               <View style={styles.itemContent}>
-                <Text style={[styles.itemMessage, n.read && styles.itemMessageRead]}>{n.message}</Text>
-                <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={2}>{n.detail}</Text>
+                <View style={styles.itemTitleRow}>
+                  <Text
+                    style={[styles.itemMessage, n.read && styles.itemMessageRead]}
+                    numberOfLines={1}
+                  >
+                    {n.message}
+                  </Text>
+                  {n.time ? (
+                    <Text style={styles.itemTime}>{n.time}</Text>
+                  ) : null}
+                </View>
+                <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={2}>
+                  {n.detail}
+                </Text>
               </View>
 
-              <View style={styles.itemTrailing}>
-                <Text style={styles.itemTime}>{n.time}</Text>
-                {navigable && <CaretRight size={14} color={C.textDim} weight="bold" />}
-              </View>
+              {navigable && (
+                <View style={styles.chevronWrap}>
+                  <CaretRight size={14} color={C.textDim} weight="bold" />
+                </View>
+              )}
             </View>
           </Pressable>
         </ContextMenu>
@@ -386,72 +404,65 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // List
     list: { paddingHorizontal: S.xs, paddingBottom: 40 },
 
-    // Swipe container — clips action reveal to the row bounds
+    // Swipe container
     swipeContainer: {
       borderRadius: R.lg,
       overflow: "hidden" as const,
+      marginBottom: 6,
     },
 
-    // Opaque base — sits inside the Swipeable animated view.
-    // Guarantees the row is a solid rectangle that fully occludes
-    // the action buttons behind it at rest.
+    // Opaque base
     itemOpaqueBase: {
-      backgroundColor: C.bg,
+      backgroundColor: isDark ? C.card : C.card,
       borderRadius: R.lg,
       overflow: "hidden" as const,
     },
 
-    // Transparent tint overlay for unread — sits inside the opaque base,
-    // rendered before content so it layers behind text/icons.
-    itemUnreadTint: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: isDark ? `${C.teal}0C` : `${C.teal}10`,
-    },
-
-    // Notification item — no background here; opaque base handles that
+    // Notification item
     item: {
       position: "relative" as const,
-      paddingLeft: S.md + 4,
-      paddingRight: S.md,
+      paddingLeft: S.md,
+      paddingRight: S.sm,
       paddingVertical: 14,
     },
-    itemUnreadBorder: {
-      borderWidth: 1,
-      borderColor: isDark ? `${C.teal}14` : `${C.teal}1A`,
-      borderRadius: R.lg,
+    itemUnread: {
+      backgroundColor: isDark ? `${C.teal}08` : `${C.teal}0A`,
     },
     itemPressed: {
-      backgroundColor: isDark ? `${C.teal}14` : `${C.teal}1A`,
+      backgroundColor: isDark ? C.elevated : C.elevated,
     },
-    unreadDot: {
-      position: "absolute",
-      left: 6,
-      top: "50%",
-      marginTop: -3,
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: C.teal,
+    accentBar: {
+      position: "absolute" as const,
+      left: 0,
+      top: 10,
+      bottom: 10,
+      width: 3,
+      borderRadius: 2,
     },
     itemRow: {
       flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 10,
+      alignItems: "center",
+      gap: 12,
     },
     iconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
+      width: 38,
+      height: 38,
+      borderRadius: 12,
       alignItems: "center" as const,
       justifyContent: "center" as const,
-      marginTop: 1,
     },
-    itemContent: { flex: 1, minWidth: 0 },
+    itemContent: { flex: 1, minWidth: 0, gap: 3 },
+    itemTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
     itemMessage: {
-      fontSize: T.sm,
+      fontSize: T.sm + 1,
       fontWeight: "600",
       color: C.textPrimary,
-      marginBottom: 3,
+      flex: 1,
     },
     itemMessageRead: {
       fontWeight: "400",
@@ -465,19 +476,16 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     itemDetailRead: {
       color: C.textTertiary,
     },
-    itemTrailing: {
-      alignItems: "flex-end" as const,
-      gap: 6,
-      paddingTop: 1,
-    },
     itemTime: {
       fontSize: 10,
-      fontWeight: "600",
+      fontWeight: "500",
       color: C.textTertiary,
-      marginTop: 2,
+    },
+    chevronWrap: {
+      paddingLeft: 2,
     },
 
-    // Swipe actions — positioned behind the card by Swipeable
+    // Swipe actions
     swipeActions: {
       flexDirection: "row",
       alignItems: "center",

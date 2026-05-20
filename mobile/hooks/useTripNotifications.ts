@@ -132,6 +132,7 @@ export function useTripNotifications() {
             detail: `Your trip to ${trip.destination} begins. Have an amazing time!`,
             time: "9:00 AM",
             type: "info",
+            tripId: trip.id,
           });
         }
 
@@ -142,6 +143,7 @@ export function useTripNotifications() {
             detail: `${trip.name} is underway. Check your itinerary for today's plans.`,
             time: "8:00 AM",
             type: "info",
+            tripId: trip.id,
           });
         }
 
@@ -158,6 +160,7 @@ export function useTripNotifications() {
               detail: dest ? `Arrived at ${dest}` : "Your flight has landed.",
               time: ev.endTime || ev.time || "",
               type: "landed",
+              tripId: trip.id,
             });
           }
           if (status.includes("boarding")) {
@@ -167,6 +170,7 @@ export function useTripNotifications() {
               detail: ev.gate ? `Head to gate ${ev.gate}` : "Proceed to your gate.",
               time: ev.time || "",
               type: "boarding",
+              tripId: trip.id,
             });
           }
           if (ev.date === today) {
@@ -179,6 +183,7 @@ export function useTripNotifications() {
                 detail: dest ? `Flying to ${dest} at ${ev.time || "TBA"}` : `Departure at ${ev.time || "TBA"}`,
                 time: ev.time || "",
                 type: "flight",
+                tripId: trip.id,
               });
             }
           }
@@ -197,6 +202,7 @@ export function useTripNotifications() {
                 detail: `Check-in${ev.checkin ? ` from ${ev.checkin}` : ""} today.${ev.location ? ` ${ev.location}` : ""}`,
                 time: ev.checkin || timeStr,
                 type: "hotel",
+                tripId: trip.id,
               });
             } else if (ev.type === "dining") {
               add({
@@ -204,6 +210,7 @@ export function useTripNotifications() {
                 detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
                 time: timeStr,
                 type: "dining",
+                tripId: trip.id,
               });
             } else if (ev.type === "activity") {
               add({
@@ -211,6 +218,7 @@ export function useTripNotifications() {
                 detail: ev.location ? `At ${ev.location} · ${timeStr}` : `Today at ${timeStr}`,
                 time: timeStr,
                 type: "activity",
+                tripId: trip.id,
               });
             } else if (ev.type === "transfer") {
               add({
@@ -218,6 +226,7 @@ export function useTripNotifications() {
                 detail: ev.location ? `Pickup: ${ev.location} · ${timeStr}` : `Scheduled at ${timeStr}`,
                 time: timeStr,
                 type: "transfer",
+                tripId: trip.id,
               });
             }
           }
@@ -235,6 +244,7 @@ export function useTripNotifications() {
               detail: `You have ${summary} planned for tomorrow.`,
               time: "",
               type: "info",
+              tripId: trip.id,
             });
           }
         }
@@ -254,6 +264,7 @@ export function useTripNotifications() {
               detail: dest ? `Flying to ${dest}` : `Departure at ${nextFlight.time || "TBA"}`,
               time: nextFlight.time || "",
               type: "flight",
+              tripId: trip.id,
             });
           }
         }

@@ -18,7 +18,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
 - **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, multi-select, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app with five tabs (Home, Today, Schedule, Gallery, Profile) for travelers to join trips via PIN code or QR scan, with choreographed success animation and trip preview
-- **Interactive Maps** -- Mapbox-powered trip maps with animated routes, native symbol-layer plane markers, and destination explorer
+- **Interactive Maps** -- Mapbox-powered trip maps with Standard 3D basemap on the Today tab (pitched city view with 3D buildings, facades, trees, landmarks), flat Standard style on trip detail, animated flight routes, native symbol-layer plane markers, and destination explorer
 - **Landing Page** -- Public marketing page with interactive map, scroll-reveal feature sections, and trip showcase
 - **White-label Branding** -- Organization system with custom logos, colors, and agency theming
 - **Transport Types** -- Transfer events support sub-types (Car, Train, Bus, Ferry, Cruise) with matching icons and labels
@@ -50,7 +50,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Charts:** Recharts
 - **Routing:** react-router-dom v7 (HashRouter)
 - **PDF:** html2canvas + jsPDF
-- **Mobile:** Expo / React Native (in `/mobile`), expo-widgets (Live Activities + Dynamic Island)
+- **Mobile:** Expo / React Native (in `/mobile`), expo-widgets (Live Activities + Dynamic Island), @gorhom/bottom-sheet
 - **Cloud Functions:** Firebase Cloud Functions (Gen 2) for server-side push notifications on publish
 
 ## Getting Started
@@ -79,7 +79,7 @@ Travelers join trips via three methods: 6-digit PIN, QR scan, or invite link pas
 
 ### Shared Trip Preview
 
-The preview screen shows the trip itinerary with day-by-day summaries. Each day row displays the weekday, date in monospace, type icons with counts, a 40x40 thumbnail, density bar, and temporal coloring (today in teal with "Today" pill, past days dimmed, future days neutral). Multi-city trips show location chips when the city changes between days. Tapping expands inline event cards. Info pages with document attachments are viewable on mobile. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
+The preview screen shows the trip itinerary with image-forward day cards -- each day is a 140px hero banner using the first event photo (or gradient fallback with type icon watermark), with the weekday, date, event count, first event time, and type icons overlaid at the bottom. Past days are dimmed with an overlay, today gets a solid teal "TODAY" badge. Tapping expands inline event cards. The itinerary header shows a progress bar with day count and completion stats. Multi-city trips show location chips when the city changes between days. Info pages with document attachments are viewable on mobile. A "Personalise your view" picker lets travelers select their name to filter the itinerary to their assigned events.
 
 ### Home Tab
 
@@ -94,7 +94,7 @@ Nav bar with organization logo and user avatar. Compact greeting chip with dynam
 
 Three-state daily schedule view:
 
-- **Active trip** -- Compact map (140px) with event pins, trip name with stats strip (flights, hotels, events, days), weather data, "Next Up" countdown card, trip info and organizer cards, timeline with NOW divider and past-event dimming, "See full itinerary" button
+- **Active trip** -- Full-screen Mapbox Standard 3D map (pitched city view centered on next event location with proximity-biased geocoding) behind an Apple Maps-style bottom sheet. Sheet contains trip name with stats strip (flights, hotels, events, days), weather data, "Next Up" countdown card, trip info and organizer cards, timeline with NOW divider and past-event dimming, "See full itinerary" button
 - **Upcoming trip** -- "Your next trip" headline, hero card with countdown badge and weather forecast, first-day event preview with cleaned titles, trip info and organizer shortcuts, stats footer
 - **Empty** -- Compass icon in teal circle, "No trips yet" with "Join a trip" CTA button
 

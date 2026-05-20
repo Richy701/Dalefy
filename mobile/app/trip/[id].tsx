@@ -47,8 +47,7 @@ try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch { /* native module not available — map will be hidden */ }
 
-const DARK_STYLE  = "mapbox://styles/mapbox/navigation-night-v1";
-const LIGHT_STYLE = "mapbox://styles/mapbox/navigation-day-v1";
+const MAP_STYLE = "mapbox://styles/mapbox/standard";
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -160,19 +159,6 @@ export default function TripScreen() {
     if (!destCoords) return null;
     return [destCoords[1], destCoords[0]];
   }, [destCoords]);
-
-  const pinGeoJSON: GeoJSON.FeatureCollection = useMemo(() => ({
-    type: "FeatureCollection",
-    features: destCoords ? [{
-      type: "Feature" as const,
-      properties: {},
-      geometry: {
-        type: "Point" as const,
-        coordinates: [destCoords[1], destCoords[0]],
-      },
-    }] : [],
-  }), [destCoords]);
-
 
   const openInMaps = useCallback(() => {
     if (!mapCenter) return;
@@ -394,7 +380,7 @@ export default function TripScreen() {
               <MapboxGL.MapView
                 key={isDark ? "dark" : "light"}
                 style={StyleSheet.absoluteFillObject}
-                styleURL={isDark ? DARK_STYLE : LIGHT_STYLE}
+                styleURL={MAP_STYLE}
                 projection="mercator"
                 scrollEnabled={false}
                 zoomEnabled={false}
@@ -406,55 +392,29 @@ export default function TripScreen() {
                 scaleBarEnabled={false}
                 onDidFinishLoadingStyle={handleMapLoaded}
               >
+                <MapboxGL.StyleImport
+                  id="basemap"
+                  existing
+                  config={{
+                    lightPreset: isDark ? "night" : "day",
+                    showPointOfInterestLabels: false,
+                    showTransitLabels: false,
+                    showPlaceLabels: true,
+                    showRoadLabels: false,
+                    show3dObjects: false,
+                  } as any}
+                />
                 <MapboxGL.Camera
-                  zoomLevel={4}
+                  zoomLevel={3}
                   centerCoordinate={mapCenter ?? [0, 20]}
                   pitch={0}
                   heading={0}
                   animationDuration={0}
                 />
-                {mapReady && (
-                  <MapboxGL.ShapeSource id="trip-pin" shape={pinGeoJSON}>
-                    <MapboxGL.CircleLayer
-                      id="trip-pin-glow"
-                      style={{
-                        circleRadius: 28,
-                        circleColor: C.teal,
-                        circleOpacity: 0.12,
-                        circleBlur: 0.6,
-                      }}
-                    />
-                    <MapboxGL.CircleLayer
-                      id="trip-pin-ring"
-                      style={{
-                        circleRadius: 10,
-                        circleColor: C.teal,
-                        circleOpacity: 0.25,
-                      }}
-                    />
-                    <MapboxGL.CircleLayer
-                      id="trip-pin-dot"
-                      style={{
-                        circleRadius: 5,
-                        circleColor: C.teal,
-                        circleStrokeWidth: 2,
-                        circleStrokeColor: isDark ? "#000" : "#fff",
-                      }}
-                    />
-                    <MapboxGL.SymbolLayer
-                      id="trip-pin-label"
-                      style={{
-                        textField: trip?.destination || trip?.name || "",
-                        textSize: 12,
-                        textFont: ["DIN Pro Bold"],
-                        textColor: isDark ? "#fff" : "#111",
-                        textHaloColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.85)",
-                        textHaloWidth: 1.5,
-                        textOffset: [0, 1.8],
-                        textAllowOverlap: true,
-                      }}
-                    />
-                  </MapboxGL.ShapeSource>
+                {mapReady && mapCenter && (
+                  <MapboxGL.PointAnnotation id="trip-pin" coordinate={mapCenter}>
+                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#0bd2b5", borderWidth: 2, borderColor: "#fff" }} />
+                  </MapboxGL.PointAnnotation>
                 )}
               </MapboxGL.MapView>
             </View>
@@ -496,25 +456,6 @@ function typeCounts(events: any[]): Array<{ key: string; Icon: React.ComponentTy
   }
   if (result.length <= 5) return result;
   return result.slice(0, 4);
-}
-
-function dayProgress(events: any[], now: Date, dateStr: string): number {
-  if (!events.length) return 0;
-  const sorted = [...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-  const firstMin = timeToMinutes(sorted[0].time);
-  const lastEv = sorted[sorted.length - 1];
-  const lastMin = timeToMinutes(lastEv.endTime || lastEv.time);
-
-  const dayDate = new Date(dateStr + "T00:00:00");
-  const firstMs = dayDate.getTime() + firstMin * 60_000;
-  const lastMs = dayDate.getTime() + lastMin * 60_000;
-  const nowMs = now.getTime();
-
-  if (nowMs >= lastMs) return 1;
-  if (nowMs <= firstMs) return 0;
-  const total = lastMs - firstMs;
-  if (total <= 0) return 0;
-  return (nowMs - firstMs) / total;
 }
 
 function hashStr(s: string): number {
@@ -576,67 +517,27 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
     setOpenDay(prev => prev === date ? null : date);
   };
 
-  const mono = Platform.OS === "ios" ? "Menlo" : "monospace";
-  const progressBg = isDark ? C.elevated : "#e4e4e7";
-  const dividerColor = isDark ? C.border : "#e4e4e7";
-
   return (
     <View>
-      {/* ── Trip header ── */}
-      <View style={{
-        paddingHorizontal: S.md + S.sm,
-        paddingTop: S.xl,
-        paddingBottom: S.lg,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: dividerColor,
-      }}>
-        <Text style={{
-          fontSize: T["2xl"], fontWeight: "600",
-          color: C.textPrimary, letterSpacing: -0.3, marginBottom: 6,
-        }}>{trip.name}</Text>
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
-            {dateRange}
+      {/* ── Itinerary header ── */}
+      <View style={{ paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: S.sm }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: S.sm }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: C.textTertiary, letterSpacing: 1.5 }}>ITINERARY</Text>
+          <Text style={{ fontSize: 11, fontWeight: "600", color: C.textDim }}>
+            Day {currentDay} of {totalDays}  ·  {completed}/{totalEvents} done
           </Text>
-          <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
-          <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
-            {totalDays} days
-          </Text>
-          {travelerCount > 0 && (
-            <>
-              <Text style={{ fontSize: 11, color: C.textDim }}> · </Text>
-              <Text style={{ fontSize: 11, fontWeight: "500", color: C.textTertiary }}>
-                {travelerCount} traveler{travelerCount !== 1 ? "s" : ""}
-              </Text>
-            </>
-          )}
         </View>
-
-        {/* Progress strip */}
-        <View style={{ marginTop: S.md }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-            <Text style={{
-              fontFamily: mono,
-              fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: 1.5,
-            }}>Day {currentDay} of {totalDays}</Text>
-            <Text style={{
-              fontFamily: mono,
-              fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: 1.5,
-            }}>{completed} of {totalEvents} done</Text>
-          </View>
-          <View style={{ height: 3, backgroundColor: progressBg, borderRadius: R.full, overflow: "hidden" }}>
-            <View style={{
-              height: 3, backgroundColor: C.teal, borderRadius: R.full,
-              width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%` as any,
-            }} />
-          </View>
+        <View style={{ height: 3, backgroundColor: isDark ? C.elevated : "#e4e4e7", borderRadius: R.full, overflow: "hidden" }}>
+          <View style={{
+            height: 3, backgroundColor: C.teal, borderRadius: R.full,
+            width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%` as any,
+          }} />
         </View>
       </View>
 
-      {/* ── Day rows ── */}
+      {/* ── Day cards ── */}
       <View style={{ paddingHorizontal: S.md, gap: S.sm }}>
-        {sortedDays.map(([date, events], dayIdx) => {
+        {sortedDays.map(([date, events]) => {
           const dt = new Date(date + "T12:00:00");
           const isToday = date === todayStr;
           const isPast = date < todayStr;
@@ -649,38 +550,8 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
             ? events[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
             : null;
 
-          const barPct = dayProgress(events, now, date) * 100;
-          const barColor = isToday
-            ? C.teal
-            : isPast
-              ? (isDark ? "#3f3f46" : "#a1a1aa")
-              : "transparent";
-          const barBg = isDark ? C.elevated : "#e4e4e7";
-
-          const dayNameColor = isToday
-            ? (isDark ? C.teal : "#059669")
-            : isPast
-              ? (isDark ? C.textDim : "#a1a1aa")
-              : C.textPrimary;
-          const subColor = isToday
-            ? C.textTertiary
-            : isPast
-              ? (isDark ? C.textDim : "#d4d4d8")
-              : C.textTertiary;
-          const iconColor = isToday
-            ? (isDark ? C.teal : "#059669")
-            : isPast
-              ? (isDark ? C.textDim : "#a1a1aa")
-              : (isDark ? `${C.teal}99` : "#059669aa");
-          const countColor = isToday
-            ? (isDark ? C.teal : "#047857")
-            : isPast
-              ? (isDark ? C.textDim : "#a1a1aa")
-              : (isDark ? `${C.teal}99` : "#047857aa");
-
-          const photo = events.find((e: any) => e.image && e.type !== "flight")?.image || null;
+          const photo = events.find((e: any) => e.image)?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[events[0]?.type] || MapTrifold;
-
           const gradHue = hashStr(events[0]?.title || date) % 360;
 
           return (
@@ -688,116 +559,83 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
               <Pressable
                 onPress={() => toggle(date)}
                 style={({ pressed }) => ({
-                  paddingVertical: S.sm + 2,
-                  paddingHorizontal: S.sm,
-                  borderRadius: R.md,
-                  backgroundColor: pressed
-                    ? (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)")
-                    : "transparent",
-                  opacity: pressed ? 0.6 : 1,
+                  height: 140,
+                  borderRadius: R.xl,
+                  overflow: "hidden",
+                  opacity: pressed ? 0.9 : 1,
                   transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  {/* Left: day info */}
-                  <View style={{ flex: 1 }}>
-                    {/* Row 1: Day name + Today pill */}
-                    <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                      <Text style={{
-                        fontSize: T.xl, fontWeight: "600",
-                        color: dayNameColor, letterSpacing: -0.2,
-                      }}>{weekday}</Text>
-                      {isToday && (
-                        <View style={{
-                          paddingHorizontal: 7, paddingVertical: 2,
-                          borderRadius: R.full,
-                          backgroundColor: isDark ? `${C.teal}18` : "#ecfdf5",
-                          borderWidth: StyleSheet.hairlineWidth,
-                          borderColor: isDark ? `${C.teal}33` : "#a7f3d0",
-                        }}>
-                          <Text style={{
-                            fontSize: 9, fontWeight: "600",
-                            color: isDark ? C.teal : "#047857",
-                            textTransform: "uppercase", letterSpacing: 1.5,
-                            fontFamily: mono,
-                          }}>Today</Text>
-                        </View>
+                {photo ? (
+                  <CachedImage uri={photo} style={StyleSheet.absoluteFillObject} />
+                ) : (
+                  <LinearGradient
+                    colors={[`hsl(${gradHue}, 35%, ${isDark ? 22 : 55}%)`, `hsl(${(gradHue + 40) % 360}, 30%, ${isDark ? 12 : 40}%)`]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                )}
+                {isPast && (
+                  <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+                )}
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.7)"]}
+                  locations={[0.25, 1]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                {!photo && (
+                  <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", opacity: 0.15 }}>
+                    <FallbackIcon size={48} color="#fff" weight="regular" />
+                  </View>
+                )}
+
+                <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: S.md }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Text style={{ fontSize: T.xl, fontWeight: "700", color: "#fff", letterSpacing: -0.2 }}>
+                      {weekday}
+                    </Text>
+                    {isToday && (
+                      <View style={{
+                        paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.full,
+                        backgroundColor: C.teal,
+                      }}>
+                        <Text style={{ fontSize: 9, fontWeight: "800", color: "#000", letterSpacing: 1 }}>TODAY</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                        {fullDate}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>·</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                        {events.length} event{events.length !== 1 ? "s" : ""}
+                      </Text>
+                      {firstTime && (
+                        <>
+                          <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>·</Text>
+                          <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                            {firstTime}
+                          </Text>
+                        </>
                       )}
                     </View>
-
-                    {/* Row 2: Date + event count */}
-                    <Text style={{
-                      fontSize: 11, fontWeight: "500", color: subColor, marginTop: 3,
-                    }}>{fullDate} · {events.length} event{events.length !== 1 ? "s" : ""}</Text>
-
-                    {/* Type icons with counts */}
                     {icons.length > 0 && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         {icons.map(({ key, Icon, count }) => (
-                          <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                            <Icon size={13} color={iconColor} weight="regular" />
-                            <Text style={{
-                              fontSize: T.xs, fontWeight: "500", color: countColor,
-                              fontFamily: mono,
-                            }}>{count}</Text>
+                          <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                            <Icon size={12} color="rgba(255,255,255,0.6)" weight="regular" />
+                            <Text style={{ fontSize: 10, fontWeight: "600", color: "rgba(255,255,255,0.6)" }}>{count}</Text>
                           </View>
                         ))}
                       </View>
                     )}
                   </View>
-
-                  {/* Right: thumbnail + time */}
-                  <View style={{ alignItems: "flex-end", marginLeft: S.sm, gap: 4 }}>
-                    <View style={{
-                      width: 56, height: 56, borderRadius: R.lg,
-                      overflow: "hidden",
-                      backgroundColor: isDark ? C.elevated : "#f4f4f5",
-                      opacity: isPast ? 0.5 : 1,
-                    }}>
-                      {photo ? (
-                        <CachedImage uri={photo} style={{ width: 56, height: 56 }} />
-                      ) : (
-                        <LinearGradient
-                          colors={[`hsl(${gradHue}, 30%, 25%)`, `hsl(${(gradHue + 30) % 360}, 30%, 15%)`]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-                        >
-                          <FallbackIcon size={20} color="rgba(255,255,255,0.4)" weight="regular" />
-                        </LinearGradient>
-                      )}
-                    </View>
-                    {firstTime && (
-                      <Text style={{
-                        fontFamily: mono,
-                        fontSize: 10, color: isDark ? C.textDim : "#a1a1aa",
-                      }}>{firstTime}</Text>
-                    )}
-                  </View>
-
-                  {/* Chevron */}
-                  <CaretRight
-                    size={16}
-                    color={isPast ? (isDark ? C.textDim : "#a1a1aa") : (isDark ? "#71717a" : "#a1a1aa")}
-                    weight="bold"
-                    style={{ marginLeft: 6 }}
-                  />
-                </View>
-
-                {/* Density bar */}
-                <View style={{
-                  height: 3, backgroundColor: barBg, borderRadius: R.full,
-                  marginTop: S.xs + 2, overflow: "hidden",
-                }}>
-                  <View style={{
-                    height: 3, borderRadius: R.full,
-                    backgroundColor: barColor,
-                    width: `${barPct}%` as any,
-                  }} />
                 </View>
               </Pressable>
 
-              {/* Expanded events */}
               {isOpen && (
                 <View style={{ gap: S.sm, paddingTop: S.xs, paddingBottom: S.xs }}>
                   {events.map((ev: any) => (

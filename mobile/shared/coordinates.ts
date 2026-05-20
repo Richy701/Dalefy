@@ -14,7 +14,6 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "KEF": [63.9850, -22.6056],
   "SIN": [1.3644, 103.9915],
   "Singapore": [1.3521, 103.8198],
-  "Singapore, Singapore": [1.3521, 103.8198],
   "DPS": [-8.7467, 115.1670],
   "ZRH": [47.4647, 8.5492],
   "JFK": [40.6413, -73.7781],
@@ -223,9 +222,6 @@ export const LOCATION_COORDS: Record<string, [number, number]> = {
   "Jeju": [33.4996, 126.5312],
 
   // Japan
-  "NRT": [35.7647, 140.3864],
-  "HND": [35.5494, 139.7798],
-  "KIX": [34.4320, 135.2304],
   "Tokyo": [35.6762, 139.6503],
   "Tokyo, Japan": [35.6762, 139.6503],
   "Osaka": [34.6937, 135.5023],

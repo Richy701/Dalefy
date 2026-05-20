@@ -7,7 +7,7 @@ import {
 import { Image as ExpoImage } from "expo-image";
 import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash,
   VideoCamera, CaretRight, Aperture, User,
@@ -63,6 +63,78 @@ const CONTENT_W = SCREEN_W - S.md * 2;
 const HERO_LARGE_W = Math.floor((CONTENT_W - GRID_GAP) * 0.64);
 const HERO_SMALL_W = CONTENT_W - HERO_LARGE_W - GRID_GAP;
 const HERO_ROW_H = Math.floor(GRID_ITEM_SIZE * 1.6);
+const COL2_WIDE = Math.floor((CONTENT_W - GRID_GAP) * 0.62);
+const COL2_NARROW = CONTENT_W - COL2_WIDE - GRID_GAP;
+const DUO_H = Math.floor(GRID_ITEM_SIZE * 1.35);
+const FEATURE_H = Math.floor(CONTENT_W * 0.5);
+
+type GridLayout = "hero" | "trio" | "duo" | "duo-r" | "feature";
+type GalleryRow =
+  | { type: "trip-header"; key: string; name: string; dateRange: string; count: number }
+  | { type: "grid-row"; key: string; tripId: string; items: TripMedia[]; layout: GridLayout; isLast: boolean; remaining: number; startIndex: number };
+
+const LAYOUT_CYCLE: GridLayout[] = ["hero", "trio", "duo", "trio", "duo-r", "trio", "feature", "trio"];
+
+function buildGalleryRows(
+  filteredTrips: Array<{ id: string; name: string; destination?: string; start: string; end: string; media?: TripMedia[] }>,
+): GalleryRow[] {
+  const rows: GalleryRow[] = [];
+  for (const trip of filteredTrips) {
+    const media = trip.media ?? [];
+    const maxVisible = 20;
+    const visible = media.slice(0, maxVisible);
+    const remaining = media.length - maxVisible;
+    if (visible.length === 0) continue;
+
+    const dateRange = `${new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    rows.push({ type: "trip-header", key: `h-${trip.id}`, name: trip.destination || trip.name, dateRange, count: media.length });
+
+    let cursor = 0;
+    let layoutIdx = 0;
+    let rowIdx = 0;
+    while (cursor < visible.length) {
+      const left = visible.length - cursor;
+      const pattern = LAYOUT_CYCLE[layoutIdx % LAYOUT_CYCLE.length];
+      layoutIdx++;
+      let layout: GridLayout;
+      let take: number;
+
+      if (pattern === "hero" && left >= 2) { layout = "hero"; take = 2; }
+      else if (pattern === "trio" && left >= 3) { layout = "trio"; take = 3; }
+      else if ((pattern === "duo" || pattern === "duo-r") && left >= 2) { layout = pattern; take = 2; }
+      else if (pattern === "feature" && left >= 1) { layout = "feature"; take = 1; }
+      else if (left >= 3) { layout = "trio"; take = 3; }
+      else if (left >= 2) { layout = "duo"; take = 2; }
+      else { layout = "feature"; take = 1; }
+
+      const rowItems = visible.slice(cursor, cursor + take);
+      const isLastRow = cursor + take >= visible.length;
+      rows.push({
+        type: "grid-row",
+        key: `r-${trip.id}-${rowIdx}`,
+        tripId: trip.id,
+        items: rowItems,
+        layout,
+        isLast: isLastRow,
+        remaining: isLastRow ? remaining : 0,
+        startIndex: cursor,
+      });
+      cursor += take;
+      rowIdx++;
+    }
+  }
+  return rows;
+}
+
+function rowHeight(row: GalleryRow): number {
+  if (row.type === "trip-header") return 60;
+  switch (row.layout) {
+    case "hero": return HERO_ROW_H + GRID_GAP;
+    case "trio": return GRID_ITEM_SIZE + GRID_GAP;
+    case "duo": case "duo-r": return DUO_H + GRID_GAP;
+    case "feature": return FEATURE_H + GRID_GAP;
+  }
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -507,7 +579,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C, index = 0 }: {
+const GridItem = React.memo(function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C, index = 0 }: {
   item: TripMedia;
   width: number;
   height: number;
@@ -519,12 +591,6 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
   index?: number;
 }) {
   const isLarge = width > GRID_ITEM_SIZE + 1;
-  const [ready, setReady] = useState(index < 4);
-  useEffect(() => {
-    if (ready) return;
-    const t = setTimeout(() => setReady(true), index * 120);
-    return () => clearTimeout(t);
-  }, []);
   return (
     <ContextMenu
       actions={[
@@ -550,7 +616,7 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
       }}
     >
       {item.type === "image" ? (
-        ready ? <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} /> : <View style={{ width: "100%", height: "100%" }} />
+        <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} />
       ) : (
         <View style={{ width: "100%", height: "100%", backgroundColor: `${C.teal}12`, alignItems: "center", justifyContent: "center" }}>
           <View style={{
@@ -607,7 +673,14 @@ function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C
     </ScalePress>
     </ContextMenu>
   );
-}
+}, (prev, next) =>
+  prev.item.id === next.item.id &&
+  prev.width === next.width &&
+  prev.height === next.height &&
+  prev.isLast === next.isLast &&
+  prev.remaining === next.remaining &&
+  prev.C === next.C
+);
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -621,7 +694,7 @@ export default function MediaScreen() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   useEffect(() => { getDeviceId().then(setDeviceId); }, []);
   const [refreshing, setRefreshing] = useState(false);
-  const [tripFilter, setTripFilter] = useState("all");
+  const [tripFilter, setTripFilter] = useState<string | null>(null);
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(-1);
@@ -657,13 +730,16 @@ export default function MediaScreen() {
     setRefreshing(false);
   }, [reload, setPendingMedia]);
 
-  // Clean up pending items that have been uploaded, are stale, or have dead local URIs
+  // Clean up pending items that have been uploaded, are stale, have dead local URIs,
+  // or belong to trips the user is no longer a member of
   useEffect(() => {
     let changed = false;
     const staleMs = 60 * 60 * 1000; // 1 hour
     const now = Date.now();
+    const tripIds = new Set(trips.map(t => t.id));
     const cleaned: Record<string, TripMedia[]> = {};
     for (const [tripId, items] of Object.entries(pendingMedia)) {
+      if (!tripIds.has(tripId)) { changed = true; continue; }
       const trip = trips.find(t => t.id === tripId);
       const existingIds = new Set((trip?.media ?? []).map(m => m.id));
       const remaining = items.filter(m => {
@@ -702,20 +778,144 @@ export default function MediaScreen() {
     [mergedTrips],
   );
 
+  const allItemsIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    allItems.forEach((m, i) => map.set(m.id, i));
+    return map;
+  }, [allItems]);
+
   const photos = useMemo(() => allItems.filter(m => m.type === "image").length, [allItems]);
   const videos = useMemo(() => allItems.filter(m => m.type === "video").length, [allItems]);
   const tripsWithMedia = useMemo(() => mergedTrips.filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
 
+  // Auto-default the trip filter to the nearest active/upcoming trip so the
+  // gallery scopes to the current trip instead of mixing in past-trip photos.
+  // Uses ALL trips (not just those with media) so a new trip with no photos
+  // shows the empty/upload state rather than falling back to a past trip.
+  const resolvedTripFilter = useMemo(() => {
+    if (tripFilter !== null) return tripFilter;
+    if (trips.length <= 1) return "all";
+    const now = new Date();
+    const active = trips.find(t => new Date(t.start) <= now && new Date(t.end) >= now);
+    if (active) return active.id;
+    const upcoming = [...trips]
+      .filter(t => new Date(t.start) > now)
+      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    if (upcoming.length > 0) return upcoming[0].id;
+    return "all";
+  }, [tripFilter, trips]);
+
   const filteredTrips = useMemo(() => {
-    let list = tripFilter === "all" ? tripsWithMedia : tripsWithMedia.filter(t => t.id === tripFilter);
+    let list = resolvedTripFilter === "all" ? tripsWithMedia : tripsWithMedia.filter(t => t.id === resolvedTripFilter);
     if (mediaFilter !== "all") {
       list = list
         .map(t => ({ ...t, media: t.media?.filter(m => m.type === mediaFilter) }))
         .filter(t => (t.media?.length ?? 0) > 0);
     }
     return list;
-  }, [tripsWithMedia, tripFilter, mediaFilter]);
+  }, [tripsWithMedia, resolvedTripFilter, mediaFilter]);
 
+  const galleryRows = useMemo(() => buildGalleryRows(filteredTrips), [filteredTrips]);
+
+  const getItemLayout = useCallback((_: any, index: number) => {
+    let offset = 0;
+    for (let i = 0; i < index; i++) offset += rowHeight(galleryRows[i]);
+    return { length: rowHeight(galleryRows[index]), offset, index };
+  }, [galleryRows]);
+
+  const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
+    const isOwner = item.uploaderId && item.uploaderId === deviceId;
+    if (!isOwner) {
+      Alert.alert("Can't delete", "You can only remove photos you uploaded.");
+      return;
+    }
+    Alert.alert("Delete?", `Remove "${item.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", style: "destructive",
+        onPress: async () => {
+          const trip = trips.find(t => t.id === item.tripId);
+          if (!trip) return;
+          const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
+          setViewerIndex(-1);
+          setPendingMedia(prev => {
+            const remaining = (prev[item.tripId] ?? []).filter(m => m.id !== item.id);
+            if (!remaining.length) { const next = { ...prev }; delete next[item.tripId]; return next; }
+            return { ...prev, [item.tripId]: remaining };
+          });
+          updateTrip(updated);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast("Removed");
+        },
+      },
+    ]);
+  }, [trips, updateTrip, toast, deviceId, setPendingMedia]);
+
+  const renderGalleryRow = useCallback(({ item: row }: { item: GalleryRow }) => {
+    if (row.type === "trip-header") {
+      return (
+        <View style={{ paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: 10 }}>
+          <Text style={{ fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={1}>{row.name}</Text>
+          <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, marginTop: 4 }}>
+            {row.dateRange}{"  ·  "}{row.count} photo{row.count !== 1 ? "s" : ""}
+          </Text>
+        </View>
+      );
+    }
+
+    const makeItem = (m: TripMedia, w: number, h: number, isLastItem: boolean, idx: number) => (
+      <GridItem
+        key={m.id}
+        item={m}
+        width={w}
+        height={h}
+        isLast={isLastItem && row.remaining > 0}
+        remaining={isLastItem ? row.remaining : 0}
+        onPress={() => setViewerIndex(allItemsIndex.get(m.id) ?? -1)}
+        onDelete={() => handleDelete({ ...m, tripId: row.tripId })}
+        C={C}
+        index={idx}
+      />
+    );
+    const isLastItem = (i: number) => row.isLast && i === row.items.length - 1;
+
+    if (row.layout === "hero") {
+      return (
+        <View style={{ flexDirection: "row", gap: GRID_GAP, paddingHorizontal: S.md, marginBottom: GRID_GAP }}>
+          {makeItem(row.items[0], COL2_WIDE, HERO_ROW_H, isLastItem(0), row.startIndex)}
+          {makeItem(row.items[1], COL2_NARROW, HERO_ROW_H, isLastItem(1), row.startIndex + 1)}
+        </View>
+      );
+    }
+    if (row.layout === "trio") {
+      return (
+        <View style={{ flexDirection: "row", gap: GRID_GAP, paddingHorizontal: S.md, marginBottom: GRID_GAP }}>
+          {row.items.map((m, i) => makeItem(m, GRID_ITEM_SIZE, GRID_ITEM_SIZE, isLastItem(i), row.startIndex + i))}
+        </View>
+      );
+    }
+    if (row.layout === "duo") {
+      return (
+        <View style={{ flexDirection: "row", gap: GRID_GAP, paddingHorizontal: S.md, marginBottom: GRID_GAP }}>
+          {makeItem(row.items[0], COL2_WIDE, DUO_H, isLastItem(0), row.startIndex)}
+          {makeItem(row.items[1], COL2_NARROW, DUO_H, isLastItem(1), row.startIndex + 1)}
+        </View>
+      );
+    }
+    if (row.layout === "duo-r") {
+      return (
+        <View style={{ flexDirection: "row", gap: GRID_GAP, paddingHorizontal: S.md, marginBottom: GRID_GAP }}>
+          {makeItem(row.items[0], COL2_NARROW, DUO_H, isLastItem(0), row.startIndex)}
+          {makeItem(row.items[1], COL2_WIDE, DUO_H, isLastItem(1), row.startIndex + 1)}
+        </View>
+      );
+    }
+    return (
+      <View style={{ paddingHorizontal: S.md, marginBottom: GRID_GAP }}>
+        {makeItem(row.items[0], CONTENT_W, FEATURE_H, isLastItem(0), row.startIndex)}
+      </View>
+    );
+  }, [C, allItemsIndex, handleDelete]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     console.log("[Media] handleUploadToTrip called, tripId:", tripId);
@@ -807,39 +1007,14 @@ export default function MediaScreen() {
     }
   }, [trips, handleUploadToTrip]);
 
-  const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
-    const isOwner = item.uploaderId && item.uploaderId === deviceId;
-    if (!isOwner) {
-      Alert.alert("Can't delete", "You can only remove photos you uploaded.");
-      return;
-    }
-    Alert.alert("Delete?", `Remove "${item.name}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete", style: "destructive",
-        onPress: async () => {
-          const trip = trips.find(t => t.id === item.tripId);
-          if (!trip) return;
-          const updated = { ...trip, media: (trip.media ?? []).filter(m => m.id !== item.id) };
-          setViewerIndex(-1);
-          setPendingMedia(prev => {
-            const remaining = (prev[item.tripId] ?? []).filter(m => m.id !== item.id);
-            if (!remaining.length) { const next = { ...prev }; delete next[item.tripId]; return next; }
-            return { ...prev, [item.tripId]: remaining };
-          });
-          updateTrip(updated);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          toast("Removed");
-        },
-      },
-    ]);
-  }, [trips, updateTrip, toast, deviceId]);
-
   const chipItems = useMemo(() => {
     const items: { id: string; label: string; type: "trip" | "media" }[] = [];
-    if (tripsWithMedia.length > 1) {
+    const showTripChips = trips.length > 1 && tripsWithMedia.length > 0;
+    if (showTripChips) {
       items.push({ id: "all", label: "All Trips", type: "trip" });
-      tripsWithMedia.forEach(t => items.push({ id: t.id, label: t.destination || t.name, type: "trip" }));
+      for (const t of trips) {
+        items.push({ id: t.id, label: t.destination || t.name, type: "trip" });
+      }
     }
     items.push(
       { id: "m-all", label: "All", type: "media" },
@@ -847,215 +1022,98 @@ export default function MediaScreen() {
       { id: "m-video", label: "Videos", type: "media" },
     );
     return items;
-  }, [tripsWithMedia]);
+  }, [trips, tripsWithMedia]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="never"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
-      >
-        {/* ── Header ── */}
-        <View style={[styles.headerRow, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
-          <Text style={styles.screenTitle}>Gallery</Text>
+  const listHeader = useMemo(() => (
+    <View>
+      {/* ── Header ── */}
+      <View style={[styles.headerRow, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
+        <Text style={styles.screenTitle}>Gallery</Text>
+        {trips.length > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+          >
+            <Plus size={16} color="#000" weight="bold" />
+          </Pressable>
+        )}
+      </View>
+
+      {/* ── Filter chips ── */}
+      {tripsWithMedia.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+        >
+          {chipItems.map((item, i) => {
+            const prevType = i > 0 ? chipItems[i - 1].type : item.type;
+            const showDivider = item.type !== prevType;
+            const active = item.type === "trip"
+              ? resolvedTripFilter === item.id
+              : mediaFilter === (item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
+
+            return (
+              <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {showDivider && <View style={styles.chipDivider} />}
+                <Pressable
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (item.type === "trip") setTripFilter(item.id);
+                    else setMediaFilter(item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
+                  }}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* ── Empty state (inline when no rows) ── */}
+      {(tripsWithMedia.length === 0 || filteredTrips.length === 0) && (
+        <View style={[styles.emptyWrap, { paddingTop: SCREEN_W * 0.2 }]}>
+          <Illustration name="wavy" width={260} height={170} />
+          <Text style={styles.emptyTitle}>
+            {tripsWithMedia.length === 0 ? "Your memories\nbegin here" : "No photos yet"}
+          </Text>
+          <Text style={styles.emptyText}>
+            {tripsWithMedia.length === 0
+              ? "Upload photos and videos from your trips. They'll be organised by destination."
+              : "Be the first to upload a memory from this trip."}
+          </Text>
           {trips.length > 0 && (
             <Pressable
-              style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.85 : 1 }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
             >
-              <Plus size={16} color="#000" weight="bold" />
+              <Camera size={16} color="#000" weight="bold" />
+              <Text style={styles.uploadFabText}>Upload Photos</Text>
             </Pressable>
           )}
         </View>
+      )}
+    </View>
+  ), [C, chipItems, filteredTrips.length, handleUploadNew, insets.top, mediaFilter, resolvedTripFilter, styles, trips.length, tripsWithMedia.length]);
 
-        {/* ── Filter chips ── */}
-        {tripsWithMedia.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-          >
-            {chipItems.map((item, i) => {
-              const prevType = i > 0 ? chipItems[i - 1].type : item.type;
-              const showDivider = item.type !== prevType;
-              const active = item.type === "trip"
-                ? tripFilter === item.id
-                : mediaFilter === (item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
-
-              return (
-                <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  {showDivider && <View style={styles.chipDivider} />}
-                  <Pressable
-                    style={[styles.chip, active && styles.chipActive]}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      if (item.type === "trip") setTripFilter(item.id);
-                      else setMediaFilter(item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
-                    }}
-                  >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
-                  </Pressable>
-                </View>
-              );
-            })}
-          </ScrollView>
-        )}
-
-        {/* ── Content ── */}
-        {tripsWithMedia.length === 0 ? (
-          <View style={[styles.emptyWrap, { paddingTop: SCREEN_W * 0.2 }]}>
-            <Illustration name="wavy" width={260} height={170} />
-            <Text style={styles.emptyTitle}>Your memories{"\n"}begin here</Text>
-            <Text style={styles.emptyText}>
-              Upload photos and videos from your trips. They'll be organised by destination.
-            </Text>
-            {trips.length > 0 && (
-              <Pressable
-                style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-              >
-                <Plus size={16} color="#000" weight="bold" />
-                <Text style={styles.uploadFabText}>Upload Photos</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <View style={styles.galleryWrap}>
-            {filteredTrips.map((trip, tripIndex) => {
-              const media = trip.media ?? [];
-              const maxVisible = 20;
-              const visible = media.slice(0, maxVisible);
-              const remaining = media.length - maxVisible;
-
-              return (
-                <FadeIn key={trip.id} delay={tripIndex * 100}>
-                <View style={styles.tripSection}>
-                  {/* Section header */}
-                  <View style={styles.tripHeader}>
-                    <Text style={styles.tripName} numberOfLines={1}>
-                      {trip.destination || trip.name}
-                    </Text>
-                    <Text style={styles.tripMeta}>
-                      {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      {" - "}
-                      {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      {"  ·  "}
-                      {media.length} photo{media.length !== 1 ? "s" : ""}
-                    </Text>
-                  </View>
-
-                  {(() => {
-                    const rows: { items: typeof visible; layout: "hero" | "trio" | "duo" | "duo-r" | "feature" }[] = [];
-                    let cursor = 0;
-                    const layouts = ["hero", "trio", "duo", "trio", "duo-r", "trio", "feature", "trio"] as const;
-                    let layoutIdx = 0;
-
-                    while (cursor < visible.length) {
-                      const left = visible.length - cursor;
-                      const pattern = layouts[layoutIdx % layouts.length];
-                      layoutIdx++;
-
-                      if (pattern === "hero" && left >= 2) {
-                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: "hero" });
-                        cursor += 2;
-                      } else if (pattern === "trio" && left >= 3) {
-                        rows.push({ items: visible.slice(cursor, cursor + 3), layout: "trio" });
-                        cursor += 3;
-                      } else if ((pattern === "duo" || pattern === "duo-r") && left >= 2) {
-                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: pattern });
-                        cursor += 2;
-                      } else if (pattern === "feature" && left >= 1) {
-                        rows.push({ items: visible.slice(cursor, cursor + 1), layout: "feature" });
-                        cursor += 1;
-                      } else if (left >= 3) {
-                        rows.push({ items: visible.slice(cursor, cursor + 3), layout: "trio" });
-                        cursor += 3;
-                      } else if (left >= 2) {
-                        rows.push({ items: visible.slice(cursor, cursor + 2), layout: "duo" });
-                        cursor += 2;
-                      } else {
-                        rows.push({ items: visible.slice(cursor, cursor + 1), layout: "feature" });
-                        cursor += 1;
-                      }
-                    }
-
-                    const COL2_WIDE = Math.floor((CONTENT_W - GRID_GAP) * 0.62);
-                    const COL2_NARROW = CONTENT_W - COL2_WIDE - GRID_GAP;
-                    const DUO_H = Math.floor(GRID_ITEM_SIZE * 1.35);
-                    const FEATURE_H = Math.floor(CONTENT_W * 0.5);
-
-                    let itemCounter = 0;
-                    const makeItem = (m: typeof visible[number], w: number, h: number, isLastItem: boolean) => {
-                      const idx = itemCounter++;
-                      return (
-                        <GridItem
-                          key={m.id}
-                          item={m}
-                          width={w}
-                          height={h}
-                          isLast={isLastItem && remaining > 0}
-                          remaining={isLastItem ? remaining : 0}
-                          onPress={() => setViewerIndex(allItems.findIndex(a => a.id === m.id))}
-                          onDelete={() => handleDelete({ ...m, tripId: trip.id })}
-                          C={C}
-                          index={idx}
-                        />
-                      );
-                    };
-
-                    const isLast = (rowIdx: number, itemIdx: number, rowLen: number) =>
-                      rowIdx === rows.length - 1 && itemIdx === rowLen - 1;
-
-                    return (
-                      <View style={{ gap: GRID_GAP }}>
-                        {rows.map((row, ri) => {
-                          if (row.layout === "hero") {
-                            return (
-                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
-                                {makeItem(row.items[0], COL2_WIDE, HERO_ROW_H, isLast(ri, 0, 2))}
-                                {makeItem(row.items[1], COL2_NARROW, HERO_ROW_H, isLast(ri, 1, 2))}
-                              </View>
-                            );
-                          }
-                          if (row.layout === "trio") {
-                            return (
-                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
-                                {row.items.map((m, i) => makeItem(m, GRID_ITEM_SIZE, GRID_ITEM_SIZE, isLast(ri, i, 3)))}
-                              </View>
-                            );
-                          }
-                          if (row.layout === "duo") {
-                            return (
-                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
-                                {makeItem(row.items[0], COL2_WIDE, DUO_H, isLast(ri, 0, 2))}
-                                {makeItem(row.items[1], COL2_NARROW, DUO_H, isLast(ri, 1, 2))}
-                              </View>
-                            );
-                          }
-                          if (row.layout === "duo-r") {
-                            return (
-                              <View key={ri} style={{ flexDirection: "row", gap: GRID_GAP }}>
-                                {makeItem(row.items[0], COL2_NARROW, DUO_H, isLast(ri, 0, 2))}
-                                {makeItem(row.items[1], COL2_WIDE, DUO_H, isLast(ri, 1, 2))}
-                              </View>
-                            );
-                          }
-                          // feature
-                          return makeItem(row.items[0], CONTENT_W, FEATURE_H, isLast(ri, 0, 1));
-                        })}
-                      </View>
-                    );
-                  })()}
-                </View>
-                </FadeIn>
-              );
-            })}
-          </View>
-        )}
-
-      </ScrollView>
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <FlatList
+        data={galleryRows}
+        renderItem={renderGalleryRow}
+        keyExtractor={r => r.key}
+        getItemLayout={getItemLayout}
+        ListHeaderComponent={listHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        contentInsetAdjustmentBehavior="never"
+        initialNumToRender={5}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+      />
 
       <TripPickerSheet
         visible={pickerOpen}

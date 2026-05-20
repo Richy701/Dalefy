@@ -4,6 +4,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   MapPin, Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   Clock, NavigationArrow, CalendarDots, Sun, CloudSun, Thermometer,
@@ -12,7 +13,7 @@ import {
 import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, eventColor } from "@/constants/theme";
@@ -50,18 +51,19 @@ try {
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN!;
 
 const geocodeCache: Record<string, [number, number] | null> = {};
-async function geocodeLocation(loc: string): Promise<[number, number] | null> {
-  if (loc in geocodeCache) return geocodeCache[loc];
+async function geocodeLocation(loc: string, proximity?: [number, number]): Promise<[number, number] | null> {
+  const key = proximity ? `${loc}@${proximity.join(",")}` : loc;
+  if (key in geocodeCache) return geocodeCache[key];
   try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(loc)}.json?access_token=${MAPBOX_TOKEN}&limit=1`
-    );
+    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(loc)}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+    if (proximity) url += `&proximity=${proximity.join(",")}`;
+    const res = await fetch(url);
     const json = await res.json();
     const center = json.features?.[0]?.center as [number, number] | undefined;
-    geocodeCache[loc] = center ?? null;
+    geocodeCache[key] = center ?? null;
     return center ?? null;
   } catch {
-    geocodeCache[loc] = null;
+    geocodeCache[key] = null;
     return null;
   }
 }
@@ -240,7 +242,10 @@ export default function TodayScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const [coords, setCoords] = useState<Record<string, [number, number]>>({});
+  const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
+  const sheetRef = useRef<BottomSheet>(null);
+  const mapViewRef = useRef<any>(null);
+  const snapPoints = useMemo(() => ["40%", "80%"], []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -301,36 +306,40 @@ export default function TodayScreen() {
     }
   }, [weatherTrip?.destination, !!activeTrip]);
 
-  // Events with mappable locations (skip flights — departure airport is irrelevant)
-  const mappableEvents = useMemo(() => todayEvents.filter(ev => ev.type !== "flight"), [todayEvents]);
+  const [nextCoord, setNextCoord] = useState<[number, number] | null>(null);
 
-  // Geocode event locations for map pins
+  // Find the next non-transfer event with a real location
+  const nextMappable = useMemo(() => {
+    if (!next) return null;
+    const idx = todayEvents.indexOf(next.event);
+    for (let i = idx; i < todayEvents.length; i++) {
+      const ev = todayEvents[i];
+      if (ev.type !== "transfer" && ev.type !== "flight" && ev.location) return ev;
+    }
+    return null;
+  }, [next, todayEvents]);
+
   useEffect(() => {
-    mappableEvents.forEach(ev => {
-      const loc = ev.location;
-      if (!loc || loc in coords) return;
-      if (ev.locationCoords) {
-        setCoords(prev => ({ ...prev, [loc]: [ev.locationCoords![1], ev.locationCoords![0]] }));
+    setDestCenter(null);
+    setNextCoord(null);
+    const dest = activeTrip?.destination;
+    if (!dest) return;
+
+    geocodeLocation(dest).then(destCoord => {
+      if (!destCoord) return;
+      setDestCenter(destCoord);
+
+      if (!nextMappable?.location) return;
+      if (nextMappable.locationCoords) {
+        setNextCoord([nextMappable.locationCoords[1], nextMappable.locationCoords[0]]);
+        setDestCenter([nextMappable.locationCoords[1], nextMappable.locationCoords[0]]);
         return;
       }
-      geocodeLocation(loc).then(c => {
-        if (c) setCoords(prev => ({ ...prev, [loc]: c }));
+      geocodeLocation(nextMappable.location, destCoord).then(c => {
+        if (c) { setNextCoord(c); setDestCenter(c); }
       });
     });
-  }, [mappableEvents]);
-
-  const pinsGeoJson: GeoJSON.FeatureCollection = useMemo(() => ({
-    type: "FeatureCollection",
-    features: mappableEvents
-      .filter(ev => ev.location && coords[ev.location])
-      .map((ev, i) => ({
-        type: "Feature" as const,
-        properties: { title: ev.title, index: i, type: ev.type },
-        geometry: { type: "Point" as const, coordinates: coords[ev.location!] },
-      })),
-  }), [mappableEvents, coords]);
-
-  const pinCoords = pinsGeoJson.features.map(f => (f.geometry as any).coordinates as [number, number]);
+  }, [activeTrip?.destination, nextMappable?.id]);
 
   useEffect(() => { setMapReady(false); }, [isDark]);
 
@@ -557,87 +566,74 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* Sticky header */}
-      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-        )}
-        <Text style={styles.screenTitle}>Today</Text>
+      {/* Full-screen Standard 3D map */}
+      {!!destCenter && !!MapboxGL && (
+        <MapboxGL.MapView
+          ref={mapViewRef}
+          key={isDark ? "dark" : "light"}
+          style={StyleSheet.absoluteFillObject}
+          styleURL="mapbox://styles/mapbox/standard"
+          projection="mercator"
+          scrollEnabled={false}
+          zoomEnabled={false}
+          pitchEnabled={false}
+          rotateEnabled={false}
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassEnabled={false}
+          scaleBarEnabled={false}
+          onDidFinishLoadingStyle={() => setMapReady(true)}
+        >
+          <MapboxGL.StyleImport
+            id="basemap"
+            existing
+            config={{
+              lightPreset: isDark ? "night" : "day",
+              showPointOfInterestLabels: true,
+              showTransitLabels: false,
+              showPlaceLabels: true,
+              showRoadLabels: false,
+              showPedestrianRoads: true,
+              show3dObjects: true,
+              show3dBuildings: true,
+              show3dFacades: true,
+              show3dTrees: true,
+              show3dLandmarks: true,
+              showLandmarkIcons: true,
+            } as any}
+          />
+          <MapboxGL.Camera
+            zoomLevel={14}
+            centerCoordinate={nextCoord ?? destCenter}
+            pitch={55}
+            animationDuration={0}
+          />
+          {mapReady && nextCoord && (
+            <MapboxGL.PointAnnotation id="next-event" coordinate={nextCoord}>
+              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: C.teal, borderWidth: 3, borderColor: isDark ? "#000" : "#fff" }} />
+            </MapboxGL.PointAnnotation>
+          )}
+        </MapboxGL.MapView>
+      )}
+
+      {/* "Today" floating label */}
+      <View style={{ position: "absolute", top: insets.top, left: 0, right: 0, zIndex: 10 }} pointerEvents="none">
+        <Text style={[styles.screenTitle, !!destCenter && !!MapboxGL && { color: isDark ? "#fff" : "#000", textShadowColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>Today</Text>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 50, paddingBottom: 100 }}
-        contentInsetAdjustmentBehavior="never"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+      {/* Bottom sheet */}
+      <BottomSheet
+        ref={sheetRef}
+        index={0}
+        snapPoints={snapPoints}
+        backgroundStyle={{ backgroundColor: isDark ? "#141414" : C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+        handleIndicatorStyle={{ backgroundColor: C.textDim, width: 36, height: 4 }}
+        enableDynamicSizing={false}
       >
-        {/* Map — Apple Maps on iOS, Mapbox on Android */}
-        {pinCoords.length > 0 && (
-          <View style={styles.mapWrap}>
-            {MapboxGL ? (
-              <MapboxGL.MapView
-                key={isDark ? "dark" : "light"}
-                style={StyleSheet.absoluteFillObject}
-                styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                pitchEnabled={false}
-                rotateEnabled={false}
-                logoEnabled={false}
-                attributionEnabled={false}
-                compassEnabled={false}
-                scaleBarEnabled={false}
-                onDidFinishLoadingStyle={() => setMapReady(true)}
-              >
-                <MapboxGL.Camera
-                  bounds={pinCoords.length > 1 ? {
-                    ne: [
-                      Math.max(...pinCoords.map(p => p[0])) + 0.02,
-                      Math.max(...pinCoords.map(p => p[1])) + 0.02,
-                    ],
-                    sw: [
-                      Math.min(...pinCoords.map(p => p[0])) - 0.02,
-                      Math.min(...pinCoords.map(p => p[1])) - 0.02,
-                    ],
-                    paddingLeft: 40, paddingRight: 40, paddingTop: 50, paddingBottom: 60,
-                  } : undefined}
-                  zoomLevel={pinCoords.length === 1 ? 14 : undefined}
-                  centerCoordinate={pinCoords.length === 1 ? pinCoords[0] : undefined}
-                  animationDuration={0}
-                />
-                {mapReady && pinCoords.length > 1 && (
-                  <MapboxGL.ShapeSource id="route-line" shape={{
-                    type: "Feature", properties: {},
-                    geometry: { type: "LineString", coordinates: pinCoords },
-                  }}>
-                    <MapboxGL.LineLayer
-                      id="route"
-                      style={{
-                        lineColor: C.teal, lineWidth: 1.5,
-                        lineOpacity: 0.4, lineDasharray: [4, 3],
-                      }}
-                    />
-                  </MapboxGL.ShapeSource>
-                )}
-                {pinsGeoJson.features.map((f, i) => {
-                  const coord = (f.geometry as any).coordinates as [number, number];
-                  const ev = mappableEvents.filter(e => e.location && coords[e.location])[i];
-                  const Icon = ev ? (ev.type === "transfer" ? (TRANSFER_ICONS[ev.transferType || "car"] || Car) : (TYPE_ICONS[ev.type] ?? Compass)) : MapPin;
-                  return (
-                    <MapboxGL.MarkerView key={`pin-${i}`} coordinate={coord}>
-                      <View style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: C.teal, alignItems: "center", justifyContent: "center" }}>
-                        <Icon size={11} color="#fff" weight="fill" />
-                      </View>
-                    </MapboxGL.MarkerView>
-                  );
-                })}
-              </MapboxGL.MapView>
-            ) : null}
-          </View>
-        )}
-
+        <BottomSheetScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
         {/* Header */}
         <View style={styles.headerSection}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -851,7 +847,8 @@ export default function TodayScreen() {
             <Text style={[styles.noEventsText, { color: C.textTertiary }]}>No events scheduled for today</Text>
           </View>
         )}
-      </ScrollView>
+        </BottomSheetScrollView>
+      </BottomSheet>
     </View>
   );
 }
