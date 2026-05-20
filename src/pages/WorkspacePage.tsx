@@ -534,7 +534,7 @@ export function WorkspacePage() {
     }
     setAiAssistLoading(true);
     try {
-      const resp = await fetch("/api/assist-event", {
+      const resp = await fetch("/api/parse-itinerary?mode=assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

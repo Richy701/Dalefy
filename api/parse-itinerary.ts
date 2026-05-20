@@ -88,6 +88,17 @@ Info sections — extract ALL of these if present, and rewrite into clear, well-
 
 Return ONLY the JSON object, no markdown fences or explanation.`;
 
+const ASSIST_PROMPT = `You are a travel planning assistant. Given details about a travel event (type, title, location, date, time), generate a polished public-facing description and internal agent notes.
+
+Return a JSON object with exactly these fields:
+{
+  "description": "Warm, helpful public description that travelers will see. Bring the experience to life - describe the place, what to expect, practical tips. 2-3 sentences max.",
+  "notes": "Concise internal/operational notes for the travel agent. Confirmation details, supplier tips, things to watch out for. 1-2 sentences max. If nothing relevant, return empty string."
+}
+
+Write warm, professional copy. Never use em dashes - use commas, hyphens, or periods instead.
+Return ONLY the JSON object, no markdown fences.`;
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -96,6 +107,42 @@ export default async function handler(req: any, res: any) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
+  }
+
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const mode = url.searchParams.get("mode");
+
+  if (mode === "assist") {
+    const { type, title, location, date, time, destination } = req.body ?? {};
+    if (!title && !location) {
+      return res.status(400).json({ error: "Provide at least a title or location" });
+    }
+    const prompt = [
+      `Event type: ${type || "activity"}`,
+      title && `Title: ${title}`,
+      location && `Location: ${location}`,
+      date && `Date: ${date}`,
+      time && `Time: ${time}`,
+      destination && `Trip destination: ${destination}`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      const message = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: ASSIST_PROMPT,
+        messages: [{ role: "user", content: prompt }],
+      });
+      const c = message.content[0];
+      if (c.type !== "text") return res.status(500).json({ error: "Unexpected response" });
+      const m = c.text.match(/\{[\s\S]*\}/);
+      if (!m) return res.status(500).json({ error: "No JSON in response" });
+      const result = JSON.parse(m[0]);
+      return res.status(200).json({ description: result.description || "", notes: result.notes || "", _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } });
+    } catch (err: any) {
+      console.error("assist-event error:", err);
+      return res.status(500).json({ error: "AI assist failed" });
+    }
   }
 
   const { text, images } = req.body ?? {};
@@ -137,7 +184,6 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: "Unexpected response format" });
     }
 
-    // Extract JSON object — handle markdown fences, leading/trailing text
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(500).json({ error: "No JSON found in AI response" });

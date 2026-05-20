@@ -81,6 +81,23 @@ function apiRoutesPlugin(env: Record<string, string>) {
             await new Promise<void>((resolve) => { req.on("data", (c: Buffer) => { body += c.toString() }); req.on("end", resolve) })
             let parsed: any
             try { parsed = JSON.parse(body) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
+
+            if (url.searchParams.get("mode") === "assist") {
+              const { type: evType, title, location, date: evDate, time: evTime, destination } = parsed
+              if (!title && !location) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Provide at least a title or location" })); return }
+              try {
+                const client = new Anthropic({ apiKey })
+                const prompt = [`Event type: ${evType || "activity"}`, title && `Title: ${title}`, location && `Location: ${location}`, evDate && `Date: ${evDate}`, evTime && `Time: ${evTime}`, destination && `Trip destination: ${destination}`].filter(Boolean).join("\n")
+                const message = await client.messages.create({ model: "claude-haiku-4-5-20251001", max_tokens: 1024, system: `You are a travel planning assistant. Given details about a travel event, generate a polished public-facing description and internal agent notes.\n\nReturn a JSON object with exactly these fields:\n{\n  "description": "Warm, helpful public description that travelers will see. 2-3 sentences max.",\n  "notes": "Concise internal/operational notes for the travel agent. 1-2 sentences max. If nothing relevant, return empty string."\n}\n\nWrite warm, professional copy. Never use em dashes - use commas, hyphens, or periods instead.\nReturn ONLY the JSON object, no markdown fences.`, messages: [{ role: "user", content: prompt }] })
+                const c = message.content[0]
+                if (c.type !== "text") { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Unexpected response" })); return }
+                const m = c.text.match(/\{[\s\S]*\}/)
+                if (!m) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "No JSON in response" })); return }
+                const result = JSON.parse(m[0])
+                res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ description: result.description || "", notes: result.notes || "", _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } })); return
+              } catch (err: any) { console.error("assist-event error:", err); res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI assist failed", detail: err.message })); return }
+            }
+
             const { text, images } = parsed
             if (!text && (!images || !Array.isArray(images) || images.length === 0)) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Missing 'text' or 'images' in body" })); return }
             try {
@@ -198,42 +215,6 @@ Return ONLY the JSON object, no markdown fences or explanation.`
             } catch (err: any) {
               console.error("parse-itinerary error:", err)
               res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI parsing failed", detail: err.message }))
-            }
-          } else if (p === "/api/assist-event") {
-            if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Method not allowed" })); return }
-            const apiKey = env.ANTHROPIC_API_KEY
-            if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }
-            let body = ""
-            await new Promise<void>((resolve) => { req.on("data", (c: Buffer) => { body += c.toString() }); req.on("end", resolve) })
-            let data: any
-            try { data = JSON.parse(body) } catch { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Invalid JSON body" })); return }
-            if (!data.title && !data.location) { res.statusCode = 400; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Provide at least a title or location" })); return }
-            try {
-              const client = new Anthropic({ apiKey })
-              const prompt = [
-                `Event type: ${data.type || "activity"}`,
-                data.title && `Title: ${data.title}`,
-                data.location && `Location: ${data.location}`,
-                data.date && `Date: ${data.date}`,
-                data.time && `Time: ${data.time}`,
-                data.destination && `Trip destination: ${data.destination}`,
-              ].filter(Boolean).join("\n")
-              const message = await client.messages.create({
-                model: "claude-haiku-4-5-20251001",
-                max_tokens: 1024,
-                system: `You are a travel planning assistant. Given details about a travel event, generate a polished public-facing description and internal agent notes.\n\nReturn a JSON object with exactly these fields:\n{\n  "description": "Warm, helpful public description that travelers will see. 2-3 sentences max.",\n  "notes": "Concise internal/operational notes for the travel agent. 1-2 sentences max. If nothing relevant, return empty string."\n}\n\nWrite warm, professional copy. Never use em dashes - use commas, hyphens, or periods instead.\nReturn ONLY the JSON object, no markdown fences.`,
-                messages: [{ role: "user", content: prompt }],
-              })
-              const content = message.content[0]
-              if (content.type !== "text") { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Unexpected response" })); return }
-              const jsonMatch = content.text.match(/\{[\s\S]*\}/)
-              if (!jsonMatch) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "No JSON in response" })); return }
-              const result = JSON.parse(jsonMatch[0])
-              res.setHeader("Content-Type", "application/json")
-              res.end(JSON.stringify({ description: result.description || "", notes: result.notes || "", _usage: { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } }))
-            } catch (err: any) {
-              console.error("assist-event error:", err)
-              res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "AI assist failed", detail: err.message }))
             }
           } else if (p === "/api/flights") {
             const from = url.searchParams.get("from") ?? ""
