@@ -1,7 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };
-
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SYSTEM_PROMPT = `You are an expert travel itinerary parser. Extract EVERY event and detail from the provided content. The input may be text, images (photos/screenshots of itineraries, booking confirmations, travel documents), or both. Read and extract all information regardless of format.
