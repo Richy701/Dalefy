@@ -16,12 +16,15 @@ Return a JSON object with this exact schema:
   "events": [
     {
       "type": "flight | hotel | dining | activity | transfer",
-      "date": "YYYY-MM-DD",
-      "time": "H:MM AM/PM or TBD",
+      "date": "YYYY-MM-DD (for hotels, use the check-in date)",
+      "time": "H:MM AM/PM or TBD (for hotels, use check-in time)",
+      "endTime": "H:MM AM/PM (for hotels use check-out time, for flights use arrival time, optional for others)",
       "title": "Short event title (under 100 chars)",
       "location": "Venue name or route",
       "description": "Public info for travelers: menu items, what to bring, meeting points, place descriptions, dress code, activity details, travel times/distances",
-      "notes": "Internal agent notes: confirmation numbers, supplier contacts, booking references, pricing notes, surcharge warnings, operational details"
+      "notes": "Internal agent notes: confirmation numbers, supplier contacts, booking references, pricing notes, surcharge warnings, operational details",
+      "checkin": "YYYY-MM-DD (hotels only - check-in date)",
+      "checkout": "YYYY-MM-DD (hotels only - check-out date)"
     }
   ],
   "organizer": {
@@ -38,8 +41,8 @@ Return a JSON object with this exact schema:
 CRITICAL — Extract EVERY distinct event. Be thorough. A typical 4-day itinerary should have 15-25+ events. NEVER skip these event types:
 - Each flight (type: "flight") with carrier + number in title, e.g. "VS208 — London to Seoul"
 - Airport transfers and pickups (type: "transfer") — ALWAYS include these, e.g. "Airport pickup & transfer to Seoul"
-- Hotel check-in and check-out as separate events (type: "hotel") — include hotel name
-- Overnight stays (type: "hotel") — if the doc says "Overnight in Seoul", create an event for it
+- Hotel check-in and check-out as ONE event (type: "hotel") — include hotel name, set "date" to check-in date, "checkin" to check-in date, "checkout" to check-out date, "time" to check-in time, "endTime" to check-out time. ALWAYS set checkin and checkout dates for hotel events.
+- Overnight stays (type: "hotel") — if the doc says "Overnight in Seoul", create an event for it with checkin/checkout dates
 - EVERY meal — breakfast, lunch, dinner, each as its own event (type: "dining") with restaurant name
 - EVERY tour, visit, sightseeing stop as separate events (type: "activity")
 - BUT group sub-stops within ONE guided tour into ONE event (e.g. DMZ Tour with multiple stops → one event, stops in location field)

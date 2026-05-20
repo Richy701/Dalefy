@@ -534,6 +534,10 @@ interface ParsedEvent {
   location: string;
   description?: string;
   notes?: string;
+  endTime?: string;
+  checkin?: string;
+  checkout?: string;
+  isOvernight?: boolean;
 }
 
 interface ParsedOrganizer {
@@ -1040,16 +1044,24 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
 
   // Map AI response to ParsedTrip shape
   const travelers: string[] = (data.travelers ?? []).map((t: any) => t.name);
-  const events: ParsedEvent[] = (data.events ?? []).map((ev: any, i: number) => ({
-    id: `imp-ai-${Date.now()}-${i}`,
-    type: ev.type as EventType,
-    date: ev.date ?? "",
-    time: ev.time ?? "TBD",
-    title: toTitleCase((ev.title ?? "Event").slice(0, 100)),
-    location: ev.location ?? "",
-    description: ev.description ?? "",
-    notes: ev.notes ?? "",
-  }));
+  const events: ParsedEvent[] = (data.events ?? []).map((ev: any, i: number) => {
+    const isHotel = ev.type === "hotel";
+    const checkin = ev.checkin ?? "";
+    const checkout = ev.checkout ?? "";
+    const hasMultiDay = isHotel && checkin && checkout && checkin !== checkout;
+    return {
+      id: `imp-ai-${Date.now()}-${i}`,
+      type: ev.type as EventType,
+      date: ev.date ?? checkin ?? "",
+      time: ev.time ?? "TBD",
+      endTime: ev.endTime ?? "",
+      title: toTitleCase((ev.title ?? "Event").slice(0, 100)),
+      location: ev.location ?? "",
+      description: ev.description ?? "",
+      notes: ev.notes ?? "",
+      ...(isHotel ? { checkin, checkout, isOvernight: hasMultiDay } : {}),
+    };
+  });
 
   const organizer: ParsedOrganizer | undefined = data.organizer?.name
     ? { name: data.organizer.name, company: data.organizer.company, email: data.organizer.email, phone: data.organizer.phone }
