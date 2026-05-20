@@ -157,14 +157,21 @@ export async function signInWithApple(
 
   try {
     const provider = new OAuthProvider("apple.com");
+    provider.addScope("email");
+    provider.addScope("name");
     const credential = provider.credential({ idToken, rawNonce: nonce });
     const result = await signInWithCredential(firebaseAuth(), credential);
     const profile = await upsertProfile(result.user);
     return { user: profile, error: null };
   } catch (err: any) {
     const code = err?.code ?? "unknown";
-    console.error("[Apple Auth]", code, err?.message);
-    return { user: null, error: `Apple auth failed (${code})`  };
+    // Decode JWT payload for diagnostics
+    let debug = "";
+    try {
+      const payload = JSON.parse(atob(idToken.split(".")[1]));
+      debug = ` | aud:${payload.aud} iss:${payload.iss} email:${payload.email ?? "hidden"}`;
+    } catch {}
+    return { user: null, error: `Apple auth failed (${code})${debug}` };
   }
 }
 
