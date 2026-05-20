@@ -153,6 +153,7 @@ export async function signInWithApple(
   nonce: string,
 ): Promise<{ user: MobileUser | null; error: string | null }> {
   if (!isFirebaseConfigured()) return { user: null, error: "Not configured" };
+  if (!idToken) return { user: null, error: "Apple Sign-In failed - no identity token" };
 
   try {
     const provider = new OAuthProvider("apple.com");
@@ -160,7 +161,9 @@ export async function signInWithApple(
     const fbUser = await signInOrLink(credential);
     const profile = await upsertProfile(fbUser);
     return { user: profile, error: null };
-  } catch (err: unknown) {
+  } catch (err: any) {
+    const code = err?.code ?? "unknown";
+    console.error("[Apple Auth]", code, err?.message);
     return { user: null, error: friendlyError(err) };
   }
 }
@@ -331,8 +334,9 @@ function friendlyError(err: unknown): string {
       return "Password must be at least 6 characters";
     case "auth/user-not-found":
     case "auth/wrong-password":
-    case "auth/invalid-credential":
       return "Invalid email or password";
+    case "auth/invalid-credential":
+      return "Sign-in failed - invalid credential";
     case "auth/too-many-requests":
       return "Too many attempts - try again later";
     case "auth/credential-already-in-use":
@@ -341,9 +345,11 @@ function friendlyError(err: unknown): string {
       return "An account with this email already exists - try a different sign-in method";
     case "auth/network-request-failed":
       return "Network error - check your connection";
+    case "auth/operation-not-allowed":
+      return "This sign-in method is not enabled";
     default:
       return err instanceof Error
-        ? err.message.replace("Firebase: ", "")
+        ? `${err.message.replace("Firebase: ", "")} (${code || "unknown"})`
         : "Something went wrong";
   }
 }
