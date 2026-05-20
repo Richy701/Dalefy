@@ -177,6 +177,7 @@ Other rules:
 - For flights with concatenated IATA codes like "LHRICN", split into "LHR"+"ICN" and resolve to city names (LHR=London, ICN=Seoul, JFK=New York, etc.)
 - Use 12-hour format with AM/PM for times. Convert 24h times.
 - If a 2-digit year appears (e.g. "26 Apr 26"), expand to 4-digit (2026)
+- If no year is shown or the year is ambiguous, default to the current year (2026) or the next occurrence of that date. NEVER default to 2024 or 2025.
 - For "Day N:" formatted itineraries, use the date from each day header
 - Strip titles/honorifics (Mr/Ms/Dr) from traveler names but note roles like "Group Leader", "VS rep"
 - Do NOT create events from booking metadata, pricing, or terms
