@@ -1854,7 +1854,13 @@ export function WorkspacePage() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
                           <Calendar mode="single" selected={editingEvent?.date ? parseISO(editingEvent.date) : undefined}
-                            onSelect={(day) => day && setEditingEvent(prev => prev ? { ...prev, date: format(day, "yyyy-MM-dd") } : null)} initialFocus />
+                            onSelect={(day) => day && setEditingEvent(prev => {
+                              if (!prev) return null;
+                              const formatted = format(day, "yyyy-MM-dd");
+                              const updates: Partial<TravelEvent> = { date: formatted };
+                              if (prev.type === "hotel") updates.checkin = formatted;
+                              return { ...prev, ...updates };
+                            })} initialFocus />
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -2025,7 +2031,13 @@ export function WorkspacePage() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
                                       <Calendar mode="single" selected={isValid ? parsed! : undefined}
-                                        onSelect={(day) => day && setEditingEvent(prev => prev ? { ...prev, [f.key]: format(day, "yyyy-MM-dd") } : null)} initialFocus />
+                                        onSelect={(day) => day && setEditingEvent(prev => {
+                                          if (!prev) return null;
+                                          const formatted = format(day, "yyyy-MM-dd");
+                                          const updates: Partial<TravelEvent> = { [f.key]: formatted };
+                                          if (f.key === "checkin") updates.date = formatted;
+                                          return { ...prev, ...updates };
+                                        })} initialFocus />
                                     </PopoverContent>
                                   </Popover>
                                 </div>
