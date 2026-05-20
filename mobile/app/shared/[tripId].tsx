@@ -18,8 +18,9 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
-import { fetchTripById, logTripJoin } from "@/services/firebaseTrips";
+import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail } from "@/services/firebaseTrips";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useAuth } from "@/context/AuthContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
@@ -52,6 +53,7 @@ export default function SharedTripScreen() {
   const { C } = useTheme();
   const { trips, addTrip } = useTrips();
   const { prefs } = usePreferences();
+  const { user: authUser, isAnonymous } = useAuth();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
 
@@ -61,6 +63,8 @@ export default function SharedTripScreen() {
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [showLinkPicker, setShowLinkPicker] = useState(false);
+  const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
 
   const alreadyInMyTrips = useMemo(
     () => (tripId ? trips.some((t) => t.id === tripId) : false),
@@ -79,24 +83,50 @@ export default function SharedTripScreen() {
     opacity: addCheck.value,
   }));
 
-  const handleAddToMyTrips = useCallback(() => {
-    if (!trip || alreadyInMyTrips || justAdded) return;
+  const completeJoin = useCallback((linkedTravelerId?: string) => {
+    if (!trip) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addTrip(trip);
-    logTripJoin(trip.id, trip.name, prefs.name, prefs.avatar);
+    logTripJoin(trip.id, trip.name, prefs.name, prefs.avatar, linkedTravelerId)
+      .then(() => {
+        if (linkedTravelerId && !isAnonymous && authUser?.email) {
+          patchTravelerEmail(trip.id, linkedTravelerId, authUser.email);
+        }
+      });
 
-    // Button bounce + checkmark pop
     addScale.value = withSpring(0.92, { damping: 10, stiffness: 200 }, () => {
       addScale.value = withSpring(1, { damping: 14, stiffness: 120 });
     });
     addCheck.value = withDelay(100, withSpring(1, { damping: 12, stiffness: 200 }));
     setJustAdded(true);
+    setShowLinkPicker(false);
 
-    // Navigate to trip detail after brief celebration
     setTimeout(() => {
       router.replace(`/trip/${trip.id}`);
     }, 1200);
-  }, [trip, alreadyInMyTrips, justAdded, addTrip, addScale, addCheck, prefs, router]);
+  }, [trip, addTrip, addScale, addCheck, prefs, router, isAnonymous, authUser]);
+
+  const handleAddToMyTrips = useCallback(async () => {
+    if (!trip || alreadyInMyTrips || justAdded) return;
+    if ((trip.travelers?.length ?? 0) > 0) {
+      const claimed = await fetchClaimedTravelerIds(trip.id);
+      setClaimedIds(claimed);
+
+      if (!isAnonymous && authUser?.email) {
+        const emailMatch = trip.travelers!.find(
+          (t) => t.email && t.email.toLowerCase() === authUser.email.toLowerCase() && !claimed.has(t.id),
+        );
+        if (emailMatch) {
+          completeJoin(emailMatch.id);
+          return;
+        }
+      }
+
+      setShowLinkPicker(true);
+      return;
+    }
+    completeJoin();
+  }, [trip, alreadyInMyTrips, justAdded, completeJoin, isAnonymous, authUser]);
 
   useEffect(() => {
     if (!tripId) return;
@@ -386,6 +416,42 @@ export default function SharedTripScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Traveler linking overlay */}
+      {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
+        <View style={styles.linkOverlay}>
+          <View style={styles.linkSheet}>
+            <Text style={styles.linkTitle}>Which traveler are you?</Text>
+            <Text style={styles.linkSub}>
+              This helps show you only the events relevant to you.
+            </Text>
+
+            {trip.travelers.map(t => {
+              const taken = claimedIds.has(t.id);
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => !taken && completeJoin(t.id)}
+                  disabled={taken}
+                  style={({ pressed }) => [styles.linkOption, pressed && !taken && { opacity: 0.8 }, taken && { opacity: 0.4 }]}
+                >
+                  <View style={[styles.pickerOptionAvatar, taken ? {} : styles.pickerOptionAvatarBrand]}>
+                    <Text style={[styles.pickerOptionAvatarText, { color: taken ? C.textDim : C.teal }]}>{t.initials}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pickerOptionName, { color: taken ? C.textDim : C.textPrimary }]}>{t.name}</Text>
+                    {taken && <Text style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>Already claimed</Text>}
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            <Pressable onPress={() => completeJoin()} style={styles.linkSkip}>
+              <Text style={styles.linkSkipText}>I'm not listed</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* Sticky bottom banner */}
       {!alreadyInMyTrips && !justAdded ? (
         <View style={[styles.stickyBar, { paddingBottom: insets.bottom + S.sm }]}>
@@ -563,6 +629,37 @@ function makeStyles(C: ThemeColors) {
     },
     inlineEventSub: {
       fontSize: 10, color: C.textTertiary, marginTop: 1,
+    },
+
+    // Traveler linking overlay
+    linkOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "flex-end",
+      zIndex: 10,
+    },
+    linkSheet: {
+      backgroundColor: C.bg,
+      borderTopLeftRadius: R["2xl"], borderTopRightRadius: R["2xl"],
+      paddingHorizontal: S.xl, paddingTop: S.lg, paddingBottom: S.xl,
+    },
+    linkTitle: {
+      fontSize: T.xl, fontWeight: "800" as any, color: C.textPrimary,
+      marginBottom: 4,
+    },
+    linkSub: {
+      fontSize: T.sm, color: C.textSecondary, marginBottom: S.lg,
+    },
+    linkOption: {
+      flexDirection: "row", alignItems: "center", gap: 12,
+      paddingVertical: 14, paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight,
+    },
+    linkSkip: {
+      alignItems: "center", paddingVertical: S.md, marginTop: S.xs,
+    },
+    linkSkipText: {
+      fontSize: T.sm, fontWeight: T.medium as any, color: C.textTertiary,
     },
 
     // Sticky bottom bar

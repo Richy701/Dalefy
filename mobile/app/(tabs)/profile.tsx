@@ -8,7 +8,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
-  User, Palette, Bell, Shield,
+  User, Palette, Bell, Shield, UserCirclePlus,
   Vibrate, Pencil, ArrowSquareOut, Info,
   FileText, CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
 } from "phosphor-react-native";
@@ -16,6 +16,7 @@ import { T, R, S, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
@@ -36,6 +37,7 @@ function deriveGradient(name: string): [string, string] {
 export default function ProfileScreen() {
   const { C, isDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
+  const auth = useAuth();
   const { brand } = useBrand();
   const { trips, reload } = useTrips();
   const router = useRouter();
@@ -136,6 +138,27 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
         </FadeIn>
+
+        {/* ── Account upgrade CTA (anonymous users only) ── */}
+        {auth.isAnonymous && (
+          <FadeIn delay={60}>
+            <Pressable
+              onPress={() => { haptic.selection(); router.push("/auth?mode=upgrade"); }}
+              style={({ pressed }) => [s.upgradeCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+            >
+              <View style={[s.upgradeIcon, { backgroundColor: C.tealDim }]}>
+                <UserCirclePlus size={20} color={C.teal} weight="regular" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.upgradeTitle}>Sign in to save your trips</Text>
+                <Text style={s.upgradeSub}>Access your trips on any device</Text>
+              </View>
+              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 0.5 }}>
+                SIGN IN
+              </Text>
+            </Pressable>
+          </FadeIn>
+        )}
 
         {/* ── Appearance ── */}
         <FadeIn delay={80}>
@@ -347,6 +370,27 @@ function makeStyles(C: ThemeColors) {
       marginTop: S.md,
       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+    },
+    upgradeCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: S.sm,
+      padding: S.md,
+      backgroundColor: C.card,
+      borderRadius: R.xl,
+      marginTop: S.sm,
+      borderWidth: 1,
+      borderColor: `${C.teal}30`,
+    },
+    upgradeIcon: {
+      width: 40, height: 40, borderRadius: R.md,
+      alignItems: "center", justifyContent: "center",
+    },
+    upgradeTitle: {
+      fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
+    },
+    upgradeSub: {
+      fontSize: T.xs, color: C.textTertiary, marginTop: 1,
     },
     avatar: {
       width: 56,

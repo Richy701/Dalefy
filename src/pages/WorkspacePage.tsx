@@ -13,13 +13,12 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor,
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
@@ -238,6 +237,7 @@ export function WorkspacePage() {
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TravelEvent | null>(null);
   const [imageSeed, setImageSeed] = useState(0);
@@ -251,16 +251,47 @@ export function WorkspacePage() {
   const [preferredImageSource, setPreferredImageSource] = useState<"auto" | "google" | "unsplash" | "pexels">("auto");
   const [aiAssistLoading, setAiAssistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"itinerary" | "media" | "people">("itinerary");
-  const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
+  const [customTravelers, setCustomTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
   const allTravelers = useMemo(() => {
     const seen = new Set<string>();
-    return [...MOCK_USERS, ...customTravelers].filter(u => {
-      const key = u.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [customTravelers]);
+    if (isDemo) {
+      return [...MOCK_USERS, ...customTravelers].filter(u => {
+        if (seen.has(u.id)) return false;
+        seen.add(u.id);
+        return true;
+      });
+    }
+    const fromTrips: UserType[] = [];
+    for (const t of trips) {
+      if (!t.travelers) continue;
+      for (const tv of t.travelers) {
+        if (seen.has(tv.id)) continue;
+        seen.add(tv.id);
+        fromTrips.push({
+          id: tv.id,
+          name: tv.name,
+          email: tv.email || "",
+          role: "Traveler",
+          avatar: "",
+          initials: tv.initials,
+          status: "Active",
+        });
+      }
+    }
+    for (const cu of customTravelers) {
+      if (seen.has(cu.id)) continue;
+      const nameKey = cu.name.trim().toLowerCase();
+      const dup = fromTrips.find(v => v.name.trim().toLowerCase() === nameKey);
+      if (dup) {
+        if (cu.email && !dup.email) dup.email = cu.email;
+        if (cu.role && cu.role !== "Traveler") dup.role = cu.role;
+      } else {
+        seen.add(cu.id);
+        fromTrips.push(cu);
+      }
+    }
+    return fromTrips;
+  }, [customTravelers, trips, isDemo]);
 
   const tripTravelers = useMemo(() => {
     if (!trip) return [];
@@ -271,7 +302,7 @@ export function WorkspacePage() {
     if (trip.travelers?.length) {
       return trip.travelers.map(t => {
         const full = allTravelers.find(u => u.id === t.id);
-        return full ?? { id: t.id, name: t.name, email: "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const } satisfies UserType;
+        return full ?? { id: t.id, name: t.name, email: t.email || "", role: "Traveler" as const, avatar: "", initials: t.initials, status: "Active" as const } satisfies UserType;
       });
     }
     return [];
@@ -282,6 +313,22 @@ export function WorkspacePage() {
     return allTravelers.filter(u => !linkedIds.has(u.id));
   }, [trip, allTravelers, tripTravelers]);
   const [peopleSearch, setPeopleSearch] = useState("");
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [editingEmailValue, setEditingEmailValue] = useState("");
+  const [bulkEmailMode, setBulkEmailMode] = useState(false);
+  const [bulkEmails, setBulkEmails] = useState<Record<string, string>>({});
+  const saveTravelerEmail = useCallback((travelerId: string, email: string) => {
+    if (!trip) return;
+    const trimmed = email.trim();
+    const newTravelers = (trip.travelers || []).map(t =>
+      t.id === travelerId ? { ...t, email: trimmed || undefined } : t,
+    );
+    updateTrip(trip.id, { travelers: newTravelers });
+    setCustomTravelers(prev => prev.map(c =>
+      c.id === travelerId ? { ...c, email: trimmed } : c,
+    ));
+  }, [trip, updateTrip, setCustomTravelers]);
+
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const viewAsTraveler = useMemo(() => viewAsId ? allTravelers.find(u => u.id === viewAsId) ?? null : null, [viewAsId, allTravelers]);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
@@ -449,6 +496,34 @@ export function WorkspacePage() {
       </div>
     );
   }
+
+  const handleGeocodeAll = async () => {
+    if (geocoding || !trip) return;
+    setGeocoding(true);
+    try {
+      const { geocode: geocodeSingle, geocodeMany } = await import("@/services/geocode");
+      const withLocation = trip.events.filter(ev => ev.location);
+      if (withLocation.length === 0) {
+        toast.success("No event locations to geocode");
+        setGeocoding(false);
+        return;
+      }
+      const destProximity = trip.destination ? await geocodeSingle(trip.destination) : null;
+      const coordMap = await geocodeMany(withLocation.map(ev => ev.location), destProximity ?? undefined);
+      const updated = trip.events.map(ev => {
+        if (ev.location && coordMap[ev.location]) {
+          return { ...ev, locationCoords: coordMap[ev.location] };
+        }
+        return ev;
+      });
+      const resolved = Object.keys(coordMap).length;
+      updateTrip(trip.id, { events: updated });
+      toast.success(`Geocoded ${resolved} of ${withLocation.length} locations`);
+    } catch {
+      toast.error("Geocoding failed");
+    }
+    setGeocoding(false);
+  };
 
   const handlePublish = async () => {
     if (publishing) return;
@@ -1074,6 +1149,9 @@ export function WorkspacePage() {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <NotificationPanel />
+          <button aria-label="Geocode event locations" onClick={handleGeocodeAll} disabled={geocoding} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm disabled:opacity-50" title="Geocode event locations">
+            {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+          </button>
           <button aria-label="Re-import itinerary" onClick={() => setReimportOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm" title="Re-import itinerary">
             <Upload className="h-4 w-4" />
           </button>
@@ -1140,6 +1218,9 @@ export function WorkspacePage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <Upload className="h-4 w-4" /> Re-import
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+                {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode Locations"}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
               <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
@@ -1303,38 +1384,30 @@ export function WorkspacePage() {
 
             {/* Tab bar */}
             <div className="px-3 sm:px-4 lg:px-10 pt-6 shrink-0">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "itinerary" | "media")}>
-                <TabsList className="bg-transparent h-auto p-0 gap-1">
-                  <TabsTrigger
-                    value="itinerary"
-                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
-                  >
-                    ITINERARY
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="media"
-                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
-                  >
-                    MEDIA
-                    {(trip.media?.length ?? 0) > 0 && (
-                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "media" ? "bg-black/20 text-black" : "bg-brand/15 text-brand"}`}>
-                        {trip.media!.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="people"
-                    className="flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 data-active:bg-brand dark:data-active:bg-brand data-active:text-black dark:data-active:text-black data-active:border-transparent dark:data-active:border-transparent data-active:shadow-lg data-active:shadow-brand/20 bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
-                  >
-                    PEOPLE
-                    {(trip.travelerIds?.length ?? 0) > 0 && (
-                      <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${activeTab === "people" ? "bg-black/20 text-black" : "bg-brand/15 text-brand"}`}>
-                        {trip.travelerIds!.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex gap-1">
+                {(["itinerary", "media", "people"] as const).map(t => {
+                  const active = activeTab === t;
+                  const count = t === "media" ? (trip.media?.length ?? 0) : t === "people" ? (trip.travelerIds?.length ?? 0) : 0;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setActiveTab(t)}
+                      className={`flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 ${
+                        active
+                          ? "bg-brand text-black border-transparent shadow-lg shadow-brand/20"
+                          : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      {t.toUpperCase()}
+                      {count > 0 && (
+                        <span className={`text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none ${active ? "bg-white/20" : "bg-brand/15 text-brand"}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Itinerary tab */}
@@ -1586,19 +1659,113 @@ export function WorkspacePage() {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand">Trip Travelers</h3>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{tripTravelers.length} assigned</span>
+                      <div className="flex items-center gap-2">
+                        {tripTravelers.length > 2 && !bulkEmailMode && (
+                          <button
+                            onClick={() => {
+                              const init: Record<string, string> = {};
+                              tripTravelers.forEach(t => { init[t.id] = t.email || ""; });
+                              setBulkEmails(init);
+                              setBulkEmailMode(true);
+                            }}
+                            className="text-[10px] font-bold text-brand uppercase tracking-wider hover:underline"
+                          >
+                            Edit All Emails
+                          </button>
+                        )}
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{tripTravelers.length} assigned</span>
+                      </div>
                     </div>
+
+                    {/* Bulk email editor */}
+                    {bulkEmailMode && tripTravelers.length > 0 && (
+                      <div className="mb-6 rounded-2xl bg-white dark:bg-[#111111] border border-brand/30 overflow-hidden">
+                        <div className="px-4 py-3 bg-brand/5 border-b border-brand/20 flex items-center justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Bulk Email Editor</p>
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-[#666]">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                          {tripTravelers.map(t => (
+                            <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
+                              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand text-[10px] font-black uppercase shrink-0">{t.initials}</div>
+                              <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] w-32 sm:w-40 truncate shrink-0">{t.name}</p>
+                              <input
+                                type="email"
+                                value={bulkEmails[t.id] || ""}
+                                onChange={e => setBulkEmails(prev => ({ ...prev, [t.id]: e.target.value }))}
+                                placeholder="email@example.com"
+                                className="flex-1 h-8 px-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-lg text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#333] focus:outline-none focus:border-brand transition-colors"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="px-4 py-3 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center gap-2 justify-end">
+                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors">
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              for (const t of tripTravelers) {
+                                const newEmail = (bulkEmails[t.id] || "").trim();
+                                if (newEmail !== (t.email || "")) {
+                                  saveTravelerEmail(t.id, newEmail);
+                                }
+                              }
+                              setBulkEmailMode(false);
+                              toast.success("Emails updated");
+                            }}
+                            className="h-8 px-5 rounded-lg bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                          >
+                            Save All
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {tripTravelers.length > 0 ? (
                       <div className="space-y-2">
                         {tripTravelers.map(t => {
                           const eventCount = trip.events.filter(e => e.assignedTo?.includes(t.id)).length;
-                          const allEventsCount = trip.events.filter(e => !e.assignedTo || e.assignedTo.length === 0).length;
+                          const isEditing = editingEmailId === t.id;
                           return (
                             <div key={t.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] group hover:border-brand/30 transition-colors">
                               <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-xs font-black uppercase shrink-0">{t.initials}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
-                                <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium truncate">{t.email}</p>
+                                {isEditing ? (
+                                  <form
+                                    className="flex items-center gap-1.5 mt-1"
+                                    onSubmit={e => {
+                                      e.preventDefault();
+                                      saveTravelerEmail(t.id, editingEmailValue);
+                                      setEditingEmailId(null);
+                                      toast.success("Email saved");
+                                    }}
+                                  >
+                                    <input
+                                      autoFocus
+                                      type="email"
+                                      value={editingEmailValue}
+                                      onChange={e => setEditingEmailValue(e.target.value)}
+                                      onKeyDown={e => { if (e.key === "Escape") setEditingEmailId(null); }}
+                                      placeholder="email@example.com"
+                                      className="flex-1 h-7 px-2 bg-slate-50 dark:bg-[#0a0a0a] border border-brand/40 rounded-md text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-[#333] focus:outline-none focus:ring-1 focus:ring-brand/30"
+                                    />
+                                    <button type="submit" className="h-7 w-7 rounded-md bg-brand flex items-center justify-center shrink-0">
+                                      <Check className="h-3 w-3 text-black" weight="bold" />
+                                    </button>
+                                  </form>
+                                ) : (
+                                  <button
+                                    onClick={() => { setEditingEmailId(t.id); setEditingEmailValue(t.email || ""); }}
+                                    className="text-[10px] font-medium truncate mt-0.5 text-left block"
+                                  >
+                                    {t.email
+                                      ? <span className="text-slate-500 dark:text-[#888]">{t.email}</span>
+                                      : <span className="text-brand/50 hover:text-brand transition-colors">+ Add email</span>
+                                    }
+                                  </button>
+                                )}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {eventCount > 0 && (
@@ -1612,7 +1779,6 @@ export function WorkspacePage() {
                                     const newIds = (trip.travelerIds || []).filter(id => id !== t.id);
                                     const newTravelers = (trip.travelers || []).filter(tr => tr.id !== t.id);
                                     updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
-                                    // Also remove from any event assignedTo
                                     trip.events.forEach(ev => {
                                       if (ev.assignedTo?.includes(t.id)) {
                                         updateEvent(trip.id, { ...ev, assignedTo: ev.assignedTo.filter(id => id !== t.id) });
@@ -1664,7 +1830,7 @@ export function WorkspacePage() {
                               type="button"
                               onClick={() => {
                                 const newIds = [...(trip.travelerIds || []), t.id];
-                                const newTravelers = [...(trip.travelers || []), { id: t.id, name: t.name, initials: t.initials }];
+                                const newTravelers = [...(trip.travelers || []), { id: t.id, name: t.name, initials: t.initials, ...(t.email ? { email: t.email } : {}) }];
                                 updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
                                 toast.success(`Added ${t.name} to trip`);
                               }}
@@ -1673,19 +1839,48 @@ export function WorkspacePage() {
                               <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
-                                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">{t.email}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">{t.email || <span className="italic text-slate-300 dark:text-[#333]">No email</span>}</p>
                               </div>
                               <Plus className="h-4 w-4 text-slate-300 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
                             </button>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-slate-400 dark:text-[#666]">
-                          <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers created yet" : "All travelers are assigned"}</p>
-                          <p className="text-[10px] mt-1">Add travelers on the Travelers page first</p>
+                        <div className="text-center py-4 text-slate-400 dark:text-[#666]">
+                          <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
                         </div>
                       );
                     })()}
+
+                    {/* Quick add traveler inline */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-[#555] mb-3">Quick Add</p>
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget;
+                          const nameVal = (form.elements.namedItem("qname") as HTMLInputElement).value.trim();
+                          const emailVal = (form.elements.namedItem("qemail") as HTMLInputElement).value.trim();
+                          if (!nameVal) return;
+                          const id = `custom-${Date.now()}`;
+                          const initials = nameVal.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+                          const newUser: UserType = { id, name: nameVal, email: emailVal, role: "Traveler", avatar: "", initials, status: "Active" };
+                          setCustomTravelers(prev => [...prev, newUser]);
+                          const newIds = [...(trip.travelerIds || []), id];
+                          const newTravelers = [...(trip.travelers || []), { id, name: nameVal, initials, ...(emailVal ? { email: emailVal } : {}) }];
+                          updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
+                          toast.success(`Added ${nameVal} to trip`);
+                          form.reset();
+                        }}
+                        className="space-y-2"
+                      >
+                        <input name="qname" required placeholder="Name" className="w-full h-9 px-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors" />
+                        <input name="qemail" type="email" placeholder="Email (for auto-linking)" className="w-full h-9 px-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors" />
+                        <button type="submit" className="w-full h-9 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
+                          <UserPlus className="h-3.5 w-3.5" /> Add to Trip
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </div>
               </div>

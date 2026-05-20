@@ -26,7 +26,7 @@ function staticLookup(location: string): Coord | null {
   return null;
 }
 
-export async function geocode(location: string): Promise<Coord | null> {
+export async function geocode(location: string, proximity?: Coord): Promise<Coord | null> {
   if (!location) return null;
   const key = location.trim();
   if (!key) return null;
@@ -34,34 +34,37 @@ export async function geocode(location: string): Promise<Coord | null> {
   const fromStatic = staticLookup(key);
   if (fromStatic) return fromStatic;
 
-  if (key in memCache) return memCache[key];
-  if (inflight.has(key)) return inflight.get(key)!;
+  const cacheKey = proximity ? `${key}@${proximity.join(",")}` : key;
+  if (cacheKey in memCache) return memCache[cacheKey];
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey)!;
 
   const p = (async () => {
     try {
       const q = encodeURIComponent(key);
-      const res = await fetch(`/api/geocode?q=${q}`);
+      let url = `/api/geocode?q=${q}`;
+      if (proximity) url += `&proximity=${proximity[1]},${proximity[0]}`;
+      const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.coord) return null;
       const coord: Coord = data.coord;
-      memCache[key] = coord;
+      memCache[cacheKey] = coord;
       saveCache(memCache);
       return coord;
     } catch {
       return null;
     } finally {
-      inflight.delete(key);
+      inflight.delete(cacheKey);
     }
   })();
 
-  inflight.set(key, p);
+  inflight.set(cacheKey, p);
   return p;
 }
 
-export async function geocodeMany(locations: string[]): Promise<Record<string, Coord>> {
+export async function geocodeMany(locations: string[], proximity?: Coord): Promise<Record<string, Coord>> {
   const unique = Array.from(new Set(locations.filter(Boolean)));
-  const results = await Promise.all(unique.map(l => geocode(l).then(c => [l, c] as const)));
+  const results = await Promise.all(unique.map(l => geocode(l, proximity).then(c => [l, c] as const)));
   const out: Record<string, Coord> = {};
   for (const [l, c] of results) if (c) out[l] = c;
   return out;

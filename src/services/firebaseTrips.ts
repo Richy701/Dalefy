@@ -181,6 +181,9 @@ export interface TripMember {
   avatar: string | null;
   joined_at: string;
   role?: TripMemberRole;
+  linked_traveler_id?: string;
+  uid?: string;
+  email?: string;
 }
 
 export async function fetchTripMembers(): Promise<TripMember[]> {

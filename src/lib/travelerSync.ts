@@ -3,7 +3,7 @@ import { initialsFrom } from "@/lib/names";
 
 export interface MatchResult {
   travelerIds: string[];
-  travelers: Array<{ id: string; name: string; initials: string }>;
+  travelers: Array<{ id: string; name: string; initials: string; email?: string }>;
   newTravelers: User[];
   attendees: string;
 }
@@ -56,7 +56,7 @@ export function matchOrCreateTravelers(
     if (match) {
       used.add(match.id);
       travelerIds.push(match.id);
-      travelers.push({ id: match.id, name: match.name, initials: match.initials });
+      travelers.push({ id: match.id, name: match.name, initials: match.initials, ...(match.email ? { email: match.email } : {}) });
     } else {
       const id = `custom-${Date.now()}-${newTravelers.length}`;
       const name = raw.trim().split(/\s+/).map(
@@ -73,7 +73,7 @@ export function matchOrCreateTravelers(
       };
       newTravelers.push(user);
       travelerIds.push(id);
-      travelers.push({ id, name, initials: user.initials });
+      travelers.push({ id, name, initials: user.initials, ...(user.email ? { email: user.email } : {}) });
     }
   }
 

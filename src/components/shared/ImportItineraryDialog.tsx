@@ -14,6 +14,7 @@ import { EVENT_TEXT_COLORS, EVENT_ICONS, type EventType } from "@/config/eventSt
 import { matchOrCreateTravelers } from "@/lib/travelerSync";
 import { notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { lookupFlight } from "@/services/serpapi";
+import { geocodeMany } from "@/services/geocode";
 
 interface ImportItineraryDialogProps {
   open: boolean;
@@ -1257,6 +1258,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           logger.log("Import", "enriched hotel:", hotelQuery, "→", match.name);
         }
       } catch { /* hotel lookup failed, keep parsed data */ }
+    }
+
+    // Geocode event locations and store coords (biased toward trip destination)
+    const locations = events.filter(ev => ev.location && !ev.locationCoords).map(ev => ev.location);
+    if (locations.length > 0) {
+      const { geocode: geocodeSingle } = await import("@/services/geocode");
+      const destProximity = parsed.destination ? await geocodeSingle(parsed.destination) : null;
+      const coordMap = await geocodeMany(locations, destProximity ?? undefined);
+      for (const ev of events) {
+        if (ev.location && !ev.locationCoords && coordMap[ev.location]) {
+          ev.locationCoords = coordMap[ev.location];
+        }
+      }
+      logger.log("Import", "geocoded", Object.keys(coordMap).length, "of", locations.length, "locations");
     }
 
     // Convert extracted images into TripMedia entries

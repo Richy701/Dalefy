@@ -201,11 +201,14 @@ export async function logTripJoin(
   tripName: string,
   userName: string,
   avatar?: string,
+  linkedTravelerId?: string,
+  email?: string,
 ): Promise<void> {
   try {
     const deviceId = await getDeviceId();
     await waitForAuth();
     const uid = firebaseAuth().currentUser?.uid ?? null;
+    const authEmail = email || firebaseAuth().currentUser?.email || null;
 
     const memberData = {
       device_id: deviceId,
@@ -215,6 +218,8 @@ export async function logTripJoin(
       avatar: avatar || null,
       joined_at: new Date().toISOString(),
       ...(uid ? { uid } : {}),
+      ...(authEmail ? { email: authEmail } : {}),
+      ...(linkedTravelerId ? { linked_traveler_id: linkedTravelerId } : {}),
     };
 
     // Device-keyed doc (includes uid so rules can verify ownership)
@@ -228,6 +233,55 @@ export async function logTripJoin(
     }
   } catch {
     // non-critical — don't block the join flow
+  }
+}
+
+export async function fetchClaimedTravelerIds(tripId: string): Promise<Set<string>> {
+  try {
+    await waitForAuth();
+    const snap = await getDocs(
+      query(
+        collection(firebaseDb(), TRIP_MEMBERS),
+        where("trip_id", "==", tripId),
+      ),
+    );
+    const claimed = new Set<string>();
+    snap.forEach((d) => {
+      const id = d.data().linked_traveler_id;
+      if (id) claimed.add(id);
+    });
+    return claimed;
+  } catch {
+    return new Set();
+  }
+}
+
+export async function updateLinkedTraveler(
+  tripId: string,
+  linkedTravelerId: string,
+): Promise<void> {
+  try {
+    const deviceId = await getDeviceId();
+    await waitForAuth();
+    const uid = firebaseAuth().currentUser?.uid ?? null;
+
+    const memberId = `${deviceId}_${tripId}`;
+    await setDoc(
+      doc(firebaseDb(), TRIP_MEMBERS, memberId),
+      { linked_traveler_id: linkedTravelerId },
+      { merge: true },
+    );
+
+    if (uid) {
+      const uidMemberId = `${uid}_${tripId}`;
+      await setDoc(
+        doc(firebaseDb(), TRIP_MEMBERS, uidMemberId),
+        { linked_traveler_id: linkedTravelerId },
+        { merge: true },
+      );
+    }
+  } catch {
+    // non-critical
   }
 }
 
@@ -267,6 +321,27 @@ export async function updateMemberProfile(name: string, avatar: string | null): 
     console.log("[updateMemberProfile] done");
   } catch (err) {
     console.warn("[updateMemberProfile] failed:", err);
+  }
+}
+
+/** Patch a traveler's email onto the trip's denormalized travelers array */
+export async function patchTravelerEmail(
+  tripId: string,
+  travelerId: string,
+  email: string,
+): Promise<void> {
+  try {
+    await waitForAuth();
+    const snap = await getDoc(doc(firebaseDb(), TRIPS, tripId));
+    if (!snap.exists()) return;
+    const travelers = snap.data().travelers as Array<{ id: string; name: string; initials: string; email?: string }> | undefined;
+    if (!travelers) return;
+    const idx = travelers.findIndex(t => t.id === travelerId);
+    if (idx === -1 || travelers[idx].email) return;
+    travelers[idx] = { ...travelers[idx], email };
+    await setDoc(doc(firebaseDb(), TRIPS, tripId), { travelers }, { merge: true });
+  } catch {
+    // non-critical
   }
 }
 

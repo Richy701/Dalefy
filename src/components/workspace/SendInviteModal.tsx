@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Copy, Check, CaretDown, Users, FileText } from "@phosphor-icons/react";
+import { Copy, Check, CaretDown, Users, FileText, EnvelopeSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
@@ -169,6 +169,16 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 </html>`;
   }, [resolvedBody, trip, brand, accentColor, accentFg, shareUrl]);
 
+  const openInEmailClient = useCallback(() => {
+    if (selectedEmails.length === 0) {
+      toast.error("No travelers selected");
+      return;
+    }
+    const plainBody = `${resolvedBody}\n\n---\nView Itinerary: ${shareUrl}${trip.shortCode ? `\nTrip PIN: ${trip.shortCode}` : ""}`;
+    const mailto = `mailto:${selectedEmails.join(",")}?subject=${encodeURIComponent(resolvedSubject)}&body=${encodeURIComponent(plainBody)}`;
+    window.open(mailto, "_blank");
+  }, [selectedEmails, resolvedSubject, resolvedBody, shareUrl, trip.shortCode]);
+
   const copyContent = useCallback(async () => {
     const html = buildEmailHtml();
     try {
@@ -316,37 +326,52 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               </p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button
-                onClick={copyEmails}
-                variant="outline"
-                className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
-              >
-                {copiedEmail ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Users className="h-3.5 w-3.5" />}
-                {copiedEmail ? "Copied!" : "1. Copy Emails"}
-              </Button>
-              <Button
-                onClick={copySubject}
-                variant="outline"
-                className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
-              >
-                {copiedSubject ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <FileText className="h-3.5 w-3.5" />}
-                {copiedSubject ? "Copied!" : "2. Copy Subject"}
-              </Button>
-              <Button
-                onClick={copyContent}
-                className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-6 gap-2 transition-all duration-150 hover:opacity-90"
-                style={{ background: accentColor, color: accentFg }}
-              >
-                {copiedContent ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copiedContent ? "Copied!" : "3. Copy Content"}
-              </Button>
-            </div>
+            {/* Primary: Open in email client */}
+            <Button
+              onClick={openInEmailClient}
+              className="w-full rounded-xl text-xs font-bold uppercase tracking-widest h-12 gap-2.5 transition-all duration-150 hover:opacity-90"
+              style={{ background: accentColor, color: accentFg }}
+            >
+              <EnvelopeSimple className="h-4 w-4" weight="bold" />
+              Send via Email Client
+            </Button>
+            <p className="text-[10px] text-slate-400 dark:text-[#666] -mt-1">
+              Opens Outlook, Gmail, or your default email app with everything pre-filled.
+            </p>
 
-            <div className="text-[10px] text-slate-400 dark:text-[#666] leading-relaxed bg-slate-50 dark:bg-[#0a0a0a] rounded-xl p-3 border border-slate-100 dark:border-[#1a1a1a]">
-              <strong className="text-slate-500 dark:text-[#888]">How to use:</strong> Copy each item above and paste into a new email in your email client. The branded formatting carries over into Outlook, Gmail, and most clients.
-            </div>
+            {/* Secondary: Copy buttons for manual compose */}
+            <details className="group">
+              <summary className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#666] cursor-pointer hover:text-slate-600 dark:hover:text-[#999] transition-colors list-none flex items-center gap-1.5">
+                <CaretDown className="h-3 w-3 -rotate-90 group-open:rotate-0 transition-transform" />
+                Or copy manually
+              </summary>
+              <div className="flex flex-wrap gap-2 pt-3">
+                <Button
+                  onClick={copyEmails}
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                >
+                  {copiedEmail ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Users className="h-3.5 w-3.5" />}
+                  {copiedEmail ? "Copied!" : "1. Copy Emails"}
+                </Button>
+                <Button
+                  onClick={copySubject}
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                >
+                  {copiedSubject ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <FileText className="h-3.5 w-3.5" />}
+                  {copiedSubject ? "Copied!" : "2. Copy Subject"}
+                </Button>
+                <Button
+                  onClick={copyContent}
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                >
+                  {copiedContent ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedContent ? "Copied!" : "3. Copy Content"}
+                </Button>
+              </div>
+            </details>
           </div>
 
           {/* Right: Live Preview */}

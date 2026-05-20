@@ -14,11 +14,12 @@ import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, R, S, eventColor } from "@/constants/theme";
+import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { Illustration } from "@/components/Illustration";
 import type { TravelEvent, Trip } from "@/shared/types";
+import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -104,28 +105,28 @@ function dayOfTrip(start: string): { day: number; total?: number; end?: string }
 }
 
 function tripDayInfo(trip: Trip): { day: number; total: number } {
+  const tz = getDestinationTz(trip.destination);
+  const today = todayInTz(tz);
   const s = new Date(trip.start + "T00:00:00");
   const e = new Date(trip.end + "T00:00:00");
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const day = Math.floor((now.getTime() - s.getTime()) / 86400000) + 1;
+  const t = new Date(today + "T00:00:00");
+  const day = Math.floor((t.getTime() - s.getTime()) / 86400000) + 1;
   const total = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
   return { day, total };
 }
 
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function findActiveTrip(trips: Trip[]): Trip | null {
-  const today = todayStr();
-  return trips.find(t => t.start <= today && t.end >= today) ?? null;
+  for (const t of trips) {
+    const tz = getDestinationTz(t.destination);
+    const today = todayInTz(tz);
+    if (t.start <= today && t.end >= today) return t;
+  }
+  return null;
 }
-
 
 function getTodayEvents(trip: Trip): TravelEvent[] {
-  const today = todayStr();
+  const tz = getDestinationTz(trip.destination);
+  const today = todayInTz(tz);
   const evts = trip.events.filter(e => e.date === today);
   evts.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
   return evts;
@@ -224,9 +225,8 @@ function formatCountdownFull(ms: number): { days: number; hours: number } {
   return { days, hours };
 }
 
-function getNextEvent(events: TravelEvent[]): { event: TravelEvent; minsUntil: number } | null {
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
+function getNextEvent(events: TravelEvent[], tz?: string): { event: TravelEvent; minsUntil: number } | null {
+  const { minutes: nowMins } = nowInTz(tz);
   for (const ev of events) {
     const evMins = timeToMinutes(ev.time);
     if (evMins > nowMins) return { event: ev, minsUntil: evMins - nowMins };
@@ -245,6 +245,7 @@ export default function TodayScreen() {
   const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
   const sheetRef = useRef<BottomSheet>(null);
   const mapViewRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
   const snapPoints = useMemo(() => ["40%", "80%"], []);
 
   const onRefresh = useCallback(async () => {
@@ -254,17 +255,20 @@ export default function TodayScreen() {
   }, [reload]);
 
   const activeTrip = useMemo(() => findActiveTrip(trips), [trips]);
+  const destTz = useMemo(() => getDestinationTz(activeTrip?.destination), [activeTrip?.destination]);
   const todayEvents = useMemo(() => activeTrip ? getTodayEvents(activeTrip) : [], [activeTrip]);
-  const next = useMemo(() => getNextEvent(todayEvents), [todayEvents]);
+  const next = useMemo(() => getNextEvent(todayEvents, destTz), [todayEvents, destTz]);
   const dayInfo = useMemo(() => activeTrip ? tripDayInfo(activeTrip) : null, [activeTrip]);
-  const nowMins = useMemo(() => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); }, []);
+  const nowMins = useMemo(() => nowInTz(destTz).minutes, [destTz]);
   const pastCount = useMemo(() => todayEvents.filter(e => timeToMinutes(e.time) < nowMins).length, [todayEvents, nowMins]);
 
   // Find the next upcoming trip if none active
   const upcomingTrip = useMemo(() => {
     if (activeTrip) return null;
-    const today = todayStr();
-    const future = trips.filter(t => t.start > today).sort((a, b) => a.start.localeCompare(b.start));
+    const future = trips.filter(t => {
+      const tz = getDestinationTz(t.destination);
+      return t.start > todayInTz(tz);
+    }).sort((a, b) => a.start.localeCompare(b.start));
     return future[0] ?? null;
   }, [trips, activeTrip]);
 
@@ -306,42 +310,30 @@ export default function TodayScreen() {
     }
   }, [weatherTrip?.destination, !!activeTrip]);
 
-  const [nextCoord, setNextCoord] = useState<[number, number] | null>(null);
-
-  // Find the next non-transfer event with a real location
-  const nextMappable = useMemo(() => {
-    if (!next) return null;
-    const idx = todayEvents.indexOf(next.event);
-    for (let i = idx; i < todayEvents.length; i++) {
-      const ev = todayEvents[i];
-      if (ev.type !== "transfer" && ev.type !== "flight" && ev.location) return ev;
-    }
-    return null;
-  }, [next, todayEvents]);
 
   useEffect(() => {
     setDestCenter(null);
-    setNextCoord(null);
     const dest = activeTrip?.destination;
     if (!dest) return;
-
-    geocodeLocation(dest).then(destCoord => {
-      if (!destCoord) return;
-      setDestCenter(destCoord);
-
-      if (!nextMappable?.location) return;
-      if (nextMappable.locationCoords) {
-        setNextCoord([nextMappable.locationCoords[1], nextMappable.locationCoords[0]]);
-        setDestCenter([nextMappable.locationCoords[1], nextMappable.locationCoords[0]]);
-        return;
-      }
-      geocodeLocation(nextMappable.location, destCoord).then(c => {
-        if (c) { setNextCoord(c); setDestCenter(c); }
-      });
-    });
-  }, [activeTrip?.destination, nextMappable?.id]);
+    geocodeLocation(dest).then(c => { if (c) setDestCenter(c); });
+  }, [activeTrip?.destination]);
 
   useEffect(() => { setMapReady(false); }, [isDark]);
+
+  const homeCoord = destCenter;
+  const snapBack = useCallback(() => {
+    if (cameraRef.current && homeCoord) {
+      cameraRef.current.setCamera({
+        centerCoordinate: homeCoord,
+        zoomLevel: 14,
+        pitch: 55,
+        animationDuration: 1200,
+        animationMode: "flyTo",
+      });
+    }
+  }, [homeCoord]);
+
+  useFocusEffect(useCallback(() => { snapBack(); }, [snapBack]));
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -574,10 +566,10 @@ export default function TodayScreen() {
           style={StyleSheet.absoluteFillObject}
           styleURL="mapbox://styles/mapbox/standard"
           projection="mercator"
-          scrollEnabled={false}
-          zoomEnabled={false}
-          pitchEnabled={false}
-          rotateEnabled={false}
+          scrollEnabled={true}
+          zoomEnabled={true}
+          pitchEnabled={true}
+          rotateEnabled={true}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
@@ -603,16 +595,12 @@ export default function TodayScreen() {
             } as any}
           />
           <MapboxGL.Camera
+            ref={cameraRef}
             zoomLevel={14}
-            centerCoordinate={nextCoord ?? destCenter}
+            centerCoordinate={homeCoord ?? destCenter}
             pitch={55}
             animationDuration={0}
           />
-          {mapReady && nextCoord && (
-            <MapboxGL.PointAnnotation id="next-event" coordinate={nextCoord}>
-              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: C.teal, borderWidth: 3, borderColor: isDark ? "#000" : "#fff" }} />
-            </MapboxGL.PointAnnotation>
-          )}
         </MapboxGL.MapView>
       )}
 

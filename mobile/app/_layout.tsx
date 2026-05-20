@@ -42,6 +42,7 @@ import { TripsProvider, useTrips } from "@/context/TripsContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { BrandProvider } from "@/context/BrandContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { ComplianceProvider } from "@/context/ComplianceContext";
@@ -135,7 +136,8 @@ function AppStack() {
 
   const { addNotification } = useNotifications();
   const { prefs } = usePreferences();
-  const ready = (fontsLoaded || fontError) && tripsReady && prefsReady;
+  const auth = useAuth();
+  const ready = (fontsLoaded || fontError) && tripsReady && prefsReady && !auth.isLoading;
 
   // Defer background services until UI is visible
   const [settled, setSettled] = useState(false);
@@ -186,11 +188,20 @@ function AppStack() {
 
   useEffect(() => {
     if (!ready) return;
-    // Send to welcome if no name or no uid (must sign in)
-    if (!prefs.name && pathname !== "/welcome") {
-      router.replace("/welcome");
+    const authScreens = ["/auth", "/auth-callback"];
+    const onAuthScreen = authScreens.includes(pathname);
+
+    // New users: no account AND no name → auth screen
+    if (!auth.isAuthenticated && !prefs.name && !onAuthScreen && pathname !== "/welcome") {
+      router.replace("/auth");
+      return;
     }
-  }, [ready, prefs.name, pathname, router]);
+    // Authenticated but hasn't set name yet → welcome/onboarding
+    if (auth.isAuthenticated && !prefs.name && pathname !== "/welcome" && !onAuthScreen) {
+      router.replace("/welcome");
+      return;
+    }
+  }, [ready, auth.isAuthenticated, prefs.name, pathname, router]);
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {
@@ -260,21 +271,23 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <PreferencesProvider>
-          <TripsProvider>
-            <BrandBridge>
-              <ThemeProvider>
-                <NotificationProvider>
-                  <ComplianceProvider>
-                    <ToastProvider>
-                      <AppStack />
-                    </ToastProvider>
-                  </ComplianceProvider>
-                </NotificationProvider>
-              </ThemeProvider>
-            </BrandBridge>
-          </TripsProvider>
-        </PreferencesProvider>
+        <AuthProvider>
+          <PreferencesProvider>
+            <TripsProvider>
+              <BrandBridge>
+                <ThemeProvider>
+                  <NotificationProvider>
+                    <ComplianceProvider>
+                      <ToastProvider>
+                        <AppStack />
+                      </ToastProvider>
+                    </ComplianceProvider>
+                  </NotificationProvider>
+                </ThemeProvider>
+              </BrandBridge>
+            </TripsProvider>
+          </PreferencesProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
     </GestureHandlerRootView>

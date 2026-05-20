@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import {
-  ArrowRight, Check, WarningCircle, XCircle,
+  Check, WarningCircle, XCircle,
 } from "phosphor-react-native";
 
 export type StatusState =
@@ -74,7 +74,7 @@ export function StatusIndicator({
     case "live":
       return <PulsingDot size={size} color={c} />;
     case "upcoming":
-      return <ArrowRight size={size} color={c} weight="bold" />;
+      return <Check size={size} color={c} weight="bold" />;
     case "completed":
       return <Check size={size} color={c} weight="bold" />;
     case "past":

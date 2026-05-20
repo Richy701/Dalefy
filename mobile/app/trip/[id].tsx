@@ -21,6 +21,7 @@ import { useBrand } from "@/context/BrandContext";
 import { EventCard } from "@/components/EventCard";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { useTripRole } from "@/hooks/useTripRole";
+import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -69,7 +70,8 @@ export default function TripScreen() {
   const { C, isDark } = useTheme();
   const { brand } = useBrand();
   const { isLeader } = useTripRole(id);
-
+  const linkedTravelerId = useLinkedTravelerId(id);
+  const [showAllEvents, setShowAllEvents] = useState(false);
 
   const insets = useSafeAreaInsets();
   const safeBack = useCallback(() => {
@@ -198,7 +200,14 @@ export default function TripScreen() {
   const end    = new Date(trip.end);
   const nights = Math.ceil((end.getTime() - start.getTime()) / 86400000);
 
-  const grouped = trip.events.reduce<Record<string, typeof trip.events>>((acc, ev) => {
+  const visibleEvents = useMemo(() => {
+    if (!linkedTravelerId || showAllEvents) return trip.events;
+    return trip.events.filter(e =>
+      !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(linkedTravelerId)
+    );
+  }, [trip.events, linkedTravelerId, showAllEvents]);
+
+  const grouped = visibleEvents.reduce<Record<string, typeof trip.events>>((acc, ev) => {
     if (!acc[ev.date]) acc[ev.date] = [];
     acc[ev.date].push(ev);
     return acc;
@@ -425,7 +434,7 @@ export default function TripScreen() {
 
         {/* ── Itinerary — inline days with events ── */}
         <View style={styles.section}>
-          <DayList grouped={grouped} trip={trip} C={C} isDark={isDark} isLeader={isLeader} start={start} end={end} nights={nights} />
+          <DayList grouped={grouped} trip={trip} C={C} isDark={isDark} isLeader={isLeader} start={start} end={end} nights={nights} linkedTravelerId={linkedTravelerId} showAllEvents={showAllEvents} onToggleFilter={() => setShowAllEvents(p => !p)} />
         </View>
 
       </Animated.ScrollView>
@@ -469,7 +478,7 @@ const DAY_THUMB_ICONS: Record<string, React.ComponentType<any>> = {
   dining: ForkKnife, transfer: Car,
 };
 
-function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
+function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linkedTravelerId, showAllEvents, onToggleFilter }: {
   grouped: Record<string, any[]>;
   trip: { id: string; name: string; events: any[]; paxCount?: string; attendees?: string; travelers?: any[] };
   C: ThemeColors;
@@ -478,6 +487,9 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
   start: Date;
   end: Date;
   nights: number;
+  linkedTravelerId: string | null;
+  showAllEvents: boolean;
+  onToggleFilter: () => void;
 }) {
   const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   const [now, setNow] = useState(() => new Date());
@@ -534,6 +546,33 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights }: {
           }} />
         </View>
       </View>
+
+      {/* Per-traveler filter toggle */}
+      {linkedTravelerId && trip.events.some(e => e.assignedTo && e.assignedTo.length > 0) && (
+        <View style={{ paddingHorizontal: S.md, marginBottom: S.sm }}>
+          <Pressable
+            onPress={() => { onToggleFilter(); Haptics.selectionAsync(); }}
+            style={{
+              flexDirection: "row", alignItems: "center", gap: 8,
+              paddingVertical: 8, paddingHorizontal: 12,
+              backgroundColor: showAllEvents ? C.elevated : C.tealDim,
+              borderRadius: R.full, alignSelf: "flex-start",
+            }}
+          >
+            <View style={{
+              width: 6, height: 6, borderRadius: 3,
+              backgroundColor: showAllEvents ? C.textTertiary : C.teal,
+            }} />
+            <Text style={{
+              fontSize: T.xs, fontWeight: T.bold,
+              color: showAllEvents ? C.textTertiary : C.teal,
+              letterSpacing: 0.8, textTransform: "uppercase",
+            }}>
+              {showAllEvents ? "All events" : "Your events"}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* ── Day cards ── */}
       <View style={{ paddingHorizontal: S.md, gap: S.sm }}>

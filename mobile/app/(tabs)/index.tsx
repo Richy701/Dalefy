@@ -1452,10 +1452,7 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
 
       <View style={styles.content}>
         {countdown && (
-          <View style={styles.countdownRow}>
-            <StatusIndicator state={countdown === "Now" ? "live" : "upcoming"} size={10} color={C.teal} />
-            <Text style={styles.countdownText}>{countdown}</Text>
-          </View>
+          <Text style={styles.countdownText}>{countdown}</Text>
         )}
         <Text style={styles.title} numberOfLines={2}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
         {(ev.location || ev.notes) ? (

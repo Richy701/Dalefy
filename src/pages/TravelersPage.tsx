@@ -241,21 +241,22 @@ export function TravelersPage() {
 
   // Group app users by device_id (unique person)
   const groupedAppUsers = useMemo(() => {
-    const map = new Map<string, { name: string; avatar: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
+    const map = new Map<string, { name: string; avatar: string | null; email: string | null; trips: { id: string; name: string; joinedAt: string; role: TripMemberRole }[] }>();
     for (const m of appUsers) {
       const existing = map.get(m.device_id);
       const tripEntry = { id: m.trip_id, name: m.trip_name, joinedAt: m.joined_at, role: (m.role || "traveler") as TripMemberRole };
       if (existing) {
         existing.trips.push(tripEntry);
-        // Use latest name/avatar
         if (new Date(m.joined_at) > new Date(existing.trips[0]?.joinedAt ?? 0)) {
           existing.name = m.name;
           existing.avatar = m.avatar;
         }
+        if (!existing.email && m.email) existing.email = m.email;
       } else {
         map.set(m.device_id, {
           name: m.name,
           avatar: m.avatar,
+          email: m.email || null,
           trips: [tripEntry],
         });
       }
@@ -275,6 +276,7 @@ export function TravelersPage() {
       const q = search.toLowerCase();
       result = result.filter(u =>
         u.name.toLowerCase().includes(q) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
         u.trips.some(t => t.name.toLowerCase().includes(q))
       );
     }
@@ -299,11 +301,12 @@ export function TravelersPage() {
 
   const exportAppUsersCSV = useCallback(() => {
     if (filteredAppUsers.length === 0) return;
-    const rows = [["Name", "Device ID", "Trips", "Last Active"]];
+    const rows = [["Name", "Email", "Device ID", "Trips", "Last Active"]];
     for (const u of filteredAppUsers) {
       const latest = u.trips.reduce((a, b) => new Date(a.joinedAt) > new Date(b.joinedAt) ? a : b);
       rows.push([
         u.name || "Unknown",
+        u.email || "",
         u.deviceId,
         u.trips.map(t => t.name).join("; "),
         new Date(latest.joinedAt).toLocaleDateString("en-GB"),
@@ -333,18 +336,68 @@ export function TravelersPage() {
   const [uploadAssignees, setUploadAssignees] = useState<string[]>([]);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
+  const linkedTravelerIds = useMemo(() => {
+    const linked = new Set<string>();
+    for (const m of appUsers) {
+      if (m.linked_traveler_id) linked.add(m.linked_traveler_id);
+    }
+    return linked;
+  }, [appUsers]);
+
   const travelers = useMemo(() => {
-    // Only show mock users for demo accounts; real accounts start empty
-    const baseUsers = isDemoUser ? MOCK_USERS : [];
-    // Deduplicate by name (case-insensitive) — keep first occurrence
-    const seen = new Set<string>();
-    const allUsers = [...baseUsers, ...customTravelers].filter(u => {
-      const key = u.name.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    return allUsers.map(user => {
+    if (isDemoUser) {
+      const seen = new Set<string>();
+      const allUsers = [...MOCK_USERS, ...customTravelers].filter(u => {
+        const key = u.name.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return allUsers.map(user => {
+        const assignedTrips: string[] = [];
+        trips.forEach(t => {
+          const byId = t.travelerIds?.includes(user.id);
+          const byName = t.attendees?.toLowerCase().includes(user.name.toLowerCase());
+          if ((byId || byName) && !assignedTrips.includes(t.name)) {
+            assignedTrips.push(t.name);
+          }
+        });
+        const compliance = complianceOverrides[user.id] || user.compliance || [];
+        return { ...user, assignedTrips, compliance };
+      });
+    }
+
+    const travelerMap = new Map<string, UserType>();
+    for (const t of trips) {
+      if (!t.travelers) continue;
+      for (const tv of t.travelers) {
+        if (travelerMap.has(tv.id)) continue;
+        travelerMap.set(tv.id, {
+          id: tv.id,
+          name: tv.name,
+          email: tv.email || "",
+          role: "Traveler",
+          avatar: "",
+          initials: tv.initials,
+          status: linkedTravelerIds.has(tv.id) ? "Active" : "Offline",
+        });
+      }
+    }
+    for (const cu of customTravelers) {
+      const nameKey = cu.name.trim().toLowerCase();
+      const existing = [...travelerMap.values()].find(
+        v => v.name.trim().toLowerCase() === nameKey,
+      );
+      if (existing) {
+        if (cu.email && !existing.email) existing.email = cu.email;
+        if (cu.role && cu.role !== "Traveler") existing.role = cu.role;
+        if (cu.compliance?.length) existing.compliance = cu.compliance;
+      } else {
+        travelerMap.set(cu.id, cu);
+      }
+    }
+
+    return [...travelerMap.values()].map(user => {
       const assignedTrips: string[] = [];
       trips.forEach(t => {
         const byId = t.travelerIds?.includes(user.id);
@@ -356,7 +409,7 @@ export function TravelersPage() {
       const compliance = complianceOverrides[user.id] || user.compliance || [];
       return { ...user, assignedTrips, compliance };
     });
-  }, [trips, complianceOverrides, customTravelers, isDemoUser]);
+  }, [trips, complianceOverrides, customTravelers, isDemoUser, linkedTravelerIds]);
 
   const filtered = useMemo(() => {
     if (!search) return travelers;
@@ -580,8 +633,14 @@ export function TravelersPage() {
                 <span className="text-slate-200 dark:text-[#333]">·</span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  {travelers.length} Active Members
+                  {travelers.length} {travelers.length === 1 ? "Member" : "Members"}
                 </span>
+                {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 && (
+                  <><span className="text-slate-200 dark:text-[#333]">·</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">
+                    {travelers.filter(t => t.status === "Active").length} on app
+                  </span></>
+                )}
               </div>
             </div>
             <div className="shrink-0 overflow-x-auto scrollbar-hide">
@@ -657,7 +716,7 @@ export function TravelersPage() {
                         <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-300 dark:text-[#333] italic">No email</span>}</div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
@@ -759,7 +818,7 @@ export function TravelersPage() {
                             <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-300 dark:text-[#333] italic">No email</span>}</div>
                             </div>
                           </div>
                         </td>
@@ -1306,6 +1365,7 @@ export function TravelersPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                                  {appUser.email && <div className="text-[10px] text-slate-400 dark:text-[#666] truncate">{appUser.email}</div>}
                                   <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
                                 {!bulkAction && <PgRight className="h-4 w-4 text-slate-400 dark:text-[#555] shrink-0" />}
@@ -1334,7 +1394,11 @@ export function TravelersPage() {
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                               <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
-                                <DeviceMobile className="h-3 w-3" /> Mobile app user
+                                {appUser.email ? (
+                                  <><Envelope className="h-3 w-3" /> {appUser.email}</>
+                                ) : (
+                                  <><DeviceMobile className="h-3 w-3" /> Mobile app user</>
+                                )}
                               </div>
                             </div>
                             <div className="w-48">
@@ -1469,6 +1533,12 @@ export function TravelersPage() {
                               <Pencil className="h-3 w-3" />
                             </button>
                           </div>
+                        )}
+                        {panelUser.email && (
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-1.5 flex items-center gap-1.5 truncate">
+                            <Envelope className="h-3 w-3 shrink-0" />
+                            {panelUser.email}
+                          </p>
                         )}
                         <p className="text-[10px] font-bold text-slate-500 dark:text-[#666] mt-1 flex items-center gap-1 font-mono">
                           <Fingerprint className="h-3 w-3" />
