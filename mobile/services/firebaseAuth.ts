@@ -158,13 +158,13 @@ export async function signInWithApple(
   try {
     const provider = new OAuthProvider("apple.com");
     const credential = provider.credential({ idToken, rawNonce: nonce });
-    const fbUser = await signInOrLink(credential);
-    const profile = await upsertProfile(fbUser);
+    const result = await signInWithCredential(firebaseAuth(), credential);
+    const profile = await upsertProfile(result.user);
     return { user: profile, error: null };
   } catch (err: any) {
     const code = err?.code ?? "unknown";
     console.error("[Apple Auth]", code, err?.message);
-    return { user: null, error: friendlyError(err) };
+    return { user: null, error: `Apple auth failed (${code})`  };
   }
 }
 
