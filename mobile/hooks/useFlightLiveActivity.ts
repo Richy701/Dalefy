@@ -18,7 +18,7 @@ type LiveActivityRef = {
   activity: any; // LiveActivity<FlightTrackerProps>
 };
 
-const API_BASE = "https://dafadventures.com";
+const API_BASE = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
 
 /** Cache so we only fetch once per flight per session */
 const airportCache = new Map<string, { from: string; to: string }>();

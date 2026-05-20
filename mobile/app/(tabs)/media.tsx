@@ -34,7 +34,7 @@ import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
 
-const API_BASE = "https://dalefy.vercel.app/api";
+const API_BASE = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/api`;
 
 async function notifyTripMembers(tripId: string, tripName: string, uploaderName: string, count: number, senderDeviceId: string | null) {
   try {

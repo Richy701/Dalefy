@@ -33,7 +33,7 @@ export default function AuthScreen() {
 
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  const webClientId = "1004320415738-4aic29qtbg1i7qme8b06g4ggaahl3e93.apps.googleusercontent.com";
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   const googleEnabled = Platform.select({
     ios: !!iosClientId,
@@ -41,11 +41,14 @@ export default function AuthScreen() {
     default: true,
   });
 
-  const [, googleResponse, promptGoogle] = Google.useAuthRequest(
-    googleEnabled
-      ? { webClientId, iosClientId, androidClientId }
-      : { webClientId },
-  );
+  const googleConfig = useMemo(() => {
+    const cfg: Google.GoogleAuthRequestConfig = { webClientId };
+    if (iosClientId) cfg.iosClientId = iosClientId;
+    if (androidClientId) cfg.androidClientId = androidClientId;
+    return cfg;
+  }, [webClientId, iosClientId, androidClientId]);
+
+  const [, googleResponse, promptGoogle] = Google.useAuthRequest(googleConfig);
 
   const [mode, setMode] = useState<Mode>(isUpgrade ? "signup" : "signin");
   const [name, setName] = useState("");
@@ -120,9 +123,21 @@ export default function AuthScreen() {
   }, [email, password, name, mode, isUpgrade, auth, haptic, router]);
 
   const handleGoogleSignIn = useCallback(async () => {
+    if (Platform.OS === "ios" && !iosClientId) {
+      setError("Google Sign-In is not configured for this build");
+      return;
+    }
+    if (Platform.OS === "android" && !androidClientId) {
+      setError("Google Sign-In is not configured for this build");
+      return;
+    }
     setError("");
-    await promptGoogle();
-  }, [promptGoogle]);
+    try {
+      await promptGoogle();
+    } catch (e: any) {
+      setError(e?.message ?? "Google Sign-In failed");
+    }
+  }, [promptGoogle, iosClientId, androidClientId]);
 
   const handleAppleSignIn = useCallback(async () => {
     if (Platform.OS !== "ios") return;
