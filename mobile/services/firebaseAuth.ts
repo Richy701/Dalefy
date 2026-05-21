@@ -157,21 +157,24 @@ export async function signInWithApple(
 
   try {
     const provider = new OAuthProvider("apple.com");
-    provider.addScope("email");
-    provider.addScope("name");
     const credential = provider.credential({ idToken, rawNonce: nonce });
-    const result = await signInWithCredential(firebaseAuth(), credential);
-    const profile = await upsertProfile(result.user);
+    const fbUser = await signInOrLink(credential);
+    const profile = await upsertProfile(fbUser);
     return { user: profile, error: null };
   } catch (err: any) {
-    const code = err?.code ?? "unknown";
-    // Decode JWT payload for diagnostics
-    let debug = "";
-    try {
-      const payload = JSON.parse(atob(idToken.split(".")[1]));
-      debug = ` | aud:${payload.aud} iss:${payload.iss} email:${payload.email ?? "hidden"}`;
-    } catch {}
-    return { user: null, error: `Apple auth failed (${code})${debug}` };
+    const code = err?.code ?? "";
+    if (code === "auth/account-exists-with-different-credential") {
+      let email = "";
+      try { email = JSON.parse(atob(idToken.split(".")[1])).email ?? ""; } catch {}
+      if (email) {
+        const methods = await fetchSignInMethodsForEmail(firebaseAuth(), email);
+        if (methods.includes("google.com")) {
+          return { user: null, error: "This email is linked to Google. Sign in with Google instead - Apple will be linked automatically." };
+        }
+      }
+      return { user: null, error: "An account with this email already exists - try a different sign-in method" };
+    }
+    return { user: null, error: friendlyError(err) };
   }
 }
 
