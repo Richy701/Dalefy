@@ -158,8 +158,8 @@ export async function signInWithApple(
   try {
     const provider = new OAuthProvider("apple.com");
     const credential = provider.credential({ idToken, rawNonce: nonce });
-    const fbUser = await signInOrLink(credential);
-    const profile = await upsertProfile(fbUser);
+    const result = await signInWithCredential(firebaseAuth(), credential);
+    const profile = await upsertProfile(result.user);
     return { user: profile, error: null };
   } catch (err: any) {
     const code = err?.code ?? "";
@@ -169,7 +169,7 @@ export async function signInWithApple(
       if (email) {
         const methods = await fetchSignInMethodsForEmail(firebaseAuth(), email);
         if (methods.includes("google.com")) {
-          return { user: null, error: "This email is linked to Google. Sign in with Google instead - Apple will be linked automatically." };
+          return { user: null, error: "This email is linked to Google. Sign in with Google instead." };
         }
       }
       return { user: null, error: "An account with this email already exists - try a different sign-in method" };
