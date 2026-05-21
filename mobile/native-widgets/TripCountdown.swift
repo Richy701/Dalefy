@@ -176,6 +176,11 @@ private enum WidgetImageCache {
     return img
   }
 
+  static func save(_ jpegData: Data, for urlString: String) {
+    guard let fileURL = cacheFileURL(for: urlString) else { return }
+    try? jpegData.write(to: fileURL)
+  }
+
   static func prefetch(_ urlString: String) {
     guard !urlString.isEmpty,
           let fileURL = cacheFileURL(for: urlString),
@@ -190,7 +195,18 @@ private enum WidgetImageCache {
 }
 
 private func loadRemoteImage(_ urlString: String) -> UIImage? {
-  return WidgetImageCache.cachedImage(for: urlString)
+  if let cached = WidgetImageCache.cachedImage(for: urlString) {
+    return cached
+  }
+  guard !urlString.isEmpty,
+        let url = URL(string: urlString),
+        let data = try? Data(contentsOf: url),
+        let img = UIImage(data: data)
+  else { return nil }
+  if let jpeg = img.jpegData(compressionQuality: 0.8) {
+    WidgetImageCache.save(jpeg, for: urlString)
+  }
+  return img
 }
 
 private struct TripBackground: View {
@@ -214,6 +230,8 @@ private struct TripBackground: View {
           endPoint: .bottom
         )
       }
+    } else {
+      Color(hex: "#050505")
     }
   }
 }
