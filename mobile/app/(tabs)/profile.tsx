@@ -11,6 +11,7 @@ import {
   User, Palette, Bell, Shield, UserCirclePlus,
   Vibrate, Pencil, ArrowSquareOut, Info,
   FileText, CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
+  SignOut,
 } from "phosphor-react-native";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 
@@ -330,6 +331,23 @@ export default function ProfileScreen() {
         </FadeIn>
 
 
+        {/* ── Sign Out ── */}
+        {auth.isAuthenticated && (
+          <FadeIn delay={360}>
+            <Pressable
+              onPress={async () => {
+                haptic.medium();
+                await auth.signOut();
+                router.replace("/auth");
+              }}
+              style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
+            >
+              <SignOut size={18} color={C.red} weight="regular" />
+              <Text style={[s.signOutText, { color: C.red }]}>Sign out</Text>
+            </Pressable>
+          </FadeIn>
+        )}
+
         {/* ── Footer ── */}
         <View style={s.footer}>
           {brand.logoUrl ? (
@@ -569,6 +587,20 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.sm,
       fontWeight: T.medium,
       color: "#ef4444",
+    },
+
+    // ── Sign Out ──
+    signOutBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: S.xs,
+      paddingVertical: 14,
+      marginTop: S.md,
+    },
+    signOutText: {
+      fontSize: T.base,
+      fontWeight: T.semibold,
     },
 
     // ── Footer ──
