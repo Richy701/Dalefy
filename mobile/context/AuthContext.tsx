@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useEffect, useMemo, useState, useCallback,
+  createContext, useContext, useEffect, useMemo, useRef, useState, useCallback,
   type ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -56,14 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MobileUser | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const cachedRef = useRef<MobileUser | null>(null);
 
   useEffect(() => {
-    // Restore cached user immediately to avoid flash
     AsyncStorage.getItem(AUTH_CACHE_KEY)
       .then((raw) => {
         if (raw) {
           try {
             const cached = JSON.parse(raw) as MobileUser;
+            cachedRef.current = cached;
             setUser(cached);
             setIsAnonymous(false);
           } catch { /* ignore */ }
@@ -77,9 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           setUser(profile);
           setIsAnonymous(false);
+          cachedRef.current = profile;
           await AsyncStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(profile)).catch(() => {});
         } else {
-          // Profile fetch failed (offline/slow) - use Firebase user data as fallback
           const displayName = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Traveler";
           const fallback: MobileUser = {
             id: fbUser.uid,
@@ -90,7 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(fallback);
           setIsAnonymous(false);
+          cachedRef.current = fallback;
         }
+      } else if (cachedRef.current) {
+        setUser(cachedRef.current);
+        setIsAnonymous(false);
       } else {
         setUser(null);
         setIsAnonymous(true);
@@ -156,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    cachedRef.current = null;
     await authSignOut();
     setUser(null);
     setIsAnonymous(true);

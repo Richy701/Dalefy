@@ -42,12 +42,13 @@ export const SecureStorageAdapter = {
         const value = await SecureStore.getItemAsync(key);
         if (value) return value;
       } catch {
-        // SecureStore failed - fall through to migration/fallback
+        // SecureStore failed - fall through
       }
-      return migrateIfNeeded(key);
+      const migrated = await migrateIfNeeded(key);
+      if (migrated) return migrated;
+      return AsyncStorage.getItem(key);
     }
 
-    // No SecureStore available - use AsyncStorage directly
     return AsyncStorage.getItem(key);
   },
 
