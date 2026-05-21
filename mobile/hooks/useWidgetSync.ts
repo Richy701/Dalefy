@@ -81,7 +81,7 @@ export function useWidgetSync() {
         .sort((a, b) => timeToMinutes(a.time || "") - timeToMinutes(b.time || ""))
         .slice(0, 2);
 
-      TripCountdown.updateSnapshot({
+      const activeProps = {
         state: "active",
         tripName: active.name,
         destination: city,
@@ -93,7 +93,36 @@ export function useWidgetSync() {
         accentColor: accent,
         event1: todayEvents[0] ? formatEventLine(todayEvents[0]) : "",
         event2: todayEvents[1] ? formatEventLine(todayEvents[1]) : "",
-      });
+      };
+      TripCountdown.updateSnapshot(activeProps);
+
+      const daysRemaining = daysUntil(active.end);
+      const timeline: Array<{ date: Date; props: any }> = [];
+      for (let i = 0; i <= daysRemaining + 1; i++) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + i);
+        futureDate.setHours(0, 0, 0, 0);
+        const day = currentDay + i;
+        if (day <= totalDays) {
+          timeline.push({
+            date: futureDate,
+            props: { ...activeProps, currentDay: day },
+          });
+        } else {
+          timeline.push({
+            date: futureDate,
+            props: {
+              state: "empty", tripName: "", destination: "", tripImage: "",
+              daysLeft: 0, startDate: "", currentDay: 0, totalDays: 0,
+              accentColor: accent, event1: "", event2: "",
+            },
+          });
+          break;
+        }
+      }
+      if (timeline.length > 0) {
+        TripCountdown.updateTimeline(timeline);
+      }
       return;
     }
 
@@ -127,7 +156,9 @@ export function useWidgetSync() {
       TripCountdown.updateSnapshot(baseProps);
 
       const timeline: Array<{ date: Date; props: any }> = [];
-      for (let i = 0; i <= Math.min(days, 30); i++) {
+      const totalDays = daysBetween(upcoming.start, upcoming.end);
+      const totalEntries = Math.min(days + totalDays, 60);
+      for (let i = 0; i <= totalEntries; i++) {
         const futureDate = new Date();
         futureDate.setDate(futureDate.getDate() + i);
         futureDate.setHours(0, 0, 0, 0);
@@ -139,19 +170,39 @@ export function useWidgetSync() {
             props: { ...baseProps, daysLeft: remaining },
           });
         } else {
-          const totalDays = daysBetween(upcoming.start, upcoming.end);
-          timeline.push({
-            date: futureDate,
-            props: {
-              ...baseProps,
-              state: "active",
-              destination: (upcoming.destination || upcoming.name).split(",")[0].trim(),
-              daysLeft: 0,
-              startDate: "",
-              currentDay: 1,
-              totalDays,
-            },
-          });
+          const dayNum = -remaining + 1;
+          if (dayNum <= totalDays) {
+            timeline.push({
+              date: futureDate,
+              props: {
+                ...baseProps,
+                state: "active",
+                destination: (upcoming.destination || upcoming.name).split(",")[0].trim(),
+                daysLeft: 0,
+                startDate: "",
+                currentDay: dayNum,
+                totalDays,
+              },
+            });
+          } else {
+            timeline.push({
+              date: futureDate,
+              props: {
+                state: "empty",
+                tripName: "",
+                destination: "",
+                tripImage: "",
+                daysLeft: 0,
+                startDate: "",
+                currentDay: 0,
+                totalDays: 0,
+                accentColor: accent,
+                event1: "",
+                event2: "",
+              },
+            });
+            break;
+          }
         }
       }
 

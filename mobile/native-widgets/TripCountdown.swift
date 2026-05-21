@@ -185,8 +185,19 @@ private enum WidgetImageCache {
     guard !urlString.isEmpty,
           let fileURL = cacheFileURL(for: urlString),
           !FileManager.default.fileExists(atPath: fileURL.path),
-          let url = URL(string: urlString),
-          let data = try? Data(contentsOf: url),
+          let url = URL(string: urlString)
+    else { return }
+    let sem = DispatchSemaphore(value: 0)
+    var result: Data?
+    let config = URLSessionConfiguration.default
+    config.timeoutIntervalForRequest = 5
+    config.timeoutIntervalForResource = 8
+    URLSession(configuration: config).dataTask(with: url) { data, _, _ in
+      result = data
+      sem.signal()
+    }.resume()
+    sem.wait()
+    guard let data = result,
           let img = UIImage(data: data),
           let jpegData = img.jpegData(compressionQuality: 0.8)
     else { return }
@@ -194,19 +205,8 @@ private enum WidgetImageCache {
   }
 }
 
-private func loadRemoteImage(_ urlString: String) -> UIImage? {
-  if let cached = WidgetImageCache.cachedImage(for: urlString) {
-    return cached
-  }
-  guard !urlString.isEmpty,
-        let url = URL(string: urlString),
-        let data = try? Data(contentsOf: url),
-        let img = UIImage(data: data)
-  else { return nil }
-  if let jpeg = img.jpegData(compressionQuality: 0.8) {
-    WidgetImageCache.save(jpeg, for: urlString)
-  }
-  return img
+private func loadCachedImage(_ urlString: String) -> UIImage? {
+  return WidgetImageCache.cachedImage(for: urlString)
 }
 
 private struct TripBackground: View {
@@ -214,7 +214,7 @@ private struct TripBackground: View {
   let dark: Bool
 
   var body: some View {
-    if let img = loadRemoteImage(urlString) {
+    if let img = loadCachedImage(urlString) {
       ZStack {
         Image(uiImage: img)
           .resizable()
