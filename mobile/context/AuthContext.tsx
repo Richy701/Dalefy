@@ -79,9 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAnonymous(false);
           await AsyncStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(profile)).catch(() => {});
         } else {
-          setUser(null);
-          setIsAnonymous(true);
-          await AsyncStorage.removeItem(AUTH_CACHE_KEY).catch(() => {});
+          // Profile fetch failed (offline/slow) - use Firebase user data as fallback
+          const displayName = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Traveler";
+          const fallback: MobileUser = {
+            id: fbUser.uid,
+            name: displayName,
+            email: fbUser.email ?? "",
+            avatar: fbUser.photoURL ?? "",
+            initials: displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(""),
+          };
+          setUser(fallback);
+          setIsAnonymous(false);
         }
       } else {
         setUser(null);
