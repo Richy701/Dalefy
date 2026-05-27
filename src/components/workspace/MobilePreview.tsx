@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
@@ -110,22 +110,6 @@ function typeCounts(events: TravelEvent[]): Array<{ key: string; Icon: React.Com
   return result.length <= 5 ? result : result.slice(0, 4);
 }
 
-function dayProgress(events: TravelEvent[], now: Date, dateStr: string): number {
-  if (!events.length) return 0;
-  const sorted = [...events].sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
-  const firstMin = timeToMin(sorted[0].time);
-  const lastEv = sorted[sorted.length - 1];
-  const lastMin = timeToMin(lastEv.endTime || lastEv.time);
-  const dayDate = new Date(dateStr + "T00:00:00");
-  const firstMs = dayDate.getTime() + firstMin * 60_000;
-  const lastMs = dayDate.getTime() + lastMin * 60_000;
-  const nowMs = now.getTime();
-  if (nowMs >= lastMs) return 1;
-  if (nowMs <= firstMs) return 0;
-  const total = lastMs - firstMs;
-  if (total <= 0) return 0;
-  return (nowMs - firstMs) / total;
-}
 
 function TransferIcon({ transferType, color }: { transferType?: string; color: string }) {
   const s = 12;
@@ -477,6 +461,12 @@ function InfoDocsSection({ info, documents, c }: { info: TripInfo[]; documents: 
   );
 }
 
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean }) {
   const groups = useMemo(() => groupEventsByDay(events), [events]);
   const [openDay, setOpenDay] = useState<string | null>(null);
@@ -487,88 +477,37 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
   const start = new Date(trip.start + "T00:00:00");
   const end = new Date(trip.end + "T00:00:00");
   const totalDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-  const nights = totalDays - 1;
-
-  const currentDayIdx = groups.findIndex(([d]) => d >= todayStr);
-  const currentDay = currentDayIdx >= 0 ? currentDayIdx + 1 : totalDays;
   const totalEvents = events.length;
   const pastEvents = events.filter(e => e.date < todayStr).length;
   const todayDoneEst = Math.round(events.filter(e => e.date === todayStr).length * 0.5);
   const completed = pastEvents + todayDoneEst;
 
-  const dateRange = (() => {
-    try {
-      return `${format(parseISO(trip.start), "MMM d")} - ${format(parseISO(trip.end), "MMM d, yyyy")}`;
-    } catch { return `${trip.start} - ${trip.end}`; }
-  })();
+  const currentDayIdx = groups.findIndex(([d]) => d >= todayStr);
+  const currentDay = currentDayIdx >= 0 ? currentDayIdx + 1 : totalDays;
 
-  const travelerCount = (() => {
-    if (trip.travelers?.length) return trip.travelers.length;
-    const parsed = parseInt(trip.paxCount || "", 10);
-    if (!isNaN(parsed) && parsed > 0) return parsed;
-    if (trip.attendees) {
-      const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
-      const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter(s => s.trim()).length;
-      return listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
-    }
-    return 0;
-  })();
-
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const dividerColor = isDark ? c.border : "#e4e4e7";
   const progressBg = isDark ? c.elevated : "#e4e4e7";
 
   return (
     <div style={{ paddingBottom: 16 }}>
-      {/* Trip header block */}
-      <div style={{
-        padding: "22px 18px 16px",
-        borderBottom: `0.5px solid ${dividerColor}`,
-      }}>
-        <div style={{ fontSize: 20, fontWeight: 600, color: c.textPrimary, letterSpacing: -0.3, marginBottom: 6 }}>
-          {trip.name}
+      {/* Itinerary header */}
+      <div style={{ padding: "18px 14px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: c.textTertiary, letterSpacing: 1.5 }}>ITINERARY</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: c.textDim }}>
+            Day {currentDay} of {totalDays}  ·  {completed}/{totalEvents} done
+          </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>{dateRange}</span>
-          <span style={{ fontSize: 11, color: c.textDim }}> · </span>
-          <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>{totalDays} days</span>
-          {travelerCount > 0 && (
-            <>
-              <span style={{ fontSize: 11, color: c.textDim }}> · </span>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: c.textTertiary }}>
-                {travelerCount} traveler{travelerCount !== 1 ? "s" : ""}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Progress strip */}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: c.textDim, textTransform: "uppercase", letterSpacing: 1.5 }}>
-              Day {currentDay} of {totalDays}
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: c.textDim, textTransform: "uppercase", letterSpacing: 1.5 }}>
-              {completed}/{totalEvents} events
-            </span>
-          </div>
-          <div style={{ height: 3, background: progressBg, borderRadius: 100, overflow: "hidden" }}>
-            <div style={{
-              height: 3, background: c.teal, borderRadius: 100,
-              width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%`,
-            }} />
-          </div>
+        <div style={{ height: 3, background: progressBg, borderRadius: 100, overflow: "hidden" }}>
+          <div style={{
+            height: 3, background: c.teal, borderRadius: 100,
+            width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%`,
+          }} />
         </div>
       </div>
 
-      {/* Day rows */}
-      <div style={{ padding: "0 14px" }}>
-        {groups.map(([date, evs], dayIdx) => {
+      {/* Day cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 14px" }}>
+        {groups.map(([date, evs]) => {
           const isToday = date === todayStr;
           const isPast = date < todayStr;
           const isOpen = openDay === date;
@@ -582,44 +521,13 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
           } catch { weekday = date; }
 
           const icons = typeCounts(evs);
-          const firstTime = !isPast && evs[0]?.time
+          const firstTime = evs[0]?.time
             ? evs[0].time.replace(/^(\d{1,2}:\d{2}).*/, "$1")
             : null;
 
-          const barPct = isPast
-            ? 100
-            : isToday
-              ? dayProgress(evs, now, date) * 100
-              : 0;
-
-          const dayNameColor = isToday
-            ? (isDark ? c.teal : "#059669")
-            : isPast
-              ? (isDark ? c.textDim : "#a1a1aa")
-              : c.textPrimary;
-          const subColor = isToday
-            ? c.textTertiary
-            : isPast
-              ? (isDark ? c.textDim : "#d4d4d8")
-              : c.textTertiary;
-          const iconColor = isToday
-            ? (isDark ? c.teal : "#059669")
-            : isPast
-              ? (isDark ? c.textDim : "#a1a1aa")
-              : (isDark ? c.textDim : "#71717a");
-          const countColor = isToday
-            ? (isDark ? c.teal : "#047857")
-            : isPast
-              ? (isDark ? c.textDim : "#a1a1aa")
-              : (isDark ? c.textTertiary : "#52525b");
-          const barColor = isToday
-            ? c.teal
-            : isPast
-              ? (isDark ? "#3f3f46" : "#a1a1aa")
-              : "transparent";
-
           const photo = evs.find(e => e.image)?.image || null;
           const FallbackIcon = DAY_THUMB_ICONS[evs[0]?.type] || MapTrifold;
+          const gradHue = hashStr(evs[0]?.title || date) % 360;
 
           return (
             <div key={date}>
@@ -629,91 +537,93 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
                 style={{
                   display: "block", width: "100%", cursor: "pointer",
                   background: "none", border: "none", textAlign: "left",
-                  padding: "14px 12px", borderRadius: 12,
+                  padding: 0, position: "relative",
+                  height: 100, borderRadius: 14, overflow: "hidden",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "flex-start" }}>
-                  {/* Left: day info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1: Weekday + Today pill */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 18, fontWeight: 600, color: dayNameColor, letterSpacing: -0.2 }}>
-                        {weekday}
+                {/* Background: photo or gradient */}
+                {photo ? (
+                  <img src={photo} alt="" style={{
+                    position: "absolute", inset: 0,
+                    width: "100%", height: "100%", objectFit: "cover",
+                  }} />
+                ) : (
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: `linear-gradient(135deg, hsl(${gradHue}, 35%, ${isDark ? 22 : 55}%), hsl(${(gradHue + 40) % 360}, 30%, ${isDark ? 12 : 40}%))`,
+                  }} />
+                )}
+
+                {/* Past overlay */}
+                {isPast && (
+                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+                )}
+
+                {/* Bottom gradient */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: "linear-gradient(to bottom, transparent 25%, rgba(0,0,0,0.7) 100%)",
+                }} />
+
+                {/* Fallback icon (no photo) */}
+                {!photo && (
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    opacity: 0.15,
+                  }}>
+                    <FallbackIcon size={36} color="#fff" />
+                  </div>
+                )}
+
+                {/* Bottom content overlay */}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 12px 10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: -0.2 }}>
+                      {weekday}
+                    </span>
+                    {isToday && (
+                      <span style={{
+                        padding: "1px 6px", borderRadius: 100,
+                        background: c.teal,
+                        fontSize: 8, fontWeight: 800, color: "#000",
+                        letterSpacing: 1, textTransform: "uppercase",
+                      }}>
+                        TODAY
                       </span>
-                      {isToday && (
-                        <span style={{
-                          display: "inline-block",
-                          padding: "2px 7px", borderRadius: 100,
-                          background: isDark ? `${c.teal}18` : "#ecfdf5",
-                          border: `0.5px solid ${isDark ? `${c.teal}33` : "#a7f3d0"}`,
-                          fontFamily: MONO, fontSize: 9, fontWeight: 600,
-                          color: isDark ? c.teal : "#047857",
-                          textTransform: "uppercase", letterSpacing: 1.5,
-                        }}>
-                          Today
-                        </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.7)" }}>{shortDate}</span>
+                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>·</span>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.7)" }}>
+                        {evs.length} event{evs.length !== 1 ? "s" : ""}
+                      </span>
+                      {firstTime && (
+                        <>
+                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>·</span>
+                          <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.7)" }}>{firstTime}</span>
+                        </>
                       )}
                     </div>
-
-                    {/* Row 2: Date + event count */}
-                    <div style={{ fontFamily: MONO, fontSize: 11, color: subColor, marginTop: 3 }}>
-                      {shortDate} · {evs.length} event{evs.length !== 1 ? "s" : ""}
-                    </div>
-
-                    {/* Row 3: Type icons with counts */}
                     {icons.length > 0 && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         {icons.map(({ key, Icon, count }) => (
-                          <div key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                            <Icon size={13} color={iconColor} />
-                            <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 500, color: countColor }}>
-                              {count}
-                            </span>
+                          <div key={key} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Icon size={10} color="rgba(255,255,255,0.6)" />
+                            <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>{count}</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-
-                  {/* Right: thumbnail + time + chevron */}
-                  <div style={{ display: "flex", alignItems: "center", marginLeft: 12, gap: 8 }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 12, overflow: "hidden",
-                        background: isDark ? c.elevated : "#f4f4f5",
-                        opacity: isPast ? 0.5 : 1,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {photo ? (
-                          <img src={photo} alt="" style={{ width: 40, height: 40, objectFit: "cover" }} />
-                        ) : (
-                          <FallbackIcon size={16} color={isDark ? c.textDim : "#a1a1aa"} />
-                        )}
-                      </div>
-                      {firstTime && (
-                        <span style={{ fontFamily: MONO, fontSize: 10, color: isDark ? c.textDim : "#a1a1aa" }}>
-                          {firstTime}
-                        </span>
-                      )}
-                    </div>
-                    <CaretRight size={14} color={isDark ? c.textDim : "#a1a1aa"} />
-                  </div>
-                </div>
-
-                {/* Density bar */}
-                <div style={{ height: 3, background: isDark ? c.elevated : "#e4e4e7", borderRadius: 100, marginTop: 10, overflow: "hidden" }}>
-                  <div style={{ height: 3, borderRadius: 100, background: barColor, width: `${barPct}%` }} />
                 </div>
               </button>
 
-              {/* Divider */}
-              {!isOpen && (
-                <div style={{ height: 0.5, background: dividerColor, marginInline: 12 }} />
-              )}
-
               {/* Expanded events */}
               {isOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 2, paddingBottom: 6 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 6, paddingBottom: 4 }}>
                   {evs.map(ev => <MobileEventCard key={ev.id} ev={ev} c={c} />)}
                 </div>
               )}

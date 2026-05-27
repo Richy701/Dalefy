@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, SpinnerGap, CheckCircle, WarningCircle, CaretRight, X, AirplaneTilt, Bed, Compass, ForkKnife } from "@phosphor-icons/react";
+import { Upload, FileText, SpinnerGap, CheckCircle, WarningCircle, CaretRight, CaretDown, X, AirplaneTilt, Bed, Compass, ForkKnife, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTrips } from "@/context/TripsContext";
@@ -1090,6 +1090,103 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
   };
 }
 
+// ─── Info review card (collapsible, inline-editable) ─────────────────────────
+
+function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
+  item: ParsedInfo;
+  onChangeTitle: (v: string) => void;
+  onChangeBody: (v: string) => void;
+  onRemove: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const bodyPreview = item.body.split("\n").slice(0, 2).join(" ").slice(0, 120);
+  const isTruncated = item.body.length > 120 || item.body.split("\n").length > 2;
+
+  return (
+    <div className="group/info bg-white dark:bg-[#111111]">
+      {/* Header row - always visible, click to expand */}
+      <button
+        type="button"
+        onClick={() => setExpanded(p => !p)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-[#0f0f0f] transition-colors"
+      >
+        <CaretRight className={`h-3 w-3 text-slate-400 dark:text-[#555] shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
+        <span className="text-[13px] font-semibold text-slate-900 dark:text-white flex-1 truncate">
+          {item.title || "Untitled"}
+        </span>
+        <span className="text-[10px] text-slate-400 dark:text-[#555] shrink-0 tabular-nums">
+          {item.body.split("\n").length} line{item.body.split("\n").length !== 1 ? "s" : ""}
+        </span>
+      </button>
+
+      {/* Collapsed preview - shows first 2 lines */}
+      {!expanded && bodyPreview && (
+        <div className="px-4 pb-3 pl-10">
+          <p className="text-xs text-slate-500 dark:text-[#777] leading-relaxed line-clamp-2">
+            {bodyPreview}{isTruncated ? "..." : ""}
+          </p>
+        </div>
+      )}
+
+      {/* Expanded: full content + edit/remove actions */}
+      {expanded && (
+        <div className="px-4 pb-4 pl-10 space-y-3">
+          {editing ? (
+            <>
+              <input
+                type="text"
+                value={item.title}
+                onChange={(e) => onChangeTitle(e.target.value)}
+                className="w-full text-sm font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-lg px-3 py-2 outline-none focus:border-brand/40 transition-colors"
+                placeholder="Title"
+              />
+              <textarea
+                value={item.body}
+                onChange={(e) => onChangeBody(e.target.value)}
+                rows={Math.min(Math.max(item.body.split("\n").length, 3), 10)}
+                className="w-full text-[13px] text-slate-700 dark:text-[#bbb] bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-lg px-3 py-2.5 leading-relaxed resize-y outline-none focus:border-brand/40 transition-colors"
+                placeholder="Details..."
+              />
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="text-[11px] font-bold text-brand hover:underline"
+              >
+                Done editing
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] text-slate-700 dark:text-[#bbb] leading-relaxed whitespace-pre-wrap">
+                {item.body}
+              </p>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-[#555] hover:text-brand transition-colors"
+                >
+                  <PencilSimple className="h-3 w-3" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-[#555] hover:text-red-400 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                  Remove
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 type Step = "upload" | "extracting" | "review" | "importing" | "done";
@@ -1559,98 +1656,107 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           <div className="flex flex-col min-h-0 flex-1">
           <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
             {/* Trip summary */}
-            <div className="bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-[#1f1f1f] space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">Trip Name</p>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+            <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white dark:bg-[#111111]">
+              {/* Teal accent strip + back */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-[#1a1a1a] bg-gradient-to-r from-brand/[0.06] to-transparent">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
+                </div>
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-400 dark:text-[#555] hover:text-brand transition-colors">
                   ← Back
                 </button>
               </div>
-              <p className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{parsed.name}</p>
-              <div className="flex items-center gap-4 sm:gap-6 pt-1 flex-wrap">
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Start</p>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.start}</p>
+
+              <div className="p-4 sm:p-5 space-y-4">
+                {/* Trip name */}
+                <h3 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                  {parsed.name}
+                </h3>
+
+                {/* Metadata chips */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {parsed.destination && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-[11px] font-bold text-brand">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                      {parsed.destination}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                    {(() => {
+                      const fmt = (iso: string) => {
+                        const d = new Date(iso + "T12:00:00");
+                        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      };
+                      const endYear = new Date(parsed.end + "T12:00:00").getFullYear();
+                      return `${fmt(parsed.start)} – ${fmt(parsed.end)}, ${endYear}`;
+                    })()}
+                  </span>
+                  {(() => {
+                    const s = new Date(parsed.start + "T00:00:00");
+                    const e = new Date(parsed.end + "T00:00:00");
+                    const nights = Math.round((e.getTime() - s.getTime()) / 86400000);
+                    return nights > 0 ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                        {nights} night{nights !== 1 ? "s" : ""}
+                      </span>
+                    ) : null;
+                  })()}
+                  {parsed.events.length > 0 && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                      {parsed.events.length} event{parsed.events.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {parsed.paxCount > 0 && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                      {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">End</p>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.end}</p>
-                </div>
-                {parsed.destination && (
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Destination</p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.destination}</p>
-                  </div>
-                )}
-                {parsed.paxCount > 0 && (
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888]">Pax</p>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{parsed.paxCount}</p>
-                  </div>
-                )}
-              </div>
-              {/* Attendees list */}
-              {parsed.parsedTravelerNames.length > 0 && (
-                <div className="pt-2 border-t border-slate-100 dark:border-[#1f1f1f]">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] mb-2">
-                    Travelers ({parsed.parsedTravelerNames.length})
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
+
+                {/* Travelers */}
+                {parsed.parsedTravelerNames.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-100 dark:border-[#1a1a1a]">
+                    <div className="w-full pt-2" />
                     {parsed.parsedTravelerNames.map((name, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-[11px] font-bold text-slate-700 dark:text-[#ccc]"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-100 dark:border-[#1f1f1f] text-[11px] font-semibold text-slate-700 dark:text-[#ccc]"
                       >
-                        <span className="h-5 w-5 rounded-md bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-[8px] font-black uppercase shrink-0">
+                        <span className="h-5 w-5 rounded-md bg-brand/10 flex items-center justify-center text-brand text-[8px] font-black uppercase shrink-0">
                           {name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase()}
                         </span>
                         {name}
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Information & Documents preview (editable) */}
               {editInfo.length > 0 && (
-                <div className="pt-2 border-t border-slate-100 dark:border-[#1f1f1f]">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] mb-2">
-                    Information ({editInfo.length})
-                  </p>
-                  <div className="space-y-1.5">
+                <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-2.5 border-b border-slate-200 dark:border-[#1f1f1f]">
+                    <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
+                      <FileText className="h-3.5 w-3.5 text-brand" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white flex-1">
+                      Information
+                    </p>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums">
+                      {editInfo.length} item{editInfo.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
                     {editInfo.map((item, i) => (
-                      <div key={i} className="relative group/info rounded-lg bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] px-2.5 py-2 hover:border-brand/30 transition-colors">
-                        <button
-                          type="button"
-                          aria-label="Remove info"
-                          onClick={() => setEditInfo(prev => prev.filter((_, j) => j !== i))}
-                          className="absolute top-1.5 right-1.5 h-5 w-5 rounded-md flex items-center justify-center text-slate-300 dark:text-[#444] hover:text-red-400 opacity-0 group-hover/info:opacity-100 transition-all"
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                        <div className="flex items-start gap-2">
-                          <div className="h-4 w-4 rounded bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <FileText className="h-2.5 w-2.5 text-brand" />
-                          </div>
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <input
-                              type="text"
-                              value={item.title}
-                              onChange={(e) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, title: e.target.value } : it))}
-                              className="w-full text-[10px] font-bold text-slate-700 dark:text-[#ccc] bg-transparent border-none outline-none p-0 placeholder:text-slate-400 dark:placeholder:text-[#555]"
-                              placeholder="Title"
-                            />
-                            <textarea
-                              value={item.body}
-                              onChange={(e) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, body: e.target.value } : it))}
-                              rows={Math.min(item.body.split("\n").length, 3)}
-                              className="w-full text-[9px] text-slate-500 dark:text-[#888] bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] rounded-md p-1.5 leading-relaxed resize-none outline-none focus:border-brand/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-[#555]"
-                              placeholder="Details..."
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <InfoReviewCard
+                        key={i}
+                        item={item}
+                        onChangeTitle={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, title: v } : it))}
+                        onChangeBody={(v) => setEditInfo(prev => prev.map((it, j) => j === i ? { ...it, body: v } : it))}
+                        onRemove={() => setEditInfo(prev => prev.filter((_, j) => j !== i))}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1668,7 +1774,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">{ev.title}</p>
-                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 break-words">{ev.date} · {ev.time}{ev.location ? ` · ${ev.location}` : ""}</p>
+                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 break-words">
+                          {(() => {
+                            const d = new Date(ev.date + "T12:00:00");
+                            return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                          })()}
+                          {ev.time ? ` · ${ev.time}` : ""}
+                          {ev.location ? ` · ${ev.location}` : ""}
+                        </p>
                       </div>
                       <button
                         aria-label="Remove event"
