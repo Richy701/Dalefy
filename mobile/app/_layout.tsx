@@ -127,9 +127,9 @@ function AppStack() {
   useEffect(() => {
     try {
       QuickActions?.setItems([
-        { id: "join", title: "Join a Trip", icon: Platform.select({ ios: "symbol:qrcode", android: "shortcut_join" }) ?? undefined, params: { href: "/" } },
-        { id: "gallery", title: "Gallery", icon: Platform.select({ ios: "symbol:camera.fill", android: "shortcut_gallery" }) ?? undefined, params: { href: "/media" } },
-        { id: "profile", title: "My Profile", icon: Platform.select({ ios: "symbol:person.crop.circle", android: "shortcut_profile" }) ?? undefined, params: { href: "/profile" } },
+        { id: "join", title: "Join a Trip", icon: Platform.select({ ios: "symbol:qrcode" }) ?? undefined, params: { href: "/" } },
+        { id: "gallery", title: "Gallery", icon: Platform.select({ ios: "symbol:camera.fill" }) ?? undefined, params: { href: "/media" } },
+        { id: "profile", title: "My Profile", icon: Platform.select({ ios: "symbol:person.crop.circle" }) ?? undefined, params: { href: "/profile" } },
       ]);
     } catch { /* not available */ }
   }, []);

@@ -182,6 +182,7 @@ private enum WidgetImageCache {
   }
 
   static func prefetch(_ urlString: String) {
+    if urlString.hasPrefix("/") || urlString.hasPrefix("file://") { return }
     guard !urlString.isEmpty,
           let fileURL = cacheFileURL(for: urlString),
           !FileManager.default.fileExists(atPath: fileURL.path),
@@ -199,13 +200,38 @@ private enum WidgetImageCache {
     sem.wait()
     guard let data = result,
           let img = UIImage(data: data),
-          let jpegData = img.jpegData(compressionQuality: 0.8)
+          let cgImg = img.cgImage
     else { return }
+    let maxPx: CGFloat = 600
+    let w = CGFloat(cgImg.width)
+    let h = CGFloat(cgImg.height)
+    let finalImg: UIImage
+    if w > maxPx || h > maxPx {
+      let scale = min(maxPx / w, maxPx / h)
+      let nw = Int(w * scale)
+      let nh = Int(h * scale)
+      guard let ctx = CGContext(data: nil, width: nw, height: nh,
+                                bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+      else { return }
+      ctx.interpolationQuality = .high
+      ctx.draw(cgImg, in: CGRect(x: 0, y: 0, width: nw, height: nh))
+      guard let resizedCG = ctx.makeImage() else { return }
+      finalImg = UIImage(cgImage: resizedCG)
+    } else {
+      finalImg = img
+    }
+    guard let jpegData = finalImg.jpegData(compressionQuality: 0.7) else { return }
     try? jpegData.write(to: fileURL)
   }
 }
 
 private func loadCachedImage(_ urlString: String) -> UIImage? {
+  if urlString.hasPrefix("file://") || urlString.hasPrefix("/") {
+    let path = urlString.hasPrefix("file://") ? String(urlString.dropFirst(7)) : urlString
+    return UIImage(contentsOfFile: path)
+  }
   return WidgetImageCache.cachedImage(for: urlString)
 }
 

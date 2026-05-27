@@ -246,20 +246,24 @@ export default function ProfileScreen() {
               thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
             />
           </View>
-          <View style={s.divider} />
-          <View style={s.row}>
-            <Pulse size={18} color={C.textSecondary} weight="light" />
-            <View style={s.rowLabelGroup}>
-              <Text style={s.rowLabel}>Live Activity</Text>
-              <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
-            </View>
-            <Switch
-              value={prefs.liveActivity !== false}
-              onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
-              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
-              thumbColor={prefs.liveActivity !== false ? C.teal : C.textTertiary}
-            />
-          </View>
+          {Platform.OS === "ios" && (
+            <>
+              <View style={s.divider} />
+              <View style={s.row}>
+                <Pulse size={18} color={C.textSecondary} weight="light" />
+                <View style={s.rowLabelGroup}>
+                  <Text style={s.rowLabel}>Live Activity</Text>
+                  <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
+                </View>
+                <Switch
+                  value={prefs.liveActivity !== false}
+                  onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
+                  trackColor={{ false: C.toggleTrack, true: C.tealMid }}
+                  thumbColor={prefs.liveActivity !== false ? C.teal : C.textTertiary}
+                />
+              </View>
+            </>
+          )}
         </View>
         </FadeIn>
 
