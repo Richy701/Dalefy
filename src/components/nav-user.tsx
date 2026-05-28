@@ -46,7 +46,7 @@ export function NavUser() {
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[11px] font-bold text-sidebar-foreground truncate leading-none">{displayName}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-[9px] text-sidebar-foreground/40 leading-none truncate uppercase tracking-wider">{displayRole}</p>
+                    <p className="text-[9px] text-sidebar-foreground/55 leading-none truncate uppercase tracking-wider">{displayRole}</p>
                     {orgRole && (
                       <span className="text-[8px] font-bold uppercase tracking-wider leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
                         {orgRole}
@@ -61,7 +61,7 @@ export function NavUser() {
                 <TooltipTrigger
                   aria-label="Sign out"
                   onClick={() => setSignOutOpen(true)}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sidebar-foreground/30 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sidebar-foreground/45 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
                 >
                   <SignOut className="h-3 w-3" />
                 </TooltipTrigger>

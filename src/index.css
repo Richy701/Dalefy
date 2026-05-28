@@ -163,6 +163,75 @@ html[data-compact="true"] [data-compact-place] { border-radius: 0.75rem !importa
 html[data-compact="true"] [data-compact-place-img] { width: 80px !important; height: auto !important; }
 html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important; gap: 0.25rem !important; }
 
+/* ── Sidebar mini-calendar ── */
+.daf-sidebar-cal .rdp {
+  --rdp-cell-size: 32px;
+  margin: 0 !important;
+  padding: 0 0.5rem !important;
+  font-size: 10px;
+}
+.daf-sidebar-cal .rdp-months { width: 100% !important; }
+.daf-sidebar-cal .rdp-month { width: 100% !important; space-y: 0 !important; }
+.daf-sidebar-cal .rdp-month > * + * { margin-top: 0 !important; }
+.daf-sidebar-cal .rdp-caption {
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  padding: 0 !important;
+}
+.daf-sidebar-cal .rdp-caption_label {
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+}
+.daf-sidebar-cal .rdp-nav { position: absolute !important; inset: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; }
+.daf-sidebar-cal .rdp-nav_button {
+  height: 22px !important;
+  width: 22px !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 6px !important;
+  position: static !important;
+}
+.daf-sidebar-cal .rdp-nav_button:hover { background: hsl(171 85% 43% / 0.1) !important; }
+.daf-sidebar-cal .rdp-nav_button_previous,
+.daf-sidebar-cal .rdp-nav_button_next { position: static !important; }
+.daf-sidebar-cal .rdp-table { width: 100% !important; border-collapse: collapse !important; }
+.daf-sidebar-cal .rdp-head_row { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; }
+.daf-sidebar-cal .rdp-head_cell {
+  font-size: 7px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.15em !important;
+  padding: 4px 0 !important;
+  text-align: center !important;
+}
+.daf-sidebar-cal .rdp-row { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; margin: 0 !important; }
+.daf-sidebar-cal .rdp-cell {
+  height: var(--rdp-cell-size) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+.daf-sidebar-cal .rdp-day {
+  height: 26px !important;
+  width: 26px !important;
+  max-width: 26px !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+.daf-sidebar-cal .rdp-day_today { font-weight: 900 !important; }
+.daf-sidebar-cal .rdp-day_outside { opacity: 0.25 !important; }
+
 /* ── Entrance animations ── */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(16px); }

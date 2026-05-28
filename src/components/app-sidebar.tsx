@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight } from "@phosphor-icons/react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
@@ -41,13 +40,18 @@ function SidebarExtras() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [upcomingTrip]);
 
-  const recentTrips = React.useMemo(() =>
-    [...trips]
+  const recentTrips = React.useMemo(() => {
+    const now = new Date();
+    return [...trips]
       .filter((t) => t.id !== upcomingTrip?.id)
-      .slice(-3)
-      .reverse(),
-    [trips, upcomingTrip]
-  );
+      .sort((a, b) => {
+        const aActive = new Date(a.start) <= now && new Date(a.end) >= now;
+        const bActive = new Date(b.start) <= now && new Date(b.end) >= now;
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        return new Date(b.start).getTime() - new Date(a.start).getTime();
+      })
+      .slice(0, 5);
+  }, [trips, upcomingTrip]);
 
   if (collapsed) return null;
 
@@ -56,7 +60,7 @@ function SidebarExtras() {
       {/* ── Next Trip ── */}
       {upcomingTrip && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/40 px-2">
+          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/50 px-2">
             Next Trip
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -93,35 +97,36 @@ function SidebarExtras() {
       {/* ── Recent Trips ── */}
       {recentTrips.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/40 px-2">
+          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/50 px-2">
             Recent
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="space-y-1.5 px-2">
-              {recentTrips.map((trip) => (
-                <button
-                  key={trip.id}
-                  onClick={() => navigate(`/trip/${trip.id}`)}
-                  className="w-full rounded-xl overflow-hidden hover:ring-1 hover:ring-brand/30 transition-all group"
-                >
-                  <div className="relative h-16 overflow-hidden rounded-xl">
-                    <img
-                      src={trip.image}
-                      alt={trip.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-1.5">
-                      <p className="text-[10px] font-black uppercase tracking-tight text-white truncate leading-none">
-                        {trip.name}
-                      </p>
-                      <p className="text-[8px] font-bold text-white/50 truncate mt-0.5">
-                        {trip.destination || trip.status}
-                      </p>
+            <div className="space-y-0.5 px-1">
+              {recentTrips.map((trip) => {
+                const now = new Date();
+                const start = new Date(trip.start);
+                const end = new Date(trip.end);
+                const isActive = start <= now && end >= now;
+
+                return (
+                  <button
+                    key={trip.id}
+                    onClick={() => navigate(`/trip/${trip.id}`)}
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors group text-left"
+                  >
+                    <div className="h-7 w-7 rounded-lg overflow-hidden shrink-0 relative">
+                      <img src={trip.image} alt={trip.name} className="h-full w-full object-cover" />
+                      {isActive && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand border-[1.5px] border-sidebar" />
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold text-sidebar-foreground/65 truncate group-hover:text-brand transition-colors leading-none">{trip.name}</p>
+                      <p className="text-[8px] text-sidebar-foreground/35 truncate mt-0.5 leading-none">{trip.destination || trip.status}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

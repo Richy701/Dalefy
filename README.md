@@ -37,12 +37,13 @@ Trip planning without the mess. A modern travel management platform for organize
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
 - **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
+- **Dashboard** -- At a Glance stats with animated counters, interactive travel calendar with trip day highlights and tooltips, Next Up departures, Needs Attention alerts, upcoming trip carousel, and quick actions
 - **Demo Mode** -- Full-featured demo with floating indicator badge, localStorage-only data
 
 ## Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite 8, Tailwind CSS
-- **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12)
+- **UI Components:** Radix UI, Shadcn-style, Motion (Framer Motion v12), react-day-picker
 - **Backend:** Firebase Auth (Google OAuth + email/password), Firestore, Firebase Storage
 - **AI:** Anthropic Claude Haiku 4.5 (itinerary parsing)
 - **APIs:** RapidAPI (AeroDataBox flights), Google Places API, SerpAPI (image search), Unsplash, Pexels

@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { SquaresFour, Users, Globe, ChartPie, Images, Gear } from "@phosphor-icons/react";
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,9 +23,6 @@ export function NavMain() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/40 px-2 group-data-[collapsible=icon]:hidden">
-        Menu
-      </SidebarGroupLabel>
       <SidebarMenu className="gap-0.5">
         {NAV_ITEMS.map(({ icon: Icon, label, path }) => {
           const active = isActive(path);
@@ -39,7 +35,7 @@ export function NavMain() {
                   relative rounded-xl h-10 gap-3
                   ${active
                     ? "!bg-brand/10 !text-brand hover:!bg-brand/15"
-                    : "!text-sidebar-foreground/55 hover:!text-brand hover:!bg-brand/5"
+                    : "!text-sidebar-foreground/75 hover:!text-brand hover:!bg-brand/5"
                   }
                 `}
               >

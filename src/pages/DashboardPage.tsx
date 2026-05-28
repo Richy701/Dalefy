@@ -6,7 +6,7 @@ import {
   DotsThreeVertical, GridFour, List, ArrowSquareOut, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, ForkKnife, Compass, Globe,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning
 } from "@phosphor-icons/react";
 import { STORAGE } from "@/config/storageKeys";
 import { EVENT_ICONS } from "@/config/eventStyles";
@@ -19,7 +19,9 @@ import { Drawer } from "vaul";
 import { Calendar } from "@/components/ui/calendar";
 import { Image as ImageIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
+import { DayPicker } from "react-day-picker";
 import type { DateRange } from "react-day-picker";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { DisplayMode, Trip } from "@/types";
 import { useTrips } from "@/context/TripsContext";
@@ -36,13 +38,8 @@ import { InviteTeamDialog } from "@/components/shared/InviteTeamDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
-import MapboxMap, { Source, Layer, Marker } from "react-map-gl/mapbox";
-import { geocode } from "@/services/geocode";
 import { COVER_IMAGES } from "@/data/images";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
-import { sortEvents } from "@/lib/sortEvents";
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 
 const EVENT_COLORS = {
@@ -55,7 +52,6 @@ const EVENT_COLORS = {
 
 
 
-const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
 
 function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
@@ -104,22 +100,27 @@ function tripDuration(start: string, end: string) {
   return Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000));
 }
 
+function getRelativeDay(dateStr: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff < 7) return target.toLocaleDateString("en-US", { weekday: "long" });
+  return target.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+
 export function DashboardPage() {
   const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
-  const { resolvedAccent: accentColor } = usePreferences();
+  usePreferences();
   const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
-  const hexToRgbCss = (hex: string) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `${r}, ${g}, ${b}`;
-  };
-  const ACCENT_RGB = hexToRgbCss(accentColor);
   const stats = useTripStats(trips);
   const navigate = useNavigate();
 
@@ -130,6 +131,7 @@ export function DashboardPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => new Date());
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const dragCounter = useRef(0);
 
@@ -164,7 +166,6 @@ export function DashboardPage() {
   const [coverPage, setCoverPage] = useState(1);
   const [coverLastQuery, setCoverLastQuery] = useState("");
 
-  const isDark = theme === "dark";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const firstName = (() => {
@@ -206,49 +207,40 @@ export function DashboardPage() {
       .slice(0, 3);
   }, [spotlightTrip]);
 
-
-  // ── Mini destination map data ──────────────────────────────────────────
-  const destNames = useMemo(() => {
-    const names = new Set<string>();
+  const nextEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cutoff = new Date(today);
+    cutoff.setDate(cutoff.getDate() + 14);
+    const upcoming: Array<{ event: (typeof trips)[0]["events"][0]; tripName: string; tripId: string }> = [];
     trips.forEach(trip => {
-      const hotelNames = new Set(trip.events.filter(e => e.type === "hotel").map(e => e.location.toLowerCase()));
-      const isHotel = (n: string) => { const l = n.toLowerCase(); return hotelNames.has(l) || [...hotelNames].some(h => h.includes(l) || l.includes(h)); };
-      let name = trip.destination && !INVALID_DEST.test(trip.destination.trim()) && !isHotel(trip.destination.trim()) ? trip.destination : "";
-      if (!name) {
-        const flights = sortEvents(trip.events.filter(e => e.type === "flight"));
-        for (const f of flights) { const m = f.location.match(/^.+?\s+to\s+(.+)$/i); if (m) { name = m[1].trim(); break; } }
-      }
-      if (!name) { const act = trip.events.find(e => e.type === "activity" && e.location); if (act) name = act.location; }
-      if (!name) name = trip.name;
-      names.add(name);
-    });
-    return [...names];
-  }, [trips]);
-
-  const [mapCoords, setMapCoords] = useState<Record<string, [number, number]>>({});
-
-  useEffect(() => {
-    destNames.forEach(name => {
-      // geocode service returns [lat, lng]; Mapbox markers need [lng, lat]
-      geocode(name).then(c => {
-        if (c) setMapCoords(prev => ({ ...prev, [name]: [c[1], c[0]] }));
+      trip.events.forEach(ev => {
+        if (!ev.date) return;
+        const d = new Date(ev.date + "T00:00:00");
+        if (d >= today && d <= cutoff) upcoming.push({ event: ev, tripName: trip.name, tripId: trip.id });
       });
     });
-  }, [destNames]);
+    return upcoming
+      .sort((a, b) => (a.event.date + (a.event.time || "")).localeCompare(b.event.date + (b.event.time || "")))
+      .slice(0, 4);
+  }, [trips]);
 
-  const mapPins = useMemo(() =>
-    destNames.filter(n => mapCoords[n]).map(n => ({ name: n, coords: mapCoords[n] })),
-    [destNames, mapCoords],
-  );
-
-  const heatmapData = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: mapPins.map(p => ({
-      type: "Feature" as const,
-      properties: { weight: 1 },
-      geometry: { type: "Point" as const, coordinates: p.coords },
-    })),
-  }), [mapPins]);
+  const attentionItems = useMemo(() => {
+    const items: Array<{ tripId: string; tripName: string; message: string; severity: "warn" | "info" }> = [];
+    const now = new Date();
+    trips.forEach(trip => {
+      const start = new Date(trip.start);
+      const end = new Date(trip.end);
+      const days = Math.ceil((start.getTime() - now.getTime()) / 86400000);
+      if (trip.status === "Draft" && days > 0 && days <= 30)
+        items.push({ tripId: trip.id, tripName: trip.name, message: `Draft - departs in ${days}d`, severity: "warn" });
+      else if (trip.events.length === 0 && end >= now)
+        items.push({ tripId: trip.id, tripName: trip.name, message: "No events added", severity: "info" });
+      else if (trip.status === "In Progress" && end < now)
+        items.push({ tripId: trip.id, tripName: trip.name, message: "Past end date - still active", severity: "warn" });
+    });
+    return items.slice(0, 3);
+  }, [trips]);
 
   const runCoverSearch = async (query: string, page = 1) => {
     if (!query.trim()) { setCoverResults([]); return; }
@@ -463,10 +455,10 @@ export function DashboardPage() {
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-slate-200/30 dark:border-white/[0.06] px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
+          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-brand/[0.08] dark:border-brand/[0.06] shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
             <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
-                {greeting}, {firstName} 👋
+                {greeting}, {firstName}
               </h1>
               {upcomingCards[0] && countdown && countdown.total > 0 ? (
                 <button
@@ -527,13 +519,83 @@ export function DashboardPage() {
                 </p>
               )}
             </div>
+            {/* Quick Actions — inline in hero */}
+            <div className="relative z-10 flex items-center gap-2 flex-wrap mt-6">
+              <button
+                type="button"
+                onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
+                disabled={isViewer}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
+              >
+                <Plus className="h-3 w-3" /> New Trip
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+              >
+                <Upload className="h-3 w-3" /> Import
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+              >
+                <Users className="h-3 w-3" /> Invite Team
+              </button>
+            </div>
+
             <BrandIllustration
               src="/illustrations/illus-together.svg"
               aria-hidden="true"
               draggable={false}
-              className="hidden sm:block absolute -right-4 -bottom-4 h-48 lg:h-56 w-auto object-contain pointer-events-none select-none opacity-90"
+              className="hidden sm:block absolute -right-4 bottom-6 h-44 lg:h-52 w-auto object-contain pointer-events-none select-none opacity-90"
             />
           </div>
+
+          {/* ── Next Up — cross-trip agenda ── */}
+          {nextEvents.length > 0 && (
+            <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
+                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Across all your trips</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 dark:bg-[#1a1a1a] border-t border-slate-100 dark:border-[#1a1a1a]">
+                {nextEvents.map(({ event: ev, tripName, tripId }) => {
+                  const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
+                      className="bg-white dark:bg-[#111111] px-4 py-4 text-left hover:bg-brand/[0.03] dark:hover:bg-brand/[0.04] transition-colors group"
+                    >
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <div className={cn("h-5 w-5 rounded-md flex items-center justify-center shrink-0", cfg.bg)}>
+                          <cfg.Icon className={cn("h-2.5 w-2.5", cfg.text)} weight="bold" />
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-brand">{getRelativeDay(ev.date)}</span>
+                      </div>
+                      <p className="text-xs font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1 group-hover:text-brand transition-colors">
+                        {ev.title}
+                      </p>
+                      {ev.location && (
+                        <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] truncate mt-1 flex items-center gap-1">
+                          <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2.5 gap-2">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#555] truncate">{tripName}</p>
+                        {ev.time && <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums shrink-0">{ev.time}</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Two-column layout ── */}
           <div data-compact-grid className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-stretch">
@@ -544,8 +606,8 @@ export function DashboardPage() {
               {/* ── Upcoming Trip ── */}
               <section>
                 <div data-compact-section-head className="mb-4">
-                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trip</h2>
-                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Departing within 30 days</p>
+                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trips</h2>
+                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Your next departures</p>
                 </div>
 
                 {upcomingCards.length > 0 ? (
@@ -555,7 +617,7 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/[0.06] transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
@@ -594,7 +656,7 @@ export function DashboardPage() {
                   <div data-compact-section-head className="mb-1">
                     <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
                       For your{" "}
-                      <span className="text-brand">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
+                      <span className="text-brand uppercase">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
                       {" "}Trip
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Key events on your itinerary</p>
@@ -618,7 +680,9 @@ export function DashboardPage() {
                         const monthDayLabel = eventDate
                           ? eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()
                           : null;
-                        const timeParts = ev.time ? ev.time.trim().split(/\s+/) : null;
+                        const rawTime = ev.time?.trim();
+                        const hasRealTime = rawTime && rawTime !== "00:00" && rawTime !== "0:00";
+                        const timeParts = hasRealTime ? rawTime.split(/\s+/) : null;
 
                         // Type-specific detail row
                         const detail: React.ReactNode =
@@ -674,10 +738,10 @@ export function DashboardPage() {
                           <button
                             key={ev.id}
                             onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-md transition-[border-color,box-shadow] duration-200 group"
+                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/[0.05] transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
-                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-[120px] shrink-0 relative overflow-hidden">
+                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-[160px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
                               {hasImg ? (
                                 <img src={ev.image} alt={ev.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               ) : (
@@ -696,7 +760,7 @@ export function DashboardPage() {
                                     <cfg.Icon className="h-2.5 w-2.5" weight="bold" />
                                     {typeLabel}
                                   </div>
-                                  {(timeParts || monthDayLabel) && (
+                                  {(hasRealTime || monthDayLabel) && (
                                     <span className="sm:hidden text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider shrink-0">
                                       {timeParts ? timeParts.join(" ") : monthDayLabel}
                                     </span>
@@ -737,7 +801,7 @@ export function DashboardPage() {
 
                             {/* Right: when block — weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
-                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-transparent dark:border-transparent">
+                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-[#1a1a1a]">
                                 {weekdayLabel && (
                                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
                                     {weekdayLabel}
@@ -786,85 +850,88 @@ export function DashboardPage() {
             </div>
 
             {/* ══ RIGHT COLUMN ══ */}
-            <div data-compact-sidebar className="space-y-4">
+            <div data-compact-sidebar className="flex flex-col gap-4">
 
-              {/* Destinations Map — mini globe with heatmap + pins */}
-              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
-                <div className="flex items-start justify-between px-5 pt-5 pb-3">
-                  <div>
-                    <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Destinations</p>
-                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">{mapPins.length} {mapPins.length === 1 ? "place" : "places"} explored</p>
+              {/* Needs Attention */}
+              {attentionItems.length > 0 && (
+                <div className="bg-white dark:bg-[#111111] border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+                  <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
+                    <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
+                    <div>
+                      <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</p>
+                      <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => navigate("/destinations")}
-                    className="text-[11px] font-bold text-brand hover:text-brand/80 transition-colors mt-0.5"
-                  >
-                    Expand
-                  </button>
-                </div>
-                <div data-compact-map className="relative h-[200px] sm:h-[220px] overflow-hidden rounded-b-3xl">
-                  <MapboxMap
-                    key={`${isDark ? "dark" : "light"}-${accentColor}`}
-                    initialViewState={{ longitude: 15, latitude: 20, zoom: 1.2 }}
-                    mapStyle={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
-                    mapboxAccessToken={MAPBOX_TOKEN}
-                    projection="globe"
-                    attributionControl={false}
-                    style={{ width: "100%", height: "100%" }}
-                    scrollZoom={false}
-                    dragPan={false}
-                    dragRotate={false}
-                    touchZoomRotate={false}
-                    keyboard={false}
-                  >
-                    <Source id="dash-heatmap" type="geojson" data={heatmapData}>
-                      <Layer
-                        id="dash-heatmap-layer"
-                        type="heatmap"
-                        paint={{
-                          "heatmap-weight": ["get", "weight"],
-                          "heatmap-intensity": 0.6,
-                          "heatmap-radius": 35,
-                          "heatmap-opacity": 0.5,
-                          "heatmap-color": [
-                            "interpolate", ["linear"], ["heatmap-density"],
-                            0, "rgba(0,0,0,0)",
-                            0.2, `rgba(${ACCENT_RGB},0.15)`,
-                            0.4, `rgba(${ACCENT_RGB},0.3)`,
-                            0.6, `rgba(${ACCENT_RGB},0.5)`,
-                            0.8, `rgba(${ACCENT_RGB},0.7)`,
-                            1, accentColor,
-                          ],
-                        }}
-                      />
-                    </Source>
-                    {mapPins.map((pin, i) => (
-                      <Marker key={pin.name} longitude={pin.coords[0]} latitude={pin.coords[1]} anchor="center">
-                        <div style={{ position: "relative", width: 32, height: 32 }}>
-                          <div style={{
-                            position: "absolute", top: "50%", left: "50%",
-                            width: 32, height: 32, marginLeft: -16, marginTop: -16, borderRadius: "50%",
-                            border: `1px solid rgba(${ACCENT_RGB},${isDark ? 0.2 : 0.35})`,
-                            background: `rgba(${ACCENT_RGB},${isDark ? 0.06 : 0.1})`,
-                            animation: `dest-pin-pulse 3s ease-in-out ${i * 0.5}s infinite`,
-                            pointerEvents: "none",
-                          }} />
-                          <div style={{
-                            position: "absolute", top: "50%", left: "50%",
-                            width: 12, height: 12, marginLeft: -6, marginTop: -6, borderRadius: "50%",
-                            background: accentColor,
-                            border: `2px solid ${isDark ? "rgba(17,17,17,0.8)" : "rgba(255,255,255,0.95)"}`,
-                            boxShadow: isDark
-                              ? `0 0 8px rgba(${ACCENT_RGB},0.4)`
-                              : `0 0 6px rgba(${ACCENT_RGB},0.3), 0 0 0 2px rgba(${ACCENT_RGB},0.15)`,
-                            zIndex: 2,
-                          }} />
+                  <div className="px-3 pb-4 space-y-1">
+                    {attentionItems.map(item => (
+                      <button
+                        key={item.tripId}
+                        type="button"
+                        onClick={() => navigate(`/trip/${item.tripId}`)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/[0.04] transition-colors text-left group"
+                      >
+                        <span className={cn(
+                          "h-1.5 w-1.5 rounded-full shrink-0",
+                          item.severity === "warn" ? "bg-amber-500" : "bg-slate-400 dark:bg-[#555]"
+                        )} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{item.tripName}</p>
+                          <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-0.5">{item.message}</p>
                         </div>
-                      </Marker>
+                        <ArrowUpRight className="h-3 w-3 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
+                      </button>
                     ))}
-                  </MapboxMap>
-                  {/* Edge vignette to blend into card */}
-                  <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 40px 12px ${isDark ? "#111111" : "#ffffff"}` }} />
+                  </div>
+                </div>
+              )}
+
+              {/* At a Glance — stats card */}
+              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+                <div className="px-5 pt-5 pb-3">
+                  <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
+                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Your travel snapshot</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 px-3 pb-2">
+                  {[
+                    { icon: Globe, label: "Trips", value: stats.pipeline.total },
+                    { icon: LucideCalendar, label: "Travel Days", value: stats.totalDays },
+                    { icon: AirplaneTilt, label: "Flights", value: stats.insights.flightCount },
+                    { icon: Bed, label: "Hotels", value: stats.insights.hotelCount },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/[0.04] dark:hover:bg-brand/[0.06] transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">{label}</span>
+                      </div>
+                      <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
+                        <NumberFlow value={value} />
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-5 pb-5 pt-2 space-y-2.5">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555] mb-1">Pipeline</p>
+                  {[
+                    { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
+                    { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-[#333]" },
+                    { label: "Active", count: trips.filter(t => t.status === "In Progress" || (new Date(t.start) <= new Date() && new Date(t.end) >= new Date())).length, color: "bg-emerald-500" },
+                  ].map(({ label, count, color }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] w-[60px] shrink-0">{label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-700 ease-out", color)}
+                          style={{ width: stats.pipeline.total > 0 ? `${Math.max(6, (count / stats.pipeline.total) * 100)}%` : "0%" }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-900 dark:text-white w-5 text-right tabular-nums">{count}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -968,10 +1035,94 @@ export function DashboardPage() {
                     <div className="px-4 pb-4">
                       <button
                         onClick={() => handleOpenTrip(spotlightTrip)}
-                        className="w-full h-11 rounded-2xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-opacity flex items-center justify-center gap-2"
+                        className="w-full h-11 rounded-2xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
                       >
                         Open Itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
                       </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Travel Calendar */}
+              {(() => {
+                const tripRanges = trips.map(t => ({
+                  from: new Date(t.start + "T00:00:00"),
+                  to: new Date(t.end + "T00:00:00"),
+                }));
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const activeDays: Date[] = [];
+                const tripDayMap = new Map<string, { tripId: string; tripName: string }>();
+                trips.forEach(t => {
+                  const s = new Date(t.start + "T00:00:00");
+                  const e = new Date(t.end + "T00:00:00");
+                  const isActive = s <= now && e >= now;
+                  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+                    const key = d.toISOString().split("T")[0];
+                    tripDayMap.set(key, { tripId: t.id, tripName: t.name });
+                    if (isActive) activeDays.push(new Date(d));
+                  }
+                });
+
+                const handleDayClick = (day: Date) => {
+                  const key = day.toISOString().split("T")[0];
+                  const trip = tripDayMap.get(key);
+                  if (trip) navigate(`/trip/${trip.tripId}`);
+                };
+
+                const modifiers = {
+                  tripDay: tripRanges.flatMap(r => {
+                    const days: Date[] = [];
+                    for (let d = new Date(r.from); d <= r.to; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+                    return days;
+                  }),
+                  activeDay: activeDays,
+                };
+
+                return (
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden flex-1 flex flex-col">
+                    <div className="px-4 pt-4 pb-1 flex items-center justify-between">
+                      <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
+                      <button
+                        onClick={() => setCalMonth(new Date())}
+                        className="text-[8px] font-bold uppercase tracking-wider text-brand hover:text-brand/80 transition-colors"
+                      >
+                        Today
+                      </button>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center px-1 pb-2 daf-sidebar-cal">
+                      <DayPicker
+                        mode="single"
+                        month={calMonth}
+                        onMonthChange={setCalMonth}
+                        showOutsideDays
+                        modifiers={modifiers}
+                        modifiersClassNames={{
+                          tripDay: "!bg-brand/10 !text-brand !font-bold",
+                          activeDay: "!bg-brand !text-white !font-black",
+                        }}
+                        onDayClick={handleDayClick}
+                        components={{
+                          DayContent: ({ date }) => {
+                            const key = date.toISOString().split("T")[0];
+                            const trip = tripDayMap.get(key);
+                            if (trip) {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger className="w-full h-full flex items-center justify-center">
+                                    {date.getDate()}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">{trip.tripName}</TooltipContent>
+                                </Tooltip>
+                              );
+                            }
+                            return <>{date.getDate()}</>;
+                          },
+                          IconLeft: () => <CaretRight className="h-3 w-3 rotate-180" />,
+                          IconRight: () => <CaretRight className="h-3 w-3" />,
+                        }}
+                      />
                     </div>
                   </div>
                 );
@@ -1009,7 +1160,7 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-black/20 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
 
@@ -1063,9 +1214,10 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-white dark:bg-[#111111] rounded-[2rem] border-2 border-dashed border-black/[0.06] dark:border-transparent flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
-                  <div className="h-14 w-14 rounded-full bg-slate-50 dark:bg-[#050505] border border-transparent dark:border-transparent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"><Plus className="h-6 w-6" /></div>
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#666] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                  <div className="h-16 w-16 rounded-2xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
+                  <p className="text-[10px] font-medium text-slate-400 dark:text-[#555] mt-1">Plan your next adventure</p>
                 </button>
               </div>
             ) : (
@@ -1156,6 +1308,17 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
+                {filteredTrips.length > 0 && (
+                  <button
+                    onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
+                    className="group bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#222] rounded-2xl flex items-center gap-3 px-4 py-3.5 text-slate-400 dark:text-[#666] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
+                  >
+                    <div className="h-9 w-9 rounded-xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
+                      <Plus className="h-4 w-4" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em]">New Trip</span>
+                  </button>
+                )}
               </div>
             )}
 
