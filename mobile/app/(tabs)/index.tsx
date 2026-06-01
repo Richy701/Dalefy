@@ -25,7 +25,7 @@ try {
   GlassView = glass.GlassView;
   HAS_LIQUID_GLASS = glass.isLiquidGlassAvailable();
 } catch { /* native module unavailable on this device */ }
-import { useRouter, Link } from "expo-router";
+import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
@@ -435,8 +435,12 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const { prefs } = usePreferences();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ join?: string }>();
   const [notifOpen, setNotifOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
+  useEffect(() => {
+    if (params.join === "1") setCodeOpen(true);
+  }, [params.join]);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [linkValue, setLinkValue] = useState("");
   const [entryMode, setEntryMode] = useState<"pin" | "qr" | "link">("pin");
@@ -1619,10 +1623,10 @@ function TripRow({ trip }: { trip: Trip }) {
         <Text style={styles.rowName} numberOfLines={2}>{trip.name}</Text>
         <View style={styles.rowDateRow}>
           <CalendarDots size={9} color={C.teal} weight="regular" />
-          <Text style={styles.rowDate}>
+          <Text style={styles.rowDate} numberOfLines={1}>
             {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             {" – "}
-            {end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </Text>
         </View>
       </View>
@@ -2114,8 +2118,8 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.base, fontWeight: T.bold,
       color: C.textPrimary, marginBottom: 3,
     },
-    rowDateRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-    rowDate: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium },
+    rowDateRow: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1 },
+    rowDate: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, flexShrink: 1 },
     statusBadgeRow: {
       flexDirection: "row", alignItems: "center", gap: 4,
       borderRadius: R.full, paddingHorizontal: 8, paddingVertical: 4,
