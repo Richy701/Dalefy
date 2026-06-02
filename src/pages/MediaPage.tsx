@@ -22,6 +22,7 @@ import {
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
@@ -42,6 +43,23 @@ function formatSize(bytes: number) {
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+async function downloadFile(url: string, name: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    toast.error(`Failed to download ${name}`);
+  }
 }
 
 export function MediaPage() {
@@ -246,18 +264,62 @@ export function MediaPage() {
   const handleBulkDownload = async () => {
     if (selected.size === 0) return;
     const items = filtered.filter((m) => selected.has(m.id));
-    for (const item of items) {
-      const a = document.createElement("a");
-      a.href = item.url;
-      a.download = item.name;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise((r) => setTimeout(r, 200));
+
+    if (items.length === 1) {
+      await downloadFile(items[0].url, items[0].name);
+      return;
     }
-    toast.success(`Downloading ${items.length} file${items.length > 1 ? "s" : ""}`);
+
+    const toastId = toast.loading(`Preparing zip - 0/${items.length} files...`);
+    const zip = new JSZip();
+    const nameCounts = new Map<string, number>();
+    let fetched = 0;
+
+    const results = await Promise.allSettled(
+      items.map(async (item) => {
+        const res = await fetch(item.url);
+        const blob = await res.blob();
+        fetched++;
+        toast.loading(`Preparing zip - ${fetched}/${items.length} files...`, { id: toastId });
+        return { name: item.name, blob };
+      })
+    );
+
+    for (const r of results) {
+      if (r.status !== "fulfilled") continue;
+      let name = r.value.name;
+      const count = nameCounts.get(name) ?? 0;
+      if (count > 0) {
+        const dot = name.lastIndexOf(".");
+        name = dot > 0 ? `${name.slice(0, dot)} (${count})${name.slice(dot)}` : `${name} (${count})`;
+      }
+      nameCounts.set(r.value.name, count + 1);
+      zip.file(name, r.value.blob);
+    }
+
+    const added = results.filter((r) => r.status === "fulfilled").length;
+    if (added === 0) {
+      toast.error("Failed to download files", { id: toastId });
+      return;
+    }
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `daf-media-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const failed = items.length - added;
+    toast.success(
+      failed > 0
+        ? `Downloaded ${added} files as zip (${failed} failed)`
+        : `Downloaded ${added} files as zip`,
+      { id: toastId }
+    );
   };
 
   const getLightboxIndex = (item: FilteredItem) => {
@@ -923,15 +985,12 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
               <MagnifyingGlassPlus className="h-4 w-4" />
             </button>
           )}
-          <a
-            href={item.url}
-            download={item.name}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => downloadFile(item.url, item.name)}
             className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
           >
             <Download className="h-4 w-4" />
-          </a>
+          </button>
           <button
             onClick={() => onDelete(item)}
             className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"

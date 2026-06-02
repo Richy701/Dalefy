@@ -7,6 +7,23 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import type { TripMedia } from "@/types";
 
+async function downloadFile(url: string, name: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    // silently fail for individual items
+  }
+}
+
 interface Props {
   tripId: string;
   media: TripMedia[];
@@ -233,15 +250,12 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                           <MagnifyingGlassPlus className="h-4 w-4" />
                         </button>
                       )}
-                      <a
-                        href={item.url}
-                        download={item.name}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => downloadFile(item.url, item.name)}
                         className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
                       >
                         <Download className="h-4 w-4" />
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDelete(item.id)}
                         className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
