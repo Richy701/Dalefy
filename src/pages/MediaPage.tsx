@@ -307,7 +307,11 @@ export function MediaPage() {
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `daf-media-${new Date().toISOString().slice(0, 10)}.zip`;
+    const tripNames = [...new Set(items.map((i) => i.tripName))];
+    const slug = tripNames.length === 1
+      ? tripNames[0].replace(/[^a-zA-Z0-9]+/g, "-").replace(/-+$/, "")
+      : tripNames.slice(0, 3).map((n) => n.replace(/[^a-zA-Z0-9]+/g, "-").replace(/-+$/, "")).join("_");
+    a.download = `${slug}-media.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
