@@ -22,6 +22,7 @@ import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail
 import { parseTripDate } from "@/shared/dates";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
@@ -55,6 +56,7 @@ export default function SharedTripScreen() {
   const { trips, addTrip } = useTrips();
   const { prefs } = usePreferences();
   const { user: authUser, isAnonymous } = useAuth();
+  const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
 
@@ -89,7 +91,11 @@ export default function SharedTripScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     addTrip(trip);
     logTripJoin(trip.id, trip.name, prefs.name, prefs.avatar, linkedTravelerId)
-      .then(() => {
+      .then((ok) => {
+        if (!ok) {
+          toast("Couldn't save this trip. Check your connection and try again.", "error");
+          return;
+        }
         if (linkedTravelerId && !isAnonymous && authUser?.email) {
           patchTravelerEmail(trip.id, linkedTravelerId, authUser.email);
         }
@@ -105,7 +111,7 @@ export default function SharedTripScreen() {
     setTimeout(() => {
       router.replace(`/trip/${trip.id}`);
     }, 1200);
-  }, [trip, addTrip, addScale, addCheck, prefs, router, isAnonymous, authUser]);
+  }, [trip, addTrip, addScale, addCheck, prefs, router, isAnonymous, authUser, toast]);
 
   const handleAddToMyTrips = useCallback(async () => {
     if (!trip || alreadyInMyTrips || justAdded) return;

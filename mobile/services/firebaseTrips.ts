@@ -203,7 +203,7 @@ export async function logTripJoin(
   avatar?: string,
   linkedTravelerId?: string,
   email?: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const deviceId = await getDeviceId();
     await waitForAuth();
@@ -231,8 +231,12 @@ export async function logTripJoin(
       const uidMemberId = `${uid}_${tripId}`;
       await setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidMemberId), memberData, { merge: true });
     }
+    return true;
   } catch {
-    // non-critical — don't block the join flow
+    // The membership write failed — the caller should surface this, since
+    // fetchTrips keys off trip_members and the trip would otherwise silently
+    // disappear on next load.
+    return false;
   }
 }
 
