@@ -94,6 +94,7 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  agencyCode: string;
   createdBy: string;
 }
 
@@ -101,16 +102,27 @@ export interface OrgMember {
   id: string;
   organizationId: string;
   userId: string;
-  role: "owner" | "admin" | "agent";
+  role: "owner" | "admin" | "agent" | "viewer";
   joinedAt: string;
   profile?: User;
 }
 
 export type OrgRole = OrgMember["role"];
 
+export interface TripTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  assignee?: string;
+  dueDate?: string;
+  category?: "booking" | "documents" | "logistics" | "communication" | "other";
+  createdAt: string;
+}
+
 export interface PublishedSnapshot {
   events: TravelEvent[];
   info?: TripInfo[];
+  documents?: EventDocument[];
   organizer?: TripOrganizer;
   image: string;
   name: string;
@@ -144,6 +156,8 @@ export interface Trip {
   shortCode?: string;
   organizer?: TripOrganizer;
   info?: TripInfo[];
+  documents?: EventDocument[];
+  tasks?: TripTask[];
   publishedSnapshot?: PublishedSnapshot;
 }
 
