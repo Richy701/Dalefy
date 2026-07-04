@@ -5,6 +5,7 @@ module.exports = ({ config }) => ({
     "expo-font",
     "expo-image",
     "expo-sharing",
+    "expo-quick-actions",
     [
       "expo-widgets",
       {
