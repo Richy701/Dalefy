@@ -15,6 +15,7 @@ import { matchOrCreateTravelers } from "@/lib/travelerSync";
 import { notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { lookupFlight } from "@/services/serpapi";
 import { geocodeMany } from "@/services/geocode";
+import { firebaseAuth } from "@/services/firebase";
 
 interface ImportItineraryDialogProps {
   open: boolean;
@@ -1034,9 +1035,10 @@ async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] =
     .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
     .map(m => m.dataUrl);
 
+  const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
   const resp = await fetch("/api/parse-itinerary", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ text: text || undefined, images: images.length > 0 ? images : undefined }),
   });
 

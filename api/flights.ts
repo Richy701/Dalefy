@@ -1,7 +1,10 @@
 import { validateIata, validateDate, requireRapidApi } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
+import { rateLimit } from "./_rateLimit.js";
 
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "flights", limit: 40, windowMs: 60_000 })) return;
+
   const { from, to, date } = req.query as Record<string, string>;
 
   const err = validateIata(from, "from") || validateIata(to, "to") || validateDate(date, "date");

@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { verifyFirebaseToken } from "./_verifyToken.js";
+import { rateLimit } from "./_rateLimit.js";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -107,6 +109,14 @@ export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+
+  // Require a valid Firebase token — this endpoint spends Anthropic credits.
+  const auth = req.headers["authorization"] ?? "";
+  const payload = await verifyFirebaseToken(auth.replace("Bearer ", ""));
+  if (!payload) return res.status(401).json({ error: "Unauthorized" });
+
+  // Cap per-user request rate as a second line of defence against abuse.
+  if (!rateLimit(req, res, { bucket: "parse-itinerary", limit: 20, windowMs: 60_000 })) return;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

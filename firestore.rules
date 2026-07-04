@@ -29,6 +29,17 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + tripId));
     }
 
+    // ── Helper: a trip is joinable if it is published, or the caller owns
+    //    it / is an org editor of it (so joins can't be minted on private trips)
+    function canJoinTrip(tripId) {
+      let t = get(/databases/$(database)/documents/trips/$(tripId));
+      return t != null && (
+        t.data.status in ["Published", "published"]
+        || t.data.user_id == request.auth.uid
+        || (t.data.organization_id != null && isOrgEditor(t.data.organization_id))
+      );
+    }
+
     // ── Profiles: any authenticated user can read; only owner can write ──
     match /profiles/{userId} {
       allow read: if request.auth != null;
@@ -109,12 +120,13 @@ service cloud.firestore {
     // ── Trips ──────────────────────────────────────────────────────────────
     match /trips/{tripId} {
       // Published trips are readable by anyone (shared links, PIN join flow).
-      // Non-published trips require ownership, membership, org membership, or cron.
+      // Non-published trips require ownership, org membership, or cron. Trip
+      // membership is NOT a read grant here: since it is world-mintable, it
+      // would otherwise let anyone read private/draft trips.
       allow read: if resource.data.status in ["Published", "published"]
                   || (request.auth != null
                       && (resource.data.user_id == request.auth.uid
                           || isCronUser()
-                          || isTripMember(tripId)
                           || (resource.data.organization_id != null
                               && isOrgMember(resource.data.organization_id))));
 
@@ -122,12 +134,15 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.resource.data.user_id == request.auth.uid;
 
-      // The creator, org editor (not viewer), cron user, or trip member can update;
-      // only creator/org admin/cron can delete
+      // The creator, org editor (not viewer), or cron user can update. A trip
+      // member can update only while the trip is published (travelers claim a
+      // slot / attach media on published trips); this stops a stale or
+      // self-minted membership from editing a private/draft trip.
       allow update: if request.auth != null
                     && (resource.data.user_id == request.auth.uid
                         || isCronUser()
-                        || isTripMember(tripId)
+                        || (isTripMember(tripId)
+                            && resource.data.status in ["Published", "published"])
                         || (resource.data.organization_id != null
                             && isOrgEditor(resource.data.organization_id)));
       allow delete: if request.auth != null
@@ -142,14 +157,17 @@ service cloud.firestore {
       // Read: authenticated users only
       allow read: if request.auth != null;
 
-      // Create: must be authenticated, include a trip_id, and either
-      // device_id or a matching uid/user_id
+      // Create: must be authenticated, include a trip_id, identify via
+      // device_id or a matching uid/user_id, AND the target trip must be
+      // joinable (published, or owned / org-edited by the caller). Without the
+      // joinable check, any user could mint membership on any trip.
       allow create: if request.auth != null
                     && request.resource.data.trip_id is string
                     && request.resource.data.trip_id.size() > 0
                     && (request.resource.data.device_id is string
                         || request.resource.data.uid == request.auth.uid
-                        || request.resource.data.user_id == request.auth.uid);
+                        || request.resource.data.user_id == request.auth.uid)
+                    && canJoinTrip(request.resource.data.trip_id);
 
       // The member themselves, the trip owner, or an org editor can update/delete.
       allow update, delete: if request.auth != null

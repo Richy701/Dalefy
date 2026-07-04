@@ -8,6 +8,7 @@ import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
 import { useBrand } from "@/context/BrandContext";
 import { useOrg } from "@/context/OrgContext";
+import { parseTripDate } from "@/lib/dates";
 import {
   Sidebar,
   SidebarContent,
@@ -30,13 +31,13 @@ function SidebarExtras() {
   const upcomingTrip = React.useMemo(() => {
     const now = new Date();
     return [...trips]
-      .filter((t) => new Date(t.start) > now)
+      .filter((t) => parseTripDate(t.start) > now)
       .sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
   }, [trips]);
 
   const daysUntil = React.useMemo(() => {
     if (!upcomingTrip) return 0;
-    const diff = new Date(upcomingTrip.start).getTime() - Date.now();
+    const diff = parseTripDate(upcomingTrip.start).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [upcomingTrip]);
 
@@ -45,8 +46,8 @@ function SidebarExtras() {
     return [...trips]
       .filter((t) => t.id !== upcomingTrip?.id)
       .sort((a, b) => {
-        const aActive = new Date(a.start) <= now && new Date(a.end) >= now;
-        const bActive = new Date(b.start) <= now && new Date(b.end) >= now;
+        const aActive = parseTripDate(a.start) <= now && parseTripDate(a.end) >= now;
+        const bActive = parseTripDate(b.start) <= now && parseTripDate(b.end) >= now;
         if (aActive !== bActive) return aActive ? -1 : 1;
         return new Date(b.start).getTime() - new Date(a.start).getTime();
       })
@@ -104,8 +105,8 @@ function SidebarExtras() {
             <div className="space-y-0.5 px-1">
               {recentTrips.map((trip) => {
                 const now = new Date();
-                const start = new Date(trip.start);
-                const end = new Date(trip.end);
+                const start = parseTripDate(trip.start);
+                const end = parseTripDate(trip.end);
                 const isActive = start <= now && end >= now;
 
                 return (

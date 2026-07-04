@@ -1,7 +1,10 @@
 import { validateFlightNum, validateDate, requireRapidApi, scoreAeroFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
+import { rateLimit } from "./_rateLimit.js";
 
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "flight-number", limit: 40, windowMs: 60_000 })) return;
+
   const { number, date } = req.query as Record<string, string>;
 
   const err = validateFlightNum(number) || validateDate(date, "date");

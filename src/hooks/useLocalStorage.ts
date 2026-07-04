@@ -17,7 +17,11 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, React.Disp
   });
 
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.error(`Failed to persist "${key}" to localStorage:`, err);
+    }
   }, [key, value]);
 
   // Re-read when another part of the app writes to the same key directly

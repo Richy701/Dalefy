@@ -23,6 +23,7 @@ import { DayPicker } from "react-day-picker";
 import type { DateRange } from "react-day-picker";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { parseTripDate } from "@/lib/dates";
 import type { DisplayMode, Trip } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -54,7 +55,7 @@ const EVENT_COLORS = {
 
 
 function daysUntil(dateStr: string) {
-  return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
+  return Math.max(0, Math.ceil((parseTripDate(dateStr).getTime() - Date.now()) / 86400000));
 }
 
 /** Get the actual departure timestamp from the chronologically earliest event */
@@ -70,7 +71,7 @@ function getFirstEventTime(trip: Trip): string {
     const ampm = match[3]?.toUpperCase();
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
-    const d = new Date(ev.date);
+    const d = parseTripDate(ev.date);
     d.setHours(hours, mins, 0, 0);
     if (!earliest || d < earliest) earliest = d;
   }
@@ -185,7 +186,7 @@ export function DashboardPage() {
   const upcomingCards = useMemo(() =>
     [...trips]
       .sort((a, b) => a.start.localeCompare(b.start))
-      .filter(t => new Date(t.end) >= new Date())
+      .filter(t => parseTripDate(t.end) >= new Date())
       .slice(0, 2),
     [trips]);
 
@@ -196,7 +197,7 @@ export function DashboardPage() {
     [...trips]
       .filter(t => t.status !== "Draft")
       .sort((a, b) => a.start.localeCompare(b.start))
-      .find(t => new Date(t.end) >= new Date()) || trips[0] || null,
+      .find(t => parseTripDate(t.end) >= new Date()) || trips[0] || null,
     [trips]);
 
   // Place-worthy events (activity, hotel, dining) for spotlight
@@ -229,8 +230,8 @@ export function DashboardPage() {
     const items: Array<{ tripId: string; tripName: string; message: string; severity: "warn" | "info" }> = [];
     const now = new Date();
     trips.forEach(trip => {
-      const start = new Date(trip.start);
-      const end = new Date(trip.end);
+      const start = parseTripDate(trip.start);
+      const end = parseTripDate(trip.end);
       const days = Math.ceil((start.getTime() - now.getTime()) / 86400000);
       if (trip.status === "Draft" && days > 0 && days <= 30)
         items.push({ tripId: trip.id, tripName: trip.name, message: `Draft - departs in ${days}d`, severity: "warn" });
@@ -627,7 +628,7 @@ export function DashboardPage() {
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                               <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "—"}</span></span>
                               <span className="text-slate-300 dark:text-[#333]">·</span>
-                              <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(new Date(trip.start), "MMM d")}</span>
+                              <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
                               {trip.paxCount && (
                                 <>
                                   <span className="text-slate-300 dark:text-[#333]">·</span>
@@ -919,7 +920,7 @@ export function DashboardPage() {
                   {[
                     { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
                     { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-[#333]" },
-                    { label: "Active", count: trips.filter(t => t.status === "In Progress" || (new Date(t.start) <= new Date() && new Date(t.end) >= new Date())).length, color: "bg-emerald-500" },
+                    { label: "Active", count: trips.filter(t => t.status === "In Progress" || (parseTripDate(t.start) <= new Date() && parseTripDate(t.end) >= new Date())).length, color: "bg-emerald-500" },
                   ].map(({ label, count, color }) => (
                     <div key={label} className="flex items-center gap-3">
                       <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] w-[60px] shrink-0">{label}</span>
@@ -942,8 +943,8 @@ export function DashboardPage() {
                 const agent  = spotlightTrip.attendees.split(",")[0]?.trim() || "Agent";
                 const pax    = spotlightTrip.paxCount || "—";
                 const dateRange = (() => {
-                  const s = new Date(spotlightTrip.start);
-                  const e = new Date(spotlightTrip.end);
+                  const s = parseTripDate(spotlightTrip.start);
+                  const e = parseTripDate(spotlightTrip.end);
                   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
                   return `${s.toLocaleDateString("en-US", opts)} — ${e.toLocaleDateString("en-US", opts)}`;
                 })();
@@ -1153,8 +1154,8 @@ export function DashboardPage() {
             {displayMode === "grid" ? (
               <div data-compact-trip-grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredTrips.map((trip) => {
-                  const startDate = new Date(trip.start);
-                  const endDate = new Date(trip.end);
+                  const startDate = parseTripDate(trip.start);
+                  const endDate = parseTripDate(trip.end);
                   const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const daysLeft = daysUntil(trip.start);
                   const isActive = trip.status === "In Progress";
@@ -1232,8 +1233,8 @@ export function DashboardPage() {
                   </div>
                 )}
                 {filteredTrips.map(trip => {
-                  const tStart = new Date(trip.start);
-                  const tEnd = new Date(trip.end);
+                  const tStart = parseTripDate(trip.start);
+                  const tEnd = parseTripDate(trip.end);
                   const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const dLeft = daysUntil(trip.start);
                   const isActive = trip.status === "In Progress";
@@ -1284,7 +1285,7 @@ export function DashboardPage() {
 
                       {/* Right: countdown + actions */}
                       <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4">
-                        {dLeft > 0 && new Date(trip.end) >= new Date() && (
+                        {dLeft > 0 && parseTripDate(trip.end) >= new Date() && (
                           <span className="text-[10px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-full leading-none tracking-wide whitespace-nowrap">
                             {dLeft === 0 ? "Today" : `${dLeft}d`}
                           </span>

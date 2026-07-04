@@ -15,7 +15,7 @@ interface ComplianceDocSheetProps {
   onSign: (docName: string) => void;
 }
 
-const STATUS_STYLE: Record<string, { color: string; bg: string; icon: typeof FileCheck }> = {
+const STATUS_STYLE: Record<string, { color: string; bg: string; icon: typeof FileText }> = {
   Signed: { color: "text-emerald-400", bg: "bg-emerald-500/10", icon: FileText },
   Pending: { color: "text-amber-500", bg: "bg-amber-500/10", icon: FileDashed },
   Expired: { color: "text-red-400", bg: "bg-red-500/10", icon: FileX },

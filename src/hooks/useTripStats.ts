@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Trip } from "@/types";
+import { parseTripDate } from "@/lib/dates";
 
 export function useTripStats(trips: Trip[]) {
   return useMemo(() => {
@@ -47,7 +48,7 @@ export function useTripStats(trips: Trip[]) {
 
     // Upcoming trips (next 7 days)
     const upcoming = trips.filter(t => {
-      const start = new Date(t.start);
+      const start = parseTripDate(t.start);
       const now = new Date();
       const diff = (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
       return diff >= 0 && diff <= 7;
@@ -69,30 +70,30 @@ export function useTripStats(trips: Trip[]) {
     // Upcoming trips (next 30 days)
     const upcomingTrips = trips
       .filter(t => {
-        const start = new Date(t.start);
+        const start = parseTripDate(t.start);
         const now = new Date();
         const diff = (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
         return diff >= 0 && diff <= 30;
       })
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      .sort((a, b) => parseTripDate(a.start).getTime() - parseTripDate(b.start).getTime());
 
     // Upcoming trips sorted by start date for timeline (future or in-progress only)
     const now = new Date();
     const tripTimeline = [...trips]
-      .filter(t => new Date(t.end) >= now)
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+      .filter(t => parseTripDate(t.end) >= now)
+      .sort((a, b) => parseTripDate(a.start).getTime() - parseTripDate(b.start).getTime())
       .slice(0, 8)
       .map(t => {
-        const start = new Date(t.start);
+        const start = parseTripDate(t.start);
         const daysUntil = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const duration = Math.max(0, Math.ceil((new Date(t.end).getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+        const duration = Math.max(0, Math.ceil((parseTripDate(t.end).getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
         return { ...t, daysUntil, duration };
       });
 
     // Trips by month (chart data)
     const monthCounts: Record<string, number> = {};
     trips.forEach(t => {
-      const d = new Date(t.start);
+      const d = parseTripDate(t.start);
       const key = `${d.toLocaleString("en-US", { month: "short" })} ${d.getFullYear()}`;
       monthCounts[key] = (monthCounts[key] || 0) + 1;
     });

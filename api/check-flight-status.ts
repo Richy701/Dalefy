@@ -200,6 +200,20 @@ function formatTime(t: string): string {
   return match ? match[1] : "";
 }
 
+/** Minutes from midnight for "HH:MM" or "H:MM AM/PM"; null if unparseable.
+ *  Lets us compare a 24h live time against a stored 12h AM/PM time. */
+function timeToMins(t: string | undefined): number | null {
+  if (!t) return null;
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = m[3]?.toUpperCase();
+  if (ap === "PM" && h < 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  return h * 60 + min;
+}
+
 // ── Change detection ───────────────────────────────────────────────────────
 
 function detectChanges(stored: any, live: LiveFlightData): string[] {
@@ -223,8 +237,13 @@ function detectChanges(stored: any, live: LiveFlightData): string[] {
   if (live.baggageBelt && live.baggageBelt !== stored.baggageBelt) {
     changes.push(`Baggage belt: ${live.baggageBelt}`);
   }
-  if (live.departTime && live.departTime !== stored.time) {
-    changes.push(`Departure: ${live.departTime}`);
+  if (live.departTime) {
+    const liveMins = timeToMins(live.departTime);
+    const storedMins = timeToMins(stored.time);
+    // Compare by wall-clock minutes so "07:35" vs "7:35 AM" is not a false change
+    if (liveMins !== null && liveMins !== storedMins) {
+      changes.push(`Departure: ${live.departTime}`);
+    }
   }
 
   return changes;

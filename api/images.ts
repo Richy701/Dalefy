@@ -1,6 +1,9 @@
 import { validateQuery } from "./_validate.js";
+import { rateLimit } from "./_rateLimit.js";
 
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "images", limit: 60, windowMs: 60_000 })) return;
+
   const { q, page = "1", per_page = "9", source = "" } = req.query as Record<string, string>;
 
   const err = validateQuery(q);

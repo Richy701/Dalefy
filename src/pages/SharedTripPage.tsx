@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText, Paperclip } from "@phosphor-icons/react";
 import { Linkify } from "@/lib/linkify";
+import { parseTripDate } from "@/lib/dates";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -261,9 +262,9 @@ export function SharedTripPage() {
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
               <CalendarDots className="h-3 w-3 text-white/70" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
-                {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 {" - "}
-                {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 {" · "}{nights} nights
               </span>
             </div>

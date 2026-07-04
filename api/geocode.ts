@@ -1,4 +1,8 @@
+import { rateLimit } from "./_rateLimit.js";
+
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "geocode", limit: 120, windowMs: 60_000 })) return;
+
   const { q, proximity } = req.query as Record<string, string>;
 
   if (!q) return res.status(400).json({ error: "Missing param: q" });

@@ -11,7 +11,6 @@ import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } 
 import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import "leaflet/dist/leaflet.css";
 import {
   CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus,
 } from "@phosphor-icons/react";
@@ -59,13 +58,14 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
-import { isFirebaseConfigured, firebaseStorage } from "@/services/firebase";
+import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { ImportItineraryDialog } from "@/components/shared/ImportItineraryDialog";
 import { SendInviteModal } from "@/components/workspace/SendInviteModal";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
+import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { usePresence } from "@/hooks/usePresence";
 import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
@@ -196,7 +196,7 @@ export function WorkspacePage() {
     const H48 = 48 * 60 * 60 * 1000;
     const upcomingFlights = trip.events.filter(ev => {
       if (ev.type !== "flight" || !ev.flightNum || !ev.date) return false;
-      const evTime = new Date(`${ev.date}T${ev.time || "12:00"}`).getTime();
+      const evTime = parseEventDateTime(ev.date, ev.time).getTime();
       return evTime > now - H48 && evTime < now + H48;
     });
     if (upcomingFlights.length === 0) return;
@@ -609,9 +609,10 @@ export function WorkspacePage() {
     }
     setAiAssistLoading(true);
     try {
+      const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
       const resp = await fetch("/api/parse-itinerary?mode=assist", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           type: editingEvent.type,
           title: editingEvent.title,
@@ -1286,8 +1287,8 @@ export function WorkspacePage() {
                     <div className="flex items-center gap-2.5 relative z-10 leading-none">
                       <div className="relative shrink-0">
                         <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#666]"}`}>
-                          <span className="text-[8px] font-bold uppercase leading-none">{new Date(date).toLocaleDateString("en-US", { month: "short" })}</span>
-                          <span className="text-sm font-black leading-none mt-0.5">{new Date(date).getDate()}</span>
+                          <span className="text-[8px] font-bold uppercase leading-none">{parseTripDate(date).toLocaleDateString("en-US", { month: "short" })}</span>
+                          <span className="text-sm font-black leading-none mt-0.5">{parseTripDate(date).getDate()}</span>
                         </div>
                         {dayPeers.length > 0 && (
                           <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-white">
@@ -1296,7 +1297,7 @@ export function WorkspacePage() {
                         )}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-400 dark:text-[#555]"}`}>Day {i + 1} · {new Date(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-400 dark:text-[#555]"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
                         <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-[#999]"}`}>{highlight}</span>
                         <div className="flex items-center gap-1 mt-1">
                           {typeIcons.map(t => {
@@ -1356,7 +1357,7 @@ export function WorkspacePage() {
                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
                     <CalendarDots className="h-3 w-3 text-brand" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">
-                      {new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                   </div>
                   {trip.destination && (
@@ -1599,7 +1600,7 @@ export function WorkspacePage() {
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                       {groupedEvents.map(([date, events], dayIdx) => (
                         <div key={date} id={`day-${date}`} className="scroll-mt-6">
-                          <DaySection dayNumber={dayIdx + 1} date={new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
+                          <DaySection dayNumber={dayIdx + 1} date={parseTripDate(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
                               <div className="grid grid-cols-1 gap-4 sm:gap-6 pl-0 sm:pl-8">
                                 {events.map(event => (

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { parseTripDate } from "@/lib/dates";
 import {
   Upload,
   Trash,
@@ -455,7 +456,7 @@ export function MediaPage() {
                 </h2>
                 {bannerTrip && (
                   <p className="text-[11px] font-bold text-white/50 mt-2 uppercase tracking-wider">
-                    {new Date(bannerTrip.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – {new Date(bannerTrip.end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    {parseTripDate(bannerTrip.start).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – {parseTripDate(bannerTrip.end).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                   </p>
                 )}
               </div>

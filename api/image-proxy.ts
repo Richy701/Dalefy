@@ -1,4 +1,8 @@
+import { rateLimit } from "./_rateLimit.js";
+
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "image-proxy", limit: 200, windowMs: 60_000 })) return;
+
   const { url } = req.query as Record<string, string>;
 
   if (!url) return res.status(400).json({ error: "Missing param: url" });

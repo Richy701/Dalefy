@@ -92,14 +92,25 @@ export default async function handler(req: any, res: any) {
   });
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildInviteEmail(orgName: string, inviterName: string, role: string, acceptUrl: string): string {
+  const safeOrgName = escapeHtml(orgName);
+  const safeInviterName = inviterName ? escapeHtml(inviterName) : "A team member";
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
       <h1 style="font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; margin: 0 0 8px;">
         You're Invited
       </h1>
       <p style="color: #666; font-size: 14px; margin: 0 0 24px;">
-        ${inviterName || "A team member"} has invited you to join <strong>${orgName}</strong> as ${role === "admin" ? "an admin" : role === "viewer" ? "a viewer" : "an agent"}.
+        ${safeInviterName} has invited you to join <strong>${safeOrgName}</strong> as ${role === "admin" ? "an admin" : role === "viewer" ? "a viewer" : "an agent"}.
       </p>
       <a href="${acceptUrl}" style="display: inline-block; background: #0bd2b5; color: #000; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 13px; padding: 14px 28px; border-radius: 12px; text-decoration: none;">
         Accept Invitation

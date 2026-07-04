@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
+import { parseTripDate } from "@/lib/dates";
 import { AirplaneTilt, Bed, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download, TrendUp, MapPin, Lightning } from "@phosphor-icons/react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
@@ -634,7 +635,7 @@ export function ReportsPage() {
                           <div className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">{a.doc}</div>
                         </div>
                         <span className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider shrink-0">
-                          {new Date(a.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                          {parseTripDate(a.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                         </span>
                       </div>
                     ))}

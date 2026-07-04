@@ -10,6 +10,7 @@ import {
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { sortEvents } from "@/lib/sortEvents";
 import { cn } from "@/lib/utils";
+import { parseTripDate } from "@/lib/dates";
 import type { Trip, TravelEvent } from "@/types";
 import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
@@ -42,8 +43,8 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
 
   const dateRange = useMemo(() => {
     const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const year = new Date(trip.end).getFullYear();
-    return `${fmt(new Date(trip.start))} — ${fmt(new Date(trip.end))}, ${year}`;
+    const year = parseTripDate(trip.end).getFullYear();
+    return `${fmt(parseTripDate(trip.start))} — ${fmt(parseTripDate(trip.end))}, ${year}`;
   }, [trip.start, trip.end]);
 
   const tripTz = useMemo(() => destinationTz(trip.destination), [trip.destination]);

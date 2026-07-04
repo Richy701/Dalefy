@@ -1,4 +1,5 @@
 import { validateQuery, validateDate, requireGoogleApi } from "./_validate.js";
+import { rateLimit } from "./_rateLimit.js";
 
 const PRICE_MAP: Record<string, string> = {
   PRICE_LEVEL_FREE: "Free",
@@ -16,6 +17,8 @@ const STAR_MAP: Record<string, string> = {
 };
 
 export default async function handler(req: any, res: any) {
+  if (!rateLimit(req, res, { bucket: "places", limit: 60, windowMs: 60_000 })) return;
+
   const { type, q, check_in, check_out } = req.query as Record<string, string>;
 
   if (!type || !["activities", "dining", "hotels"].includes(type)) {

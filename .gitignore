@@ -27,6 +27,7 @@ dist-ssr
 # Environment files with secrets
 .env
 .env.local
+.env.vercel
 mobile/.env
 
 # Local editor/agent tooling

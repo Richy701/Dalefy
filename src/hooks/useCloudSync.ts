@@ -1,20 +1,22 @@
 import { useEffect, useRef } from "react";
 import type { Trip } from "@/types";
 import { INITIAL_TRIPS } from "@/data/trips";
-import { subscribeToTrips, upsertTrip, removeTrip } from "@/services/firebaseTrips";
+import { upsertTrip, removeTrip } from "@/services/firebaseTrips";
 import { logger } from "@/lib/logger";
 
 /** IDs that belong to demo/seed data — never push these to cloud */
 const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
 
 /**
- * Seeds Firestore from localStorage when cloud is empty, or recovers trips
- * that have more events locally than in the cloud.
- * Demo/seed trips are always excluded from cloud sync.
+ * Seeds Firestore from localStorage the first time a real user signs in with an
+ * empty cloud account (e.g. they built trips in demo/local mode, then signed
+ * up). Demo/seed trips are always excluded. Seeding only runs when the cloud is
+ * genuinely empty after the authoritative fetch, so it cannot resurrect trips
+ * deleted on another device. The live subscription in useCloudTrips reflects the
+ * seeded trips back into view, so no extra subscription is created here.
  */
 export function useCloudSync(
   useCloud: boolean,
-  isLocalOnly: boolean,
   cloudReady: boolean,
   cloudTrips: Trip[],
   localTrips: Trip[],
@@ -42,44 +44,19 @@ export function useCloudSync(
     }
   }, [useCloud, cloudReady, cloudTrips, setCloudTrips]);
 
+  // Seed cloud from localStorage when a real user's cloud is empty
   useEffect(() => {
-    if (!useCloud || !cloudReady || seeded.current || !isLocalOnly) return;
+    if (!useCloud || !cloudReady || seeded.current) return;
     seeded.current = true;
 
-    logger.log("CloudSync", "seed check — cloud:", cloudTrips.length, "local:", localTrips.length);
-
-    // Full seed when cloud is empty — exclude demo trips
     const userTrips = localTrips.filter(t => !DEMO_IDS.has(t.id));
-    if (cloudTrips.length === 0 && userTrips.length > 0) {
-      logger.log("CloudSync", "seeding cloud from localStorage (excluding demo):", userTrips.map(t => t.name));
-      Promise.all(userTrips.map(t => upsertTrip(t, orgId)))
-        .then(() => {
-          logger.log("CloudSync", "seed complete");
-          subscribeToTrips((incoming) => {
-            if (incoming.length > 0) setCloudTrips(incoming);
-          }, orgId);
-        })
-        .catch(err => logger.error("CloudSync", "seed failed:", err));
-      return;
-    }
+    logger.log("CloudSync", "seed check — cloud:", cloudTrips.length, "local:", userTrips.length);
 
-    // Recover: if localStorage has more events for a trip, push it back
-    const toRecover: Trip[] = [];
-    for (const lt of localTrips) {
-      if (DEMO_IDS.has(lt.id)) continue; // skip demo trips
-      const ct = cloudTrips.find(t => t.id === lt.id);
-      if (ct && lt.events.length > ct.events.length) {
-        logger.log("CloudSync", "recovering trip from localStorage:", lt.name, `(${lt.events.length} vs ${ct.events.length} events)`);
-        toRecover.push(lt);
-      }
+    if (cloudTrips.length === 0 && userTrips.length > 0) {
+      logger.log("CloudSync", "seeding cloud from localStorage:", userTrips.map(t => t.name));
+      Promise.all(userTrips.map(t => upsertTrip(t, orgId)))
+        .then(() => logger.log("CloudSync", "seed complete"))
+        .catch(err => logger.error("CloudSync", "seed failed:", err));
     }
-    if (toRecover.length > 0) {
-      Promise.all(toRecover.map(t => upsertTrip(t, orgId))).then(() => {
-        logger.log("CloudSync", "recovery complete, refreshing...");
-        subscribeToTrips((incoming) => {
-          if (incoming.length > 0) setCloudTrips(incoming);
-        }, orgId);
-      });
-    }
-  }, [useCloud, cloudReady, cloudTrips.length, localTrips, isLocalOnly]);
+  }, [useCloud, cloudReady, cloudTrips.length, localTrips, orgId]);
 }

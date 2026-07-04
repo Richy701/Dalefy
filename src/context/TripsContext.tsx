@@ -175,6 +175,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
             if (idx >= 0) { stored[idx] = { ...stored[idx], image: cleaned.image, events: cleaned.events, info: cleaned.info, documents: cleaned.documents, travelers: cleaned.travelers, travelerIds: cleaned.travelerIds, organizer: cleaned.organizer, attendees: cleaned.attendees }; }
             else { stored.push(cleaned); }
             localStorage.setItem(STORAGE.TRIPS, JSON.stringify(stored));
+            notifyLocalStorage(STORAGE.TRIPS);
             logger.log("syncToCloud", "wrote download URLs back to localStorage for", cleaned.id);
           } catch { /* quota exceeded — cloud has the URLs, will load on next fetch */ }
         }
@@ -350,7 +351,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   }, [useCloud, cloud.ready]);
 
   // Side-effect hooks (extracted)
-  useCloudSync(useCloud, isLocalOnly, cloud.ready, cloud.trips, local.trips, cloud.setTrips, orgId);
+  useCloudSync(useCloud, cloud.ready, cloud.trips, local.trips, cloud.setTrips, orgId);
   useTravelerMigration(trips, ready, setTrips, useCloud, local.setTrips);
 
   // Flush updater to localStorage synchronously
