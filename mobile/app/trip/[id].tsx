@@ -16,6 +16,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { geocode } from "@/services/geocode";
+import { parseTripDate } from "@/shared/dates";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { EventCard } from "@/components/EventCard";
@@ -196,8 +197,8 @@ export default function TripScreen() {
     );
   }
 
-  const start  = new Date(trip.start);
-  const end    = new Date(trip.end);
+  const start  = parseTripDate(trip.start);
+  const end    = parseTripDate(trip.end);
   const nights = Math.ceil((end.getTime() - start.getTime()) / 86400000);
 
   const visibleEvents = useMemo(() => {

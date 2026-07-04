@@ -10,7 +10,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { COMPLIANCE_DOC_CONTENT } from "@/shared/compliance-docs";
 import {
-  FileText as FileCheckIconIcon, FileDashed, FileX, ShieldCheck, Info,
+  FileText as FileCheckIcon, FileDashed, FileX, ShieldCheck, Info,
 } from "phosphor-react-native";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 

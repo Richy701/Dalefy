@@ -19,6 +19,7 @@ import * as Clipboard from "expo-clipboard";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
+import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS } from "@/shared/coordinates";
@@ -664,7 +665,7 @@ function FlightDetailScreen({
       return { arrivalDate: ev.endDate, dayOffset: Math.round((d1.getTime() - d0.getTime()) / 86400000) };
     }
     if (ev.date && dur) {
-      const dep = new Date(`${ev.date}T${depTime || "12:00"}:00`);
+      const dep = parseEventDateTime(ev.date, depTime);
       dep.setHours(dep.getHours() + dur.h, dep.getMinutes() + dur.m);
       const arrDateStr = dep.toISOString().slice(0, 10);
       const d0 = new Date(ev.date + "T00:00:00");

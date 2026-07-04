@@ -19,6 +19,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail } from "@/services/firebaseTrips";
+import { parseTripDate } from "@/shared/dates";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useAuth } from "@/context/AuthContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
@@ -180,8 +181,8 @@ export default function SharedTripScreen() {
     );
   }
 
-  const start = new Date(trip.start);
-  const end = new Date(trip.end);
+  const start = parseTripDate(trip.start);
+  const end = parseTripDate(trip.end);
 
   const hasTravelers = (trip.travelers?.length ?? 0) > 0;
   const viewAsTraveler = viewAsId ? trip.travelers?.find(t => t.id === viewAsId) ?? null : null;

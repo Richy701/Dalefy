@@ -47,7 +47,7 @@ async function fetchAirportCodes(flightNum: string, date: string): Promise<{ fro
 
 import {
   IATA_TZ, getDestinationTz, getUtcOffsetMins,
-  todayInTz, tomorrowInTz, yesterdayInTz,
+  todayInTz, tomorrowInTz, yesterdayInTz, timeToMinutes,
 } from "@/shared/timezones";
 
 function getDepAirportCode(ev: TravelEvent): string | null {
@@ -58,10 +58,12 @@ function getDepAirportCode(ev: TravelEvent): string | null {
 }
 
 function depTimeToMs(ev: TravelEvent): number {
-  const depMatch = ev.time?.match(/(\d{1,2}):(\d{2})/);
-  if (!depMatch) return new Date(`${ev.date}T23:59:00`).getTime();
-  const h = depMatch[1].padStart(2, "0");
-  const m = depMatch[2];
+  // timeToMinutes handles both "HH:MM" and "H:MM AM/PM"; the bare regex dropped
+  // the meridiem, so any PM flight parsed ~12h early and the Live Activity never started.
+  const mins = ev.time ? timeToMinutes(ev.time) : -1;
+  if (mins < 0) return new Date(`${ev.date}T23:59:00`).getTime();
+  const h = String(Math.floor(mins / 60)).padStart(2, "0");
+  const m = String(mins % 60).padStart(2, "0");
   const code = getDepAirportCode(ev);
   const tz = ev.depTz || (code ? IATA_TZ[code] : undefined);
   if (!tz) return new Date(`${ev.date}T${h}:${m}:00`).getTime();

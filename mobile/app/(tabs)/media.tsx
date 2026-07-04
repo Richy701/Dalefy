@@ -29,6 +29,7 @@ import { type ThemeColors, T, R, S } from "@/constants/theme";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
+import { parseTripDate } from "@/shared/dates";
 import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
 import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
@@ -86,7 +87,7 @@ function buildGalleryRows(
     const remaining = media.length - maxVisible;
     if (visible.length === 0) continue;
 
-    const dateRange = `${new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     rows.push({ type: "trip-header", key: `h-${trip.id}`, name: trip.destination || trip.name, dateRange, count: media.length });
 
     let cursor = 0;
@@ -796,10 +797,10 @@ export default function MediaScreen() {
     if (tripFilter !== null) return tripFilter;
     if (trips.length <= 1) return "all";
     const now = new Date();
-    const active = trips.find(t => new Date(t.start) <= now && new Date(t.end) >= now);
+    const active = trips.find(t => parseTripDate(t.start) <= now && parseTripDate(t.end) >= now);
     if (active) return active.id;
     const upcoming = [...trips]
-      .filter(t => new Date(t.start) > now)
+      .filter(t => parseTripDate(t.start) > now)
       .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
     if (upcoming.length > 0) return upcoming[0].id;
     return "all";

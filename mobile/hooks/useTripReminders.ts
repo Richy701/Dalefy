@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { Trip, TravelEvent } from "@/shared/types";
+import { parseTripDate } from "@/shared/dates";
 import { getDepAirportTz, getDestinationTz, getUtcOffsetMins } from "@/shared/timezones";
 
 let Notifications: typeof import("expo-notifications") | null = null;
@@ -351,9 +352,11 @@ async function scheduleOne(
   }
 }
 
-/** Parse "YYYY-MM-DD" or "MM/DD/YYYY" style date strings */
+/** Parse "YYYY-MM-DD" or "MM/DD/YYYY" style date strings. Date-only ISO values
+ *  are anchored to local noon so a later setHours() lands on the intended day
+ *  in every timezone. */
 function parseDate(str: string): Date | null {
-  const d = new Date(str);
+  const d = parseTripDate(str);
   return isNaN(d.getTime()) ? null : d;
 }
 

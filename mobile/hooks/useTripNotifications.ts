@@ -4,6 +4,7 @@ import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, Notification } from "@/shared/types";
+import { parseTripDate } from "@/shared/dates";
 import { getDepAirportTz, getDestinationTz, getUtcOffsetMins, todayInTz, tomorrowInTz } from "@/shared/timezones";
 
 const SEED_KEY = "daf-notif-seeded";
@@ -73,7 +74,7 @@ function parseTime(time: string): { hours: number; mins: number } | null {
 }
 
 function eventDateTime(ev: TravelEvent, tripDestTz?: string): Date | null {
-  const d = new Date(ev.date);
+  const d = parseTripDate(ev.date);
   if (isNaN(d.getTime())) return null;
   if (ev.time) {
     const t = parseTime(ev.time);

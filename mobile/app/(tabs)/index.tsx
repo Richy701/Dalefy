@@ -27,6 +27,7 @@ try {
 } catch { /* native module unavailable on this device */ }
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { useHaptic } from "@/hooks/useHaptic";
+import { parseTripDate } from "@/shared/dates";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
@@ -142,9 +143,9 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
     transform: [{ translateY: ctaY.value }],
   }));
 
-  const nights = Math.max(0, Math.ceil((new Date(trip.end).getTime() - new Date(trip.start).getTime()) / 86400000));
-  const startDate = new Date(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endDate = new Date(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const nights = Math.max(0, Math.ceil((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000));
+  const startDate = parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const endDate = parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const welcomeText = trip.destination
     ? `Welcome to ${trip.destination}`
     : "You're in.";
@@ -342,7 +343,7 @@ function getFirstEventTime(trip: Trip): string {
     const ampm = match[3]?.toUpperCase();
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
-    const d = new Date(ev.date);
+    const d = parseTripDate(ev.date);
     d.setHours(hours, mins, 0, 0);
     if (!earliest || d < earliest) earliest = d;
   }
@@ -1202,8 +1203,8 @@ function makeGreetingStyles(C: ThemeColors) {
 function HeroTripCard({ trip }: { trip: Trip }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeHeroCardStyles(C), [C]);
-  const start = new Date(trip.start);
-  const end = new Date(trip.end);
+  const start = parseTripDate(trip.start);
+  const end = parseTripDate(trip.end);
 
   return (
     <ContextMenu
@@ -1315,8 +1316,8 @@ function UpcomingCard({ trip }: { trip: Trip }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeUpcomingCardStyles(C), [C]);
   const days  = daysUntil(trip.start);
-  const start = new Date(trip.start);
-  const end   = new Date(trip.end);
+  const start = parseTripDate(trip.start);
+  const end   = parseTripDate(trip.end);
 
   return (
     <ContextMenu
@@ -1428,7 +1429,7 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
     const ampm = match[3]?.toUpperCase();
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
-    const d = new Date(ev.date);
+    const d = parseTripDate(ev.date);
     d.setHours(hours, mins, 0, 0);
     const ms = d.getTime() - now;
     if (ms < 0) return "Now";
@@ -1522,7 +1523,7 @@ function makeSpotlightCardStyles(C: ThemeColors) {
 // ── Past Trip Tile (horizontal scroll) ────────────────────────────────────────
 function PastTripTile({ trip }: { trip: Trip }) {
   const { C } = useTheme();
-  const end = new Date(trip.end);
+  const end = parseTripDate(trip.end);
   const monthYear = end.toLocaleDateString("en-US", { month: "short", year: "numeric" });
   return (
     <Link href={`/trip/${trip.id}`} asChild>
@@ -1562,8 +1563,8 @@ function TripRow({ trip }: { trip: Trip }) {
   const { C } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
   const swipeRef = useRef<Swipeable>(null);
-  const start   = new Date(trip.start);
-  const end     = new Date(trip.end);
+  const start   = parseTripDate(trip.start);
+  const end     = parseTripDate(trip.end);
   const days    = daysUntil(trip.start);
   const isPast  = daysUntil(trip.end) < 0;
   const isActive = days <= 0 && !isPast;
@@ -1696,13 +1697,13 @@ export default function HomeScreen() {
 
   // Up to 2 upcoming trips for compact cards
   const upcomingCards = useMemo(() =>
-    sorted.filter(t => new Date(t.end) >= new Date()).slice(0, 2),
+    sorted.filter(t => parseTripDate(t.end) >= new Date()).slice(0, 2),
     [sorted]);
 
   // Spotlight trip for "For your X Trip"
   const spotlightTrip = useMemo(() =>
-    sorted.filter(t => t.status !== "Draft").find(t => new Date(t.end) >= new Date()) ??
-    sorted.find(t => new Date(t.end) >= new Date()) ??
+    sorted.filter(t => t.status !== "Draft").find(t => parseTripDate(t.end) >= new Date()) ??
+    sorted.find(t => parseTripDate(t.end) >= new Date()) ??
     null,
     [sorted]);
 
