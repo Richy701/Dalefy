@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import {
   SpinnerGap, ArrowRight, Buildings, Upload, X, Palette, PaintBrush, Check,
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/Logo";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { useOrg } from "@/context/OrgContext";
+import { useAuth } from "@/context/AuthContext";
+import { canCreateOrganization } from "@/services/orgAccess";
 import { useBrand } from "@/context/BrandContext";
 import { BRAND } from "@/config/brand";
 import { uploadLogo, updateBranding } from "@/services/firebaseBranding";
@@ -124,11 +126,52 @@ export function CreateOrgPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingBrand, setSavingBrand] = useState(false);
 
-  const { createOrg, tablesReady } = useOrg();
+  const { createOrg, tablesReady, refreshOrg } = useOrg();
   const { refreshBranding } = useBrand();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [canCreate, setCanCreate] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    canCreateOrganization(user.id).then(ok => { if (!cancelled) setCanCreate(ok); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   if (!tablesReady) return <Navigate to="/dashboard" replace />;
+
+  if (canCreate === false) {
+    return (
+      <div className="min-h-dvh bg-slate-50 dark:bg-[#050505] flex items-center justify-center p-6">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <Logo className="h-8 mx-auto text-brand" />
+          <div className="space-y-3">
+            <h1 className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">You're not on a team yet</h1>
+            <p className="text-sm text-slate-600 dark:text-[#aaa]">
+              {BRAND.name} is invitation only. Ask your agency admin to invite
+              {user?.email ? <> <strong className="text-slate-900 dark:text-white">{user.email}</strong></> : " you"}, then open the link in that email.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Button
+              onClick={() => { refreshOrg(); navigate("/dashboard"); }}
+              className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+            >
+              I've been invited, check again
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => { logout(); navigate("/login"); }}
+              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]"
+            >
+              Sign out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const canSubmit = name.trim().length >= 2;
 

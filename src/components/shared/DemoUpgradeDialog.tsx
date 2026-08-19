@@ -30,7 +30,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
             Demo Mode
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-[#888888] text-sm leading-relaxed">
-            You're exploring the demo — this action requires a free account. Sign up to create and manage your own trips.
+            You're exploring the demo. This action needs a real team account. Sign in with your invited account to continue.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="pt-4 flex flex-col gap-2 sm:flex-col">
@@ -38,7 +38,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
             onClick={handleSignUp}
             className="w-full rounded-2xl h-12 px-8 font-bold uppercase tracking-wider bg-brand hover:opacity-90 text-black shadow-xl shadow-brand/20"
           >
-            Sign Up Free
+            Sign In
           </Button>
           <Button
             variant="ghost"

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   SpinnerGap, ArrowRight, Eye, EyeSlash, X,
-  Globe, MapPin, Calendar, AirplaneTilt, Compass,
+  Globe, MapPin, Calendar, AirplaneTilt,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,6 @@ import { BRAND } from "@/config/brand";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { resetPassword } from "@/services/firebaseAuth";
 import { getPendingInvite, getPendingInviteEmail } from "@/lib/pendingInvite";
-
-type Mode = "sign-in" | "sign-up";
 
 // ── Shared sub-components ───────────────────────────────────────────────
 
@@ -171,7 +169,6 @@ function HeroBackground() {
 
 export function LoginPage() {
   const realAuth = isFirebaseConfigured();
-  const [mode, setMode] = useState<Mode>("sign-in");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(() => getPendingInviteEmail() ?? "");
@@ -191,7 +188,7 @@ export function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
 
-  const { signIn, signUp, signInWithGoogle, demoLogin } = useAuth();
+  const { signIn, signInWithGoogle, demoLogin } = useAuth();
   const navigate = useNavigate();
 
   const pendingInviteEmail = getPendingInvite() ? getPendingInviteEmail() : null;
@@ -232,37 +229,6 @@ export function LoginPage() {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!name.trim() || name.trim().length < 2) { setError("Name must be at least 2 characters"); return; }
-    if (!email.trim()) { setError("Email is required"); return; }
-    if (!password || password.length < 6) { setError("Password must be at least 6 characters"); return; }
-
-    setLoading(true);
-    try {
-      const err = await signUp({ name: name.trim(), email: email.trim(), password });
-      if (err) setError(err);
-      else goPostLogin();
-    } catch (ex) {
-      setError(ex instanceof Error ? ex.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemo = async () => {
-    setLoading(true);
-    try {
-      await demoLogin();
-      navigate("/dashboard");
-    } catch {
-      setError("Demo login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleGoogle = async () => {
     setError(null);
     setGoogleLoading(true);
@@ -275,12 +241,6 @@ export function LoginPage() {
     } finally {
       setGoogleLoading(false);
     }
-  };
-
-  const switchMode = (newMode: Mode) => {
-    setMode(newMode);
-    setError(null);
-    setPassword("");
   };
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -326,7 +286,7 @@ export function LoginPage() {
           )}
 
           {/* ── SIGN IN ─────────────────────────────────────────── */}
-          {realAuth && mode === "sign-in" && (
+          {realAuth && (
             <>
               <div className="mb-10">
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
@@ -402,99 +362,8 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#999] mt-8">
-                New here?{" "}
-                <button onClick={() => switchMode("sign-up")} className="text-brand hover:underline underline-offset-2 cursor-pointer font-bold">
-                  Create an account
-                </button>
-              </p>
-            </>
-          )}
-
-          {/* ── SIGN UP ─────────────────────────────────────────── */}
-          {realAuth && mode === "sign-up" && (
-            <>
-              <div className="mb-10">
-                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
-                  Create account
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-[#bbb]">
-                  Set up your account to get started
-                </p>
-              </div>
-
-              {error && <ErrorBanner message={error} />}
-
-              <Button
-                type="button"
-                onClick={handleGoogle}
-                disabled={loading || googleLoading}
-                variant="outline"
-                className="w-full h-14 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
-              >
-                {googleLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
-              </Button>
-
-              <OrDivider />
-
-              <form onSubmit={handleSignUp} className="space-y-5">
-                <InputField label="Full Name">
-                  <Input
-                    type="text"
-                    required
-                    autoFocus
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className={inputClass}
-                  />
-                </InputField>
-
-                <InputField label="Email">
-                  <Input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className={inputClass}
-                  />
-                </InputField>
-
-                <InputField label="Password">
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Min. 6 characters"
-                      className={`${inputClass} pr-14`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
-                    >
-                      {showPassword ? <EyeSlash className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-                    </button>
-                  </div>
-                </InputField>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
-                >
-                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Create Account <ArrowRight className="h-4.5 w-4.5" /></>}
-                </Button>
-              </form>
-
-              <p className="text-center text-sm font-semibold text-slate-400 dark:text-[#999] mt-8">
-                Already have an account?{" "}
-                <button onClick={() => switchMode("sign-in")} className="text-brand hover:underline underline-offset-2 cursor-pointer font-bold">
-                  Sign In
-                </button>
+              <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
+                Access is by invitation. Ask your team admin for an invite if you don't have one.
               </p>
             </>
           )}
@@ -543,26 +412,6 @@ export function LoginPage() {
                 </Button>
               </form>
             </>
-          )}
-
-          {/* ── Demo Login ──────────────────────────────────────── */}
-          {realAuth && (
-            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-[#1a1a1a]">
-              <button
-                onClick={handleDemo}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#bbb] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer"
-              >
-                {loading ? (
-                  <SpinnerGap className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Compass className="h-4 w-4" weight="regular" />
-                    Explore Demo
-                  </>
-                )}
-              </button>
-            </div>
           )}
 
           <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
