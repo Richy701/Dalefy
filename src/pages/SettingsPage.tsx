@@ -552,11 +552,13 @@ export function SettingsPage() {
           )}
 
           {/* ── Team ── */}
-          {canManageOrg && (
+          {realAuth && currentOrg && (
             <Section
               icon={Users}
               title="Team"
-              description="Manage members, roles, and access to your organization."
+              description={canManageOrg
+                ? "Manage members, roles, and access to your organization."
+                : `Who's on ${currentOrg.name}. Ask an admin to change roles or invite people.`}
             >
               <TeamManagement onInvite={() => setInviteOpen(true)} />
             </Section>

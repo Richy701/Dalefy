@@ -17,9 +17,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     subject: "Your Itinerary: {{tripName}}",
     body: `I hope you are all looking forward to your forthcoming trip, {{tripName}}.
 
-Your live itinerary details are available on the {{brandName}} app and also the web version.
+Your live itinerary is available on the web and in the {{brandName}} app.
 
-First, open the app link below to view on your mobile or click 'View Itinerary' for the web version. Please let me know if you have any issues viewing it.
+Click 'View Itinerary' below to open it in your browser, or enter the Trip PIN in the {{brandName}} app on your phone. Please let me know if you have any issues viewing it.
 
 Have a great trip!`,
   },

@@ -109,9 +109,11 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   }, [resolvedSubject]);
 
   const buildEmailHtml = useCallback(() => {
+    const esc = (v: string | undefined | null) => String(v ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     const bodyHtml = resolvedBody
       .split("\n\n")
-      .map(p => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">${p.replace(/\n/g, "<br/>")}</p>`)
+      .map(p => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151;">${esc(p).replace(/\n/g, "<br/>")}</p>`)
       .join("");
 
     return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -126,39 +128,42 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;">
       <tr><td style="text-align:center;padding:24px 24px 16px;border-bottom:1px solid #e5e7eb;">
         ${brand.logoUrl
-          ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="height:36px;width:auto;max-width:180px;" />`
-          : `<span style="font-size:18px;font-weight:800;letter-spacing:0.05em;color:${accentColor};">${brand.nameUpper}</span>`
+          ? `<img src="${esc(brand.logoUrl)}" alt="${esc(brand.name)}" style="height:36px;width:auto;max-width:180px;" />`
+          : `<span style="font-size:18px;font-weight:800;letter-spacing:0.05em;color:${accentColor};">${esc(brand.nameUpper)}</span>`
         }
       </td></tr>
       ${trip.image ? `<tr><td style="padding:0;font-size:0;line-height:0;">
-        <img src="${trip.image}" alt="${trip.name}" style="width:100%;max-height:240px;object-fit:cover;display:block;" />
+        <img src="${esc(trip.image)}" alt="${esc(trip.name)}" style="width:100%;max-height:240px;object-fit:cover;display:block;" />
       </td></tr>` : ""}
       <tr><td style="padding:24px 24px 16px;">
-        <h1 style="margin:0 0 24px;font-size:22px;font-weight:800;color:#111827;text-align:center;">${trip.name}</h1>
+        <h1 style="margin:0 0 24px;font-size:22px;font-weight:800;color:#111827;text-align:center;">${esc(trip.name)}</h1>
         ${bodyHtml}
       </td></tr>
       <tr><td style="padding:0 24px 24px;text-align:center;">
-        <a href="${shareUrl}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
+        <a href="${esc(shareUrl)}" style="display:inline-block;padding:14px 36px;background:${accentColor};color:${accentFg};font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
           View Itinerary
         </a>
       </td></tr>
+      <tr><td style="padding:0 24px 16px;text-align:center;">
+        <span style="font-size:12px;color:#9ca3af;">Or paste this link into your browser: <a href="${esc(shareUrl)}" style="color:#6b7280;">${esc(shareUrl)}</a></span>
+      </td></tr>
       ${trip.shortCode ? `<tr><td style="padding:0 24px 20px;text-align:center;">
-        <span style="font-size:13px;color:#6b7280;">Trip PIN: <strong style="color:#111827;">${trip.shortCode}</strong></span>
+        <span style="font-size:13px;color:#6b7280;">Trip PIN for the ${esc(brand.name)} app: <strong style="color:#111827;">${esc(trip.shortCode)}</strong></span>
       </td></tr>` : ""}
       <tr><td style="padding:0 24px;"><div style="border-top:1px solid #e5e7eb;"></div></td></tr>
       ${trip.organizer ? `<tr><td style="padding:20px 24px;">
         <table cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="vertical-align:middle;padding-right:16px;">
             ${trip.organizer.avatar
-              ? `<img src="${trip.organizer.avatar}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />`
-              : `<div style="width:40px;height:40px;border-radius:50%;background:${accentColor};color:#ffffff;text-align:center;line-height:40px;font-weight:700;font-size:14px;">${(trip.organizer.name || "?").charAt(0)}</div>`
+              ? `<img src="${esc(trip.organizer.avatar)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />`
+              : `<div style="width:40px;height:40px;border-radius:50%;background:${accentColor};color:${accentFg};text-align:center;line-height:40px;font-weight:700;font-size:14px;">${esc((trip.organizer.name || "?").charAt(0))}</div>`
             }
           </td>
           <td style="vertical-align:middle;font-size:13px;color:#6b7280;line-height:1.5;">
-            <div style="font-weight:700;color:#111827;">${trip.organizer.name || ""}</div>
-            ${trip.organizer.role ? `<div>${trip.organizer.role}</div>` : ""}
-            ${trip.organizer.company ? `<div>${trip.organizer.company}</div>` : ""}
-            ${trip.organizer.phone ? `<div>${trip.organizer.phone}</div>` : ""}
+            <div style="font-weight:700;color:#111827;">${esc(trip.organizer.name || "")}</div>
+            ${trip.organizer.role ? `<div>${esc(trip.organizer.role)}</div>` : ""}
+            ${trip.organizer.company ? `<div>${esc(trip.organizer.company)}</div>` : ""}
+            ${trip.organizer.phone ? `<div>${esc(trip.organizer.phone)}</div>` : ""}
           </td>
         </tr></table>
       </td></tr>` : ""}
@@ -169,37 +174,54 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 </html>`;
   }, [resolvedBody, trip, brand, accentColor, accentFg, shareUrl]);
 
-  const openInEmailClient = useCallback(() => {
+  const plainBody = useMemo(
+    () => `${resolvedBody}\n\nView your itinerary: ${shareUrl}${trip.shortCode ? `\nTrip PIN for the ${brand.name} app: ${trip.shortCode}` : ""}`,
+    [resolvedBody, shareUrl, trip.shortCode, brand.name],
+  );
+
+  /** Copy the designed HTML email to the clipboard (plain text fallback). Returns true if HTML was copied. */
+  const copyDesignedEmail = useCallback(async (): Promise<boolean> => {
+    const html = buildEmailHtml();
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([plainBody], { type: "text/plain" }),
+        }),
+      ]);
+      return true;
+    } catch {
+      try { await navigator.clipboard.writeText(plainBody); } catch { /* clipboard unavailable */ }
+      return false;
+    }
+  }, [buildEmailHtml, plainBody]);
+
+  const openInEmailClient = useCallback(async () => {
     if (selectedEmails.length === 0) {
       toast.error("No travelers selected");
       return;
     }
-    const plainBody = `${resolvedBody}\n\n---\nView Itinerary: ${shareUrl}${trip.shortCode ? `\nTrip PIN: ${trip.shortCode}` : ""}`;
-    const mailto = `mailto:${selectedEmails.join(",")}?subject=${encodeURIComponent(resolvedSubject)}&body=${encodeURIComponent(plainBody)}`;
-    window.open(mailto, "_blank");
-  }, [selectedEmails, resolvedSubject, resolvedBody, shareUrl, trip.shortCode]);
+    const richCopied = await copyDesignedEmail();
+    // One traveler: address directly. Several: BCC so travelers don't see each other's addresses.
+    const recipients = selectedEmails.length === 1
+      ? `mailto:${encodeURIComponent(selectedEmails[0])}?`
+      : `mailto:?bcc=${encodeURIComponent(selectedEmails.join(","))}&`;
+    const mailto = `${recipients}subject=${encodeURIComponent(resolvedSubject)}&body=${encodeURIComponent(plainBody)}`;
+    window.location.href = mailto;
+    toast.success(
+      richCopied
+        ? "Opening your email app. The designed version is on your clipboard, paste it over the plain text."
+        : "Opening your email app with the plain-text version.",
+      { duration: 6000 },
+    );
+  }, [selectedEmails, resolvedSubject, plainBody, copyDesignedEmail]);
 
   const copyContent = useCallback(async () => {
-    const html = buildEmailHtml();
-    try {
-      const blob = new Blob([html], { type: "text/html" });
-      const textBlob = new Blob([resolvedBody], { type: "text/plain" });
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/html": blob,
-          "text/plain": textBlob,
-        }),
-      ]);
-      setCopiedContent(true);
-      toast.success("Email content copied - paste into your email client");
-      setTimeout(() => setCopiedContent(false), 2000);
-    } catch {
-      await navigator.clipboard.writeText(resolvedBody);
-      setCopiedContent(true);
-      toast.success("Content copied as plain text");
-      setTimeout(() => setCopiedContent(false), 2000);
-    }
-  }, [buildEmailHtml, resolvedBody]);
+    const rich = await copyDesignedEmail();
+    setCopiedContent(true);
+    toast.success(rich ? "Designed email copied, paste it into your email client" : "Content copied as plain text");
+    setTimeout(() => setCopiedContent(false), 2000);
+  }, [copyDesignedEmail]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -336,7 +358,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               Send via Email Client
             </Button>
             <p className="text-[10px] text-slate-400 dark:text-[#666] -mt-1">
-              Opens Outlook, Gmail, or your default email app with everything pre-filled.
+              Opens your email app with recipients{selectedEmails.length > 1 ? " (BCC)" : ""}, subject and text filled in. The designed version is copied to your clipboard, paste it into the body to send the branded email.
             </p>
 
             {/* Secondary: Copy buttons for manual compose */}

@@ -23,6 +23,7 @@ export function useOrgLoad() {
   const [isLoading, setIsLoading] = useState(true);
   const [tablesReady, setTablesReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const useFirebase = isFirebaseConfigured();
   const isRealUser = useFirebase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
@@ -43,6 +44,7 @@ export function useOrgLoad() {
       setCurrentOrg(null);
       setOrgRole(null);
       setOrgMembers([]);
+      setOrgs([]);
       setIsLoading(false);
     };
 
@@ -70,20 +72,27 @@ export function useOrgLoad() {
 
         const membership = memberships.find(m => m.organization_id === preferredOrgId) ?? memberships[0];
 
-        // Get org data
-        const orgSnap = await getDoc(doc(db, "organizations", membership.organization_id));
-        if (!orgSnap.exists()) { clear(); return; }
-
+        // Get org data for every membership (for the org switcher), current one first
+        const orgSnaps = await Promise.all(
+          memberships.map(m => getDoc(doc(db, "organizations", m.organization_id)).catch(() => null)),
+        );
         if (!mounted) return;
-
-        const orgData = orgSnap.data();
-        setCurrentOrg({
-          id: orgSnap.id,
-          name: orgData.name as string,
-          slug: orgData.slug as string,
-          agencyCode: (orgData.agency_code as string) ?? "",
-          createdBy: orgData.created_by as string,
+        const allOrgs: Organization[] = orgSnaps.flatMap(snap => {
+          if (!snap || !snap.exists()) return [];
+          const d = snap.data();
+          return [{
+            id: snap.id,
+            name: d.name as string,
+            slug: d.slug as string,
+            agencyCode: (d.agency_code as string) ?? "",
+            createdBy: d.created_by as string,
+          }];
         });
+        setOrgs(allOrgs);
+
+        const current = allOrgs.find(o => o.id === membership.organization_id);
+        if (!current) { clear(); return; }
+        setCurrentOrg(current);
         setOrgRole(membership.role as OrgRole);
 
         // Get all members for this org
@@ -129,6 +138,19 @@ export function useOrgLoad() {
   }, [isRealUser, user?.id, reloadKey]);
 
   const refreshOrg = useCallback(() => setReloadKey(k => k + 1), []);
+
+  /** Make another org the active one (user must already be a member). */
+  const switchOrg = useCallback(async (orgId: string): Promise<{ error: string | null }> => {
+    if (!isRealUser || !user) return { error: "Not authenticated" };
+    if (!orgs.some(o => o.id === orgId)) return { error: "You're not a member of that organization" };
+    try {
+      await setDoc(doc(firebaseDb(), "profiles", user.id), { current_org_id: orgId }, { merge: true });
+      setReloadKey(k => k + 1);
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Couldn't switch organization" };
+    }
+  }, [isRealUser, user, orgs]);
 
   const createOrg = useCallback(async (name: string, agencyCode?: string): Promise<{ org: Organization | null; error: string | null }> => {
     if (!isRealUser || !user) return { org: null, error: "Not authenticated" };
@@ -179,6 +201,7 @@ export function useOrgLoad() {
       const org: Organization = { id: orgId, name, slug, agencyCode: code, createdBy: user.id };
 
       setCurrentOrg(org);
+      setOrgs(prev => [...prev, org]);
       setOrgRole("owner");
       setOrgMembers([{
         id: memberId,
@@ -194,5 +217,5 @@ export function useOrgLoad() {
     }
   }, [isRealUser, user]);
 
-  return { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg, refreshOrg };
+  return { currentOrg, orgRole, orgMembers, orgs, isLoading, tablesReady, createOrg, refreshOrg, switchOrg };
 }

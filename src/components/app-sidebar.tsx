@@ -8,6 +8,9 @@ import { Logo } from "@/components/shared/Logo";
 import { useTrips } from "@/context/TripsContext";
 import { useBrand } from "@/context/BrandContext";
 import { useOrg } from "@/context/OrgContext";
+import { useNotifications } from "@/context/NotificationContext";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { CaretUpDown, Check } from "@phosphor-icons/react";
 import { parseTripDate } from "@/lib/dates";
 import {
   Sidebar,
@@ -141,12 +144,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { brand } = useBrand();
-  const { currentOrg } = useOrg();
+  const { currentOrg, orgs, switchOrg } = useOrg();
+  const { showToast } = useNotifications();
+  const canSwitch = orgs.length > 1;
+
+  const handleSwitch = async (orgId: string) => {
+    if (orgId === currentOrg?.id) return;
+    const { error } = await switchOrg(orgId);
+    if (error) showToast(error);
+    else navigate("/dashboard");
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
       {/* ── Logo ── */}
       <SidebarHeader className="border-b border-sidebar-border p-0">
+        {canSwitch && !collapsed ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Switch organization"
+              className="flex items-center w-full h-16 overflow-hidden gap-3 px-4 text-left hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+            >
+                {brand.logoUrl ? (
+                  <img src={brand.logoUrl} alt="" className="h-8 w-8 rounded-xl object-contain shrink-0" />
+                ) : (
+                  <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                    <Logo className="text-black h-[18px] w-[18px]" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap block truncate">
+                    {currentOrg?.name ?? brand.name}
+                  </span>
+                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 whitespace-nowrap block">
+                    {orgs.length} organizations
+                  </span>
+                </div>
+                <CaretUpDown className="h-3.5 w-3.5 text-sidebar-foreground/40 shrink-0" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-1">
+              {orgs.map(o => (
+                <DropdownMenuItem
+                  key={o.id}
+                  onClick={() => handleSwitch(o.id)}
+                  className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer"
+                >
+                  <span className="flex-1 truncate">{o.name}</span>
+                  {o.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-brand" weight="bold" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
         <button
           onClick={() => navigate("/dashboard")}
           aria-label="Go to dashboard"
@@ -180,6 +229,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </>
           )}
         </button>
+        )}
       </SidebarHeader>
 
       {/* ── Nav ── */}
