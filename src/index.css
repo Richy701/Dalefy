@@ -88,34 +88,36 @@
   }
 }
 
-/* ── Monochrome accent ── in light mode brand=black, so flip text to white on solid brand bg */
-html[data-accent-mono]:not(.dark) .bg-brand,
-html[data-accent-mono]:not(.dark) .bg-brand *,
-html[data-accent-mono]:not(.dark) .bg-brand\/90,
-html[data-accent-mono]:not(.dark) .bg-brand\/90 *,
-html[data-accent-mono]:not(.dark) .bg-brand\/80,
-html[data-accent-mono]:not(.dark) .bg-brand\/80 *,
-html[data-accent-mono]:not(.dark) .data-active\:bg-brand[data-active],
-html[data-accent-mono]:not(.dark) .data-active\:bg-brand[data-active] * {
+/* ── Dark accents ── when the resolved accent needs white text (set by PreferencesProvider as
+   data-accent-fg="light"; covers mono-in-light-mode and any dark custom agency accent), flip text
+   on solid brand surfaces to white. Hardcoded text-black on .bg-brand is otherwise unreadable. */
+html[data-accent-fg="light"] .bg-brand,
+html[data-accent-fg="light"] .bg-brand *,
+html[data-accent-fg="light"] .bg-brand\/90,
+html[data-accent-fg="light"] .bg-brand\/90 *,
+html[data-accent-fg="light"] .bg-brand\/80,
+html[data-accent-fg="light"] .bg-brand\/80 *,
+html[data-accent-fg="light"] .data-active\:bg-brand[data-active],
+html[data-accent-fg="light"] .data-active\:bg-brand[data-active] * {
   color: #fff !important;
 }
-html[data-accent-mono]:not(.dark) .hover\:bg-brand:hover,
-html[data-accent-mono]:not(.dark) .hover\:bg-brand:hover * {
+html[data-accent-fg="light"] .hover\:bg-brand:hover,
+html[data-accent-fg="light"] .hover\:bg-brand:hover * {
   color: #fff !important;
 }
-html[data-accent-mono]:not(.dark) .hover\:bg-brand\/80:hover,
-html[data-accent-mono]:not(.dark) .hover\:bg-brand\/80:hover * {
+html[data-accent-fg="light"] .hover\:bg-brand\/80:hover,
+html[data-accent-fg="light"] .hover\:bg-brand\/80:hover * {
   color: #fff !important;
 }
-html[data-accent-mono]:not(.dark) .group:hover .group-hover\:bg-brand,
-html[data-accent-mono]:not(.dark) .group:hover .group-hover\:bg-brand * {
+html[data-accent-fg="light"] .group:hover .group-hover\:bg-brand,
+html[data-accent-fg="light"] .group:hover .group-hover\:bg-brand * {
   color: #fff !important;
 }
-/* text-brand on dark image card overlays stays white in light mono */
-html[data-accent-mono]:not(.dark) [data-compact-trip-card] .text-brand,
-html[data-accent-mono]:not(.dark) [data-compact-spotlight-hero] .text-brand,
-html[data-accent-mono]:not(.dark) [data-dest-card] .text-brand,
-html[data-accent-mono]:not(.dark) [data-workspace-hero] .text-brand {
+/* text-brand on dark image card overlays stays white when the accent itself is dark */
+html[data-accent-fg="light"]:not(.dark) [data-compact-trip-card] .text-brand,
+html[data-accent-fg="light"]:not(.dark) [data-compact-spotlight-hero] .text-brand,
+html[data-accent-fg="light"]:not(.dark) [data-dest-card] .text-brand,
+html[data-accent-fg="light"]:not(.dark) [data-workspace-hero] .text-brand {
   color: #fff !important;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   useReactTable,
@@ -80,6 +80,8 @@ export function TravelersPage() {
   const HR_PER_PAGE = 6;
   const [appUsers, setAppUsers] = useState<TripMember[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
+  const [appUsersError, setAppUsersError] = useState<string | null>(null);
+  const [appUsersReload, setAppUsersReload] = useState(0);
   const [clearing, setClearing] = useState(false);
   const [appUserSort, setAppUserSort] = useState<"name" | "recent" | "trips">("recent");
   const [appUserTripFilter, setAppUserTripFilter] = useState<string>("all");
@@ -115,11 +117,15 @@ export function TravelersPage() {
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
+    let cancelled = false;
     setAppUsersLoading(true);
+    setAppUsersError(null);
     fetchTripMembers()
-      .then(setAppUsers)
-      .finally(() => setAppUsersLoading(false));
-  }, []);
+      .then(list => { if (!cancelled) setAppUsers(list); })
+      .catch(() => { if (!cancelled) setAppUsersError("Couldn't load app users. Check your connection and try again."); })
+      .finally(() => { if (!cancelled) setAppUsersLoading(false); });
+    return () => { cancelled = true; };
+  }, [appUsersReload]);
 
   const handleClearAppUsers = useCallback(() => {
     setPendingConfirm({
@@ -332,9 +338,7 @@ export function TravelersPage() {
   // Upload document state
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadDocName, setUploadDocName] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadAssignees, setUploadAssignees] = useState<string[]>([]);
-  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const linkedTravelerIds = useMemo(() => {
     const linked = new Set<string>();
@@ -574,11 +578,11 @@ export function TravelersPage() {
     );
 
     setComplianceOverrides(prev => ({ ...prev, [userId]: updatedDocs }));
-    showToast("Document signed successfully");
+    showToast(`${docName} marked as signed for ${user.name}`);
   }, [sheetUserId, travelers, setComplianceOverrides, showToast]);
 
   const handleUploadDocument = useCallback(() => {
-    if (!uploadDocName.trim() || !uploadFile || uploadAssignees.length === 0) return;
+    if (!uploadDocName.trim() || uploadAssignees.length === 0) return;
     const docName = uploadDocName.trim();
     const newDoc: ComplianceDoc = { name: docName, status: "Pending", date: new Date().toISOString().split("T")[0] };
     setComplianceOverrides(prev => {
@@ -594,17 +598,20 @@ export function TravelersPage() {
     showToast(`"${docName}" assigned to ${uploadAssignees.length} ${uploadAssignees.length === 1 ? "person" : "people"}`);
     setUploadOpen(false);
     setUploadDocName("");
-    setUploadFile(null);
     setUploadAssignees([]);
-  }, [uploadDocName, uploadFile, uploadAssignees, travelers, setComplianceOverrides, showToast]);
+  }, [uploadDocName, uploadAssignees, travelers, setComplianceOverrides, showToast]);
 
-  const handleSendReminder = useCallback(async (userId: string, userName: string, docName: string) => {
+  const handleSendReminder = useCallback((userId: string, userName: string, docName: string) => {
+    const email = travelers.find(t => t.id === userId)?.email;
+    if (!email) { showToast(`No email on file for ${userName}`); return; }
     const key = `${userId}-${docName}`;
     setSendingReminder(key);
-    await new Promise(r => setTimeout(r, 800));
-    setSendingReminder(null);
-    showToast(`Reminder sent to ${userName}`);
-  }, [showToast]);
+    const subject = `Reminder: ${docName}`;
+    const body = `Hi ${userName.split(" ")[0]},\n\nA quick reminder that "${docName}" is still outstanding. Could you complete it when you get a moment?\n\nThanks`;
+    window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setTimeout(() => setSendingReminder(null), 800);
+    showToast(`Opening an email to ${userName}`);
+  }, [travelers, showToast]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
@@ -975,7 +982,7 @@ export function TravelersPage() {
                   onClick={() => setUploadOpen(true)}
                   className="flex items-center gap-2 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-brand/20"
                 >
-                  <Upload className="h-3.5 w-3.5" /> Upload Document
+                  <Upload className="h-3.5 w-3.5" /> Assign Document
                 </button>
               </div>
 
@@ -1314,6 +1321,17 @@ export function TravelersPage() {
                 {appUsersLoading ? (
                   <div className="flex items-center justify-center py-16">
                     <div className="h-6 w-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : appUsersError ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-[#ccc]">{appUsersError}</p>
+                    <button
+                      type="button"
+                      onClick={() => setAppUsersReload(k => k + 1)}
+                      className="h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider"
+                    >
+                      Try again
+                    </button>
                   </div>
                 ) : paginatedAppUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -1831,15 +1849,15 @@ export function TravelersPage() {
 
       <ComplianceDocSheet open={sheetOpen} onOpenChange={setSheetOpen} doc={sheetDoc} travelerName={sheetTraveler} onSign={handleSign} />
 
-      {/* Upload Document Drawer */}
+      {/* Assign Document Drawer */}
       <Drawer.Root open={uploadOpen} onOpenChange={setUploadOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#111111] rounded-t-[2rem] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[85vh] overflow-y-auto">
             <div className="mx-auto w-12 h-1.5 bg-slate-200 dark:bg-[#333] rounded-full mt-3 mb-2" />
             <div className="px-6 sm:px-8 pb-8">
-              <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1">Upload Document</p>
-              <p className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mb-6">Upload a file and assign it to team members for signing</p>
+              <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
 
               {/* Document name */}
               <div className="space-y-2 mb-5">
@@ -1850,31 +1868,6 @@ export function TravelersPage() {
                   placeholder="e.g., NDA, Waiver, Health Declaration"
                   className="w-full h-11 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
                 />
-              </div>
-
-              {/* File upload */}
-              <div className="space-y-2 mb-5">
-                <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">File</label>
-                <input ref={uploadInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.rtf" className="hidden" onChange={e => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]); }} />
-                {uploadFile ? (
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-brand/5 border border-brand/20">
-                    <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center">
-                      <FileText className="h-4 w-4 text-brand" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{uploadFile.name}</p>
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{(uploadFile.size / 1024).toFixed(0)} KB</p>
-                    </div>
-                    <button onClick={() => { setUploadFile(null); if (uploadInputRef.current) uploadInputRef.current.value = ""; }} className="h-7 w-7 rounded-lg hover:bg-slate-100 dark:hover:bg-[#1a1a1a] flex items-center justify-center transition-colors">
-                      <X className="h-3.5 w-3.5 text-slate-500" />
-                    </button>
-                  </div>
-                ) : (
-                  <button onClick={() => uploadInputRef.current?.click()} className="w-full h-14 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888] hover:border-brand/50 hover:text-brand transition-colors">
-                    <Upload className="h-4 w-4" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Choose file (PDF, DOC, TXT)</span>
-                  </button>
-                )}
               </div>
 
               {/* Assign to travelers */}
@@ -1913,12 +1906,12 @@ export function TravelersPage() {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadFile(null); setUploadAssignees([]); }} className="flex-1 h-12 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors">
+                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadAssignees([]); }} className="flex-1 h-12 rounded-2xl border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors">
                   Cancel
                 </button>
                 <button
                   onClick={handleUploadDocument}
-                  disabled={!uploadDocName.trim() || !uploadFile || uploadAssignees.length === 0}
+                  disabled={!uploadDocName.trim() || uploadAssignees.length === 0}
                   className="flex-[2] h-12 rounded-2xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" /> Assign Document

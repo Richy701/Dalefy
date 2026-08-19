@@ -154,6 +154,8 @@ export function SharedTripPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorKind, setErrorKind] = useState<"unavailable" | "unpublished" | "network" | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
@@ -161,32 +163,52 @@ export function SharedTripPage() {
 
   useEffect(() => {
     if (!tripId || !isFirebaseConfigured()) {
-      setError("Trip sharing requires Firebase to be configured.");
+      setError("This itinerary link isn't available right now.");
+      setErrorKind("unavailable");
       setLoading(false);
       return;
     }
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    setErrorKind(null);
 
-    getDoc(doc(firebaseDb(), "trips", tripId))
-      .then((snap) => {
+    // Load branding alongside the trip so the page paints once, in the agency's colours
+    const tripPromise = getDoc(doc(firebaseDb(), "trips", tripId));
+    const brandingPromise = fetchBrandingForTrip(tripId).catch(() => null);
+
+    Promise.all([tripPromise, brandingPromise])
+      .then(([snap, b]) => {
+        if (cancelled) return;
+        setOrgBranding(b);
         if (!snap.exists()) {
-          setError("Trip not found or no longer available.");
+          setError("We couldn't find this itinerary. The link may be out of date.");
+          setErrorKind("unavailable");
         } else {
           const t = rowToTrip({ id: snap.id, ...snap.data() });
           if (t.status !== "Published") {
-            setError("This trip hasn't been published yet.");
+            setError("Your itinerary isn't ready yet. Your travel organiser is still finalising it.");
+            setErrorKind("unpublished");
           } else {
             setTrip(t);
           }
         }
         setLoading(false);
       })
-      .catch(() => {
-        setError("Trip not found or no longer available.");
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const code = typeof err === "object" && err && "code" in err ? String((err as { code: unknown }).code) : "";
+        if (code === "permission-denied") {
+          setError("Your itinerary isn't ready yet. Your travel organiser is still finalising it.");
+          setErrorKind("unpublished");
+        } else {
+          setError("We couldn't load your itinerary. Check your connection and try again.");
+          setErrorKind("network");
+        }
         setLoading(false);
       });
-
-    fetchBrandingForTrip(tripId).then(b => setOrgBranding(b));
-  }, [tripId]);
+    return () => { cancelled = true; };
+  }, [tripId, reloadKey]);
 
   const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
   const hasTravelers = (trip?.travelers?.length ?? 0) > 0;
@@ -220,19 +242,38 @@ export function SharedTripPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-4">
         <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Loading your itinerary</p>
       </div>
     );
   }
 
   if (error || !trip) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-4 px-6">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-5 px-6 text-center">
         <div className="h-16 w-16 rounded-2xl bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
-          <MapPin className="h-7 w-7 text-slate-300 dark:text-[#444]" />
+          <MapPin className="h-7 w-7 text-slate-400 dark:text-[#666]" />
         </div>
-        <p className="text-sm font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider text-center">{error}</p>
+        <div className="max-w-sm space-y-2">
+          <p className="text-lg font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+            {errorKind === "unpublished" ? "Almost there" : errorKind === "network" ? "Connection problem" : "Itinerary unavailable"}
+          </p>
+          <p className="text-sm text-slate-600 dark:text-[#aaa]">{error}</p>
+          {errorKind === "unpublished" && (
+            <p className="text-xs text-slate-500 dark:text-[#888]">Check back soon, or contact your travel organiser if you think this is a mistake.</p>
+          )}
+        </div>
+        {errorKind === "network" && (
+          <button
+            type="button"
+            onClick={() => setReloadKey(k => k + 1)}
+            className="h-11 px-6 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90"
+          >
+            Try again
+          </button>
+        )}
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Powered by {brand.platformName}</p>
       </div>
     );
   }

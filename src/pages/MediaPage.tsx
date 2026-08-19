@@ -24,12 +24,13 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import JSZip from "jszip";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { TripMedia } from "@/types";
 
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
@@ -143,60 +144,68 @@ export function MediaPage() {
         toast.error("Only image and video files are supported");
         return;
       }
-      if (valid.some((f) => f.size > 500 * 1024 * 1024)) {
-        toast.error("Files must be under 500 MB");
-        return;
-      }
+      // Storage rules cap trip media at 25 MB per file; skip oversize files instead of rejecting the batch
+      const MAX = 25 * 1024 * 1024;
+      const oversize = valid.filter((f) => f.size > MAX);
+      const toUpload = valid.filter((f) => f.size <= MAX);
+      if (oversize.length) toast.error(`${oversize.length} file${oversize.length > 1 ? "s are" : " is"} over 25 MB and will be skipped`);
+      if (!toUpload.length) return;
+
+      const trip = trips.find((t) => t.id === uploadTripId);
+      if (!trip) { toast.error("Select a trip first"); return; }
 
       setUploading(true);
       setUploadProgress(0);
 
-      const interval = setInterval(() => {
-        setUploadProgress((p) => {
-          if (p >= 90) { clearInterval(interval); return p; }
-          return p + Math.random() * 12;
-        });
-      }, 120);
+      // Real progress: sum of bytes transferred across all files
+      const totalBytes = toUpload.reduce((s, f) => s + f.size, 0);
+      const transferred = new Array<number>(toUpload.length).fill(0);
+      const reportProgress = () => {
+        const done = transferred.reduce((a, b) => a + b, 0);
+        setUploadProgress(totalBytes ? Math.round((done / totalBytes) * 100) : 100);
+      };
 
-      try {
-        const uploaded: TripMedia[] = await Promise.all(
-          valid.map(async (file) => {
-            const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-            const ext = file.name.split(".").pop() || "jpg";
-            const uid = firebaseAuth().currentUser?.uid ?? "anon";
-            const storagePath = `trips/${uploadTripId}/media/${uid}/${id}.${ext}`;
-            const storageRef = ref(firebaseStorage(), storagePath);
-            await uploadBytes(storageRef, file, { contentType: file.type });
-            const url = await getDownloadURL(storageRef);
-            return {
-              id,
-              type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
-              name: file.name,
-              url,
-              size: file.size,
-              uploadedAt: new Date().toISOString(),
-              uploadedBy: user?.name || undefined,
-            };
-          }),
-        );
+      const uid = firebaseAuth().currentUser?.uid ?? "anon";
+      const results = await Promise.allSettled(
+        toUpload.map((file, i) => new Promise<TripMedia>((resolve, reject) => {
+          const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const ext = file.name.split(".").pop() || "jpg";
+          const storageRef = ref(firebaseStorage(), `trips/${uploadTripId}/media/${uid}/${id}.${ext}`);
+          const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+          task.on(
+            "state_changed",
+            (snap) => { transferred[i] = snap.bytesTransferred; reportProgress(); },
+            reject,
+            async () => {
+              try {
+                const url = await getDownloadURL(storageRef);
+                resolve({
+                  id,
+                  type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
+                  name: file.name,
+                  url,
+                  size: file.size,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: user?.name || undefined,
+                });
+              } catch (e) { reject(e); }
+            },
+          );
+        })),
+      );
 
-        clearInterval(interval);
-        setUploadProgress(100);
-        const trip = trips.find((t) => t.id === uploadTripId);
-        if (!trip) return;
-        setTimeout(() => {
-          updateTrip(uploadTripId, { media: [...(trip.media ?? []), ...uploaded] });
-          setUploading(false);
-          setUploadProgress(0);
-          toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to ${trip.name}`);
-        }, 350);
-      } catch (err) {
-        clearInterval(interval);
-        setUploading(false);
-        setUploadProgress(0);
-        toast.error("Upload failed — check your connection");
-        console.error("[MediaPage] Upload error:", err);
+      const uploaded = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const failed = results.length - uploaded.length;
+
+      if (uploaded.length) {
+        updateTrip(uploadTripId, { media: [...(trip.media ?? []), ...uploaded] });
       }
+      setUploading(false);
+      setUploadProgress(0);
+
+      if (failed && uploaded.length) toast.warning(`${uploaded.length} uploaded, ${failed} failed. Check your connection and retry the rest.`);
+      else if (failed) toast.error(failed === 1 ? "Upload failed. Check your connection and try again." : `${failed} uploads failed. Check your connection and try again.`);
+      else toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to ${trip.name}`);
     },
     [uploadTripId, trips, updateTrip]
   );
@@ -210,12 +219,30 @@ export function MediaPage() {
     [processFiles]
   );
 
-  const handleDelete = (item: FilteredItem) => {
-    const trip = trips.find((t) => t.id === item.tripId);
-    if (!trip) return;
-    updateTrip(item.tripId, { media: (trip.media ?? []).filter((m) => m.id !== item.id) });
-    toast.success("Removed");
+  const [pendingDelete, setPendingDelete] = useState<{ items: FilteredItem[] } | null>(null);
+
+  /** Best-effort removal of the stored object; ignore failures (e.g. uploaded by someone else). */
+  const removeFromStorage = async (url: string) => {
+    try { await deleteObject(ref(firebaseStorage(), url)); } catch { /* not ours or already gone */ }
   };
+
+  const deleteItems = async (items: FilteredItem[]) => {
+    const byTrip = new Map<string, Set<string>>();
+    for (const item of items) {
+      const set = byTrip.get(item.tripId) ?? new Set();
+      set.add(item.id);
+      byTrip.set(item.tripId, set);
+    }
+    for (const [tripId, ids] of byTrip) {
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) continue;
+      updateTrip(tripId, { media: (trip.media ?? []).filter((m) => !ids.has(m.id)) });
+    }
+    await Promise.all(items.map((i) => removeFromStorage(i.url)));
+    toast.success(items.length === 1 ? "File deleted" : `Deleted ${items.length} files`);
+  };
+
+  const handleDelete = (item: FilteredItem) => setPendingDelete({ items: [item] });
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -246,20 +273,7 @@ export function MediaPage() {
 
   const handleBulkDelete = () => {
     if (selected.size === 0) return;
-    const byTrip = new Map<string, Set<string>>();
-    for (const item of filtered) {
-      if (!selected.has(item.id)) continue;
-      const set = byTrip.get(item.tripId) ?? new Set();
-      set.add(item.id);
-      byTrip.set(item.tripId, set);
-    }
-    for (const [tripId, ids] of byTrip) {
-      const trip = trips.find((t) => t.id === tripId);
-      if (!trip) continue;
-      updateTrip(tripId, { media: (trip.media ?? []).filter((m) => !ids.has(m.id)) });
-    }
-    toast.success(`Deleted ${selected.size} file${selected.size > 1 ? "s" : ""}`);
-    exitSelectMode();
+    setPendingDelete({ items: filtered.filter((m) => selected.has(m.id)) });
   };
 
   const handleBulkDownload = async () => {
@@ -276,10 +290,15 @@ export function MediaPage() {
     const nameCounts = new Map<string, number>();
     let fetched = 0;
 
+    const withTimeout = <T,>(p: Promise<T>, ms: number) => new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error("timeout")), ms);
+      p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+    });
     const results = await Promise.allSettled(
       items.map(async (item) => {
-        const res = await fetch(item.url);
-        const blob = await res.blob();
+        const res = await withTimeout(fetch(item.url), 60_000);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await withTimeout(res.blob(), 120_000);
         fetched++;
         toast.loading(`Preparing zip - ${fetched}/${items.length} files...`, { id: toastId });
         return { name: item.name, blob };
@@ -304,7 +323,13 @@ export function MediaPage() {
       return;
     }
 
-    const zipBlob = await zip.generateAsync({ type: "blob" });
+    let zipBlob: Blob;
+    try {
+      zipBlob = await zip.generateAsync({ type: "blob" });
+    } catch {
+      toast.error("Couldn't build the zip file. Try fewer files at once.", { id: toastId });
+      return;
+    }
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement("a");
     a.href = url;
@@ -851,7 +876,7 @@ export function MediaPage() {
                 {isDragging ? "Drop files here" : "Drop photos here"}
               </p>
               <p className="text-xs text-slate-400 dark:text-[#666] mt-2">
-                or click to browse · images &amp; videos up to 500 MB
+                or click to browse · images &amp; videos up to 25 MB each
               </p>
             </div>
 
@@ -919,6 +944,22 @@ export function MediaPage() {
         close={() => setLightboxIndex(-1)}
         index={lightboxIndex}
         slides={lightboxSlides}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title={pendingDelete && pendingDelete.items.length > 1 ? `Delete ${pendingDelete.items.length} files?` : "Delete this file?"}
+        description={pendingDelete && pendingDelete.items.length > 1
+          ? "They'll be removed from their trips and from storage. This can't be undone."
+          : `"${pendingDelete?.items[0]?.name ?? ""}" will be removed from the trip and from storage. This can't be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          await deleteItems(pendingDelete.items);
+          if (pendingDelete.items.length > 1) exitSelectMode();
+        }}
       />
     </div>
   );

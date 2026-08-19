@@ -31,13 +31,23 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
   const statusCfg = STATUS_STYLE[doc.status] || STATUS_STYLE.Pending;
   const StatusIcon = statusCfg.icon;
 
-  const handleSign = async () => {
+  const handleSign = () => {
     setSigning(true);
-    await new Promise(r => setTimeout(r, 800));
-    onSign(doc.name);
-    setSigning(false);
-    onOpenChange(false);
+    try {
+      onSign(doc.name);
+      onOpenChange(false);
+    } finally {
+      setSigning(false);
+    }
   };
+
+  // Stable, human-readable reference derived from the document and person (not random per render).
+  const reference = (() => {
+    const src = `${doc.name}|${travelerName}`;
+    let h = 0;
+    for (let i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) >>> 0;
+    return `DF-${h.toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
+  })();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -66,7 +76,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               <div className="h-8 w-px bg-slate-100 dark:bg-[#1a1a1a]" />
               <div className="flex flex-col text-right">
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-0.5">Reference</span>
-                <span className="text-xs font-mono font-bold text-slate-500 dark:text-[#888]">DF-{Math.random().toString(36).substr(2, 6).toUpperCase()}</span>
+                <span className="text-xs font-mono font-bold text-slate-500 dark:text-[#888]">{reference}</span>
               </div>
             </div>
           </div>
@@ -84,7 +94,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   </div>
 
                   <div className="space-y-8">
-                    {content.sections.slice(0, 4).map((section, i) => (
+                    {content.sections.map((section, i) => (
                       <div key={i} className="relative pl-8 group">
                         <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-xs font-black text-brand group-hover:bg-brand group-hover:text-black transition-[background-color,color] duration-150">
                           {i + 1}
@@ -97,15 +107,6 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                         </p>
                       </div>
                     ))}
-                    {content.sections.length > 4 && (
-                      <div className="flex items-center gap-3 pl-8">
-                        <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ">
-                          + {content.sections.length - 4} more sections
-                        </span>
-                        <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -139,19 +140,19 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   <Info className="h-3 w-3 text-amber-500" />
                 </div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888] leading-tight">
-                  By confirming, you agree you've read and accept all the terms above.
+                  Confirm that {travelerName} has read and accepted the terms above. This records the signature in your team's compliance list.
                 </p>
               </div>
               <Button
                 onClick={handleSign}
                 disabled={signing}
-                className="w-full h-16 rounded-2xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-[0_15px_40px_rgba(11,210,181,0.25)] disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
+                className="w-full h-16 rounded-2xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-lg shadow-brand/25 disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
               >
                 {signing ? (
-                  <><SpinnerGap className="h-5 w-5 animate-spin mr-3" /> Signing...</>
+                  <><SpinnerGap className="h-5 w-5 animate-spin mr-3" /> Recording...</>
                 ) : (
                   <span className="flex items-center justify-center gap-3">
-                    Sign Document
+                    Mark as signed
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-150" />
                   </span>
                 )}

@@ -528,7 +528,6 @@ export function WorkspacePage() {
   const handlePublish = async () => {
     if (publishing) return;
     setPublishing(true);
-    await new Promise(r => setTimeout(r, 1500));
     const snapshot = {
       events: trip.events,
       info: trip.info,
@@ -543,13 +542,19 @@ export function WorkspacePage() {
       publishedAt: new Date().toISOString(),
     };
     const published = { ...trip, status: "Published" as const, publishedSnapshot: snapshot };
+    const wasPublished = trip.status === "Published";
     updateTrip(trip.id, { status: "Published", publishedSnapshot: snapshot });
-    try { await upsertTrip(published); } catch { /* cloud sync will retry */ }
+    try {
+      await upsertTrip(published);
+    } catch {
+      setPublishing(false);
+      toast.error("Couldn't publish to the cloud. Your changes are saved on this device; check your connection and try again.");
+      return;
+    }
     setPublishing(false);
-    showToast("Trip published successfully");
-    toast.success("Trip published successfully");
-    addNotification({ message: "Trip published", detail: trip.name, time: "Just now", type: "success" });
-    if (trip.status !== "Published") {
+    toast.success(wasPublished ? "Changes published" : "Trip published");
+    addNotification({ message: wasPublished ? "Changes published" : "Trip published", detail: trip.name, time: "Just now", type: "success" });
+    if (!wasPublished) {
       notifyTripUpdate(trip.id, trip.name, ["Trip published"]);
     }
     setShareOpen(true);
@@ -2594,6 +2599,8 @@ export function WorkspacePage() {
         onOpenChange={setShareOpen}
         tripId={trip.id}
         tripName={trip.name}
+        onPublish={handlePublish}
+        publishing={publishing}
       />
 
       <SendInviteModal

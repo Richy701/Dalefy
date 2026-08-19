@@ -1273,7 +1273,24 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     if (file) handleFile(file);
   };
 
+  const [importError, setImportError] = useState<string | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+
   const handleImport = async () => {
+    if (!parsed) return;
+    if (isReimport && importMode === "replace" && !confirmReplace) { setConfirmReplace(true); return; }
+    setConfirmReplace(false);
+    setImportError(null);
+    try {
+      await runImport();
+    } catch (err) {
+      console.error("[Import] failed:", err);
+      setImportError(err instanceof Error ? err.message : "Something went wrong while importing.");
+      setStep("review");
+    }
+  };
+
+  const runImport = async () => {
     if (!parsed) return;
     setStep("importing");
     setImportProgress({ done: 0, total: parsed.events.length });
@@ -1650,6 +1667,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
               <div className="h-full bg-brand transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
             </div>
+            <p className="text-[11px] text-slate-400 dark:text-[#666]">This can take a minute for large itineraries.</p>
+            <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+              Close
+            </Button>
           </div>
         )}
 
@@ -1837,7 +1858,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 <div className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-[#1f1f1f]">
                   <button
                     type="button"
-                    onClick={() => setImportMode("merge")}
+                    onClick={() => { setImportMode("merge"); setConfirmReplace(false); }}
                     className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-[#666] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
                   >
                     Add new items
@@ -1851,6 +1872,16 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   </button>
                 </div>
               )}
+              {importError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-600 dark:text-red-400">
+                  Import didn't finish: {importError}. Nothing was changed. You can try again.
+                </div>
+              )}
+              {confirmReplace && isReimport && importMode === "replace" && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-700 dark:text-red-300">
+                  This replaces every event, traveler and document on the existing trip with the {parsed.events.length} parsed events. You can undo once right after, but not later. Press the button again to confirm.
+                </div>
+              )}
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
                 <Button
@@ -1861,7 +1892,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   {isReimport
                     ? importMode === "merge"
                       ? `Merge ${parsed.events.length} Events`
-                      : `Replace with ${parsed.events.length} Events`
+                      : confirmReplace ? "Yes, replace everything" : `Replace with ${parsed.events.length} Events`
                     : `Import ${parsed.events.length} Events`}
                   {parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
                 </Button>

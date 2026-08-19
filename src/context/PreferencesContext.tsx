@@ -57,6 +57,22 @@ interface PreferencesCtx {
 
 const Ctx = createContext<PreferencesCtx | null>(null);
 
+function relLuminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 1;
+  const n = parseInt(m[1], 16);
+  const ch = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255);
+}
+
+/** "#000000" or "#ffffff", whichever contrasts more with the given background. */
+export function readableOn(hex: string): "#000000" | "#ffffff" {
+  const L = relLuminance(hex);
+  const contrastBlack = (L + 0.05) / 0.05;
+  const contrastWhite = 1.05 / (L + 0.05);
+  return contrastBlack >= contrastWhite ? "#000000" : "#ffffff";
+}
+
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [compactMode, setCompactMode] = useLocalStorage(STORAGE.COMPACT, false);
   const [toastsEnabled, setToastsEnabled] = useLocalStorage(STORAGE.TOASTS, true);
@@ -80,9 +96,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     ? (theme === "dark" ? "#ffffff" : "#000000")
     : (accentColor.startsWith("#") ? accentColor : BRAND.accentColor);
 
+  // Foreground that stays legible on the accent: pick whichever of black/white has the higher contrast.
   const accentFg = accentColor === MONO_ACCENT
     ? (theme === "dark" ? "#000000" : "#ffffff")
-    : "#000000";
+    : readableOn(resolvedAccent);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -92,7 +109,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     root.style.setProperty("--sidebar-ring", hexToHsl(resolvedAccent));
     if (accentColor === MONO_ACCENT) root.dataset.accentMono = "true";
     else delete root.dataset.accentMono;
-  }, [resolvedAccent, accentColor]);
+    // Drives the global CSS rule that flips text on .bg-brand surfaces to white for dark accents
+    root.dataset.accentFg = accentFg === "#ffffff" ? "light" : "dark";
+  }, [resolvedAccent, accentColor, accentFg]);
 
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;

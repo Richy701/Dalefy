@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, Check, Link, DeviceMobile, AirplaneTilt, MapPin, CalendarDots, X } from "@phosphor-icons/react";
+import { Copy, Check, Link, DeviceMobile, AirplaneTilt, MapPin, CalendarDots, X, WarningCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -16,9 +16,12 @@ interface ShareTripDialogProps {
   onOpenChange: (open: boolean) => void;
   tripId: string;
   tripName: string;
+  /** Called when the user chooses to publish a draft from inside the dialog. */
+  onPublish?: () => void | Promise<void>;
+  publishing?: boolean;
 }
 
-export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareTripDialogProps) {
+export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublish, publishing }: ShareTripDialogProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const { resolvedAccent: accentColor, accentFg } = usePreferences();
   const { brand } = useBrand();
@@ -33,16 +36,21 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
     setShortCode(trip?.shortCode);
   }, [trip?.shortCode]);
 
+  // Allocate a PIN if the trip doesn't have one yet. Never changes publish status:
+  // publishing is an explicit action (see the draft banner below).
   useEffect(() => {
     if (!open || !trip) return;
-    // Skip if trip already has a 6+ char alphanumeric code
     if (trip.shortCode && trip.shortCode.length >= 6) return;
     if (attemptedRef.current === trip.id) return;
     attemptedRef.current = trip.id;
+    setAllocating(true);
     const code = generateUniqueShortCode();
-    updateTrip(trip.id, { shortCode: code, status: "Published" });
+    updateTrip(trip.id, { shortCode: code });
     setShortCode(code);
+    setAllocating(false);
   }, [open, trip, updateTrip]);
+
+  const isPublished = trip?.status === "Published";
 
   const webUrl =
     typeof window !== "undefined"
@@ -81,6 +89,25 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
         </div>
 
         <div className="p-5 pt-2 sm:pt-5">
+          {!isPublished && (
+            <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+              <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white">This trip is still a draft</p>
+                <p className="text-[11px] text-slate-600 dark:text-[#aaa] mt-0.5">Travelers can't open the link or PIN until it's published.</p>
+                {onPublish && (
+                  <button
+                    type="button"
+                    onClick={() => void onPublish()}
+                    disabled={publishing}
+                    className="mt-2 inline-flex items-center h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider disabled:opacity-60"
+                  >
+                    {publishing ? "Publishing..." : "Publish now"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           {/* Boarding pass ticket */}
           <div className="relative bg-white dark:bg-[#0f0f0f] rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
             {/* Top accent bar */}
@@ -138,8 +165,8 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName }: ShareT
                   <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
                     Gate
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider">
-                    Dalefy
+                  <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider truncate max-w-[120px]">
+                    {brand.name}
                   </span>
                 </div>
               </div>

@@ -26,22 +26,28 @@ interface Destination {
 }
 
 // Cache geocoded coordinates in memory so we don't re-fetch on every render
-const geocodeCache: Record<string, [number, number] | null> = {};
+type GeoHit = { center: [number, number] | null; country: string | null };
+const geocodeCache: Record<string, GeoHit> = {};
 
-async function geocodeDestination(name: string): Promise<[number, number] | null> {
+async function geocodeDestination(name: string): Promise<GeoHit> {
   if (name in geocodeCache) return geocodeCache[name];
+  if (!MAPBOX_TOKEN) { geocodeCache[name] = { center: null, country: null }; return geocodeCache[name]; }
   try {
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1&types=country,region,place,locality,poi`
     );
     const json = await res.json();
-    const center = json.features?.[0]?.center as [number, number] | undefined;
-    const region = json.features?.[0]?.context?.find((c: { id: string }) => c.id.startsWith("country"))?.text ?? "International";
-    geocodeCache[name] = center ?? null;
-    return center ?? null;
+    const feature = json.features?.[0];
+    const center = (feature?.center as [number, number] | undefined) ?? null;
+    // A country result has no country in context; it IS the country.
+    const country: string | null = feature?.place_type?.includes("country")
+      ? feature.text
+      : (feature?.context?.find((c: { id: string }) => c.id.startsWith("country"))?.text ?? null);
+    geocodeCache[name] = { center, country };
+    return geocodeCache[name];
   } catch {
-    geocodeCache[name] = null;
-    return null;
+    geocodeCache[name] = { center: null, country: null };
+    return geocodeCache[name];
   }
 }
 
@@ -56,7 +62,9 @@ export function DestinationsPage() {
   const [filter, setFilter] = useState<string>("all");
   const isDark = theme === "dark";
 
-  const destinations: Destination[] = useMemo(() => {
+  const [geoCountry, setGeoCountry] = useState<Record<string, string>>({});
+
+  const rawDestinations: Destination[] = useMemo(() => {
     const map = new Map<string, Destination>();
     trips.forEach(trip => {
       // Derive destination from trip data — prioritise real place names
@@ -92,7 +100,7 @@ export function DestinationsPage() {
       if (!destName) destName = trip.name;
       if (!map.has(destName)) {
         map.set(destName, {
-          name: destName, region: "International", tripCount: 0, tripNames: [], tripIds: [],
+          name: destName, region: "Unknown", tripCount: 0, tripNames: [], tripIds: [],
           eventCount: 0, nextVisit: trip.start, image: trip.image,
           types: { flights: 0, hotels: 0, activities: 0, dining: 0, transfers: 0 },
         });
@@ -126,8 +134,15 @@ export function DestinationsPage() {
     return [...map.values()].sort((a, b) => b.eventCount - a.eventCount);
   }, [trips]);
 
+  // Region = country from the geocoder; "Unknown" until it resolves (or if it can't).
+  const destinations: Destination[] = useMemo(
+    () => rawDestinations.map(d => ({ ...d, region: geoCountry[d.name] ?? "Unknown" })),
+    [rawDestinations, geoCountry],
+  );
+
   const regions = useMemo(() => {
-    const unique = [...new Set(destinations.map(d => d.region))].sort();
+    const unique = [...new Set(destinations.map(d => d.region))].filter(r => r !== "Unknown").sort();
+    if (destinations.some(d => d.region === "Unknown")) unique.push("Unknown");
     return ["all", ...unique];
   }, [destinations]);
 
@@ -148,26 +163,24 @@ export function DestinationsPage() {
   const [geoCoords, setGeoCoords] = useState<Record<string, [number, number]>>({});
 
   useEffect(() => {
+    let cancelled = false;
     const resolve = (name: string) => {
       // Try local coordinate lookup first (handles airport codes like LHR, NBO)
       const local = resolveCoords(name);
       if (local) {
         // resolveCoords returns [lat, lng], normalize to [lng, lat] for Mapbox
         setGeoCoords(prev => ({ ...prev, [name]: [local[1], local[0]] }));
-        return;
       }
-      // Fall back to Mapbox geocoding API
-      if (name in geocodeCache) {
-        const cached = geocodeCache[name];
-        if (cached) setGeoCoords(prev => ({ ...prev, [name]: cached }));
-      } else {
-        geocodeDestination(name).then(coords => {
-          if (coords) setGeoCoords(prev => ({ ...prev, [name]: coords }));
-        });
-      }
+      // Mapbox for coordinates (when not local) and for the country, which drives the region filter
+      geocodeDestination(name).then(hit => {
+        if (cancelled) return;
+        if (!local && hit.center) setGeoCoords(prev => ({ ...prev, [name]: hit.center! }));
+        if (hit.country) setGeoCountry(prev => (prev[name] === hit.country ? prev : { ...prev, [name]: hit.country! }));
+      });
     };
-    destinations.forEach(d => resolve(d.name));
-  }, [destinations]);
+    rawDestinations.forEach(d => resolve(d.name));
+    return () => { cancelled = true; };
+  }, [rawDestinations]);
 
   const mapPins = useMemo(() => {
     return destinations

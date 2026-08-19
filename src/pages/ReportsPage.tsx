@@ -41,7 +41,7 @@ function StatCard({ label, value, sub, icon, accent }: { label: string; value: s
 }
 
 export function ReportsPage() {
-  const { trips } = useTrips();
+  const { trips, ready: tripsReady } = useTrips();
   const { user } = useAuth();
   const { resolvedAccent } = usePreferences();
   const brandHex = resolvedAccent;
@@ -86,13 +86,28 @@ export function ReportsPage() {
     link.download = `${BRAND.storagePrefix}-trips-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV exported successfully");
+    toast.success(`Exported ${trips.length} ${trips.length === 1 ? "trip" : "trips"} to CSV`);
   }, [trips]);
 
   // Compliance data (merged with localStorage, same as TravelersPage)
+  // Same people TravelersPage shows: demo users (demo only) + travelers on real trips + custom travelers,
+  // with localStorage compliance overrides applied. Keeps the two pages in agreement.
   const complianceData = useMemo(() => {
-    const baseUsers = isDemoUser ? MOCK_USERS : [];
-    const travelers = [...baseUsers, ...customTravelers].map(u => ({
+    const byId = new Map<string, User>();
+    if (isDemoUser) for (const u of MOCK_USERS) byId.set(u.id, u);
+    for (const t of trips) {
+      for (const tv of t.travelers ?? []) {
+        if (!byId.has(tv.id)) {
+          byId.set(tv.id, { id: tv.id, name: tv.name, email: tv.email || "", role: "Traveler", avatar: "", initials: tv.initials, status: "Offline", compliance: [] });
+        }
+      }
+    }
+    for (const cu of customTravelers) {
+      const existing = [...byId.values()].find(v => v.name.trim().toLowerCase() === cu.name.trim().toLowerCase());
+      if (existing) { if (cu.compliance?.length) existing.compliance = cu.compliance; }
+      else byId.set(cu.id, cu);
+    }
+    const travelers = [...byId.values()].map(u => ({
       ...u,
       compliance: complianceOverrides[u.id] || u.compliance || [],
     }));
@@ -135,7 +150,7 @@ export function ReportsPage() {
     recentActivity.sort((a, b) => b.date.localeCompare(a.date));
 
     return { travelers, signed, pending, expired, total, rate, byDocType, recentActivity: recentActivity.slice(0, 6) };
-  }, [complianceOverrides, customTravelers, isDemoUser]);
+  }, [complianceOverrides, customTravelers, isDemoUser, trips]);
 
   // Pipeline chart data
   const pipelineData = [
@@ -150,11 +165,13 @@ export function ReportsPage() {
         cta={
           <button
             onClick={handleExportCsv}
-            className="hidden sm:flex items-center gap-2 h-11 px-5 rounded-full bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0"
+            disabled={trips.length === 0}
+            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-full bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Export trips as CSV"
+            title={trips.length === 0 ? "Nothing to export yet" : undefined}
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Export CSV</span>
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         }
       />
@@ -185,7 +202,12 @@ export function ReportsPage() {
           </div>
 
           {/* ───────── TRIP OPERATIONS ───────── */}
-          {tab === "operations" && (trips.length === 0 ? (
+          {!tripsReady && (
+            <div className="flex items-center justify-center py-24">
+              <div className="h-6 w-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {tripsReady && tab === "operations" && (trips.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-sitting.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
@@ -483,7 +505,7 @@ export function ReportsPage() {
           ))}
 
           {/* ───────── TEAM & COMPLIANCE ───────── */}
-          {tab === "compliance" && (complianceData.travelers.length === 0 ? (
+          {tripsReady && tab === "compliance" && (complianceData.travelers.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-together.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
