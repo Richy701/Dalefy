@@ -285,8 +285,8 @@ export function DestinationsPage() {
               id="search-destinations"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search..."
-              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-bold tracking-widest uppercase shadow-inner"
+              placeholder="Search destinations or trips"
+              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest"
             />
           </div>
         ) : undefined}

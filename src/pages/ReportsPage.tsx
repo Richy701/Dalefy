@@ -11,6 +11,7 @@ import { useTrips } from "@/context/TripsContext";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { usePreferences } from "@/context/PreferencesContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useTripStats } from "@/hooks/useTripStats";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { STORAGE } from "@/config/storageKeys";
@@ -44,7 +45,10 @@ export function ReportsPage() {
   const { trips, ready: tripsReady } = useTrips();
   const { user } = useAuth();
   const { resolvedAccent } = usePreferences();
+  const { theme } = useTheme();
   const brandHex = resolvedAccent;
+  // Chart tick colour that passes contrast on both grounds (slate-500 on white, #aaa on #111)
+  const tickFill = theme === "dark" ? "#aaaaaa" : "#64748b";
   const navigate = useNavigate();
   const stats = useTripStats(trips);
   const [tab, setTab] = useState<Tab>("operations");
@@ -389,8 +393,8 @@ export function ReportsPage() {
                     <div className="flex-1 min-h-[200px]">
                       <ChartContainer config={{ count: { label: "Trips", color: brandHex } } satisfies ChartConfig} className="h-full w-full">
                         <BarChart data={stats.tripsByMonth} barCategoryGap="20%">
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#888" }} />
-                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#888" }} />
+                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: tickFill }} />
+                          <YAxis width={32} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700, fill: tickFill }} />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="count" fill={brandHex} radius={[6, 6, 0, 0]} animationDuration={700} />
                         </BarChart>

@@ -256,16 +256,24 @@ export function DashboardPage() {
     return items.slice(0, 3);
   }, [trips]);
 
+  const [coverNotice, setCoverNotice] = useState<string | null>(null);
+  const [newTripDateError, setNewTripDateError] = useState<string | null>(null);
+
   const runCoverSearch = async (query: string, page = 1) => {
-    if (!query.trim()) { setCoverResults([]); return; }
+    if (!query.trim()) { setCoverResults([]); setCoverNotice(null); return; }
     setIsCoverSearching(true);
     setCoverLastQuery(query);
     setCoverPage(page);
+    setCoverNotice(null);
     try {
       const { urls } = await searchImages(query, page, 12);
       if (urls.length) { setCoverResults(urls); return; }
       const shuffled = [...COVER_IMAGES].sort(() => Math.random() - 0.5);
       setCoverResults(shuffled.map(i => i.url));
+      setCoverNotice(`No photos found for "${query}". Showing our stock covers instead.`);
+    } catch {
+      setCoverResults([]);
+      setCoverNotice("Photo search isn't available right now. Pick a stock cover or try again.");
     } finally {
       setIsCoverSearching(false);
     }
@@ -274,9 +282,11 @@ export function DashboardPage() {
   const handleCreateTripSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTripData.dateRange?.from || !newTripData.dateRange?.to) {
-      showToast("Please select travel dates", "error");
+      setNewTripDateError("Pick a start and end date");
+      document.getElementById("nt-dates")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setNewTripDateError(null);
     const newTrip: Trip = {
       id: Date.now().toString(),
       name: newTripData.name,
@@ -1403,17 +1413,17 @@ export function DashboardPage() {
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Itinerary Title</label>
-                  <input required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="e.g., Kenya Fam Trip"
-                    className="w-full h-14 px-0 bg-transparent border-0 border-b border-black/[0.08] dark:border-transparent text-slate-900 dark:text-white text-2xl font-black uppercase tracking-tight focus:outline-none focus:border-brand placeholder:text-slate-300 dark:placeholder:text-[#333] transition-colors" />
+                  <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Itinerary Title</label>
+                  <input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
+                    className="w-full h-14 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Trip Type</label>
-                  <div className="flex flex-wrap gap-2">
+                  <span id="nt-type-label" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Trip Type <span className="normal-case font-medium tracking-normal text-slate-400 dark:text-[#666]">(optional)</span></span>
+                  <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
-                      <button key={t} type="button" onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
+                      <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
                         className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
                         {t}
                       </button>
@@ -1424,28 +1434,28 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
-                    <input name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="e.g., Kenya, East Africa"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                    <label htmlFor="nt-destination" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
+                    <input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
-                    <input type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="e.g., 12"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                    <label htmlFor="nt-pax" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
+                    <input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
+                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                 </div>
 
                 {/* Group */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
-                  <input required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="e.g., Senior Agents"
-                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
+                  <label htmlFor="nt-group" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
+                  <input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
+                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
-                <div className="space-y-3">
+                <div className="space-y-3" id="nt-dates">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-brand">
@@ -1455,40 +1465,38 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="rounded-2xl border border-transparent dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] w-full">
-                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => setNewTripData({ ...newTripData, dateRange: range })} numberOfMonths={1} className="w-full" />
+                  <div className={`rounded-2xl border bg-slate-50 dark:bg-[#0a0a0a] w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-[#1f1f1f]"}`}>
+                    <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={1} className="w-full" />
                   </div>
+                  {newTripDateError
+                    ? <p className="text-[11px] font-semibold text-red-500">{newTripDateError}</p>
+                    : <p className="text-[11px] text-slate-500 dark:text-[#888]">Pick the first and last day of the trip.</p>}
                 </div>
 
                 {/* Budget + Currency */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (Optional)</label>
+                  <label htmlFor="nt-budget" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (optional)</label>
                   <div className="flex gap-2">
                     <input
+                      id="nt-budget"
                       name="budget"
+                      type="text"
                       autoComplete="off"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       value={newTripData.budget}
                       onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
-                      placeholder="e.g. 45000"
-                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all"
+                      placeholder="45000"
+                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
                     />
-                    <div className="flex gap-1 flex-wrap items-center">
-                      {["USD", "GBP", "EUR", "AUD", "JPY", "AED", "ZAR"].map(c => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setNewTripData({ ...newTripData, currency: c })}
-                          className={`h-12 px-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border ${
-                            newTripData.currency === c
-                              ? "bg-brand/10 border-brand/40 text-brand"
-                              : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:text-slate-800 dark:hover:text-white hover:border-black/[0.12] dark:hover:border-white/[0.12]"
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
+                    <select
+                      aria-label="Currency"
+                      value={newTripData.currency}
+                      onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
+                      className="h-12 w-28 px-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    >
+                      {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
                 </div>
 
@@ -1512,31 +1520,33 @@ export function DashboardPage() {
                         value={coverSearch}
                         onChange={e => setCoverSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
-                        placeholder="Search destinations…"
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand/50 transition-colors"
+                        placeholder="Search photos, e.g. Maasai Mara"
+                        aria-label="Search cover photos"
+                        className="w-full h-12 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                       />
                     </div>
-                    <button type="button" onClick={() => runCoverSearch(coverSearch)}
-                      className="h-10 px-4 rounded-2xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0">
+                    <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
+                      className="h-12 px-4 rounded-2xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
                       {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
                     )}
                   </div>
+                  {coverNotice && <p className="text-[11px] text-slate-500 dark:text-[#888]">{coverNotice}</p>}
                   {/* Thumbnail grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {isCoverSearching ? (

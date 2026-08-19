@@ -212,7 +212,7 @@ export function WorkspacePage() {
   const flightCheckRan = useRef(false);
   const editingEventIdRef = useRef<string | null>(null);
   const latestTripRef = useRef(trip);
-  latestTripRef.current = trip;
+  useEffect(() => { latestTripRef.current = trip; }, [trip]);
   useEffect(() => {
     if (!trip || flightCheckRan.current) return;
     const now = Date.now();
@@ -1225,56 +1225,64 @@ export function WorkspacePage() {
               </PopoverContent>
             </Popover>
           )}
-          {/* Desktop toolbar buttons */}
-          <button aria-label="Toggle theme" onClick={toggleTheme} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <NotificationPanel />
-          <button aria-label="Geocode event locations" onClick={handleGeocodeAll} disabled={geocoding} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm disabled:opacity-50" title="Geocode event locations">
-            {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-          </button>
-          <button aria-label="Re-import itinerary" onClick={() => setReimportOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm" title="Re-import itinerary">
-            <Upload className="h-4 w-4" />
-          </button>
-          <button aria-label="Edit trip details" onClick={handleOpenEditTrip} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button aria-label="Delete trip" onClick={() => setDeleteConfirmOpen(true)} className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-500 dark:text-[#888888] hover:text-red-500 transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm">
-            <Trash className="h-4 w-4" />
-          </button>
-          <button onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showTasks ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-            <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">{showTasks ? "HIDE TASKS" : "TASKS"}</span>
-          </button>
-          <button onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMap ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-            <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">{showMap ? "HIDE MAP" : "SHOW MAP"}</span>
-          </button>
-          <button onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className={`hidden sm:flex font-bold text-xs uppercase tracking-widest rounded-xl h-10 w-10 lg:w-auto px-0 lg:px-4 gap-2 border transition-all items-center justify-center cursor-pointer ${showMobilePreview ? "bg-brand text-slate-900 dark:text-black border-transparent shadow-lg shadow-brand/20 hover:opacity-90" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] border-slate-200 dark:border-[#1f1f1f] shadow-sm"}`}>
-            <DeviceMobileCamera className="h-4 w-4" /> <span className="hidden lg:inline">{showMobilePreview ? "HIDE PREVIEW" : "MOBILE"}</span>
-          </button>
-          <button
-            aria-label="Share trip link"
-            onClick={handleShareTrip}
-            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
-          >
-            <ShareNetwork className="h-4 w-4" />
-          </button>
-          <button
-            aria-label="Preview itinerary"
-            onClick={() => setPreviewOpen(true)}
-            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          <button
-            aria-label="Send itinerary to client"
-            onClick={handleSendEmail}
-            className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] items-center justify-center cursor-pointer shadow-sm"
-          >
-            <EnvelopeOpen className="h-4 w-4" />
-          </button>
-          <Button onClick={handleExportPdf} disabled={exporting} variant="outline" className="font-bold text-xs uppercase tracking-widest rounded-xl h-10 px-4 border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hidden sm:flex">
-            {exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "EXPORT PDF"}
-          </Button>
+          {/* Desktop toolbar: View (segmented) · Share · Trip · Notifications · Publish */}
+          {(() => {
+            const panelBtn = (active: boolean) =>
+              `h-8 px-2.5 lg:px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                active ? "bg-white dark:bg-[#1c1c1c] text-brand shadow-sm" : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+              }`;
+            const menuBtn = "hidden sm:flex h-10 px-3 lg:px-4 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] text-slate-600 dark:text-[#aaa] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-xs font-bold uppercase tracking-widest items-center gap-2 cursor-pointer shadow-sm";
+            const item = "flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer";
+            return (
+              <>
+                <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-1 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a]">
+                  <button type="button" aria-pressed={showTasks} title="Tasks" onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className={panelBtn(showTasks)}>
+                    <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">Tasks</span>
+                  </button>
+                  <button type="button" aria-pressed={showMap} title="Map" onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className={panelBtn(showMap)}>
+                    <MapIcon className="h-4 w-4" /> <span className="hidden lg:inline">Map</span>
+                  </button>
+                  <button type="button" aria-pressed={showMobilePreview} title="Phone preview" onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className={panelBtn(showMobilePreview)}>
+                    <DeviceMobileCamera className="h-4 w-4" /> <span className="hidden lg:inline">Phone</span>
+                  </button>
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger className={menuBtn} aria-label="Share and export">
+                    <ShareNetwork className="h-4 w-4" /> <span className="hidden lg:inline">Share</span> <CaretDown className="h-3 w-3 opacity-50" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+                    <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-brand" /> Send to travelers</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-brand" /> Share link &amp; PIN</DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                    <DropdownMenuItem onClick={() => setPreviewOpen(true)} className={item}><Eye className="h-4 w-4" /> Preview itinerary</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className={item}>{exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {exporting ? "Exporting..." : "Export PDF"}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger className={menuBtn} aria-label="Trip settings">
+                    <Pencil className="h-4 w-4" /> <span className="hidden lg:inline">Trip</span> <CaretDown className="h-3 w-3 opacity-50" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+                    <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Re-import itinerary</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                    <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
+                    {(!isOrgMember || canDeleteTrip) && (
+                      <>
+                        <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                        <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className={`${item} text-red-500 focus:text-red-500`}><Trash className="h-4 w-4" /> Delete trip</DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <NotificationPanel />
+              </>
+            );
+          })()}
 
           {/* Mobile overflow menu */}
           <DropdownMenu>

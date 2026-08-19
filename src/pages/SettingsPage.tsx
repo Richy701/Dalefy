@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash, Lock, Buildings, Upload, Users,
+  Sun, Moon, Download, Trash, Lock, Buildings, Upload, Users, SpinnerGap,
 } from "@phosphor-icons/react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
 import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -46,7 +46,7 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
           <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
             <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
           </div>
-          <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">
+          <h2 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
             {title}
           </h2>
         </div>
@@ -340,14 +340,18 @@ export function SettingsPage() {
             >
               <Row
                 label="Change Password"
-                value="Update your sign-in password"
+                value={newPassword.length > 0 && newPassword.length < 6 ? "At least 6 characters" : "Update your sign-in password"}
                 action={
                   <div className="flex items-center gap-2">
                     <input
+                      id="settings-new-password"
                       type="password"
+                      aria-label="New password"
+                      autoComplete="new-password"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="New password"
+                      title="At least 6 characters"
                       className="h-9 w-40 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                     <Button
@@ -355,7 +359,7 @@ export function SettingsPage() {
                       disabled={changingPassword || newPassword.length < 6}
                       className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-3 disabled:opacity-40"
                     >
-                      {changingPassword ? "..." : "Update"}
+                      {changingPassword ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Update"}
                     </Button>
                   </div>
                 }
@@ -373,9 +377,10 @@ export function SettingsPage() {
               <div className="flex items-center gap-3">
                 <input
                   type="text"
+                  aria-label="Agency name"
                   value={newOrgName}
                   onChange={e => setNewOrgName(e.target.value)}
-                  placeholder="e.g. Sunset Travel Co."
+                  placeholder="Agency name"
                   className="h-9 flex-1 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
                 <Button
@@ -383,7 +388,7 @@ export function SettingsPage() {
                   disabled={creatingOrg || !newOrgName.trim()}
                   className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-4 disabled:opacity-40"
                 >
-                  {creatingOrg ? "Creating..." : "Create Agency"}
+                  {creatingOrg ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Create Agency"}
                 </Button>
               </div>
             </Section>
@@ -435,12 +440,12 @@ export function SettingsPage() {
                 }
               />
               {/* Agency Code */}
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-[#141414]">
+              <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-3">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
+                    <label htmlFor="settings-agency-code" className="block text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
                       Agency Code
-                    </p>
+                    </label>
                     <p className="text-[11px] text-slate-500 dark:text-[#888]">
                       Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
@@ -448,6 +453,7 @@ export function SettingsPage() {
                   <div className="flex flex-col sm:items-end gap-2 shrink-0">
                     <div className="flex items-center gap-2">
                       <input
+                        id="settings-agency-code"
                         type="text"
                         value={agencyCodeEdit}
                         onChange={e => setAgencyCodeEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
@@ -496,7 +502,7 @@ export function SettingsPage() {
                           }}
                           className="h-10 px-4 rounded-xl bg-brand text-[10px] font-black uppercase tracking-wider text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          {savingAgencyCode ? "Saving..." : "Save"}
+                          {savingAgencyCode ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </button>
                       )}
                     </div>
@@ -543,7 +549,7 @@ export function SettingsPage() {
                     disabled={savingBrand}
                     className="h-8 rounded-lg bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-5 disabled:opacity-40"
                   >
-                    {savingBrand ? "Saving..." : "Save"}
+                    {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                   </Button>
                 </div>
               </div>
