@@ -10,6 +10,7 @@ interface OrgContextType {
   hasOrg: boolean;
   tablesReady: boolean;
   createOrg: (name: string, agencyCode?: string) => Promise<{ org: Organization | null; error: string | null }>;
+  refreshOrg: () => void;
 }
 
 const OrgContext = createContext<OrgContextType>({
@@ -20,10 +21,11 @@ const OrgContext = createContext<OrgContextType>({
   hasOrg: false,
   tablesReady: false,
   createOrg: async () => ({ org: null, error: "Not initialized" }),
+  refreshOrg: () => {},
 });
 
 export function OrgProvider({ children }: { children: ReactNode }) {
-  const { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg } = useOrgLoad();
+  const { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg, refreshOrg } = useOrgLoad();
 
   return (
     <OrgContext.Provider
@@ -35,6 +37,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         hasOrg: !!currentOrg,
         tablesReady,
         createOrg,
+        refreshOrg,
       }}
     >
       {children}

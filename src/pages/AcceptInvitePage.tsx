@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SpinnerGap, CheckCircle, XCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useOrg } from "@/context/OrgContext";
 import { acceptInvite } from "@/services/invites";
 import { Logo } from "@/components/shared/Logo";
 
@@ -10,6 +11,7 @@ export function AcceptInvitePage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { refreshOrg } = useOrg();
   const [status, setStatus] = useState<"loading" | "success" | "error" | "needs-auth">("loading");
   const [message, setMessage] = useState("");
   const [orgName, setOrgName] = useState("");
@@ -38,6 +40,7 @@ export function AcceptInvitePage() {
         setStatus("success");
         setOrgName(result.orgName);
         setMessage(`You've joined ${result.orgName}`);
+        refreshOrg();
       }
     }).catch((err: unknown) => {
       sessionStorage.removeItem("daf-pending-invite");
@@ -49,7 +52,7 @@ export function AcceptInvitePage() {
           : err instanceof Error ? err.message : "Something went wrong accepting this invite",
       );
     });
-  }, [token, isAuthenticated, authLoading]);
+  }, [token, isAuthenticated, authLoading, refreshOrg]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#050505] flex items-center justify-center p-6">

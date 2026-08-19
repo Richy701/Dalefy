@@ -22,6 +22,7 @@ export function useOrgLoad() {
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tablesReady, setTablesReady] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const useFirebase = isFirebaseConfigured();
   const isRealUser = useFirebase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
@@ -123,7 +124,9 @@ export function useOrgLoad() {
     }, ORG_LOAD_TIMEOUT_MS);
 
     return () => { mounted = false; clearTimeout(timeout); };
-  }, [isRealUser, user?.id]);
+  }, [isRealUser, user?.id, reloadKey]);
+
+  const refreshOrg = useCallback(() => setReloadKey(k => k + 1), []);
 
   const createOrg = useCallback(async (name: string, agencyCode?: string): Promise<{ org: Organization | null; error: string | null }> => {
     if (!isRealUser || !user) return { org: null, error: "Not authenticated" };
@@ -189,5 +192,5 @@ export function useOrgLoad() {
     }
   }, [isRealUser, user]);
 
-  return { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg };
+  return { currentOrg, orgRole, orgMembers, isLoading, tablesReady, createOrg, refreshOrg };
 }
