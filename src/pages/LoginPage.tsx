@@ -179,7 +179,11 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const notice = localStorage.getItem("daf-login-notice");
+    if (notice) localStorage.removeItem("daf-login-notice");
+    return notice;
+  });
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");

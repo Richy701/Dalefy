@@ -10,6 +10,9 @@ import {
   updatePassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
   type User as FbUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
@@ -174,6 +177,38 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
     return { user: profile, error: null };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Google sign-in failed";
+    return { user: null, error: msg.replace("Firebase: ", "") };
+  }
+}
+
+// ── Email link (used for team invites: no password, email auto-verified) ───
+
+/** Send a Firebase sign-in link that lands on `continueUrl` once clicked. */
+export async function sendInviteSignInLink(email: string, continueUrl: string): Promise<{ error: string | null }> {
+  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
+  try {
+    await sendSignInLinkToEmail(firebaseAuth(), email, { url: continueUrl, handleCodeInApp: true });
+    return { error: null };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Couldn't send sign-in email";
+    return { error: msg.replace("Firebase: ", "") };
+  }
+}
+
+export function isEmailSignInLink(url: string): boolean {
+  if (!isFirebaseConfigured()) return false;
+  try { return isSignInWithEmailLink(firebaseAuth(), url); } catch { return false; }
+}
+
+/** Complete a sign-in link for `email`; creates the profile if this is a new user. */
+export async function completeEmailSignInLink(email: string, url: string): Promise<{ user: User | null; error: string | null }> {
+  if (!isFirebaseConfigured()) return { user: null, error: "Firebase not configured" };
+  try {
+    const result = await signInWithEmailLink(firebaseAuth(), email, url);
+    const profile = await upsertGoogleProfile(result.user);
+    return { user: profile, error: null };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Sign-in link failed";
     return { user: null, error: msg.replace("Firebase: ", "") };
   }
 }

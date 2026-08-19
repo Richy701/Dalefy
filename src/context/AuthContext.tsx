@@ -36,7 +36,54 @@ import {
   resendVerificationEmail as authResendVerification,
   isCurrentUserEmailVerified,
   reloadCurrentUser,
+  isEmailSignInLink,
+  completeEmailSignInLink,
 } from "@/services/firebaseAuth";
+import { getPendingInviteEmail, setPendingInvite } from "@/lib/pendingInvite";
+
+/**
+ * Team invites arrive as a Firebase sign-in link whose continueUrl is
+ * `/?invite=<token>`. Complete the sign-in, remember the invite, and reload
+ * onto the accept page with the one-time code stripped from the URL.
+ * Returns true if the page is being replaced (caller should stop).
+ */
+async function completeInviteLink(): Promise<boolean> {
+  const href = window.location.href;
+  if (!isEmailSignInLink(href)) return false;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("invite") ?? "";
+
+  let email = getPendingInviteEmail() ?? "";
+  if (token && /^[0-9a-f-]{36}$/i.test(token)) {
+    try {
+      const r = await fetch(`/api/invite-preview?token=${encodeURIComponent(token)}`);
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && typeof data.email === "string") email = data.email;
+    } catch { /* fall back to stored email */ }
+  }
+  if (!email) {
+    logger.warn("Auth", "sign-in link: no email available");
+    localStorage.setItem("daf-login-notice", "We couldn't complete that sign-in link. Ask your team to resend the invite.");
+    window.location.replace(`${window.location.origin}${window.location.pathname}#/login`);
+    return true;
+  }
+
+  const { user, error } = await completeEmailSignInLink(email, href);
+  if (error || !user) {
+    logger.warn("Auth", `sign-in link failed: ${error}`);
+    localStorage.setItem("daf-login-notice", error && /expired|invalid/i.test(error)
+      ? "That sign-in link has expired or was already used. Ask your team to resend the invite."
+      : "We couldn't complete that sign-in link. Please sign in instead.");
+    if (token) setPendingInvite(token, email);
+    window.location.replace(`${window.location.origin}${window.location.pathname}#/login`);
+    return true;
+  }
+
+  localStorage.setItem(STORAGE.AUTH, JSON.stringify(user));
+  if (token) setPendingInvite(token, email);
+  window.location.replace(`${window.location.origin}${window.location.pathname}#/${token ? `invite/${token}` : "dashboard"}`);
+  return true;
+}
 
 // ── Demo user (for development / when Firebase not configured) ──────────────
 
@@ -204,7 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted) setIsLoading(false);
     }
 
-    validate();
+    completeInviteLink()
+      .then(replacing => { if (!replacing) validate(); })
+      .catch(() => validate());
     return () => { mounted = false; };
   }, [useFirebase]);
 

@@ -183,7 +183,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             Invite to {orgName}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-[#888]">
-            They'll get an email with a link to join. Invites expire after 7 days.
+            They'll get a sign-in email from Dalefy, one click and they're in. Invites expire after 7 days.
           </DialogDescription>
         </DialogHeader>
 
@@ -249,12 +249,12 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-900 dark:text-white">
                     {lastInvite.emailSent
-                      ? `${lastInvite.resent ? "Invite re-sent" : "Invite emailed"} to ${lastInvite.email}`
+                      ? `${lastInvite.resent ? "Sign-in email re-sent" : "Sign-in email sent"} to ${lastInvite.email}`
                       : `Invite created for ${lastInvite.email}`}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
                     {lastInvite.emailSent
-                      ? `They'll join as ${ROLE_LABEL[lastInvite.role] ?? lastInvite.role}. You can also share the link below.`
+                      ? `Tell them to look for "Sign in to Dalefy" from noreply@dalefy-d87c9.firebaseapp.com (check spam). They'll join as ${ROLE_LABEL[lastInvite.role] ?? lastInvite.role}. You can also share the link below.`
                       : `We couldn't send the email${lastInvite.emailError ? ` (${lastInvite.emailError})` : ""}. Share this link with them instead.`}
                   </p>
                 </div>

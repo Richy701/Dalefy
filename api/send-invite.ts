@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
-import { sendEmail, renderBrandedEmail, emailConfigured } from "./_email.js";
 
 const PROJECT_ID = (process.env.VITE_FIREBASE_PROJECT_ID || "dalefy-d87c9").trim();
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -10,12 +9,6 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type Role = "admin" | "agent" | "viewer";
 const ROLES: Role[] = ["admin", "agent", "viewer"];
-const ROLE_LABEL: Record<Role, string> = { admin: "an admin", agent: "an agent", viewer: "a viewer" };
-const ROLE_BLURB: Record<Role, string> = {
-  admin: "Admins can manage trips, travelers, branding and the team.",
-  agent: "Agents can build and edit trips and manage travelers.",
-  viewer: "Viewers can see trips and itineraries but not change them.",
-};
 
 interface InviteRequest {
   email?: unknown;
@@ -192,44 +185,6 @@ export default async function handler(req: any, res: any) {
 
   const acceptUrl = `${APP_URL}/#/invite/${inviteToken}`;
 
-  // Per-org branding for the email (public read)
-  const branding = await getDoc(token, `org_branding/${orgId}`).catch(() => null);
-  const org = {
-    name: str(branding, "company_name") || orgName,
-    logoUrl: str(branding, "logo_url") || null,
-    accentColor: str(branding, "accent_color") || null,
-  };
-
-  const expiresHuman = expiresAt
-    ? new Date(expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-    : "7 days";
-  const who = inviterName || "A team member";
-
-  const { html, text } = renderBrandedEmail({
-    preheader: `${who} has invited you to join ${org.name} on Dalefy as ${ROLE_LABEL[role]}.`,
-    eyebrow: "Team invitation",
-    heading: `Join ${org.name}`,
-    paragraphs: [
-      `${who} has invited you to join ${org.name} on Dalefy as ${ROLE_LABEL[role]}.`,
-      `Dalefy is the itinerary platform ${org.name} uses to build trips, manage travelers and share live itineraries.`,
-      ROLE_BLURB[role],
-      `Accept with the email address this was sent to (${email}). If you don't have an account yet you'll be asked to create one first.`,
-    ],
-    cta: { label: "Accept invitation", url: acceptUrl },
-    note: `This invitation expires on ${expiresHuman}. If you weren't expecting it, you can ignore this email.`,
-    footerLines: [`Sent by ${org.name} via Dalefy.`],
-    org,
-  });
-
-  let emailSent = false;
-  let emailError: string | undefined;
-  if (emailConfigured()) {
-    const result = await sendEmail({ to: email, subject: `${who} invited you to join ${org.name} on Dalefy`, html, text });
-    emailSent = result.sent;
-    emailError = result.error;
-  } else {
-    emailError = "Email sending is not configured";
-  }
-
-  return res.status(200).json({ ok: true, inviteToken, acceptUrl, email, role, expiresAt, emailSent, emailError, resent });
+  // Delivery happens client-side via a Firebase sign-in link (no external email service).
+  return res.status(200).json({ ok: true, inviteToken, acceptUrl, email, role, expiresAt, orgName, resent });
 }
