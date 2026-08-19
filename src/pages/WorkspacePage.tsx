@@ -140,6 +140,25 @@ function timeToMinutes(t: string): number {
   return 720;
 }
 
+function isValidTimeInput(raw: string | undefined): boolean {
+  if (!raw || !raw.trim()) return true;
+  return /^\d{2}:\d{2}$/.test(formatTimeInput(raw));
+}
+
+type EventErrors = Partial<Record<"title" | "date" | "time" | "endTime" | "checkout", string>>;
+
+function validateEvent(ev: TravelEvent): EventErrors {
+  const errors: EventErrors = {};
+  if (!ev.title?.trim()) errors.title = "Give this event a title";
+  if (!ev.date) errors.date = "Pick a date";
+  if (!isValidTimeInput(ev.time)) errors.time = "Use a time like 09:30 or 2pm";
+  if (!isValidTimeInput(ev.endTime)) errors.endTime = "Use a time like 11:00 or 4pm";
+  if (ev.type === "hotel" && ev.checkin && ev.checkout && ev.checkout < ev.checkin) {
+    errors.checkout = "Check-out must be after check-in";
+  }
+  return errors;
+}
+
 function SortableItem({ id, children, handleClass }: { id: string; children: React.ReactNode; handleClass?: string }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : undefined, position: "relative" };
@@ -190,6 +209,9 @@ export function WorkspacePage() {
 
   // On-demand flight status check: refresh flights within 48 hours of now
   const flightCheckRan = useRef(false);
+  const editingEventIdRef = useRef<string | null>(null);
+  const latestTripRef = useRef(trip);
+  latestTripRef.current = trip;
   useEffect(() => {
     if (!trip || flightCheckRan.current) return;
     const now = Date.now();
@@ -223,7 +245,17 @@ export function WorkspacePage() {
           if (match.arrTz && match.arrTz !== ev.arrTz) updates.arrTz = match.arrTz;
 
           if (Object.keys(updates).length > 0) {
-            updateEvent(trip.id, { ...ev, ...updates });
+            // Never overwrite an event the user is editing right now; merge onto the latest saved copy
+            if (editingEventIdRef.current === ev.id) continue;
+            const latest = latestTripRef.current?.events.find(e => e.id === ev.id) ?? ev;
+            updateEvent(trip.id, { ...latest, ...updates });
+            const what = [
+              updates.time ? `departs ${updates.time}` : null,
+              updates.gate ? `gate ${updates.gate}` : null,
+              updates.terminal ? `terminal ${updates.terminal}` : null,
+              updates.status ? String(updates.status).toLowerCase() : null,
+            ].filter(Boolean).join(", ");
+            toast.info(`${ev.flightNum} updated from live flight data${what ? `: ${what}` : ""}`);
           }
         } catch {
           // best-effort, don't block the page
@@ -240,6 +272,10 @@ export function WorkspacePage() {
   const [geocoding, setGeocoding] = useState(false);
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TravelEvent | null>(null);
+  const [eventErrors, setEventErrors] = useState<EventErrors>({});
+  useEffect(() => { editingEventIdRef.current = isEditPanelOpen && editingEvent ? editingEvent.id : null; }, [isEditPanelOpen, editingEvent]);
+  const editingOriginalRef = useRef<string | null>(null);
+  const [discardPromptOpen, setDiscardPromptOpen] = useState(false);
   const [imageSeed, setImageSeed] = useState(0);
   const [imageIsAuto, setImageIsAuto] = useState(false);
   const [imageSearch, setImageSearch] = useState("");
@@ -578,6 +614,8 @@ export function WorkspacePage() {
       location: "",
       status: "Proposed",
     });
+    setEventErrors({});
+    editingOriginalRef.current = null; // new event: dirty as soon as anything is typed
     setIsEditPanelOpen(true);
   };
 
@@ -589,6 +627,8 @@ export function WorkspacePage() {
     setImageResults([]);
     setImageSearchSource(null);
     setEditingEvent({ ...event });
+    setEventErrors({});
+    editingOriginalRef.current = JSON.stringify(event);
     setIsEditPanelOpen(true);
     if (event.date) updateActivity(event.date, event.id);
   };
@@ -597,13 +637,50 @@ export function WorkspacePage() {
     e.preventDefault();
     if (demoGate()) return;
     if (!editingEvent) return;
-    const existing = trip.events.find(ev => ev.id === editingEvent.id);
-    const action = existing ? "updated" : "added";
-    updateEvent(trip.id, editingEvent);
+    const errors = validateEvent(editingEvent);
+    if (Object.keys(errors).length > 0) {
+      setEventErrors(errors);
+      toast.error(Object.values(errors)[0]);
+      return;
+    }
+    // Normalise times so sorting and the traveler view get HH:MM
+    const normalised: TravelEvent = {
+      ...editingEvent,
+      title: editingEvent.title.trim(),
+      time: editingEvent.time ? formatTimeInput(editingEvent.time) : editingEvent.time,
+      endTime: editingEvent.endTime ? formatTimeInput(editingEvent.endTime) : editingEvent.endTime,
+    };
+    const isNew = !trip.events.some(ev => ev.id === normalised.id);
+    updateEvent(trip.id, normalised);
+    setEventErrors({});
+    editingOriginalRef.current = null;
     setIsEditPanelOpen(false);
     setEditingEvent(null);
-    showToast("Event saved");
-    toast.success("Event saved");
+    toast.success(isNew ? "Event added" : "Event saved");
+  };
+
+  const isEventDirty = () => {
+    if (!editingEvent) return false;
+    if (editingOriginalRef.current === null) {
+      // New event: dirty if the user typed anything meaningful
+      return !!(editingEvent.title?.trim() || editingEvent.location?.trim() || editingEvent.description?.trim() || editingEvent.time);
+    }
+    return JSON.stringify(editingEvent) !== editingOriginalRef.current;
+  };
+
+  const handleEventDialogOpenChange = (open: boolean) => {
+    if (open) { setIsEditPanelOpen(true); return; }
+    if (isEventDirty()) { setDiscardPromptOpen(true); return; }
+    setIsEditPanelOpen(false);
+    setEventErrors({});
+  };
+
+  const discardEventChanges = () => {
+    setDiscardPromptOpen(false);
+    setIsEditPanelOpen(false);
+    setEditingEvent(null);
+    setEventErrors({});
+    editingOriginalRef.current = null;
   };
 
   const handleAiAssist = async () => {
@@ -1938,14 +2015,23 @@ export function WorkspacePage() {
           )}
           {showMobilePreview && (
             <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
-              <MobilePreview trip={trip} onClose={() => setShowMobilePreview(false)} />
+              <MobilePreview trip={trip} events={groupedEvents.flatMap(([, evs]) => evs)} onClose={() => setShowMobilePreview(false)} />
             </aside>
           )}
         </div>
       </div>
 
       {/* Event Edit Dialog — full screen */}
-      <Dialog open={isEditPanelOpen} onOpenChange={setIsEditPanelOpen}>
+      <ConfirmDialog
+        open={discardPromptOpen}
+        onOpenChange={setDiscardPromptOpen}
+        title="Discard changes?"
+        description="You have unsaved changes on this event. Close without saving?"
+        confirmLabel="Discard"
+        destructive
+        onConfirm={discardEventChanges}
+      />
+      <Dialog open={isEditPanelOpen} onOpenChange={handleEventDialogOpenChange}>
         <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-2xl sm:rounded-[2rem] overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
@@ -2006,9 +2092,10 @@ export function WorkspacePage() {
                 {/* Live search — hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
-                    onSelect={({ checkin: ci, checkout: co, ...data }) => { setEditingEvent(prev => {
+                    onSelect={({ checkin: ci, checkout: co, notes, ...data }) => { setEditingEvent(prev => {
                       if (!prev) return null;
-                      return { ...prev, ...data, title: prev.title || data.title || "", checkin: prev.checkin || ci || "", checkout: prev.checkout || co || "" };
+                      // Never clobber what the agent already typed (title, notes, dates)
+                      return { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes, checkin: prev.checkin || ci || "", checkout: prev.checkout || co || "" };
                     }); }}
                     defaultCheckin={trip.start}
                     defaultCheckout={trip.end}
@@ -2018,27 +2105,30 @@ export function WorkspacePage() {
                 {/* Live search — activity */}
                 {editingEvent?.type === "activity" && (
                   <ActivitySearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
                   />
                 )}
 
                 {/* Live search — dining */}
                 {editingEvent?.type === "dining" && (
                   <DiningSearch
-                    onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data } : null)}
+                    onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
                   />
                 )}
 
                 <div className="p-4 sm:p-7 space-y-5">
                   {/* Title — large underline style */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Event Title</label>
+                    <label htmlFor="event-title" className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Event Title</label>
                     <input
+                      id="event-title"
                       value={editingEvent?.title || ""}
-                      onChange={e => setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null)}
-                      placeholder="e.g., Private Maasai Mara Flight"
-                      className="w-full bg-transparent border-0 border-b-2 border-slate-200 dark:border-[#2a2a2a] focus:border-brand focus:outline-none text-xl font-extrabold tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors"
+                      onChange={e => { setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null); if (eventErrors.title) setEventErrors(prev => ({ ...prev, title: undefined })); }}
+                      placeholder="What's happening? e.g. Transfer to hotel"
+                      aria-invalid={!!eventErrors.title}
+                      className={`w-full bg-transparent border-0 border-b-2 focus:border-brand focus:outline-none text-xl font-extrabold tracking-tight text-slate-900 dark:text-white pb-2 placeholder:text-slate-300 dark:placeholder:text-[#555] transition-colors ${eventErrors.title ? "border-red-500" : "border-slate-200 dark:border-[#2a2a2a]"}`}
                     />
+                    {eventErrors.title && <p className="text-[11px] font-semibold text-red-500">{eventErrors.title}</p>}
                   </div>
 
                   {/* Date + Time */}
@@ -2055,19 +2145,21 @@ export function WorkspacePage() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]" align="start">
                           <Calendar mode="single" selected={editingEvent?.date ? parseISO(editingEvent.date) : undefined}
-                            onSelect={(day) => day && setEditingEvent(prev => {
+                            onSelect={(day) => { if (!day) return; setEventErrors(prev => ({ ...prev, date: undefined })); setEditingEvent(prev => {
                               if (!prev) return null;
                               const formatted = format(day, "yyyy-MM-dd");
                               const updates: Partial<TravelEvent> = { date: formatted };
                               if (prev.type === "hotel") updates.checkin = formatted;
                               return { ...prev, ...updates };
-                            })} initialFocus />
+                            }); }} initialFocus />
                         </PopoverContent>
                       </Popover>
+                      {eventErrors.date && <p className="text-[11px] font-semibold text-red-500">{eventErrors.date}</p>}
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</label>
-                      <Input value={editingEvent?.time || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-slate-200 dark:border-[#252525]"}`} />
+                      {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>
                   </div>
 
@@ -2486,8 +2578,9 @@ export function WorkspacePage() {
                       <button
                         type="button"
                         onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
+                        aria-pressed={!editingEvent?.assignedTo}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          !editingEvent?.assignedTo || editingEvent.assignedTo.length === 0
+                          !editingEvent?.assignedTo
                             ? "bg-brand text-black shadow-sm"
                             : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
                         }`}
@@ -2497,8 +2590,9 @@ export function WorkspacePage() {
                       <button
                         type="button"
                         onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: prev.assignedTo?.length ? prev.assignedTo : [] } : null)}
+                        aria-pressed={Array.isArray(editingEvent?.assignedTo)}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                          editingEvent?.assignedTo && editingEvent.assignedTo.length >= 0 && editingEvent.assignedTo !== undefined
+                          Array.isArray(editingEvent?.assignedTo)
                             ? "bg-brand text-black shadow-sm"
                             : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
                         }`}

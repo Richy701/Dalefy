@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef, memo, useState, useCallback } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
-import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, SpinnerGap } from "@phosphor-icons/react";
 import type { Trip, TravelEvent } from "@/types";
 import type { Theme } from "@/types";
 import { resolveCoords } from "@/data/coordinates";
@@ -126,6 +126,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
     : "mapbox://styles/mapbox/light-v11";
 
   const [points, setPoints] = useState<MapPoint[]>([]);
+  const [resolving, setResolving] = useState(true);
 
   // Per-flight arc pairs: origin→destination resolved independently
   type FlightArc = { from: [number, number]; to: [number, number]; fromLabel: string; toLabel: string };
@@ -133,12 +134,14 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
   useEffect(() => {
     let cancelled = false;
+    setResolving(true);
     (async () => {
       const seen = new Set<string>();
       const result: MapPoint[] = [];
       const arcs: FlightArc[] = [];
       let order = 0;
-      const sortedEvents = sortEvents(trip.events.filter((e) => e.type === "flight"));
+      // Every event with a location gets a pin; flights additionally get origin/destination arcs
+      const sortedEvents = sortEvents(trip.events.filter((e) => !!e.location?.trim() || (e.type === "flight" && !!e.title)));
       const resolve = async (loc: string): Promise<[number, number] | null> =>
         resolveCoords(loc) ?? (await geocode(loc));
 
@@ -163,7 +166,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       for (const event of sortedEvents) {
         const day = dayOf(event.date);
         // "STN to AYT" or "London to Antalya" — also fallback to title "STN → AYT"
-        const pairMatch = event.location.match(/^(.+?)\s+to\s+(.+)$/)
+        const pairMatch = (event.location ?? "").match(/^(.+?)\s+to\s+(.+)$/)
           ?? (event.type === "flight" && event.title ? event.title.match(/^(.+?)\s*[→➔]\s*(.+)$/) : null);
         if (pairMatch) {
           const fromCoords = await resolve(pairMatch[1].trim());
@@ -176,6 +179,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           continue;
         }
         // Single location
+        if (!event.location?.trim()) continue;
         const coords = await resolve(event.location);
         if (!coords) continue;
         addPoint(coords, event.location.split(",")[0].trim(), event, day);
@@ -183,8 +187,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       if (!cancelled) {
         setPoints(result);
         setFlightArcs(arcs);
+        setResolving(false);
       }
-    })();
+    })().catch(() => { if (!cancelled) setResolving(false); });
     return () => { cancelled = true; };
   }, [trip.events]);
 
@@ -345,13 +350,23 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   useEffect(() => () => { cancelAnimationFrame(rafRef.current); cancelAnimationFrame(planeRafRef.current); }, []);
 
   if (points.length === 0) {
+    const hasLocations = trip.events.some(e => !!e.location?.trim());
     return (
       <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-3 max-w-xs px-6">
           <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-[#111111] flex items-center justify-center mx-auto border border-slate-200 dark:border-[#1f1f1f]">
-            <MapPin className="h-6 w-6 text-slate-500 dark:text-[#888]" />
+            {resolving ? <SpinnerGap className="h-6 w-6 text-brand animate-spin" /> : <MapPin className="h-6 w-6 text-slate-500 dark:text-[#888]" />}
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No locations to display</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
+            {resolving ? "Locating events" : hasLocations ? "Couldn't place these locations" : "No locations yet"}
+          </p>
+          {!resolving && (
+            <p className="text-[11px] text-slate-500 dark:text-[#777]">
+              {hasLocations
+                ? "Try the Geocode button in the toolbar, or make the locations more specific (city, country)."
+                : "Add a location to an event and it will appear here."}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -517,7 +532,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                 <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
                 <span className="text-[11px] font-extrabold uppercase tracking-tight text-brand">Route</span>
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} {points.length === 1 ? "airport" : "airports"}</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
             </div>
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
               {points.map((pt, i) => {

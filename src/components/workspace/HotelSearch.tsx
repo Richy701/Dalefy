@@ -42,7 +42,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
     setSelected(h.name);
     onSelect({
       title: h.name,
-      location: query,
+      location: h.name,
       supplier: h.name,
       checkin: h.checkin,
       checkout: h.checkout,

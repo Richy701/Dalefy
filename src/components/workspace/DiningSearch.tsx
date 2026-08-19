@@ -34,7 +34,8 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
   const pick = (r: DiningResult) => {
     setSelected(r.name);
     onSelect({
-      location: r.address || query,
+      title: r.name,
+      location: r.address || r.name,
       supplier: r.name,
       image: r.image || undefined,
       notes: r.cuisines?.length ? r.cuisines.join(" · ") : undefined,

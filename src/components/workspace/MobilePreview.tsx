@@ -5,7 +5,7 @@ import {
   CaretRight, CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
   DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold, Paperclip,
 } from "@phosphor-icons/react";
-import { useBrand } from "@/context/BrandContext";
+import { useBrand, hexToRgb } from "@/context/BrandContext";
 import type { Trip, TravelEvent, TripOrganizer, TripInfo } from "@/types";
 
 const MONO = "Menlo, Monaco, 'Courier New', monospace";
@@ -422,14 +422,14 @@ function InfoDocsSection({ info, documents, c }: { info: TripInfo[]; documents: 
         <div style={{ background: c.card, borderRadius: "0 0 20px 20px", padding: "0 12px 12px" }}>
           {visibleInfo.map(item => (
             <div key={item.id} style={{ padding: "8px 10px", background: c.bg, borderRadius: 12, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: c.text }}>{item.title || "Untitled"}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: c.textPrimary }}>{item.title || "Untitled"}</span>
               {item.body && <p style={{ fontSize: 10, color: c.textSecondary, margin: "4px 0 0", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{item.body.length > 120 ? item.body.slice(0, 120) + "..." : item.body}</p>}
               {item.documents && item.documents.length > 0 && (
                 <div style={{ marginTop: 6 }}>
                   {item.documents.map(doc => (
                     <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
                       <Paperclip size={10} color={c.teal} />
-                      <span style={{ fontSize: 9, fontWeight: 700, color: c.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: c.textPrimary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
                       <span style={{ fontSize: 8, color: c.textTertiary }}>{formatSize(doc.size)}</span>
                     </div>
                   ))}
@@ -449,7 +449,7 @@ function InfoDocsSection({ info, documents, c }: { info: TripInfo[]; documents: 
               {documents.map(doc => (
                 <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: c.bg, borderRadius: 10, marginBottom: 4 }}>
                   <Paperclip size={12} color={c.teal} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: c.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: c.textPrimary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
                   <span style={{ fontSize: 9, color: c.textTertiary }}>{formatSize(doc.size)}</span>
                 </div>
               ))}
@@ -478,9 +478,8 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
   const end = new Date(trip.end + "T00:00:00");
   const totalDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
   const totalEvents = events.length;
-  const pastEvents = events.filter(e => e.date < todayStr).length;
-  const todayDoneEst = Math.round(events.filter(e => e.date === todayStr).length * 0.5);
-  const completed = pastEvents + todayDoneEst;
+  // Only events on days that have passed count as done; we can't know about today's
+  const completed = events.filter(e => e.date < todayStr).length;
 
   const currentDayIdx = groups.findIndex(([d]) => d >= todayStr);
   const currentDay = currentDayIdx >= 0 ? currentDayIdx + 1 : totalDays;
@@ -638,13 +637,23 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
 interface MobilePreviewProps {
   trip: Trip;
   onClose: () => void;
+  /** Events to show (e.g. already filtered by "View As"); defaults to all trip events. */
+  events?: TravelEvent[];
 }
 
-export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
+export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
   const [previewTheme, setPreviewTheme] = useState<"dark" | "light">("dark");
-  const c = previewTheme === "dark" ? dark : light;
   const isDark = previewTheme === "dark";
   const { brand } = useBrand();
+  // Show the traveler what they'll actually get: the agency accent, not the default teal
+  const c: C = useMemo(() => {
+    const base = isDark ? dark : light;
+    const accent = brand.accentColor && /^#[0-9a-f]{6}$/i.test(brand.accentColor) ? brand.accentColor : base.teal;
+    if (accent === base.teal) return base;
+    const rgb = hexToRgb(accent).split(" ").join(",");
+    return { ...base, teal: accent, tealDim: `rgba(${rgb},0.12)`, tealMid: `rgba(${rgb},0.25)`, flight: accent };
+  }, [isDark, brand.accentColor]);
+  const previewEvents = events ?? trip.events;
 
   const paxNum = parseInt(trip.paxCount || trip.attendees || "0");
   let dateRange = "";
@@ -762,7 +771,7 @@ export function MobilePreview({ trip, onClose }: MobilePreviewProps) {
                 {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && <InfoDocsSection info={trip.info ?? []} documents={trip.documents ?? []} c={c} />}
 
                 {/* Day list */}
-                <DayListSection events={trip.events} trip={trip} c={c} isDark={isDark} />
+                <DayListSection events={previewEvents} trip={trip} c={c} isDark={isDark} />
 
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />

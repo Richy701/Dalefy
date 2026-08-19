@@ -3,9 +3,10 @@ import { Upload, Trash, MagnifyingGlassPlus, Play, Image as ImageIcon, Video as 
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import type { TripMedia } from "@/types";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 async function downloadFile(url: string, name: string) {
   try {
@@ -50,60 +51,59 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         toast.error("Only image and video files are supported");
         return;
       }
-      if (valid.some((f) => f.size > 50 * 1024 * 1024)) {
-        toast.error("Files must be under 50 MB");
-        return;
-      }
+      // Storage rules cap trip media at 25 MB; skip oversize files rather than rejecting the batch
+      const MAX = 25 * 1024 * 1024;
+      const oversize = valid.filter((f) => f.size > MAX);
+      const toUpload = valid.filter((f) => f.size <= MAX);
+      if (oversize.length) toast.error(`${oversize.length} file${oversize.length > 1 ? "s are" : " is"} over 25 MB and will be skipped`);
+      if (!toUpload.length) return;
 
       setUploading(true);
       setUploadProgress(0);
 
-      const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) { clearInterval(interval); return prev; }
-          return prev + Math.random() * 12;
-        });
-      }, 120);
+      const totalBytes = toUpload.reduce((sum, f) => sum + f.size, 0);
+      const transferred = new Array<number>(toUpload.length).fill(0);
+      const report = () => setUploadProgress(totalBytes ? Math.round((transferred.reduce((a, b) => a + b, 0) / totalBytes) * 100) : 100);
+      const uid = firebaseAuth().currentUser?.uid ?? "anon";
 
-      try {
-        const uploaded: TripMedia[] = await Promise.all(
-          valid.map(async (file) => {
-            const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-            const ext = file.name.split(".").pop() || "jpg";
-            const uid = firebaseAuth().currentUser?.uid ?? "anon";
-            const storagePath = `trips/${tripId}/media/${uid}/${id}.${ext}`;
-            const storageRef = ref(firebaseStorage(), storagePath);
-            await uploadBytes(storageRef, file, { contentType: file.type });
-            const url = await getDownloadURL(storageRef);
-            return {
-              id,
-              type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
-              name: file.name,
-              url,
-              size: file.size,
-              uploadedAt: new Date().toISOString(),
-              uploadedBy: uploaderName || undefined,
-            };
-          }),
-        );
+      const results = await Promise.allSettled(
+        toUpload.map((file, i) => new Promise<TripMedia>((resolve, reject) => {
+          const id = `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const ext = file.name.split(".").pop() || "jpg";
+          const storageRef = ref(firebaseStorage(), `trips/${tripId}/media/${uid}/${id}.${ext}`);
+          const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+          task.on(
+            "state_changed",
+            (snap) => { transferred[i] = snap.bytesTransferred; report(); },
+            reject,
+            async () => {
+              try {
+                const url = await getDownloadURL(storageRef);
+                resolve({
+                  id,
+                  type: (file.type.startsWith("video/") ? "video" : "image") as "image" | "video",
+                  name: file.name,
+                  url,
+                  size: file.size,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: uploaderName || undefined,
+                });
+              } catch (e) { reject(e); }
+            },
+          );
+        })),
+      );
 
-        clearInterval(interval);
-        setUploadProgress(100);
-        setTimeout(() => {
-          onUpdate([...media, ...uploaded]);
-          setUploading(false);
-          setUploadProgress(0);
-          toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
-        }, 350);
-      } catch (err) {
-        clearInterval(interval);
-        setUploading(false);
-        setUploadProgress(0);
-        toast.error("Upload failed — check your connection");
-        console.error("[TripMediaGallery] Upload error:", err);
-      }
+      const uploaded = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const failed = results.length - uploaded.length;
+      if (uploaded.length) onUpdate([...media, ...uploaded]);
+      setUploading(false);
+      setUploadProgress(0);
+      if (failed && uploaded.length) toast.warning(`${uploaded.length} uploaded, ${failed} failed. Check your connection and retry the rest.`);
+      else if (failed) toast.error(failed === 1 ? "Upload failed. Check your connection and try again." : `${failed} uploads failed. Check your connection and try again.`);
+      else toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
     },
-    [media, onUpdate, tripId]
+    [media, onUpdate, tripId, uploaderName]
   );
 
   const handleDrop = useCallback(
@@ -120,9 +120,17 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
     e.target.value = "";
   };
 
+  const [pendingDelete, setPendingDelete] = useState<TripMedia | null>(null);
   const handleDelete = (id: string) => {
-    onUpdate(media.filter((m) => m.id !== id));
-    toast.success("Removed");
+    const item = media.find((m) => m.id === id);
+    if (item) setPendingDelete(item);
+  };
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    onUpdate(media.filter((m) => m.id !== pendingDelete.id));
+    // Best effort: remove the stored object too (may fail if uploaded by someone else)
+    try { await deleteObject(ref(firebaseStorage(), pendingDelete.url)); } catch { /* ignore */ }
+    toast.success("File deleted");
   };
 
   const fmt = (bytes: number) =>
@@ -325,6 +333,16 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         close={() => setLightboxIndex(-1)}
         index={lightboxIndex}
         slides={lightboxSlides}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title="Delete this file?"
+        description={`"${pendingDelete?.name ?? ""}" will be removed from the trip and from storage. This can't be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={confirmDelete}
       />
     </div>
   );

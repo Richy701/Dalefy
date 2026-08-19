@@ -34,7 +34,8 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
   const pick = (a: ActivityResult) => {
     setSelected(a.name);
     onSelect({
-      location: a.address || query,
+      title: a.name,
+      location: a.address || a.name,
       supplier: a.type || undefined,
       image: a.image || undefined,
       notes: [a.type, a.openStatus].filter(Boolean).join(" · ") || undefined,
