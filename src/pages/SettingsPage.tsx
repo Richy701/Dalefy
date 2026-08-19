@@ -189,7 +189,7 @@ export function SettingsPage() {
         toast.error(error);
       } else if (url) {
         setBrandLogo(url);
-        toast.success("Logo uploaded — hit Save to apply");
+        toast.success("Logo uploaded - hit Save to apply");
       }
     } catch (err) {
       logger.error("SettingsPage", "logo upload exception:", err);
@@ -404,7 +404,7 @@ export function SettingsPage() {
               {/* Logo */}
               <Row
                 label="Logo"
-                value={brandLogo ? "Uploaded" : "No logo — first letter will be used"}
+                value={brandLogo ? "Uploaded" : "No logo - first letter will be used"}
                 action={
                   <div className="flex items-center gap-3">
                     {brandLogo ? (
@@ -572,7 +572,7 @@ export function SettingsPage() {
           >
             <Row
               label="Theme"
-              value={theme === "dark" ? "Dark — default operator view" : "Light — high-contrast daytime"}
+              value={theme === "dark" ? "Dark - default operator view" : "Light - high-contrast daytime"}
               action={
                 <button
                   onClick={toggleTheme}
@@ -622,7 +622,7 @@ export function SettingsPage() {
           >
             <Row
               label="Export Trips"
-              value={`${trips.length} trip${trips.length === 1 ? "" : "s"} — download as CSV`}
+              value={`${trips.length} trip${trips.length === 1 ? "" : "s"} - download as CSV`}
               action={
                 <Button
                   onClick={exportTrips}

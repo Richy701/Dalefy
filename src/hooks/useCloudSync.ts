@@ -4,7 +4,7 @@ import { INITIAL_TRIPS } from "@/data/trips";
 import { upsertTrip, removeTrip } from "@/services/firebaseTrips";
 import { logger } from "@/lib/logger";
 
-/** IDs that belong to demo/seed data — never push these to cloud */
+/** IDs that belong to demo/seed data - never push these to cloud */
 const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
 
 /**
@@ -50,7 +50,7 @@ export function useCloudSync(
     seeded.current = true;
 
     const userTrips = localTrips.filter(t => !DEMO_IDS.has(t.id));
-    logger.log("CloudSync", "seed check — cloud:", cloudTrips.length, "local:", userTrips.length);
+    logger.log("CloudSync", "seed check - cloud:", cloudTrips.length, "local:", userTrips.length);
 
     if (cloudTrips.length === 0 && userTrips.length > 0) {
       logger.log("CloudSync", "seeding cloud from localStorage:", userTrips.map(t => t.name));

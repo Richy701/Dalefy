@@ -129,7 +129,7 @@ export function useOrgLoad() {
 
     const timeout = setTimeout(() => {
       if (mounted) {
-        logger.log("OrgLoad", "still loading — unblocking UI");
+        logger.log("OrgLoad", "still loading - unblocking UI");
         setIsLoading(false);
       }
     }, ORG_LOAD_TIMEOUT_MS);
@@ -184,7 +184,7 @@ export function useOrgLoad() {
         company_name: name,
       }, { merge: true });
 
-      // Create membership — ID must be ${uid}_${orgId} to match isOrgAdmin rule
+      // Create membership - ID must be ${uid}_${orgId} to match isOrgAdmin rule
       const memberId = `${user.id}_${orgId}`;
       await setDoc(doc(db, "org_members", memberId), {
         organization_id: orgId,

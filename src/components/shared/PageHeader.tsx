@@ -6,7 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
 interface PageHeaderProps {
-  /** Content placed after the separator — page title, search, etc. */
+  /** Content placed after the separator - page title, search, etc. */
   left?: React.ReactNode;
   /** Primary CTA button placed on the right side. */
   cta?: React.ReactNode;

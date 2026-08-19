@@ -99,7 +99,7 @@ function eventTzLabel(event: TravelEvent, tripTz?: string): string {
   return tz ? tzAbbr(tz, event.date) : "";
 }
 
-// ─── Compact Row — used when event data is sparse ─────────────────────────────
+// ─── Compact Row - used when event data is sparse ─────────────────────────────
 function CompactCard({
   event, onClick, onDuplicate, onDelete, Icon, label, assignedPeople, tripTz,
 }: {
@@ -151,7 +151,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
   const from = event.depAirport || parts?.[1]?.trim() || event.location || "";
   const to = event.arrAirport || parts?.[2]?.trim() || "";
 
-  // Sparse: no destination means the route viz looks broken — collapse to compact row.
+  // Sparse: no destination means the route viz looks broken - collapse to compact row.
   if (!to) {
     return (
       <CompactCard

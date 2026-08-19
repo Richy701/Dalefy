@@ -42,7 +42,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { hasOrg, isLoading: orgLoading, tablesReady } = useOrg();
   const isRealUser = isFirebaseConfigured() && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
-  // Only block on auth loading — org loading happens in the background
+  // Only block on auth loading - org loading happens in the background
   if (authLoading) return <AuthLoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   // Wait briefly for org check, but don't block forever

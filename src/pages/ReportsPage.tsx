@@ -256,7 +256,7 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              {/* Trip Pipeline — full-width card with chart + breakdown side by side */}
+              {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
               <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
@@ -316,7 +316,7 @@ export function ReportsPage() {
                 )}
               </div>
 
-              {/* ── Team Overview + Trips by Month — 2 col ── */}
+              {/* ── Team Overview + Trips by Month - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Team Overview */}
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
@@ -400,7 +400,7 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              {/* ── Top Airlines + Travelers per Trip — 2 col ── */}
+              {/* ── Top Airlines + Travelers per Trip - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Airlines */}
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
@@ -529,7 +529,7 @@ export function ReportsPage() {
                 <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={complianceData.travelers.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>
               </div>
 
-              {/* Overall Compliance — full-width hero with donut + breakdown bars */}
+              {/* Overall Compliance - full-width hero with donut + breakdown bars */}
               <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
@@ -591,7 +591,7 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              {/* By Document Type — full width */}
+              {/* By Document Type - full width */}
               <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
@@ -633,7 +633,7 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              {/* Recent Activity + Members Needing Action — side by side */}
+              {/* Recent Activity + Members Needing Action - side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
                 <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">

@@ -18,14 +18,14 @@ export const BRAND = {
   /** One-line tagline */
   tagline: "Trip planning without the mess",
 
-  /** Fixed prefix for localStorage keys — DO NOT change after launch */
+  /** Fixed prefix for localStorage keys - DO NOT change after launch */
   storagePrefix: "daf",
 
   /** Default accent color (cyber teal) */
   accentColor: "#0bd2b5",
 } as const;
 
-/** Org-level brand overrides — these take priority over BRAND defaults */
+/** Org-level brand overrides - these take priority over BRAND defaults */
 export interface BrandOverrides {
   companyName?: string | null;
   logoUrl?: string | null;

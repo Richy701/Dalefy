@@ -15,7 +15,7 @@ const TYPE_HINT: Record<string, string> = {
   activity: "landscape",
 };
 
-/** Extract runs of capitalized words (proper nouns) — usually POIs or place names. */
+/** Extract runs of capitalized words (proper nouns) - usually POIs or place names. */
 function properNounPhrases(text: string): string[] {
   // Keep letters, spaces, apostrophes; split on non-word boundaries
   const matches = text.match(/\b[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+)*/g) || [];

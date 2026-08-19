@@ -36,7 +36,7 @@ function parseClock(time: string | null | undefined): number | null {
 /**
  * Combine an event date ("YYYY-MM-DD") with a time ("HH:MM" or "H:MM AM/PM")
  * into a local Date. Falls back to local noon when the time is missing or
- * unrecognised, so it never returns an Invalid Date for a valid date — unlike
+ * unrecognised, so it never returns an Invalid Date for a valid date - unlike
  * `new Date(`${date}T${time}`)`, which yields NaN for "H:MM AM/PM" times.
  */
 export function parseEventDateTime(date: string, time?: string | null): Date {

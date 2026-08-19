@@ -21,7 +21,7 @@ export function useTripStats(trips: Trip[]) {
       totalDays += Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     });
 
-    // Destinations — use location field, skip descriptions/sentences
+    // Destinations - use location field, skip descriptions/sentences
     const isSentence = (s: string) => s.length > 40 || /\.\s|followed by|transfer|arrival|depart/i.test(s);
     const destinations = new Set<string>();
     allEvents.forEach(e => {
@@ -104,7 +104,7 @@ export function useTripStats(trips: Trip[]) {
         return parse(a.month) - parse(b.month);
       });
 
-    // Top airlines — extract from airline field, title, or location
+    // Top airlines - extract from airline field, title, or location
     const KNOWN_AIRLINES: Record<string, string> = {
       BA: "British Airways", EK: "Emirates", QR: "Qatar Airways", TK: "Turkish Airlines",
       LH: "Lufthansa", AF: "Air France", KL: "KLM", QF: "Qantas", SQ: "Singapore Airlines",
@@ -147,7 +147,7 @@ export function useTripStats(trips: Trip[]) {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count, iata: airlineIata[name] || "" }));
 
-    // Top hotels — prefer location (property name), fall back to short title
+    // Top hotels - prefer location (property name), fall back to short title
     const hotelCounts: Record<string, number> = {};
     allEvents.forEach(e => {
       if (e.type === "hotel") {

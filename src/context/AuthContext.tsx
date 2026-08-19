@@ -141,7 +141,7 @@ const AuthContext = createContext<AuthContextType>({
 // ── Provider ────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Restore user from localStorage synchronously — prevents loading flash on refresh
+  // Restore user from localStorage synchronously - prevents loading flash on refresh
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE.AUTH);
@@ -188,9 +188,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!mounted) return;
 
-        // If timed out, keep cached user — don't log out on slow network
+        // If timed out, keep cached user - don't log out on slow network
         if (sessionOrTimeout === TIMED_OUT) {
-          logger.log("Auth", "session validation still running — using cached user");
+          logger.log("Auth", "session validation still running - using cached user");
           if (mounted) setIsLoading(false);
           // Continue validating in the background (no timeout)
           getSession().then(session => {
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loggedSetUser(setUser, u, "validate-profile");
           localStorage.setItem(STORAGE.AUTH, JSON.stringify(u));
         } else {
-          logger.log("Auth", "validate: no session returned — clearing user");
+          logger.log("Auth", "validate: no session returned - clearing user");
           loggedSetUser(setUser, prev => {
             if (prev && prev.id !== "demo" && (prev.id?.length ?? 0) > 20) {
               localStorage.removeItem(STORAGE.AUTH);
@@ -246,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, "validate-no-session");
         }
       } catch {
-        // Network error — keep cached user, don't block the app
+        // Network error - keep cached user, don't block the app
       }
       if (mounted) setIsLoading(false);
     }

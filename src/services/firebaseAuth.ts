@@ -167,7 +167,7 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
         code === "auth/cancelled-popup-request"
       ) {
         await signInWithRedirect(firebaseAuth(), provider);
-        // signInWithRedirect navigates away — result handled by handleRedirectResult()
+        // signInWithRedirect navigates away - result handled by handleRedirectResult()
         return { user: null, error: null };
       }
       throw popupErr;

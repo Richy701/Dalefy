@@ -101,6 +101,6 @@ export function useTravelerMigration(
     if (useCloud && localSetTrips) localSetTrips(updater);
 
     localStorage.setItem(STORAGE.TRAVELERS_MIGRATED, "2");
-    logger.log("TravelerMigration", `migrated ${migrationMap.size} trip(s) — linked travelers`);
+    logger.log("TravelerMigration", `migrated ${migrationMap.size} trip(s) - linked travelers`);
   }, [ready, trips]);
 }

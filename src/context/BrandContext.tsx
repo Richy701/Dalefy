@@ -50,7 +50,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   }, [currentOrg?.id, isDemoUser]);
 
   useEffect(() => {
-    // Demo users always get default branding — never load from localStorage
+    // Demo users always get default branding - never load from localStorage
     if (isDemoUser) {
       setOrgBranding(null);
       return;
@@ -66,7 +66,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
       return () => { mounted = false; };
     } else {
       let mounted = true;
-      logger.log("BrandContext", "no org — loading from localStorage");
+      logger.log("BrandContext", "no org - loading from localStorage");
       fetchBranding("local").then(b => {
         logger.log("BrandContext", "localStorage branding result:", JSON.stringify(b));
         if (mounted) setOrgBranding(b);

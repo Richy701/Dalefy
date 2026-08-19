@@ -287,7 +287,6 @@ export function DashboardPage() {
     setIsNewTripOpen(false);
     setNewTripData({ name: "", attendees: "", dateRange: undefined, image: "", destination: "", paxCount: "", tripType: "", budget: "", currency: "USD" });
     setCoverSearch(""); setCoverResults([]);
-    showToast("Trip created successfully");
     toast.success("Trip created successfully");
     addNotification({ message: "Trip created", detail: newTrip.name, time: "Just now", type: "success" });
   };
@@ -295,7 +294,6 @@ export function DashboardPage() {
   const handleDeleteTrip = (id: string) => {
     deleteTrip(id);
     setDeletingTripId(null);
-    showToast("Trip removed");
     toast.success("Trip removed");
   };
 
@@ -309,7 +307,6 @@ export function DashboardPage() {
       shortCode: undefined,
     };
     addTrip(dup);
-    showToast("Trip duplicated");
     toast.success("Trip duplicated");
   };
 
@@ -324,7 +321,6 @@ export function DashboardPage() {
     };
     templates.push(tpl);
     localStorage.setItem(STORAGE.TEMPLATES, JSON.stringify(templates));
-    showToast("Saved as template");
     toast.success("Saved as template");
   };
 
@@ -352,7 +348,6 @@ export function DashboardPage() {
       })),
     };
     addTrip(newTrip);
-    showToast("Trip created from template");
     toast.success("Trip created from template");
     navigate(`/trip/${newTrip.id}`);
   };
@@ -408,7 +403,7 @@ export function DashboardPage() {
           <Compass className="h-5 w-5 text-brand shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
-            <p className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">Browse trips, explore features — sign up to create your own.</p>
+            <p className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">Browse trips, explore features - sign up to create your own.</p>
           </div>
           <button
             onClick={() => { setDemoBannerDismissed(true); sessionStorage.setItem("daf-demo-banner-dismissed", "1"); }}
@@ -520,7 +515,7 @@ export function DashboardPage() {
                 </p>
               )}
             </div>
-            {/* Quick Actions — inline in hero */}
+            {/* Quick Actions - inline in hero */}
             <div className="relative z-10 flex items-center gap-2 flex-wrap mt-6">
               <button
                 type="button"
@@ -556,7 +551,7 @@ export function DashboardPage() {
             />
           </div>
 
-          {/* ── Next Up — cross-trip agenda ── */}
+          {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
             <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -628,7 +623,7 @@ export function DashboardPage() {
                               {trip.name}
                             </p>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
-                              <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "—"}</span></span>
+                              <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
                               <span className="text-slate-300 dark:text-[#333]">·</span>
                               <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
                               {trip.paxCount && (
@@ -653,7 +648,7 @@ export function DashboardPage() {
                 )}
               </section>
 
-              {/* ── For your X Trip — Place Cards ── */}
+              {/* ── For your X Trip - Place Cards ── */}
               {spotlightTrip && (
                 <section className="flex-1 flex flex-col min-h-0">
                   <div data-compact-section-head className="mb-1">
@@ -714,9 +709,9 @@ export function DashboardPage() {
                               )}
                               {(ev.checkin || ev.checkout) && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
-                                  {ev.checkin || "—"}
+                                  {ev.checkin || "-"}
                                   <ArrowRight className="h-2.5 w-2.5" weight="bold" />
-                                  {ev.checkout || "—"}
+                                  {ev.checkout || "-"}
                                 </span>
                               )}
                             </div>
@@ -802,7 +797,7 @@ export function DashboardPage() {
                               )}
                             </div>
 
-                            {/* Right: when block — weekday, big time, date (desktop only, shown inline on mobile) */}
+                            {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
                               <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-[#1a1a1a]">
                                 {weekdayLabel && (
@@ -888,7 +883,7 @@ export function DashboardPage() {
                 </div>
               )}
 
-              {/* At a Glance — stats card */}
+              {/* At a Glance - stats card */}
               <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
                 <div className="px-5 pt-5 pb-3">
                   <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
@@ -938,17 +933,17 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              {/* Spotlight trip — brand cinema card */}
+              {/* Spotlight trip - brand cinema card */}
               {spotlightTrip && (() => {
                 const days   = tripDuration(spotlightTrip.start, spotlightTrip.end);
                 const nights = Math.max(1, days - 1);
                 const agent  = spotlightTrip.attendees.split(",")[0]?.trim() || "Agent";
-                const pax    = spotlightTrip.paxCount || "—";
+                const pax    = spotlightTrip.paxCount || "-";
                 const dateRange = (() => {
                   const s = parseTripDate(spotlightTrip.start);
                   const e = parseTripDate(spotlightTrip.end);
                   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-                  return `${s.toLocaleDateString("en-US", opts)} — ${e.toLocaleDateString("en-US", opts)}`;
+                  return `${s.toLocaleDateString("en-US", opts)} - ${e.toLocaleDateString("en-US", opts)}`;
                 })();
                 const statusStyle =
                   spotlightTrip.status === "Published"  ? "bg-brand text-[#050505]"
@@ -1134,7 +1129,7 @@ export function DashboardPage() {
             </div>{/* end right col */}
           </div>{/* end 2-col grid */}
 
-          {/* ── All Trips — full width ── */}
+          {/* ── All Trips - full width ── */}
           <section className="space-y-4">
             <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1158,7 +1153,7 @@ export function DashboardPage() {
                 {filteredTrips.map((trip) => {
                   const startDate = parseTripDate(trip.start);
                   const endDate = parseTripDate(trip.end);
-                  const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                  const dateStr = `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const daysLeft = daysUntil(trip.start);
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
@@ -1237,7 +1232,7 @@ export function DashboardPage() {
                 {filteredTrips.map(trip => {
                   const tStart = parseTripDate(trip.start);
                   const tEnd = parseTripDate(trip.end);
-                  const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                  const tDateStr = `${tStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${tEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
                   const dLeft = daysUntil(trip.start);
                   const isActive = trip.status === "In Progress";
                   return (
@@ -1386,7 +1381,7 @@ export function DashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white">Import from file instead</p>
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#666] mt-0.5">PDF · DOCX · PPTX · TXT — we'll fill this in for you</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#666] mt-0.5">PDF · DOCX · PPTX · TXT - we'll fill this in for you</p>
                 </div>
                 <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
               </button>
@@ -1433,7 +1428,7 @@ export function DashboardPage() {
                     className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand/50 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-all" />
                 </div>
 
-                {/* Travel Dates — inline to avoid Popover/Drawer z-index conflict */}
+                {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</label>

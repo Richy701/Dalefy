@@ -67,7 +67,7 @@ export function DestinationsPage() {
   const rawDestinations: Destination[] = useMemo(() => {
     const map = new Map<string, Destination>();
     trips.forEach(trip => {
-      // Derive destination from trip data — prioritise real place names
+      // Derive destination from trip data - prioritise real place names
       const INVALID_DEST = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december|tbd|tba|n\/a)$/i;
       // Collect hotel names so we can reject them as destinations
       const hotelNames = new Set(
@@ -246,7 +246,7 @@ export function DestinationsPage() {
         });
       }
       map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-      // Hide admin boundary lines in dark mode — they bleed through the banner
+      // Hide admin boundary lines in dark mode - they bleed through the banner
       if (isDark) {
         map.getStyle().layers?.forEach((layer: any) => {
           if (layer.id.includes("boundary") || layer.id.includes("admin")) {
@@ -307,7 +307,7 @@ export function DestinationsPage() {
 
         {/* ── Hero Banner ── */}
         <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
-          {/* Banner — same style as dashboard */}
+          {/* Banner - same style as dashboard */}
           <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/15 via-brand/[0.03] to-slate-50 dark:from-brand/15 dark:via-brand/[0.03] dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
             {/* Mobile: stacked layout / Desktop: side-by-side */}
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
@@ -327,7 +327,7 @@ export function DestinationsPage() {
                   </p>
                 </div>
               </div>
-              {/* Globe map — below text on mobile, right side on sm+ */}
+              {/* Globe map - below text on mobile, right side on sm+ */}
               <div
                 className="relative h-[220px] sm:h-auto sm:flex-1 overflow-hidden rounded-b-2xl sm:rounded-b-none sm:rounded-r-3xl"
                 onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
@@ -407,7 +407,7 @@ export function DestinationsPage() {
                   </Marker>
                 ))}
               </MapboxMap>
-              {/* Nav buttons — bottom right of globe */}
+              {/* Nav buttons - bottom right of globe */}
               {mapPins.length > 1 && (
                 <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-white/90 dark:bg-[#111111]/90 backdrop-blur-sm rounded-full border border-slate-200 dark:border-[#1f1f1f] shadow-lg px-1 py-1">
@@ -434,7 +434,7 @@ export function DestinationsPage() {
           </div>
         </div>
 
-        {/* Tooltip — fixed to cursor (desktop) or centered (mobile tap) */}
+        {/* Tooltip - fixed to cursor (desktop) or centered (mobile tap) */}
         {(hoveredPin || tappedPin) && (() => {
           const pin = hoveredPin || tappedPin;
           if (!pin) return null;

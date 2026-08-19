@@ -23,7 +23,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
     try {
       const activities = await searchActivities(query);
       setResults(activities);
-      if (activities.length === 0) setError("No activities found — try a different location.");
+      if (activities.length === 0) setError("No activities found - try a different location.");
     } catch {
       setError("Search failed. Check your connection and try again.");
     } finally {

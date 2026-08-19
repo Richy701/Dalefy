@@ -185,7 +185,7 @@ export function WorkspacePage() {
   const { trips, ready, updateTrip, updateEvent, deleteEvent, deleteTrip } = useTrips();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { showToast, addNotification } = useNotifications();
+  const { addNotification } = useNotifications();
   const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
@@ -726,7 +726,6 @@ export function WorkspacePage() {
     const { id, ...rest } = source;
     const duplicate: TravelEvent = { ...rest, id: Date.now().toString(), title: `${source.title} (copy)` };
     updateEvent(trip.id, duplicate);
-    showToast("Event duplicated");
     toast.success("Event duplicated");
   };
 
@@ -734,7 +733,6 @@ export function WorkspacePage() {
     if (demoGate()) return;
     const removed = trip.events.find(ev => ev.id === eventId);
     deleteEvent(trip.id, eventId);
-    showToast("Event deleted");
     toast.success("Event deleted");
   };
 
@@ -793,7 +791,7 @@ export function WorkspacePage() {
     setEditingEvent(prev => prev ? { ...prev, media: (prev.media || []).filter((_, i) => i !== index) } : null);
   };
 
-  const MAX_DOC_BYTES = 8 * 1024 * 1024; // 8MB per doc — keeps localStorage viable
+  const MAX_DOC_BYTES = 8 * 1024 * 1024; // 8MB per doc - keeps localStorage viable
 
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -921,7 +919,7 @@ export function WorkspacePage() {
             pdf.setFontSize(9);
             pdf.setTextColor(120, 120, 120);
             pdf.text(
-              [trip.destination, `${trip.start} — ${trip.end}`].filter(Boolean).join(" · "),
+              [trip.destination, `${trip.start} - ${trip.end}`].filter(Boolean).join(" · "),
               pdfWidth / 2, mapY + mapH + 22, { align: "center" }
             );
             // Start itinerary content on page 2
@@ -946,12 +944,10 @@ export function WorkspacePage() {
 
       const filename = `${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`;
       pdf.save(filename);
-      showToast("PDF exported successfully");
       toast.success("PDF exported successfully");
     } catch (err) {
       console.error("PDF export failed:", err);
       for (const { el, src } of origSrcs) el.src = src;
-      showToast("PDF export failed", "error");
       toast.error("PDF export failed");
     } finally {
       setExporting(false);
@@ -1439,7 +1435,7 @@ export function WorkspacePage() {
                   <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5">
                     <CalendarDots className="h-3 w-3 text-brand" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">
-                      {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                   </div>
                   {trip.destination && (
@@ -1457,7 +1453,7 @@ export function WorkspacePage() {
               <div className="mx-3 sm:mx-4 lg:mx-10 mt-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/20">
                 <Users className="h-4 w-4 text-brand shrink-0" />
                 <p className="text-[11px] font-bold uppercase tracking-wider text-brand flex-1">
-                  Viewing as {viewAsTraveler.name} — showing {groupedEvents.reduce((n, [, evs]) => n + evs.length, 0)} events
+                  Viewing as {viewAsTraveler.name} - showing {groupedEvents.reduce((n, [, evs]) => n + evs.length, 0)} events
                 </p>
                 <button onClick={() => setViewAsId(null)} className="text-[10px] font-bold uppercase tracking-wider text-brand/70 hover:text-brand transition-colors flex items-center gap-1">
                   <X className="h-3 w-3" /> Clear
@@ -2021,7 +2017,7 @@ export function WorkspacePage() {
         </div>
       </div>
 
-      {/* Event Edit Dialog — full screen */}
+      {/* Event Edit Dialog - full screen */}
       <ConfirmDialog
         open={discardPromptOpen}
         onOpenChange={setDiscardPromptOpen}
@@ -2060,7 +2056,7 @@ export function WorkspacePage() {
               </div>
             </div>
 
-            {/* Body — two columns on desktop, stacked on mobile */}
+            {/* Body - two columns on desktop, stacked on mobile */}
             <div className="flex-1 flex flex-col md:grid md:grid-cols-5 min-h-0 overflow-y-auto md:overflow-hidden">
               {/* Left: core event fields */}
               <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1f1f1f]">
@@ -2081,7 +2077,7 @@ export function WorkspacePage() {
                   ))}
                 </div>
 
-                {/* Live search — flight */}
+                {/* Live search - flight */}
                 {editingEvent?.type === "flight" && (
                   <FlightSearch
                     onSelect={(data) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "" } : null)}
@@ -2089,7 +2085,7 @@ export function WorkspacePage() {
                   />
                 )}
 
-                {/* Live search — hotel */}
+                {/* Live search - hotel */}
                 {editingEvent?.type === "hotel" && (
                   <HotelSearch
                     onSelect={({ checkin: ci, checkout: co, notes, ...data }) => { setEditingEvent(prev => {
@@ -2102,14 +2098,14 @@ export function WorkspacePage() {
                   />
                 )}
 
-                {/* Live search — activity */}
+                {/* Live search - activity */}
                 {editingEvent?.type === "activity" && (
                   <ActivitySearch
                     onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
                   />
                 )}
 
-                {/* Live search — dining */}
+                {/* Live search - dining */}
                 {editingEvent?.type === "dining" && (
                   <DiningSearch
                     onSelect={({ notes, ...data }) => setEditingEvent(prev => prev ? { ...prev, ...data, title: prev.title || data.title || "", notes: prev.notes || notes } : null)}
@@ -2117,7 +2113,7 @@ export function WorkspacePage() {
                 )}
 
                 <div className="p-4 sm:p-7 space-y-5">
-                  {/* Title — large underline style */}
+                  {/* Title - large underline style */}
                   <div className="space-y-1">
                     <label htmlFor="event-title" className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Event Title</label>
                     <input
@@ -2240,7 +2236,7 @@ export function WorkspacePage() {
                     </div>
                   )}
 
-                  {/* Location — with Mapbox autocomplete */}
+                  {/* Location - with Mapbox autocomplete */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
                     <LocationAutocomplete
@@ -2854,22 +2850,22 @@ export function WorkspacePage() {
                         className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
                       >
                         {[
-                          ["USD", "USD — US Dollar"],
-                          ["EUR", "EUR — Euro"],
-                          ["GBP", "GBP — British Pound"],
-                          ["AED", "AED — UAE Dirham"],
-                          ["AUD", "AUD — Australian Dollar"],
-                          ["CAD", "CAD — Canadian Dollar"],
-                          ["CHF", "CHF — Swiss Franc"],
-                          ["CNY", "CNY — Chinese Yuan"],
-                          ["INR", "INR — Indian Rupee"],
-                          ["JPY", "JPY — Japanese Yen"],
-                          ["KES", "KES — Kenyan Shilling"],
-                          ["MXN", "MXN — Mexican Peso"],
-                          ["NGN", "NGN — Nigerian Naira"],
-                          ["SGD", "SGD — Singapore Dollar"],
-                          ["THB", "THB — Thai Baht"],
-                          ["ZAR", "ZAR — South African Rand"],
+                          ["USD", "USD - US Dollar"],
+                          ["EUR", "EUR - Euro"],
+                          ["GBP", "GBP - British Pound"],
+                          ["AED", "AED - UAE Dirham"],
+                          ["AUD", "AUD - Australian Dollar"],
+                          ["CAD", "CAD - Canadian Dollar"],
+                          ["CHF", "CHF - Swiss Franc"],
+                          ["CNY", "CNY - Chinese Yuan"],
+                          ["INR", "INR - Indian Rupee"],
+                          ["JPY", "JPY - Japanese Yen"],
+                          ["KES", "KES - Kenyan Shilling"],
+                          ["MXN", "MXN - Mexican Peso"],
+                          ["NGN", "NGN - Nigerian Naira"],
+                          ["SGD", "SGD - Singapore Dollar"],
+                          ["THB", "THB - Thai Baht"],
+                          ["ZAR", "ZAR - South African Rand"],
                         ].map(([code, label]) => (
                           <option key={code} value={code}>{label}</option>
                         ))}
@@ -2976,12 +2972,12 @@ export function WorkspacePage() {
                                 updated[idx] = { ...updated[idx], title: e.target.value };
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
-                              placeholder="Page title — e.g., Visa Requirements"
+                              placeholder="Page title - e.g., Visa Requirements"
                               className="h-8 text-sm font-bold bg-transparent border-0 text-slate-900 dark:text-white focus-visible:ring-0 p-0 flex-1 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                             />
                             <button
                               type="button"
-                              title={item.leaderOnly ? "Leader only — hidden from travelers" : "Visible to everyone"}
+                              title={item.leaderOnly ? "Leader only - hidden from travelers" : "Visible to everyone"}
                               onClick={() => {
                                 const updated = [...(editingTrip.info ?? [])];
                                 updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
@@ -3155,7 +3151,7 @@ export function WorkspacePage() {
                           />
                           <button
                             type="button"
-                            title={item.leaderOnly ? "Leader only — hidden from travelers" : "Visible to everyone"}
+                            title={item.leaderOnly ? "Leader only - hidden from travelers" : "Visible to everyone"}
                             onClick={() => {
                               const updated = [...editInfoData];
                               updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
@@ -3316,7 +3312,7 @@ export function WorkspacePage() {
 
       <DemoUpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
 
-      {/* Hidden off-screen div for PDF export — renders the preview layout in light theme */}
+      {/* Hidden off-screen div for PDF export - renders the preview layout in light theme */}
       <div
         ref={pdfRef}
         className="fixed left-[-9999px] top-0 w-[800px] bg-white"

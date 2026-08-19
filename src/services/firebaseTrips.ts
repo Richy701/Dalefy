@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
 
-/** Demo/seed trip IDs — never return these from cloud queries */
+/** Demo/seed trip IDs - never return these from cloud queries */
 const DEMO_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
 
 /** Wait for Firebase Auth to resolve AND ensure the ID token is ready.
@@ -112,7 +112,7 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
   const data = tripToDoc(cleanTrip);
   if (orgId) data.organization_id = orgId;
 
-  // Only stamp user_id on brand-new docs — never overwrite another user's ownership
+  // Only stamp user_id on brand-new docs - never overwrite another user's ownership
   const tripRef = doc(firebaseDb(), TRIPS, trip.id);
   let isNew = false;
   try {
@@ -192,7 +192,7 @@ export async function fetchTripMembers(): Promise<TripMember[]> {
       query(collection(firebaseDb(), TRIP_MEMBERS), orderBy("joined_at", "desc")),
     );
     // Deduplicate: logTripJoin creates two docs per join (device_id + uid keyed).
-    // Keep one entry per device_id+trip_id pair — prefer the device-keyed doc.
+    // Keep one entry per device_id+trip_id pair - prefer the device-keyed doc.
     const all = snap.docs.map((d) => d.data() as TripMember);
     const seen = new Map<string, TripMember>();
     for (const m of all) {
@@ -364,7 +364,7 @@ export async function repairTripOwnership(orgId: string): Promise<{ fixed: numbe
     const currentOwner = data.user_id as string;
 
     // If the trip's user_id matches the current user (you) but was likely
-    // created by Ash — check trip_members for the earliest join to infer creator
+    // created by Ash - check trip_members for the earliest join to infer creator
     if (currentOwner === currentUid) {
       const memberSnap = await getDocs(
         query(collection(db, TRIP_MEMBERS), where("trip_id", "==", d.id)),
@@ -471,18 +471,18 @@ async function uploadImage(imageUrl: string, storagePath: string): Promise<strin
 async function uploadTripImages(trip: Trip): Promise<Trip> {
   const clean = { ...trip };
 
-  // Trip cover — upload base64 or external URLs to Firebase Storage
+  // Trip cover - upload base64 or external URLs to Firebase Storage
   if (isBase64(clean.image) || isExternalUrl(clean.image)) {
     try {
       clean.image = await uploadImage(clean.image, `trips/${trip.id}/cover`);
       logger.log("uploadTripImages", "uploaded cover for", trip.id);
     } catch (err) {
       logger.log("uploadTripImages", "cover upload failed, keeping original:", err);
-      // Keep original URL as fallback — it works on web even if Android fails
+      // Keep original URL as fallback - it works on web even if Android fails
     }
   }
 
-  // Trip-level media — upload base64/local to Firebase Storage
+  // Trip-level media - upload base64/local to Firebase Storage
   if (clean.media?.length) {
     clean.media = await Promise.all(
       clean.media.map(async (m, i) => {
@@ -500,12 +500,12 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
     );
   }
 
-  // Trip-level documents — filter out base64 data URLs (already in Firebase Storage)
+  // Trip-level documents - filter out base64 data URLs (already in Firebase Storage)
   if (clean.documents?.length) {
     clean.documents = clean.documents.filter(d => !isBase64(d.url));
   }
 
-  // Events — upload base64 or external image URLs
+  // Events - upload base64 or external image URLs
   clean.events = await Promise.all(clean.events.map(async (ev, i) => {
     const e = { ...ev };
     if (isBase64(e.image) || isExternalUrl(e.image)) {
@@ -525,7 +525,7 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
 
 // ── Mappers ─────────────────────────────────────────────────────────────────
 
-/** Replace undefined with null — Firestore rejects undefined values */
+/** Replace undefined with null - Firestore rejects undefined values */
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {

@@ -33,7 +33,7 @@ function saveLocalBranding(branding: Partial<OrgBranding>) {
 export async function fetchBranding(orgId: string): Promise<OrgBranding | null> {
   if (!isFirebaseConfigured()) return loadLocalBranding();
 
-  // "local" means no org — use localStorage even when Firebase is configured
+  // "local" means no org - use localStorage even when Firebase is configured
   if (orgId === "local") return loadLocalBranding();
 
   try {

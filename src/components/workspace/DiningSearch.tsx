@@ -23,7 +23,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
     try {
       const restaurants = await searchDining(query);
       setResults(restaurants);
-      if (restaurants.length === 0) setError("No restaurants found — try a different location.");
+      if (restaurants.length === 0) setError("No restaurants found - try a different location.");
     } catch {
       setError("Search failed. Check your connection and try again.");
     } finally {

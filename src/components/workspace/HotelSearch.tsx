@@ -30,7 +30,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
     try {
       const hotels = await searchHotels(query, checkin, checkout);
       setResults(hotels);
-      if (hotels.length === 0) setError("No hotels found — try a different location.");
+      if (hotels.length === 0) setError("No hotels found - try a different location.");
     } catch {
       setError("Search failed. Check your connection and try again.");
     } finally {

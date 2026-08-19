@@ -102,7 +102,7 @@ async function extractFromPdf(file: File): Promise<ExtractionResult> {
     }
     if (currentLine.length > 0) lineGroups.push(currentLine);
 
-    // Build text from line groups — sort items within each line by X position
+    // Build text from line groups - sort items within each line by X position
     const pageLines: string[] = [];
     for (const group of lineGroups) {
       group.sort((a, b) => a.x - b.x);
@@ -390,7 +390,7 @@ const DATE_PATTERNS = [
   // "4th Nov" or "4 th Nov" (PDF extraction often inserts whitespace before the ordinal suffix)
   // Supports both 4-digit and 2-digit years: "26 Apr 26", "26 Apr 2026"
   new RegExp(`(\\d{1,2})\\s*(?:st|nd|rd|th)?\\s+${MONTH}(?:\\s+(\\d{2,4}))?`, "gi"),
-  // "Nov 4" / "November 4th" — require day is NOT followed by more digits (avoids "April 2026" → "April 20")
+  // "Nov 4" / "November 4th" - require day is NOT followed by more digits (avoids "April 2026" → "April 20")
   new RegExp(`${MONTH}\\s+(\\d{1,2})\\s*(?:st|nd|rd|th)?(?!\\d)(?:,?\\s+(\\d{2,4}))?`, "gi"),
   /(\d{4})-(\d{2})-(\d{2})/g,
   /(\d{2})\/(\d{2})\/(\d{4})/g,
@@ -451,7 +451,7 @@ function parseTime(str: string): string {
     return `${h % 12 || 12}:00 ${h < 12 ? "AM" : "PM"}`;
   }
 
-  // 4-digit military time — "0930", "1015hrs", "1545pm", "ETD 1045hrs", "0930 departure"
+  // 4-digit military time - "0930", "1015hrs", "1545pm", "ETD 1045hrs", "0930 departure"
   // Use (?!\d) instead of \b so "1015hrs" (digit→letter has no word boundary) still matches.
   if (!s.includes(":") && !s.includes(".")) {
     const mil = s.match(/(?<![A-Za-z0-9])(\d{4})(?!\d)/);
@@ -459,7 +459,7 @@ function parseTime(str: string): string {
       const raw = mil[1];
       const h = parseInt(raw.slice(0, 2));
       const m = raw.slice(2);
-      // Suffix can be attached ("1545PM") or separated ("1045 pm") — look anywhere in string.
+      // Suffix can be attached ("1545PM") or separated ("1045 pm") - look anywhere in string.
       const suf = s.match(/(am|pm)\b/i)?.[1]?.toLowerCase();
       let hh = h;
       if (suf === "pm" && hh < 12) hh += 12;
@@ -478,7 +478,7 @@ function parseTime(str: string): string {
   const suf = t[3]?.toLowerCase();
   if (suf === "pm" && h < 12) h += 12;
   if (suf === "am" && h === 12) h = 0;
-  // "md" just marks the line as around noon — no hour shift.
+  // "md" just marks the line as around noon - no hour shift.
   return `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
 }
 
@@ -618,7 +618,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Trip name: first meaningful line that looks like a title (short, not starting
   // with a common event sentence opener). If nothing fits, build from destinations.
   const SENTENCE_OPENER = /^(meet |arrive |depart|breakfast|lunch|dinner|overnight|following|wake |after |single |twin |double |emergency|rooming|accommodation|notes?|james |pollmans|leopard|kenya|tanzania|\d+\s+passengers?)/i;
-  // Skip booking metadata lines — "Proposal to:", "Booking Code:", "Printed Date:", etc.
+  // Skip booking metadata lines - "Proposal to:", "Booking Code:", "Printed Date:", etc.
   const BOOKING_META = /^(proposal\s+to|booking\s+code|printed\s+date|invoice|quotation|ref(?:erence)?[:\s#]|passenger\s+detail|flight\s+detail|guide\s+contact|travel\s+itinerary|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|subject|note\b|price\s+in)/i;
   let nameLine = lines.find(l =>
     l.length > 5 && l.length < 80 && !/^\d/.test(l) && !SENTENCE_OPENER.test(l) && !BOOKING_META.test(l) && !/\|/.test(l)
@@ -633,7 +633,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     nameLine = places.length > 0 ? `Trip to ${places.slice(0, 3).join(" & ")}` : "Imported Trip";
   }
 
-  // Attendees: parse "Attendees:" section — collect names listed one per line below it
+  // Attendees: parse "Attendees:" section - collect names listed one per line below it
   let attendees = "Imported Group";
   let paxCount = 0;
   const parsedTravelerNames: string[] = [];
@@ -697,7 +697,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   const yearMatch = text.match(/\b(20\d{2})\b/);
   const fallbackYear = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
-  // GDS flight strings (e.g. "QF 002J 02NOV LHRSYD 2010 0635+2") — extract structured
+  // GDS flight strings (e.g. "QF 002J 02NOV LHRSYD 2010 0635+2") - extract structured
   // flights up-front so they aren't mis-parsed as generic lines.
   const gdsEvents: ParsedEvent[] = [];
   GDS_FLIGHT_RE.lastIndex = 0;
@@ -714,13 +714,13 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         type: "flight",
         date,
         time,
-        title: `${carrier}${num} — ${orig} to ${dest}`,
+        title: `${carrier}${num} - ${orig} to ${dest}`,
         location: `${orig} → ${dest}`,
       });
     }
   }
 
-  // Dateless flight strings: "VS208 LHRICN 13:25 10:30" — carrier+number, 6-char IATA pair, two times
+  // Dateless flight strings: "VS208 LHRICN 13:25 10:30" - carrier+number, 6-char IATA pair, two times
   // These appear in "Flight Details" sections without dates; assign start/end dates from context.
   const DATELESS_FLIGHT_RE = /\b([A-Z]{2})\s*(\d{2,4})\s+([A-Z]{3})([A-Z]{3})\s+(\d{1,2}[.:]\d{2})\s+(\d{1,2}[.:]\d{2})/g;
   {
@@ -732,7 +732,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
       const time = parseTime(depRaw);
       const origCity = resolveFlightCity(orig);
       const destCity = resolveFlightCity(dest);
-      const title = `${carrier}${num} — ${origCity} to ${destCity}`;
+      const title = `${carrier}${num} - ${origCity} to ${destCity}`;
       if (seenFlights.has(title)) continue; // deduplicate repeated mentions
       seenFlights.add(title);
       gdsEvents.push({
@@ -778,7 +778,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   let destination = "";
   const MONTH_NAMES = /^(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/;
   const HOTEL_NAMES = /^(Sarova|Norfolk|Governors|Panafric|Marjani|Regnum|Crown|Wilson)/i;
-  // Common first names that appear in attendee lists / rooming — reject as destinations
+  // Common first names that appear in attendee lists / rooming - reject as destinations
   const PERSON_NAMES = /^(Adam|Alex|Alice|Andrew|Anna|Ben|Brian|Caroline|Catherine|Charles|Chris|Claire|Colin|Daniel|David|Diana|Edward|Elizabeth|Emily|Emma|Frances|Frank|Gary|George|Grace|Hannah|Harry|Helen|Henry|Hugh|Ian|Jack|James|Jamie|Jane|Jean|Jennifer|Jessica|Jim|Joan|John|Jonathan|Joseph|Julia|Karen|Kate|Keith|Kevin|Kim|Laura|Lauren|Lee|Linda|Lisa|Louise|Lucy|Luke|Margaret|Maria|Mark|Martin|Mary|Matthew|Michael|Michelle|Mike|Nancy|Nicholas|Oliver|Owen|Patricia|Patrick|Paul|Peter|Philip|Rachel|Rebecca|Richard|Robert|Roger|Rose|Ruth|Ryan|Sam|Sandra|Sarah|Scott|Sharon|Simon|Sophie|Stephen|Steven|Stuart|Susan|Thomas|Tim|Tom|Victoria|William|Zoe)\b/i;
   // Validate: not a month, not a hotel, not a person name
   const isValidDest = (s: string) =>
@@ -786,7 +786,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   // Try "flight to" / "arrive in" / "head to" first (higher confidence destination)
   const flightTo = mergedText.match(/\b(?:flight\s+to|arrive[sd]?\s+in|arriving\s+in|arrival\s+in|head\s+to)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})/);
   if (flightTo && isValidDest(flightTo[1])) destination = flightTo[1].replace(/\s+City$/i, "");
-  // "Day N: ... <City> Arrival/Departure" — e.g. "Day 1: 26 Apr 26 (Sun) Seoul Arrival"
+  // "Day N: ... <City> Arrival/Departure" - e.g. "Day 1: 26 Apr 26 (Sun) Seoul Arrival"
   if (!destination) {
     const dayHeaderDest = mergedText.match(/\bDay\s+\d+\s*:.*?\)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+){0,2})\s+(?:Arrival|Departure)/);
     if (dayHeaderDest && isValidDest(dayHeaderDest[1])) destination = dayHeaderDest[1];
@@ -812,14 +812,14 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
   const events: ParsedEvent[] = [];
   let currentDate = start;
   const DAY_SECTION = /^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d/i;
-  // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" — extract date from "Day N:" headers
+  // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" - extract date from "Day N:" headers
   const DAY_N_HEADER = /^day\s+\d+\s*[:|]\s*/i;
   const SKIP_SECTION = /^(?:accommodation|single rooms?|twin rooms?|double rooms?|attendees?|passenger\s+details?|additional activities|notes?|rooming\s+list|emergency\s+contact|single\s+[A-Z]|twin\s+[A-Z]|double\s+[A-Z]|flight\s+details?|guide\s+contact|tour\s+costs?|rates?\s+&?\s*conditions?|terms?\s+&?\s*conditions?|our\s+services|visa\s+info)/i;
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
 
-    // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" — extract date, then strip prefix
+    // "Day 1: 26 Apr 26 (Sun) Seoul Arrival" - extract date, then strip prefix
     if (DAY_N_HEADER.test(line)) {
       const stripped = line.replace(DAY_N_HEADER, "");
       for (const pat of DATE_PATTERNS) {
@@ -873,12 +873,12 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
     if ((hasTime || hasEventKeyword) && line.length > 4 && line.length < 250) {
       const type = guessEventType(line);
 
-      // Extract time — same alternation as detection so we grab whichever form appeared.
+      // Extract time - same alternation as detection so we grab whichever form appeared.
       const timeMatch = line.match(TIME_RE);
       let time = "";
       if (timeMatch) time = parseTime(timeMatch[0]);
 
-      // For flights, truncate after the arrival info — don't include trailing
+      // For flights, truncate after the arrival info - don't include trailing
       // sentences about transfers, representatives, etc.
       let titleSource = line;
       if (type === "flight") {
@@ -901,7 +901,7 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
         .replace(/\b\d{4}\s*(?:hrs?|am|pm)\b/gi, "")
         .replace(/\b(?:etd|eta|pickup)\s+\d{4}\b/gi, "")
         // Clean orphan prepositions left after time removal: "at .", "at on", "at for"
-        // Only strip when followed by punctuation, another preposition, or end-of-string — not place names
+        // Only strip when followed by punctuation, another preposition, or end-of-string - not place names
         .replace(/\b(at|by|from)\s*[.,–—-]\s*(?=\s|$)/gi, "")
         .replace(/\b(at|by|from)\s+(?=on\b|for\b|$)/gi, "")
         // Strip "for Name, Name, Name and Name" participant lists from titles
@@ -1500,7 +1500,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           updates.media = [...existingMedia.filter(m => !newUrls.has(m.url)), ...tripMedia];
         }
         updateTrip(existingTripId, updates);
-        showToast(`Replaced "${parsed.name}" — ${events.length} events`);
+        showToast(`Replaced "${parsed.name}" - ${events.length} events`);
         addNotification({ message: "Itinerary re-imported (replaced)", detail: parsed.name, time: "Just now", type: "success" });
       }
     } else {
@@ -1523,7 +1523,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       };
       addTrip(trip);
       const mediaSuffix = tripMedia.length > 0 ? ` + ${tripMedia.length} media` : "";
-      showToast(`Imported "${trip.name}" — ${trip.events.length} events${mediaSuffix}`);
+      showToast(`Imported "${trip.name}" - ${trip.events.length} events${mediaSuffix}`);
       addNotification({ message: "Itinerary imported", detail: trip.name, time: "Just now", type: "success" });
     }
     if (isReimport && tripBackupRef.current) {
@@ -1566,7 +1566,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "upload" && "PDF · Word · PowerPoint · Text · Images"}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
-              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found — review before importing`}
+              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - review before importing`}
               {parserUsed && (
                 <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"}`}>
                   {parserUsed === "ai" ? "✦ AI" : "⚙ Offline"}
@@ -1624,7 +1624,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
             <div className="space-y-3">
               <textarea
-                placeholder="Paste itinerary text here — the parser will extract dates, flights, hotels, and activities automatically..."
+                placeholder="Paste itinerary text here - the parser will extract dates, flights, hotels, and activities automatically..."
                 className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-brand resize-none transition-colors"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}

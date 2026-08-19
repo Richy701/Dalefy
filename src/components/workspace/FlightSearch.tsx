@@ -45,7 +45,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         ? await lookupFlight(flightNum.trim().toUpperCase(), date)
         : await searchFlights(from.toUpperCase(), to.toUpperCase(), date);
       setResults(flights);
-      if (flights.length === 0) setError(mode === "number" ? "Flight not found — check the number and date." : "No flights found — try different airports or date.");
+      if (flights.length === 0) setError(mode === "number" ? "Flight not found - check the number and date." : "No flights found - try different airports or date.");
     } catch {
       setError("Search failed. Check your connection and try again.");
     } finally {

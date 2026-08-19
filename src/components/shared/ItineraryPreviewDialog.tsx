@@ -44,7 +44,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
   const dateRange = useMemo(() => {
     const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const year = parseTripDate(trip.end).getFullYear();
-    return `${fmt(parseTripDate(trip.start))} — ${fmt(parseTripDate(trip.end))}, ${year}`;
+    return `${fmt(parseTripDate(trip.start))} - ${fmt(parseTripDate(trip.end))}, ${year}`;
   }, [trip.start, trip.end]);
 
   const tripTz = useMemo(() => destinationTz(trip.destination), [trip.destination]);
@@ -64,7 +64,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
 
-        {/* Close — hidden in print */}
+        {/* Close - hidden in print */}
         {!forPrint && onClose && (
           <button
             onClick={onClose}
@@ -225,7 +225,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
-          <DialogTitle>{trip.name} — Preview</DialogTitle>
+          <DialogTitle>{trip.name} - Preview</DialogTitle>
           <DialogDescription>Read-only itinerary preview</DialogDescription>
         </DialogHeader>
         <ItineraryPreviewContent trip={trip} onClose={() => onOpenChange(false)} />
@@ -286,7 +286,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
                 {ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}
-                {ev.endTime && <> — {ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</>}
+                {ev.endTime && <> - {ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</>}
               </span>
             )}
             {ev.location && (
@@ -320,7 +320,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
               {ev.roomType && <span>{ev.roomType}</span>}
               {(ev.checkin || ev.checkout) && (
                 <span className={forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#888]"}>
-                  {ev.checkin || "—"} → {ev.checkout || "—"}
+                  {ev.checkin || "-"} → {ev.checkout || "-"}
                 </span>
               )}
             </div>

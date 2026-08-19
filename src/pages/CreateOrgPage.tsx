@@ -355,7 +355,7 @@ export function CreateOrgPage() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file || !createdOrgId) {
-                              if (!createdOrgId) toast.error("Organization not ready — try again");
+                              if (!createdOrgId) toast.error("Organization not ready - try again");
                               return;
                             }
                             if (file.size > 2 * 1024 * 1024) {
@@ -372,7 +372,7 @@ export function CreateOrgPage() {
                           className="hidden"
                         />
                       </label>
-                      <p className="text-[11px] text-slate-400 dark:text-[#555] text-center">PNG, JPG, SVG — max 2 MB</p>
+                      <p className="text-[11px] text-slate-400 dark:text-[#555] text-center">PNG, JPG, SVG - max 2 MB</p>
                     </div>
                   </div>
                 </div>

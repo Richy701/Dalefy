@@ -165,7 +165,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
       for (const event of sortedEvents) {
         const day = dayOf(event.date);
-        // "STN to AYT" or "London to Antalya" — also fallback to title "STN → AYT"
+        // "STN to AYT" or "London to Antalya" - also fallback to title "STN → AYT"
         const pairMatch = (event.location ?? "").match(/^(.+?)\s+to\s+(.+)$/)
           ?? (event.type === "flight" && event.title ? event.title.match(/^(.+?)\s*[→➔]\s*(.+)$/) : null);
         if (pairMatch) {
@@ -395,7 +395,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
         onLoad={startArcAnimation}
         onClick={() => setTappedIdx(null)}
       >
-        {/* Flight arc — glow halo */}
+        {/* Flight arc - glow halo */}
         <Source id="arcs" type="geojson" data={arcGeoJSON}>
           <Layer
             id="arcs-glow"
@@ -410,7 +410,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           />
         </Source>
 
-        {/* Plane is rendered natively via Mapbox symbol layer — no React Marker */}
+        {/* Plane is rendered natively via Mapbox symbol layer - no React Marker */}
 
         {/* Markers */}
         {points.map(pt => {

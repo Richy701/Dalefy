@@ -140,7 +140,7 @@ export function TravelersPage() {
           showToast(`Cleared ${count} app user${count === 1 ? "" : "s"}`);
         } catch (err) {
           console.error("Clear app users failed:", err);
-          showToast("Failed to clear app users — check console for details");
+          showToast("Failed to clear app users - check console for details");
         } finally {
           setClearing(false);
         }
@@ -161,7 +161,7 @@ export function TravelersPage() {
           showToast(`Removed ${name || "user"} (${count} record${count === 1 ? "" : "s"})`);
         } catch (err) {
           console.error("Delete app user failed:", err);
-          showToast("Failed to remove user — check console");
+          showToast("Failed to remove user - check console");
         } finally {
           setDeletingUser(null);
         }
@@ -879,7 +879,7 @@ export function TravelersPage() {
               </table>
               </div>
 
-              {/* Pagination — only shown when data > 10 */}
+              {/* Pagination - only shown when data > 10 */}
               {table.getPageCount() > 1 && (
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center justify-between bg-slate-50/30 dark:bg-[#0a0a0a]">
                   <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
@@ -1309,7 +1309,7 @@ export function TravelersPage() {
 
               {/* Users list */}
               <div className="bg-white dark:bg-[#111111] rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
-                {/* Header — hidden on mobile */}
+                {/* Header - hidden on mobile */}
                 <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] items-center">
                   {bulkAction && <div className="w-10" />}
                   <div className="w-14" />
@@ -1738,7 +1738,7 @@ export function TravelersPage() {
         </div>
       </div>
 
-      {/* Add Traveler — Vaul Drawer */}
+      {/* Add Traveler - Vaul Drawer */}
       <Drawer.Root open={inviteOpen} onOpenChange={setInviteOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />

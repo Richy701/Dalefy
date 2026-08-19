@@ -364,7 +364,7 @@ export function MediaPage() {
     ? trips.find((t) => t.id === activeTripFilter) ?? null
     : null;
 
-  // For "all" mode — rotating carousel through all trips with images
+  // For "all" mode - rotating carousel through all trips with images
   const carouselTrips = useMemo(() =>
     trips.filter((t) => !!t.image),
     [trips]
@@ -436,7 +436,7 @@ export function MediaPage() {
           </div>
         ) : (<>
 
-        {/* Hero Banner — rotating carousel (All) or trip-specific cover */}
+        {/* Hero Banner - rotating carousel (All) or trip-specific cover */}
         <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]">
             {/* Background image layer */}
@@ -525,7 +525,7 @@ export function MediaPage() {
               </div>
             </div>
 
-            {/* Carousel controls — bottom center of banner */}
+            {/* Carousel controls - bottom center of banner */}
             {!bannerTrip && carouselTrips.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
                 <button
@@ -560,7 +560,7 @@ export function MediaPage() {
 
         <div className="px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
-        {/* Hidden file input — always rendered so empty-state button works */}
+        {/* Hidden file input - always rendered so empty-state button works */}
         <input
           ref={fileInputRef}
           type="file"
@@ -634,7 +634,7 @@ export function MediaPage() {
           </button>
           </div>{/* end mobile trip picker + upload row */}
 
-          {/* Upload progress — mobile */}
+          {/* Upload progress - mobile */}
           {uploading && (
             <div className="sm:hidden flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
@@ -644,7 +644,7 @@ export function MediaPage() {
             </div>
           )}
 
-          {/* Drag hint / progress — desktop */}
+          {/* Drag hint / progress - desktop */}
           <div className="flex-1 min-w-0 hidden sm:block">
             {uploading ? (
               <div className="flex items-center gap-3">
@@ -673,7 +673,7 @@ export function MediaPage() {
 
         {/* ── Filters: scrollable trip chips + type toggle ── */}
         {allItems.length > 0 && <div className="flex items-center justify-between gap-4">
-          {/* Trip chips — horizontally scrollable with fade edges */}
+          {/* Trip chips - horizontally scrollable with fade edges */}
           <div className="relative flex-1 min-w-0">
 
             <div
@@ -790,7 +790,7 @@ export function MediaPage() {
         {/* ── Gallery grouped by trip ── */}
         {filtered.length > 0 ? (
           activeTripFilter !== "all" ? (
-            /* Single trip — flat grid, no header needed */
+            /* Single trip - flat grid, no header needed */
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filtered.map((item) => {
                 const lbIdx = getLightboxIndex(item);
@@ -800,7 +800,7 @@ export function MediaPage() {
               })}
             </div>
           ) : (
-            /* All trips — grouped with section headers */
+            /* All trips - grouped with section headers */
             <div className="space-y-10">
               {groupedByTrip.map((group) => {
                 const groupIds = group.items.map((i) => i.id);
@@ -855,7 +855,7 @@ export function MediaPage() {
           )
         ) : (
           <div className="mx-auto max-w-2xl w-full space-y-3">
-            {/* Drop zone — clickable area for drag & drop / browse */}
+            {/* Drop zone - clickable area for drag & drop / browse */}
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -880,7 +880,7 @@ export function MediaPage() {
               </p>
             </div>
 
-            {/* Trip picker + upload button — separate row below drop zone */}
+            {/* Trip picker + upload button - separate row below drop zone */}
             <div className="flex items-center gap-2.5">
               <div className="relative flex-1 min-w-0" ref={pickerRef}>
                 <button
@@ -1020,7 +1020,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
           {item.type === "image" ? "Photo" : "Video"}
         </div>
 
-        {/* Hover overlay — hidden in select mode */}
+        {/* Hover overlay - hidden in select mode */}
         {!selectMode && (
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
           {item.type === "image" && (

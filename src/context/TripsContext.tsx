@@ -113,7 +113,7 @@ function useCloudTrips(uid: string | null, orgId?: string | null) {
   return { trips, setTrips, ready: isSuccess };
 }
 
-/** Demo/seed trip IDs — never push to cloud */
+/** Demo/seed trip IDs - never push to cloud */
 const DEMO_IDS = new Set(INITIAL_TRIPS.map(t => t.id));
 
 /** Detect meaningful itinerary changes between old and new trip state */
@@ -177,7 +177,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
             localStorage.setItem(STORAGE.TRIPS, JSON.stringify(stored));
             notifyLocalStorage(STORAGE.TRIPS);
             logger.log("syncToCloud", "wrote download URLs back to localStorage for", cleaned.id);
-          } catch { /* quota exceeded — cloud has the URLs, will load on next fetch */ }
+          } catch { /* quota exceeded - cloud has the URLs, will load on next fetch */ }
         }
 
         // Notify trip members of itinerary changes
@@ -206,7 +206,7 @@ function syncToCloud(prev: Trip[], next: Trip[], orgId?: string | null) {
 }
 
 function useLocalTrips(shouldSeed: boolean) {
-  // Only use demo data as default for demo users — real users start with []
+  // Only use demo data as default for demo users - real users start with []
   const defaultTrips = shouldSeed ? INITIAL_TRIPS : [];
   const [trips, setTrips] = useLocalStorage<Trip[]>(STORAGE.TRIPS, defaultTrips);
   if (shouldSeed && trips.length === 0 && INITIAL_TRIPS.length > 0) {
@@ -249,7 +249,7 @@ function mergeLocalMedia(cloud: Trip, local: Trip): Trip {
     patched = true;
   }
 
-  // Structured fields (info, travelers, organizer) live in Firestore — never
+  // Structured fields (info, travelers, organizer) live in Firestore - never
   // restore them from localStorage, which can be stale or quota-capped.
 
   return patched ? result : cloud;
@@ -282,7 +282,7 @@ function useMergedTrips(
       return lt ? mergeLocalMedia(t, lt) : t;
     });
 
-    // Cloud is the source of truth — don't recover local-only trips as they
+    // Cloud is the source of truth - don't recover local-only trips as they
     // are either stale leftovers or ghost trips from incomplete deletions.
 
     return merged;
@@ -299,7 +299,7 @@ export function TripsProvider({ children }: { children: ReactNode }) {
   const local = useLocalTrips(isDemoUser && !authLoading);
   const { currentOrg, isLoading: orgLoading } = useOrg();
   const orgId = currentOrg?.id ?? null;
-  // Don't fire cloud queries while org is still loading — avoids a user_id-only
+  // Don't fire cloud queries while org is still loading - avoids a user_id-only
   // query that returns incomplete results, then a second org-scoped query that
   // briefly flashes empty while it resolves.
   const cloudUid = useCloud && !orgLoading ? (user?.id ?? null) : null;

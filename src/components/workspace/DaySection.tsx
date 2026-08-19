@@ -2,7 +2,7 @@ import { Plus } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 export function DaySection({ date, dayNumber, children, onAddEvent }: { date: string; dayNumber?: number; children: ReactNode; onAddEvent: () => void }) {
-  // date arrives as "MONDAY, JUNE 15" — split into weekday + rest
+  // date arrives as "MONDAY, JUNE 15" - split into weekday + rest
   const commaIdx = date.indexOf(",");
   const weekday = commaIdx > -1 ? date.slice(0, commaIdx) : date;
   const dateInfo = commaIdx > -1 ? date.slice(commaIdx + 1).trim() : "";
