@@ -66,26 +66,26 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
       >
         {/* Search bar */}
         <div className="flex items-center gap-3 px-5 border-b border-slate-100 dark:border-[#1f1f1f]">
-          <MagnifyingGlass className="h-4 w-4 text-slate-400 dark:text-[#555] shrink-0" />
+          <MagnifyingGlass className="h-4 w-4 text-slate-500 dark:text-[#888] shrink-0" />
           <Command.Input
             autoFocus
             placeholder="Type a command or search..."
             className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-[#666]"
           />
-          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-[#666] bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded-md px-1.5 py-0.5">
+          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-[#888] bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded-md px-1.5 py-0.5">
             ESC
           </kbd>
         </div>
 
         <Command.List className="max-h-[360px] overflow-y-auto p-2 scrollbar-hide">
-          <Command.Empty className="py-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">
+          <Command.Empty className="py-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
             Nothing matches. Try a page, an action or a trip name.
           </Command.Empty>
 
           {/* Navigate */}
           <Command.Group
             heading="Navigate"
-            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-400 dark:[&_[cmdk-group-heading]]:text-[#666]"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
           >
             {[
               { label: "Dashboard", icon: SquaresFour, path: "/dashboard" },
@@ -105,7 +105,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 {label}
-                <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-[#555] ml-auto" />
+                <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#888] ml-auto" />
               </Command.Item>
             ))}
           </Command.Group>
@@ -113,7 +113,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {/* Actions */}
           <Command.Group
             heading="Actions"
-            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-400 dark:[&_[cmdk-group-heading]]:text-[#666]"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
           >
             {onNewTrip && (
               <Command.Item
@@ -167,7 +167,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {recentTrips.length > 0 && (
             <Command.Group
               heading="Recent Trips"
-              className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-400 dark:[&_[cmdk-group-heading]]:text-[#666]"
+              className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
             >
               {recentTrips.map((trip) => (
                 <Command.Item
@@ -187,7 +187,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                       </p>
                     )}
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-[#555] shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#888] shrink-0" />
                 </Command.Item>
               ))}
             </Command.Group>
@@ -196,11 +196,11 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-slate-100 dark:border-[#1f1f1f] flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-slate-400 dark:text-[#666]">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#888]">
             <CmdIcon className="h-3 w-3" />
             <span className="text-[10px] font-bold uppercase tracking-wider">K</span>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666]">
+          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
             <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
             <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded px-1 py-0.5 font-mono">↵</kbd> select</span>
           </div>

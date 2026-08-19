@@ -51,7 +51,7 @@ function OrDivider() {
   return (
     <div className="flex items-center gap-4 my-7">
       <div className="flex-1 h-px bg-slate-200 dark:bg-[#1f1f1f]" />
-      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300 dark:text-[#444]">or</span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888]">or</span>
       <div className="flex-1 h-px bg-slate-200 dark:bg-[#1f1f1f]" />
     </div>
   );
@@ -223,7 +223,7 @@ export function LoginPage() {
             <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
               {BRAND.tagline}
             </p>
           </div>
@@ -289,7 +289,7 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
                     >
                       {showPassword ? <EyeSlash className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                     </button>
@@ -314,7 +314,7 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
+              <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
                 Access is by invitation. Ask your team admin for an invite if you don't have one.
               </p>
             </>
@@ -366,7 +366,7 @@ export function LoginPage() {
             </>
           )}
 
-          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
+          <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
             {realAuth ? "" : "Your profile is stored on this device only"}
           </p>
 
@@ -424,7 +424,7 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowForgot(false)}
-                      className="w-full text-center text-sm font-bold text-slate-400 dark:text-[#888] hover:text-brand cursor-pointer"
+                      className="w-full text-center text-sm font-bold text-slate-500 dark:text-[#888] hover:text-brand cursor-pointer"
                     >
                       Back to Sign In
                     </button>

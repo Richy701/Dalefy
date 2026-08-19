@@ -156,7 +156,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
             <div className={cn("border border-dashed rounded-2xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888]")}>
               <Compass className="h-7 w-7 mb-3 opacity-40" />
               <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
-              <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>Add events in the workspace to see them here</p>
+              <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>Add events in the workspace to see them here</p>
             </div>
           ) : (
             <div className="space-y-6 sm:space-y-8">
@@ -198,7 +198,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
 
           {/* Footer */}
           <div className={cn("mt-8 sm:mt-10 pt-5 sm:pt-6 border-t text-center", forPrint ? "border-slate-200" : "border-slate-200 dark:border-[#1f1f1f]")}>
-            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>
+            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
               Powered by {brand.platformName}
             </p>
           </div>
@@ -248,9 +248,9 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
 function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")} weight="regular" />
+      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} weight="regular" />
       <div className="min-w-0">
-        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#555]")}>{label}</p>
+        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>{label}</p>
         <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-[#ccc]")}>{value}</p>
       </div>
     </div>
@@ -272,7 +272,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666]")}>{typeLabel}</p>
+          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>{typeLabel}</p>
           <p className={cn("text-[13px] sm:text-sm font-bold leading-snug", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{ev.title}</p>
 
           {/* Description */}
@@ -319,7 +319,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
             <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#ccc]")}>
               {ev.roomType && <span>{ev.roomType}</span>}
               {(ev.checkin || ev.checkout) && (
-                <span className={forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#888]"}>
+                <span className={forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]"}>
                   {ev.checkin || "-"} → {ev.checkout || "-"}
                 </span>
               )}
@@ -327,7 +327,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
           )}
 
           {(ev.type === "dining" || ev.type === "activity") && ev.supplier && (
-            <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#888]")}>
+            <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
               {ev.supplier}
             </p>
           )}
@@ -374,7 +374,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Notes */}
           {ev.notes && (
-            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-400" : "text-slate-400 dark:text-[#666] line-clamp-2")}>
+            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888] line-clamp-2")}>
               {ev.notes}
             </p>
           )}

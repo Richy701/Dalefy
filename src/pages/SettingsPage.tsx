@@ -50,7 +50,7 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
             {title}
           </h2>
         </div>
-        <p className="text-[11px] text-slate-500 dark:text-[#666666] leading-relaxed max-w-[280px]">
+        <p className="text-[11px] text-slate-500 dark:text-[#888] leading-relaxed max-w-[280px]">
           {description}
         </p>
       </div>
@@ -294,7 +294,7 @@ export function SettingsPage() {
             <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
               Settings
             </h1>
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#555555] hidden md:inline">
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] hidden md:inline">
               Preferences & Data
             </span>
           </div>
@@ -426,7 +426,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555] hover:text-red-400 transition-colors"
+                        className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -441,7 +441,7 @@ export function SettingsPage() {
                     <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
                       Agency Code
                     </p>
-                    <p className="text-[11px] text-slate-400 dark:text-[#666]">
+                    <p className="text-[11px] text-slate-500 dark:text-[#888]">
                       Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
                   </div>
@@ -524,7 +524,7 @@ export function SettingsPage() {
               />
               {/* Preview + Save */}
               <div className="pt-3 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Preview</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Preview</p>
                 <div className="flex items-center gap-2.5">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
@@ -534,8 +534,8 @@ export function SettingsPage() {
                     </div>
                   )}
                   <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
-                  <span className="text-[9px] text-slate-300 dark:text-[#333]">·</span>
-                  <span className="text-[9px] font-bold text-slate-300 dark:text-[#444]">Powered by {BRAND.name}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-[#666]">·</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-[#888]">Powered by {BRAND.name}</span>
                 </div>
                 <div className="flex justify-end">
                   <Button
@@ -687,7 +687,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="border-t border-slate-200 dark:border-[#1f1f1f] pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
+          <div className="border-t border-slate-200 dark:border-[#1f1f1f] pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>

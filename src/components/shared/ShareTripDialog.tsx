@@ -79,7 +79,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
         {/* Mobile close button */}
         <div className="flex items-center justify-between px-5 pt-5 pb-2 sm:hidden">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Share Trip</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Share Trip</p>
           <button
             onClick={() => onOpenChange(false)}
             className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] active:scale-95 transition-transform"
@@ -139,7 +139,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
             {/* Top: trip info + compact QR */}
             <div className="px-4 pt-4 pb-4 min-w-0 flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
                   Itinerary
                 </p>
                 <h3 className="mt-1 text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-2">
@@ -155,14 +155,14 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 )}
                 {trip && (
                   <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-400 dark:text-[#666666]" weight="bold" />
+                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-[#888]" weight="bold" />
                     <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-[#888888] tracking-wide truncate">
                       {formatRange(trip.start, trip.end)}
                     </span>
                   </div>
                 )}
                 <div className="mt-3 flex items-center gap-2">
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555555]">
+                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
                     Gate
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider truncate max-w-[120px]">
@@ -200,7 +200,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
             {/* Stub: OTP-style PIN */}
             <div className="px-4 pt-4 pb-6 flex flex-col items-center gap-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555555]">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
                 Trip PIN
               </p>
               <button
@@ -295,7 +295,7 @@ function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
         <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#666666]">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
           {label}
         </p>
         <p className="text-[11px] font-mono text-slate-900 dark:text-white truncate">

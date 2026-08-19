@@ -637,14 +637,14 @@ export function TravelersPage() {
               <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
               <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
-                <span className="text-slate-200 dark:text-[#333]">·</span>
+                <span className="text-slate-200 dark:text-[#666]">·</span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                   {travelers.length} {travelers.length === 1 ? "Member" : "Members"}
                 </span>
                 {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 && (
-                  <><span className="text-slate-200 dark:text-[#333]">·</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666]">
+                  <><span className="text-slate-200 dark:text-[#666]">·</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
                     {travelers.filter(t => t.status === "Active").length} on app
                   </span></>
                 )}
@@ -661,7 +661,7 @@ export function TravelersPage() {
                       className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-all duration-300 ${
                         active
                           ? "bg-brand text-black shadow-md shadow-brand/20"
-                          : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-300"
+                          : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-slate-300"
                       }`}
                     >
                       {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
@@ -688,7 +688,7 @@ export function TravelersPage() {
               <BrandIllustration src="/illustrations/illus-discussion.svg" className="w-72 h-72 object-contain mb-[-24px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
-                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add your first traveler to get started</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Add your first traveler to get started</p>
               </div>
               {!isViewer && (
                 <button
@@ -709,7 +709,7 @@ export function TravelersPage() {
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
                       <User className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members yet</p>
                   </div>
                 )}
                 {table.getRowModel().rows.map(row => {
@@ -723,7 +723,7 @@ export function TravelersPage() {
                         <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-300 dark:text-[#333] italic">No email</span>}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-[#666] italic">No email</span>}</div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
@@ -732,9 +732,9 @@ export function TravelersPage() {
                       </div>
                       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.role}</span>
-                        <span className="text-slate-200 dark:text-[#333]">·</span>
+                        <span className="text-slate-200 dark:text-[#666]">·</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
-                        <span className="text-slate-200 dark:text-[#333]">·</span>
+                        <span className="text-slate-200 dark:text-[#666]">·</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] tabular-nums">{signedCount}/{docs.length} docs</span>
                       </div>
                       {user.compliance.length > 0 && (
@@ -807,8 +807,8 @@ export function TravelersPage() {
                           <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
                             <User className="h-6 w-6 text-brand opacity-60" />
                           </div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members yet</p>
-                          <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add your first traveler using the button above</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members yet</p>
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Add your first traveler using the button above</p>
                         </div>
                       </td>
                     </tr>
@@ -825,7 +825,7 @@ export function TravelersPage() {
                             <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-300 dark:text-[#333] italic">No email</span>}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-[#666] italic">No email</span>}</div>
                             </div>
                           </div>
                         </td>
@@ -836,10 +836,10 @@ export function TravelersPage() {
                           {user.assignedTrips.length > 0 ? (
                             <div className="flex flex-col gap-0.5">
                               <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
                             </div>
                           ) : (
-                            <span className="text-sm font-black tracking-tighter text-slate-400 dark:text-[#555] tabular-nums">0</span>
+                            <span className="text-sm font-black tracking-tighter text-slate-500 dark:text-[#888] tabular-nums">0</span>
                           )}
                         </td>
                         <td className="px-6 py-5">
@@ -863,7 +863,7 @@ export function TravelersPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-black tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-300 dark:text-[#444]">/{docs.length}</span></span>
+                            <span className="text-xs font-black tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-400 dark:text-[#888]">/{docs.length}</span></span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -992,8 +992,8 @@ export function TravelersPage() {
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
                       <FileText className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No documents yet</p>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">Add team members to track compliance</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No documents yet</p>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Add team members to track compliance</p>
                   </div>
                 </div>
               ) : (() => {
@@ -1023,7 +1023,7 @@ export function TravelersPage() {
                           <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{initials}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#666]">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                               {allGood ? "All signed" : `${signed} of ${total} signed`}
                             </p>
                           </div>
@@ -1046,7 +1046,7 @@ export function TravelersPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-[#aaa] truncate">{doc.name}</p>
-                                  <p className="text-[10px] font-bold text-slate-400 dark:text-[#555]">
+                                  <p className="text-[10px] font-bold text-slate-500 dark:text-[#888]">
                                     {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Not signed yet"}
                                   </p>
                                 </div>
@@ -1079,7 +1079,7 @@ export function TravelersPage() {
                               if (next.has(userId)) next.delete(userId); else next.add(userId);
                               return next;
                             })}
-                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-[#555] hover:text-brand transition-colors border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer"
+                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-brand transition-colors border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer"
                           >
                             <CaretDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                             {isExpanded ? "Show less" : `${hiddenCount} more`}
@@ -1338,10 +1338,10 @@ export function TravelersPage() {
                     <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
                       <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
                       {search || appUserTripFilter !== "all" ? "No matching users" : "No app users yet"}
                     </p>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] uppercase tracking-wider">
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
                       {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
                     {appUserTripFilter !== "all" && (
@@ -1372,7 +1372,7 @@ export function TravelersPage() {
                                   <div className="shrink-0">
                                     {selectedUsers.has(appUser.deviceId)
                                       ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
-                                      : <Square className="h-5 w-5 text-slate-400 dark:text-[#555]" />}
+                                      : <Square className="h-5 w-5 text-slate-500 dark:text-[#888]" />}
                                   </div>
                                 )}
                                 <div className="shrink-0">
@@ -1383,10 +1383,10 @@ export function TravelersPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
-                                  {appUser.email && <div className="text-[10px] text-slate-400 dark:text-[#666] truncate">{appUser.email}</div>}
+                                  {appUser.email && <div className="text-[10px] text-slate-500 dark:text-[#888] truncate">{appUser.email}</div>}
                                   <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
-                                {!bulkAction && <PgRight className="h-4 w-4 text-slate-400 dark:text-[#555] shrink-0" />}
+                                {!bulkAction && <PgRight className="h-4 w-4 text-slate-500 dark:text-[#888] shrink-0" />}
                               </div>
                             </button>
                           </div>
@@ -1400,7 +1400,7 @@ export function TravelersPage() {
                               <div className="w-10 shrink-0">
                                 {selectedUsers.has(appUser.deviceId)
                                   ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
-                                  : <Square className="h-5 w-5 text-slate-300 dark:text-[#444] group-hover:text-slate-400 dark:group-hover:text-[#666] transition-colors" />}
+                                  : <Square className="h-5 w-5 text-slate-400 dark:text-[#888] group-hover:text-slate-400 dark:group-hover:text-[#666] transition-colors" />}
                               </div>
                             )}
                             <div className="w-14 shrink-0">
@@ -1428,7 +1428,7 @@ export function TravelersPage() {
                                   </span>
                                 ))}
                                 {appUser.trips.length > 3 && (
-                                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#555] px-1.5 py-1">+{appUser.trips.length - 3}</span>
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] px-1.5 py-1">+{appUser.trips.length - 3}</span>
                                 )}
                               </div>
                             </div>
@@ -1436,7 +1436,7 @@ export function TravelersPage() {
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                                 {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
-                              {!bulkAction && <PgRight className={`h-4 w-4 text-slate-400 dark:text-[#555] transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
+                              {!bulkAction && <PgRight className={`h-4 w-4 text-slate-500 dark:text-[#888] transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
                             </div>
                           </button>
                         </div>
@@ -1449,7 +1449,7 @@ export function TravelersPage() {
               {/* Pagination */}
               {appUserTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                     {safeAppUserPage * APP_USERS_PER_PAGE + 1}-{Math.min((safeAppUserPage + 1) * APP_USERS_PER_PAGE, filteredAppUsers.length)} of {filteredAppUsers.length}
                   </p>
                   <div className="flex items-center gap-1">
@@ -1504,10 +1504,10 @@ export function TravelersPage() {
                   {/* Panel header */}
                   <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-[#1f1f1f]">
                     <div className="flex items-center justify-between p-5">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">User Details</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">User Details</p>
                       <button
                         onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}
-                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors"
+                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -1545,7 +1545,7 @@ export function TravelersPage() {
                             <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{panelUser.name || "Unknown"}</p>
                             <button
                               onClick={() => { setRenamingUser(panelUser.deviceId); setRenameValue(panelUser.name); }}
-                              className="h-6 w-6 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-brand transition-colors shrink-0"
+                              className="h-6 w-6 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0"
                               title="Rename user"
                             >
                               <Pencil className="h-3 w-3" />
@@ -1558,7 +1558,7 @@ export function TravelersPage() {
                             {panelUser.email}
                           </p>
                         )}
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-[#666] mt-1 flex items-center gap-1 font-mono">
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] mt-1 flex items-center gap-1 font-mono">
                           <Fingerprint className="h-3 w-3" />
                           {panelUser.deviceId}
                         </p>
@@ -1568,11 +1568,11 @@ export function TravelersPage() {
                     {/* Quick stats */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Trips</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Trips</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1">{panelUser.trips.length}</p>
                       </div>
                       <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">Role</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Role</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1 capitalize">
                           {panelUser.trips.some(t => t.role === "leader") ? "Leader" : "Traveler"}
                         </p>
@@ -1581,7 +1581,7 @@ export function TravelersPage() {
 
                     {/* Trip memberships */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Trip Memberships</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Trip Memberships</p>
                       <div className="space-y-2.5">
                         {[...panelUser.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
                           <div key={t.id} className="rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden">
@@ -1591,7 +1591,7 @@ export function TravelersPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
-                                <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider mt-0.5">
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">
                                   Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                                 </p>
                               </div>
@@ -1610,7 +1610,7 @@ export function TravelersPage() {
                                 <button
                                   onClick={() => handleRemoveFromTrip(panelUser.deviceId, t.id, t.name)}
                                   disabled={removingFromTrip === `${panelUser.deviceId}_${t.id}`}
-                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title={`Remove from ${t.name}`}
                                 >
                                   {removingFromTrip === `${panelUser.deviceId}_${t.id}` ? (
@@ -1628,7 +1628,7 @@ export function TravelersPage() {
 
                     {/* Activity timeline */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Activity Timeline</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Activity Timeline</p>
                       <div className="relative pl-5">
                         <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-[#1f1f1f]" />
                         {[...panelUser.trips]
@@ -1639,7 +1639,7 @@ export function TravelersPage() {
                               {i === 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                             </div>
                             <div className="ml-1">
-                              <p className="text-[10px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">
+                              <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
                                 {new Date(t.joinedAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })}
                               </p>
                               <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
@@ -1654,7 +1654,7 @@ export function TravelersPage() {
 
                     {/* Push notification */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Push Notification</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Push Notification</p>
                       <div className="space-y-2">
                         <input
                           value={pushMessage}
@@ -1716,7 +1716,7 @@ export function TravelersPage() {
 
                     {/* Danger zone */}
                     <div className="pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] mb-3">Danger Zone</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Danger Zone</p>
                       <button
                         onClick={() => handleDeleteAppUser(panelUser.deviceId, panelUser.name)}
                         disabled={deletingUser === panelUser.deviceId}
@@ -1750,9 +1750,9 @@ export function TravelersPage() {
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1">New team member</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-1">New team member</p>
                 </div>
-                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1760,7 +1760,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2">
                     <User className="h-3 w-3" /> Full Name
                   </label>
                   <input
@@ -1774,7 +1774,7 @@ export function TravelersPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2">
                     <Envelope className="h-3 w-3" /> Email Address
                   </label>
                   <input
@@ -1789,7 +1789,7 @@ export function TravelersPage() {
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#666] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2">
                     <Briefcase className="h-3 w-3" /> Role
                   </label>
                   <input
@@ -1811,7 +1811,7 @@ export function TravelersPage() {
                   <button
                     type="button"
                     onClick={() => setInviteOpen(false)}
-                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#666] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all"
+                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all"
                   >
                     Cancel
                   </button>
@@ -1826,7 +1826,7 @@ export function TravelersPage() {
 
               {/* Existing team preview */}
               <div className="mt-10 pt-8 border-t border-slate-100 dark:border-[#1a1a1a]">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-400 dark:text-[#444] mb-4">Current Team · {travelers.length} members</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-500 dark:text-[#888] mb-4">Current Team · {travelers.length} members</p>
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
                     <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
@@ -1836,7 +1836,7 @@ export function TravelersPage() {
                     </div>
                   ))}
                   {travelers.length > 8 && (
-                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] text-[11px] font-bold text-slate-400 dark:text-[#555]">
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] text-[11px] font-bold text-slate-500 dark:text-[#888]">
                       +{travelers.length - 8} more
                     </div>
                   )}
@@ -1894,7 +1894,7 @@ export function TravelersPage() {
                             : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-brand/20"
                         }`}
                       >
-                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-slate-200 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#666]"}`}>
+                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-slate-200 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888]"}`}>
                           {selected ? <Check className="h-3 w-3" /> : t.initials}
                         </div>
                         {t.name.split(" ")[0]}

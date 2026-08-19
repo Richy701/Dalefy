@@ -192,7 +192,7 @@ export function ReportsPage() {
                   className={`px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
                     tab === t
                       ? "bg-brand text-black shadow-md shadow-brand/20"
-                      : "text-slate-400 dark:text-[#666] hover:text-slate-700 dark:hover:text-slate-300"
+                      : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-slate-300"
                   }`}
                 >
                   {t === "operations" ? "Overview" : "Documents"}
@@ -212,7 +212,7 @@ export function ReportsPage() {
               <BrandIllustration src="/illustrations/illus-sitting.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
-                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to see your analytics</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Create trips to see your analytics</p>
               </div>
               <button
                 onClick={() => navigate("/dashboard")}
@@ -229,7 +229,7 @@ export function ReportsPage() {
                   <div className="text-center lg:text-left shrink-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
                     <p className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{stats.totalDays}</p>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666] mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
                   </div>
                   <div className="hidden lg:block w-px h-20 bg-slate-200 dark:bg-[#1f1f1f]" />
                   <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
@@ -242,10 +242,10 @@ export function ReportsPage() {
                         <div className="text-center lg:text-left flex-1">
                           <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
                             <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">{kpi.icon}</div>
-                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666]">{kpi.label}</span>
+                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">{kpi.label}</span>
                           </div>
                           <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{kpi.value}</p>
-                          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555] mt-1.5">{kpi.sub}</p>
+                          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-1.5">{kpi.sub}</p>
                         </div>
                         {i < arr.length - 1 && (
                           <div className="hidden lg:block w-px self-stretch bg-slate-200 dark:bg-[#1f1f1f]" />
@@ -267,8 +267,8 @@ export function ReportsPage() {
                     <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No trips in pipeline</p>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No trips in pipeline</p>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
                   </div>
                 ) : (
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
@@ -331,7 +331,7 @@ export function ReportsPage() {
                         <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                           <Users className="h-5 w-5 text-brand opacity-60" />
                         </div>
-                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No team members</p>
+                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members</p>
                       </div>
                     );
                     const roleColors: Record<string, string> = { "Trip Manager": brandHex, Agent: "#38bdf8", Traveller: "#fbbf24", Admin: "#a78bfa", Other: "#64748b" };
@@ -356,7 +356,7 @@ export function ReportsPage() {
                                 ) : reqDocs.length > 0 ? (
                                   <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : null}
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums">{signedDocs}/{reqDocs.length}</span>
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] tabular-nums">{signedDocs}/{reqDocs.length}</span>
                               </div>
                             </div>
                           );
@@ -382,8 +382,8 @@ export function ReportsPage() {
                       <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
-                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#555]">No data yet</p>
-                      <p className="text-[11px] font-bold text-slate-400 dark:text-[#444] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
+                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No data yet</p>
+                      <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
                     </div>
                   ) : (
                     <div className="flex-1 min-h-[200px]">
@@ -445,7 +445,7 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <AirplaneTilt className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No airline data</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No airline data</p>
                     </div>
                   )}
                 </div>
@@ -484,7 +484,7 @@ export function ReportsPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <Users className="h-3 w-3 text-slate-400 dark:text-[#666]" />
+                              <Users className="h-3 w-3 text-slate-500 dark:text-[#888]" />
                               <span className="text-sm font-black tabular-nums text-brand">{pax || "-"}</span>
                             </div>
                           </button>
@@ -496,7 +496,7 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <Users className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">No trips yet</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No trips yet</p>
                     </div>
                   )}
                 </div>
@@ -510,7 +510,7 @@ export function ReportsPage() {
               <BrandIllustration src="/illustrations/illus-together.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
-                <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Add travelers to track compliance</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Add travelers to track compliance</p>
               </div>
               <button
                 onClick={() => navigate("/travelers")}

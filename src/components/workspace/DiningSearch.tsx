@@ -96,7 +96,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
                       <Flame className="h-2.5 w-2.5 fill-brand" />{r.rating}
                     </span>
                   )}
-                  {r.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-400">({r.reviews.toLocaleString()})</span>}
+                  {r.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-500">({r.reviews.toLocaleString()})</span>}
                   {r.priceTag && <span className="text-[10px] text-slate-500 dark:text-[#888888]">{r.priceTag}</span>}
                   {r.cuisines?.length > 0 && <span className="text-[10px] text-slate-500 dark:text-[#888888]">{r.cuisines.join(", ")}</span>}
                 </div>

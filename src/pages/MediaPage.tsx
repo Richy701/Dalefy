@@ -425,7 +425,7 @@ export function MediaPage() {
             <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-72 h-72 object-contain" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No media yet</p>
-              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create a trip first, then upload your photos and videos</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Create a trip first, then upload your photos and videos</p>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
@@ -596,9 +596,9 @@ export function MediaPage() {
                   <span className="truncate max-w-[180px]">{selectedTrip.name}</span>
                 </>
               ) : (
-                <span className="text-slate-400 dark:text-[#666]">Select trip</span>
+                <span className="text-slate-500 dark:text-[#888]">Select trip</span>
               )}
-              <CaretDown className={`h-3 w-3 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
+              <CaretDown className={`h-3 w-3 text-slate-500 dark:text-[#888] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
             </button>
 
             {tripPickerOpen && (
@@ -654,7 +654,7 @@ export function MediaPage() {
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
               </div>
             ) : (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-[#666] truncate">
+              <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] truncate">
                 {isDragging ? "Drop files here…" : "Drag & drop or click upload"}
               </p>
             )}
@@ -817,7 +817,7 @@ export function MediaPage() {
                         ) : someGroupSelected ? (
                           <MinusSquare className="h-5 w-5 text-brand" weight="fill" />
                         ) : (
-                          <Square className="h-5 w-5 text-slate-400 dark:text-[#555]" />
+                          <Square className="h-5 w-5 text-slate-500 dark:text-[#888]" />
                         )}
                       </button>
                     )}
@@ -826,7 +826,7 @@ export function MediaPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-[#666] uppercase tracking-[0.2em] mt-0.5">
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-[0.2em] mt-0.5">
                         {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
                       </p>
                     </div>
@@ -870,12 +870,12 @@ export function MediaPage() {
               <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mb-5 transition-colors ${
                 isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
               }`}>
-                <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-300 dark:text-[#444]"}`} />
+                <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-400 dark:text-[#888]"}`} />
               </div>
               <p className={`text-base font-black uppercase tracking-[0.2em] ${isDragging ? "text-brand" : "text-slate-700 dark:text-[#ccc]"}`}>
                 {isDragging ? "Drop files here" : "Drop photos here"}
               </p>
-              <p className="text-xs text-slate-400 dark:text-[#666] mt-2">
+              <p className="text-xs text-slate-500 dark:text-[#888] mt-2">
                 or click to browse · images &amp; videos up to 25 MB each
               </p>
             </div>
@@ -899,9 +899,9 @@ export function MediaPage() {
                       <span className="truncate flex-1 text-left">{selectedTrip.name}</span>
                     </>
                   ) : (
-                    <span className="text-slate-400 dark:text-[#666] flex-1 text-left">Select trip</span>
+                    <span className="text-slate-500 dark:text-[#888] flex-1 text-left">Select trip</span>
                   )}
-                  <CaretDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
+                  <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
                 </button>
                 {tripPickerOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
@@ -916,7 +916,7 @@ export function MediaPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-[#666]">{t.destination}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-[#888]">{t.destination}</p>
                         </div>
                         {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </button>
@@ -1053,8 +1053,8 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
         <div className="flex items-center justify-between mt-1">
           <p className="text-[9px] font-bold text-brand truncate uppercase tracking-tight">{item.tripName}</p>
           <div className="flex items-center gap-2 shrink-0">
-            {item.uploadedBy && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">by {item.uploadedBy}</span>}
-            {item.uploadedAt && <span className="text-[9px] font-bold text-slate-400 dark:text-[#666]">{formatDate(item.uploadedAt)}</span>}
+            {item.uploadedBy && <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">by {item.uploadedBy}</span>}
+            {item.uploadedAt && <span className="text-[9px] font-bold text-slate-500 dark:text-[#888]">{formatDate(item.uploadedAt)}</span>}
           </div>
         </div>
       </div>

@@ -260,7 +260,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               </div>
               <div className="flex flex-wrap gap-1.5 p-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] items-center">
                 {travelers.length === 0 ? (
-                  <span className="text-xs text-slate-400 dark:text-[#666]">No travelers assigned to this trip</span>
+                  <span className="text-xs text-slate-500 dark:text-[#888]">No travelers assigned to this trip</span>
                 ) : travelers.map(t => {
                   const selected = selectedIds.has(t.id);
                   return (
@@ -288,7 +288,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 })}
               </div>
               {selectedIds.size > 0 && (
-                <p className="text-[10px] text-slate-400 dark:text-[#666] mt-1.5">
+                <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1.5">
                   {selectedIds.size} of {travelers.length} selected
                 </p>
               )}
@@ -301,7 +301,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc] cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
                     {template.label}
-                    <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-[#666]" />
+                    <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="min-w-[200px] rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-xl">
@@ -343,7 +343,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#666] resize-none outline-none focus-visible:ring-2 focus-visible:ring-brand/30 transition-shadow"
                 placeholder="Write your message here..."
               />
-              <p className="text-[10px] text-slate-400 dark:text-[#666] mt-1.5">
+              <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1.5">
                 Variables: {"{{tripName}}"}, {"{{dates}}"}, {"{{destination}}"}, {"{{brandName}}"}
               </p>
             </div>
@@ -357,13 +357,13 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               <EnvelopeSimple className="h-4 w-4" weight="bold" />
               Send via Email Client
             </Button>
-            <p className="text-[10px] text-slate-400 dark:text-[#666] -mt-1">
+            <p className="text-[10px] text-slate-500 dark:text-[#888] -mt-1">
               Opens your email app with recipients{selectedEmails.length > 1 ? " (BCC)" : ""}, subject and text filled in. The designed version is copied to your clipboard, paste it into the body to send the branded email.
             </p>
 
             {/* Secondary: Copy buttons for manual compose */}
             <details className="group">
-              <summary className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#666] cursor-pointer hover:text-slate-600 dark:hover:text-[#999] transition-colors list-none flex items-center gap-1.5">
+              <summary className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] cursor-pointer hover:text-slate-600 dark:hover:text-[#999] transition-colors list-none flex items-center gap-1.5">
                 <CaretDown className="h-3 w-3 -rotate-90 group-open:rotate-0 transition-transform" />
                 Or copy manually
               </summary>
@@ -400,7 +400,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
           <div className="flex-1 p-5 sm:p-8 bg-slate-50 dark:bg-[#0a0a0a] min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-4 gap-3">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] shrink-0">Preview</span>
-              <span className="text-[10px] font-medium text-slate-400 dark:text-[#555] truncate max-w-[240px]">
+              <span className="text-[10px] font-medium text-slate-500 dark:text-[#888] truncate max-w-[240px]">
                 {resolvedSubject}
               </span>
             </div>
@@ -444,7 +444,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
               {trip.shortCode && (
                 <div className="px-6 pb-4 text-center">
-                  <span className="text-xs text-slate-400">Trip PIN: <strong className="text-slate-700">{trip.shortCode}</strong></span>
+                  <span className="text-xs text-slate-500">Trip PIN: <strong className="text-slate-700">{trip.shortCode}</strong></span>
                 </div>
               )}
 

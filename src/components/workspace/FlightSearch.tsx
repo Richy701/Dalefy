@@ -83,7 +83,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
     `px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
       active
         ? "bg-brand/15 text-brand"
-        : "text-slate-400 dark:text-[#666] hover:text-slate-600 dark:hover:text-[#999]"
+        : "text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#999]"
     }`;
 
   return (
@@ -113,10 +113,10 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                  <span className={`truncate ${date ? "" : "text-slate-400 dark:text-[#555]"}`}>
+                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-[#888]"}`}>
                     {date ? format(parse(date, "yyyy-MM-dd", new Date()), "d MMM yyyy") : "Select date"}
                   </span>
-                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
                 </PopoverTrigger>
                 <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                   <Calendar mode="single" selected={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setDate(format(d, "yyyy-MM-dd"))} />
@@ -142,10 +142,10 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                  <span className={`truncate ${date ? "" : "text-slate-400 dark:text-[#555]"}`}>
+                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-[#888]"}`}>
                     {date ? format(parse(date, "yyyy-MM-dd", new Date()), "d MMM yyyy") : "Select date"}
                   </span>
-                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
                 </PopoverTrigger>
                 <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                   <Calendar mode="single" selected={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setDate(format(d, "yyyy-MM-dd"))} />
@@ -183,12 +183,12 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs font-black text-slate-900 dark:text-white">
                   <span>{f.fromCode}</span>
-                  <ArrowRight className="h-2.5 w-2.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <ArrowRight className="h-2.5 w-2.5 text-slate-500 dark:text-slate-500 shrink-0" />
                   <span>{f.toCode}</span>
-                  <span className="text-slate-300 dark:text-[#444]">·</span>
+                  <span className="text-slate-400 dark:text-[#888]">·</span>
                   <span className="font-medium text-slate-500 dark:text-[#888] text-[10px]">{f.flightNum}</span>
                   {f.stops > 0 && (
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{f.stops} stop{f.stops > 1 ? "s" : ""}</span>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-500">{f.stops} stop{f.stops > 1 ? "s" : ""}</span>
                   )}
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-0.5">

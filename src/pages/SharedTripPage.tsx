@@ -55,7 +55,7 @@ function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
           <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
             {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}</span>}
-            {ev.endTime && <span className="text-slate-400 dark:text-[#666]">-</span>}
+            {ev.endTime && <span className="text-slate-500 dark:text-[#888]">-</span>}
             {ev.endTime && <span>{ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</span>}
             {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
             {ev.duration && <span>{ev.duration}</span>}
@@ -63,7 +63,7 @@ function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
         </div>
         {hasDetail && (
           <CaretDown
-            className={`h-3.5 w-3.5 text-slate-300 dark:text-[#444] shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`h-3.5 w-3.5 text-slate-400 dark:text-[#888] shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         )}
       </div>
@@ -95,7 +95,7 @@ function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
           )}
 
           {ev.notes && (
-            <p className="text-[11px] leading-relaxed text-slate-400 dark:text-[#666] italic">{ev.notes}</p>
+            <p className="text-[11px] leading-relaxed text-slate-500 dark:text-[#888] italic">{ev.notes}</p>
           )}
         </div>
       )}
@@ -131,11 +131,11 @@ function DaySection({ date, events, dayIdx, tripTz }: { date: string; events: Tr
                 {d.toLocaleDateString("en-GB", { weekday: "long" })} {ordinal(d.getDate())} {d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
               </span>
             </div>
-            <p className="text-[10px] font-semibold text-slate-400 dark:text-[#666] uppercase tracking-wider mt-1">
+            <p className="text-[10px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-1">
               {events.length} event{events.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <CaretDown className={`h-3.5 w-3.5 text-slate-400 dark:text-[#555] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
+          <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-[#888] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
         </button>
         {!collapsed && (
           <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
@@ -253,7 +253,7 @@ export function SharedTripPage() {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-5 px-6 text-center">
         <div className="h-16 w-16 rounded-2xl bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
-          <MapPin className="h-7 w-7 text-slate-400 dark:text-[#666]" />
+          <MapPin className="h-7 w-7 text-slate-500 dark:text-[#888]" />
         </div>
         <div className="max-w-sm space-y-2">
           <p className="text-lg font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
@@ -273,7 +273,7 @@ export function SharedTripPage() {
             Try again
           </button>
         )}
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">Powered by {brand.platformName}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Powered by {brand.platformName}</p>
       </div>
     );
   }
@@ -353,7 +353,7 @@ export function SharedTripPage() {
                       {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
                     </p>
                   </div>
-                  <CaretDown className={`h-4 w-4 text-slate-400 dark:text-[#666] transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
+                  <CaretDown className={`h-4 w-4 text-slate-500 dark:text-[#888] transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {pickerOpen && (
@@ -435,7 +435,7 @@ export function SharedTripPage() {
                       <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
                         <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
                         <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-[#555] font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-[#888] font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
                       </a>
                     ))}
                   </div>
@@ -453,7 +453,7 @@ export function SharedTripPage() {
 
         {/* Footer */}
         <div className="mt-10 text-center pb-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
             Powered by {brand.platformName}
           </p>
         </div>

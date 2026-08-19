@@ -127,7 +127,7 @@ function CompactCard({
       )}
       {event.time && (
         <div className="shrink-0 flex flex-col leading-none">
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">{event.time.split(" ")[0]}</span>
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 tabular-nums">{event.time.split(" ")[0]}</span>
           {(eventTzLabel(event, tripTz) || event.time.split(" ")[1]) && <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">{eventTzLabel(event, tripTz) || event.time.split(" ")[1]}</span>}
         </div>
       )}
@@ -179,7 +179,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
           <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center mb-2">
             <AirplaneTilt className="h-3.5 w-3.5" />
           </div>
-          <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time.split(" ")[0]}</span>
+          <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.time.split(" ")[0]}</span>
           <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{tzAbbr(eventTz(event, tripTz, "dep") ?? "", event.date) || event.time.split(" ")[1]}</span>
         </div>
 
@@ -275,14 +275,14 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
             {!event.isOvernight && event.time && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.time}</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.time}</p>
               </div>
             )}
             {!event.isOvernight && event.time && event.endTime && <ArrowRight className="h-3.5 w-3.5 text-brand shrink-0" />}
             {!event.isOvernight && event.endTime && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
-                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-none">{event.endTime}</p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.endTime}</p>
               </div>
             )}
             {event.isOvernight && (
@@ -359,9 +359,9 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{event.time}</span>
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{event.time}</span>
             {event.endTime && (
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">→ {event.endTime}</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">→ {event.endTime}</span>
             )}
             <StatusChip status={event.status} />
             <MediaBadge media={event.media} documents={event.documents} />

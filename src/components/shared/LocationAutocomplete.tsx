@@ -69,7 +69,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className }
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888] pointer-events-none" />
         <input
           type="text"
           value={value}
@@ -93,12 +93,12 @@ export function LocationAutocomplete({ value, onChange, placeholder, className }
               <MapPin className="h-3.5 w-3.5 text-brand mt-0.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{s.text}</p>
-                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">{s.place_name}</p>
+                <p className="text-[10px] text-slate-500 dark:text-[#888] truncate">{s.place_name}</p>
               </div>
             </button>
           ))}
           <div className="px-3 py-1.5 bg-slate-50 dark:bg-[#0a0a0a]">
-            <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-slate-300 dark:text-[#333]">Powered by Mapbox</p>
+            <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#666]">Powered by Mapbox</p>
           </div>
         </div>
       )}

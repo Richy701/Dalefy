@@ -14,7 +14,7 @@ const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: s
   owner: { icon: Crown, label: "Owner", color: "text-amber-500", blurb: "Full control, including ownership transfer" },
   admin: { icon: Shield, label: "Admin", color: "text-brand", blurb: "Manages trips, travelers, branding and the team" },
   agent: { icon: UserGear, label: "Agent", color: "text-slate-600 dark:text-[#aaa]", blurb: "Builds and edits trips and manages travelers" },
-  viewer: { icon: Eye, label: "Viewer", color: "text-slate-400 dark:text-[#666]", blurb: "Views trips and itineraries only" },
+  viewer: { icon: Eye, label: "Viewer", color: "text-slate-500 dark:text-[#888]", blurb: "Views trips and itineraries only" },
 };
 
 interface Member {
@@ -155,7 +155,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
             </p>
             <p className="text-[10px] text-slate-500 dark:text-[#888]">Waiting to be accepted. Tap to resend or revoke.</p>
           </div>
-          <CaretDown className="h-3.5 w-3.5 -rotate-90 text-slate-400 dark:text-[#666]" />
+          <CaretDown className="h-3.5 w-3.5 -rotate-90 text-slate-500 dark:text-[#888]" />
         </button>
       )}
 
@@ -182,9 +182,9 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {member.name}
-                  {isSelf && <span className="ml-1.5 font-semibold text-slate-400 dark:text-[#666]">(you)</span>}
+                  {isSelf && <span className="ml-1.5 font-semibold text-slate-500 dark:text-[#888]">(you)</span>}
                 </p>
-                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">
+                <p className="text-[10px] text-slate-500 dark:text-[#888] truncate">
                   {member.email}{member.joinedAt ? ` · ${joinedLabel(member.joinedAt)}` : ""}
                 </p>
               </div>
@@ -270,14 +270,14 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
       })}
 
       {members.length === 0 && !loading && (
-        <p className="text-xs text-slate-500 dark:text-[#666] px-1">No team members found.</p>
+        <p className="text-xs text-slate-500 dark:text-[#888] px-1">No team members found.</p>
       )}
 
       {/* Invite button */}
       {isAdmin && (
         <button
           onClick={onInvite}
-          className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl text-slate-400 dark:text-[#555] hover:border-brand hover:text-brand transition-colors"
+          className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-colors"
         >
           <UserPlus className="h-4 w-4" />
           <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Invite member</span>

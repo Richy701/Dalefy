@@ -191,7 +191,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   };
 
   const orgName = currentOrg?.name || "your team";
-  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]";
+  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
@@ -215,7 +215,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <Label htmlFor="invite-email" className={sectionLabel}>Email address</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Envelope className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#666]" />
+                <Envelope className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
                 <Input
                   id="invite-email"
                   type="email"
@@ -300,7 +300,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   className="w-full px-4 py-2.5 flex items-center gap-2 border-t border-black/[0.06] dark:border-white/[0.06] hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-left"
                   onClick={() => handleCopy("last", lastInvite.link)}
                 >
-                  <Link className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
+                  <Link className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-[#888]" />
                   <span className="text-[10px] font-mono text-slate-500 dark:text-[#777] truncate flex-1">{lastInvite.link}</span>
                   <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>
                     {copiedId === "last" ? "Copied" : "Copy link"}
@@ -315,7 +315,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <div className="flex items-center justify-between">
               <span className={sectionLabel}>Pending invites</span>
               {pendingInvites.length > 0 && (
-                <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-[#555]">{pendingInvites.length}</span>
+                <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-[#888]">{pendingInvites.length}</span>
               )}
             </div>
             {pendingLoading && pendingInvites.length === 0 && (
@@ -325,7 +325,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             )}
             {pendingError && <p className="text-xs text-red-500">{pendingError}</p>}
             {!pendingLoading && !pendingError && pendingInvites.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-[#666]">Nobody's waiting to join. Invites you send will show up here.</p>
+              <p className="text-xs text-slate-500 dark:text-[#888]">Nobody's waiting to join. Invites you send will show up here.</p>
             )}
             {pendingInvites.map(invite => {
               const isCopied = copiedId === invite.id;
@@ -342,7 +342,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                     <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">{invite.email}</p>
                     <div className="flex items-center gap-1.5 mt-1 min-w-0">
                       <RoleBadge role={invite.role} />
-                      <span className={`text-[10px] truncate ${exp.expired ? "text-amber-500 font-semibold" : "text-slate-400 dark:text-[#666]"}`}>
+                      <span className={`text-[10px] truncate ${exp.expired ? "text-amber-500 font-semibold" : "text-slate-500 dark:text-[#888]"}`}>
                         {exp.text}{invite.inviterName ? ` · by ${invite.inviterName}` : ""}
                       </span>
                     </div>
@@ -387,10 +387,10 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
           <section className="px-5 sm:px-6 py-5 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className={sectionLabel}>Team</span>
-              <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-[#555]">{orgMembers.length}</span>
+              <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-[#888]">{orgMembers.length}</span>
             </div>
             {orgMembers.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-[#666]">Just you so far.</p>
+              <p className="text-xs text-slate-500 dark:text-[#888]">Just you so far.</p>
             )}
             <div className="rounded-xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] divide-y divide-slate-100 dark:divide-[#161616]">
               {orgMembers.map(m => {
@@ -403,9 +403,9 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">
                         {m.profile?.name || "Team member"}
-                        {isYou && <span className="ml-1.5 text-[10px] font-semibold text-slate-400 dark:text-[#666]">(you)</span>}
+                        {isYou && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 dark:text-[#888]">(you)</span>}
                       </p>
-                      <p className="text-[10px] text-slate-400 dark:text-[#666] truncate mt-0.5">{m.profile?.email || "\u00a0"}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#888] truncate mt-0.5">{m.profile?.email || "\u00a0"}</p>
                     </div>
                     <RoleBadge role={m.role} />
                   </div>
@@ -445,7 +445,7 @@ function IconButton({ children, onClick, label, disabled, danger }: {
       aria-label={label}
       className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 ${
         danger
-          ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          ? "text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
           : "text-slate-500 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] hover:text-slate-900 dark:hover:text-white"
       }`}
     >

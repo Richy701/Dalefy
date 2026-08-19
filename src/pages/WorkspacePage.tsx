@@ -1168,7 +1168,7 @@ export function WorkspacePage() {
                 <TooltipContent side="bottom" className="text-xs">
                   <span className="font-bold">{p.name || "Team member"}</span>
                   {p.activeDay && (
-                    <span className="text-slate-400 ml-1">
+                    <span className="text-slate-500 ml-1">
                       · Day {groupedEvents.findIndex(([d]) => d === p.activeDay) + 1 || "?"}
                     </span>
                   )}
@@ -1364,7 +1364,7 @@ export function WorkspacePage() {
                   >
                     <div className="flex items-center gap-2.5 relative z-10 leading-none">
                       <div className="relative shrink-0">
-                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#666]"}`}>
+                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]"}`}>
                           <span className="text-[8px] font-bold uppercase leading-none">{parseTripDate(date).toLocaleDateString("en-US", { month: "short" })}</span>
                           <span className="text-sm font-black leading-none mt-0.5">{parseTripDate(date).getDate()}</span>
                         </div>
@@ -1375,7 +1375,7 @@ export function WorkspacePage() {
                         )}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-400 dark:text-[#555]"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
                         <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-[#999]"}`}>{highlight}</span>
                         <div className="flex items-center gap-1 mt-1">
                           {typeIcons.map(t => {
@@ -1531,7 +1531,7 @@ export function WorkspacePage() {
                                   <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Call</span>
                                 </a>
                               )}
-                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-400 dark:text-[#555] hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
+                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -1553,7 +1553,7 @@ export function WorkspacePage() {
                               <FileText className="h-3.5 w-3.5 text-brand" />
                               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
-                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center gap-1.5 text-slate-400 dark:text-[#555] hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
+                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center gap-1.5 text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
                               </button>
@@ -1587,7 +1587,7 @@ export function WorkspacePage() {
                                           <p className="text-[10px] text-brand font-bold mt-1">{item.documents.length} attachment{item.documents.length > 1 ? "s" : ""}</p>
                                         )}
                                       </div>
-                                      <CaretRight className={`h-4 w-4 text-slate-300 dark:text-[#333] shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                                      <CaretRight className={`h-4 w-4 text-slate-400 dark:text-[#666] shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                                     </div>
                                   </button>
                                   {isExpanded && item.documents && item.documents.length > 0 && (
@@ -1596,7 +1596,7 @@ export function WorkspacePage() {
                                         <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
                                           <Paperclip className="h-3 w-3 text-brand shrink-0" />
                                           <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
-                                          <span className="text-[9px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                          <span className="text-[9px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
                                         </a>
                                       ))}
                                     </div>
@@ -1613,7 +1613,7 @@ export function WorkspacePage() {
                                 {trip.info && trip.info.length > 0 && (
                                   <div className="flex items-center gap-3 mb-3">
                                     <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Documents</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Documents</span>
                                     <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
                                   </div>
                                 )}
@@ -1638,10 +1638,10 @@ export function WorkspacePage() {
                                             <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
                                           </button>
                                         )}
-                                        <p className="text-[10px] text-slate-400 dark:text-[#555] font-medium">{formatFileSize(doc.size)}</p>
+                                        <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium">{formatFileSize(doc.size)}</p>
                                       </div>
                                       {!isViewer && (
-                                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                                           <Trash className="h-3 w-3" />
                                         </button>
                                       )}
@@ -1660,8 +1660,8 @@ export function WorkspacePage() {
                                   onClick={() => tripDocInputRef.current?.click()}
                                   className={`w-full py-4 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center gap-1.5 ${tripDocDragOver ? "border-brand bg-brand/10 dark:bg-brand/10" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808]"}`}
                                 >
-                                  <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-slate-300 dark:text-[#333]"}`} />
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">
+                                  <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-slate-400 dark:text-[#666]"}`} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                                     {tripDocDragOver ? "Drop to upload" : "Drop files here or click to upload"}
                                   </span>
                                 </button>
@@ -1761,7 +1761,7 @@ export function WorkspacePage() {
                       <div className="mb-6 rounded-2xl bg-white dark:bg-[#111111] border border-brand/30 overflow-hidden">
                         <div className="px-4 py-3 bg-brand/5 border-b border-brand/20 flex items-center justify-between">
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Bulk Email Editor</p>
-                          <p className="text-[10px] font-bold text-slate-400 dark:text-[#666]">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-[#888]">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
                           {tripTravelers.map(t => (
@@ -1865,7 +1865,7 @@ export function WorkspacePage() {
                                     });
                                     toast.success(`Removed ${t.name} from trip`);
                                   }}
-                                  className="h-8 w-8 rounded-lg text-slate-400 dark:text-[#555] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                                  className="h-8 w-8 rounded-lg text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
@@ -1878,7 +1878,7 @@ export function WorkspacePage() {
                       <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-slate-500 dark:text-[#888]">
                         <Users className="h-10 w-10 mb-3 opacity-20" />
                         <p className="text-xs font-bold uppercase tracking-[0.2em]">No travelers assigned yet</p>
-                        <p className="text-[10px] text-slate-400 dark:text-[#666] mt-1">Add travelers below to tag them on specific events</p>
+                        <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1">Add travelers below to tag them on specific events</p>
                       </div>
                     )}
                   </div>
@@ -1889,7 +1889,7 @@ export function WorkspacePage() {
                       <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Add Travelers</h3>
                     </div>
                     <div className="relative mb-3">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555]" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />
                       <input
                         value={peopleSearch}
                         onChange={e => setPeopleSearch(e.target.value)}
@@ -1918,14 +1918,14 @@ export function WorkspacePage() {
                               <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
-                                <p className="text-[10px] text-slate-400 dark:text-[#666] truncate">{t.email || <span className="italic text-slate-300 dark:text-[#333]">No email</span>}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-[#888] truncate">{t.email || <span className="italic text-slate-400 dark:text-[#666]">No email</span>}</p>
                               </div>
-                              <Plus className="h-4 w-4 text-slate-300 dark:text-[#555] group-hover:text-brand transition-colors shrink-0" />
+                              <Plus className="h-4 w-4 text-slate-400 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
                             </button>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-4 text-slate-400 dark:text-[#666]">
+                        <div className="text-center py-4 text-slate-500 dark:text-[#888]">
                           <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
                         </div>
                       );
@@ -1933,7 +1933,7 @@ export function WorkspacePage() {
 
                     {/* Quick add traveler inline */}
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-[#555] mb-3">Quick Add</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-3">Quick Add</p>
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
@@ -2175,7 +2175,7 @@ export function WorkspacePage() {
                           editingEvent.isOvernight ? "translate-x-4" : "translate-x-0.5"
                         )} />
                       </div>
-                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-slate-400 dark:text-[#555]")} />
+                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-slate-500 dark:text-[#888]")} />
                       <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Overnight</span>
                     </button>
                   )}
@@ -2201,7 +2201,7 @@ export function WorkspacePage() {
                               "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all",
                               (editingEvent.transferType || "car") === value
                                 ? "border-brand bg-brand/10 text-brand"
-                                : "border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#666] hover:border-brand/30 hover:text-brand/70"
+                                : "border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#888] hover:border-brand/30 hover:text-brand/70"
                             )}
                           >
                             <Icon className="h-4 w-4" />
@@ -2373,7 +2373,7 @@ export function WorkspacePage() {
                   <div className="flex items-center gap-1 mt-2">
                     {(["auto", "google", "unsplash", "pexels"] as const).map(s => (
                       <button key={s} type="button" onClick={() => { setPreferredImageSource(s); if (imageLastQuery) runImageSearch(imageLastQuery, 1, s); }}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-slate-400 dark:text-[#555] hover:text-slate-600 dark:hover:text-[#999]"}`}>
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#999]"}`}>
                         {s === "auto" ? "Auto" : s === "google" ? "Google" : s === "unsplash" ? "Unsplash" : "Pexels"}
                       </button>
                     ))}
@@ -2408,7 +2408,7 @@ export function WorkspacePage() {
                     </>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
-                      <Camera className="h-7 w-7 text-slate-300 dark:text-[#333]" />
+                      <Camera className="h-7 w-7 text-slate-400 dark:text-[#666]" />
                       <p className="text-[10px] text-slate-500 dark:text-[#888888] uppercase tracking-widest font-bold">No image selected</p>
                     </div>
                   )}
@@ -2447,7 +2447,7 @@ export function WorkspacePage() {
                         </div>
                       )}
                       {imageSearchSource === "local" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
                           Suggested images · APIs unavailable
                         </p>
                       )}
@@ -2457,19 +2457,19 @@ export function WorkspacePage() {
                         </p>
                       )}
                       {imageSearchSource === "unsplash" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
                           Unsplash
                         </p>
                       )}
                       {imageSearchSource === "pexels" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#444] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
                           Pexels
                         </p>
                       )}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
-                      <MagnifyingGlass className="h-5 w-5 text-slate-300 dark:text-[#333]" />
+                      <MagnifyingGlass className="h-5 w-5 text-slate-400 dark:text-[#666]" />
                       <p className="text-[10px] text-slate-500 dark:text-[#888888] font-bold uppercase tracking-widest">Type to search images</p>
                     </div>
                   )}
@@ -2538,7 +2538,7 @@ export function WorkspacePage() {
                       <SortableContext items={editingEvent!.documents!.map(d => d.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1.5">
                           {editingEvent!.documents!.map((doc, i) => (
-                            <SortableItem key={doc.id} id={doc.id} handleClass="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 h-6 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                            <SortableItem key={doc.id} id={doc.id} handleClass="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 h-6 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
                               <div className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/40 transition-colors">
                                 <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center shrink-0">
                                   <FileText className="h-3.5 w-3.5 text-brand" />
@@ -2548,7 +2548,7 @@ export function WorkspacePage() {
                                   <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] uppercase tracking-wider">{formatFileSize(doc.size)}</p>
                                 </button>
                                 <button type="button" onClick={() => handleRemoveDocument(i)}
-                                  className="h-6 w-6 rounded-md text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover/sort:opacity-100 shrink-0">
+                                  className="h-6 w-6 rounded-md text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover/sort:opacity-100 shrink-0">
                                   <Trash className="h-3 w-3" />
                                 </button>
                               </div>
@@ -2631,7 +2631,7 @@ export function WorkspacePage() {
                           })}
                         </div>
                       ) : (
-                        <p className="text-[10px] text-slate-400 dark:text-[#666] font-medium">
+                        <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium">
                           Add travelers in the People tab first to assign them to events.
                         </p>
                       )}
@@ -2712,7 +2712,7 @@ export function WorkspacePage() {
           <form onSubmit={handleSaveTrip}>
             <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f]">
               <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
-              <p className="text-xs text-slate-500 dark:text-[#666] font-medium mt-1">Configure trip details, organizer, and traveler information</p>
+              <p className="text-xs text-slate-500 dark:text-[#888] font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
 
@@ -2731,7 +2731,7 @@ export function WorkspacePage() {
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-[#555] pointer-events-none" />
+                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888] pointer-events-none" />
                     <input
                       value={tripImageSearch}
                       onChange={e => setTripImageSearch(e.target.value)}
@@ -2818,10 +2818,10 @@ export function WorkspacePage() {
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                          <span className={editingTrip.start ? "" : "text-slate-400 dark:text-[#555]"}>
+                          <span className={editingTrip.start ? "" : "text-slate-500 dark:text-[#888]"}>
                             {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDots className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
@@ -2832,10 +2832,10 @@ export function WorkspacePage() {
                       <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                          <span className={editingTrip.end ? "" : "text-slate-400 dark:text-[#555]"}>
+                          <span className={editingTrip.end ? "" : "text-slate-500 dark:text-[#888]"}>
                             {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDots className="h-3.5 w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
@@ -2893,7 +2893,7 @@ export function WorkspacePage() {
                         <Users className="h-6 w-6 text-brand/40" />
                       )}
                     </div>
-                    <span className="text-[8px] font-bold text-slate-400 dark:text-[#555] uppercase tracking-wider">Preview</span>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Preview</span>
                   </div>
                   {/* Fields */}
                   <div className="flex-1 grid grid-cols-2 gap-3">
@@ -2944,8 +2944,8 @@ export function WorkspacePage() {
                     <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
                       <FileText className="h-5 w-5 text-brand/50" />
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-[#666] font-bold">No information pages yet</p>
-                    <p className="text-[10px] text-slate-400 dark:text-[#444] mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
+                    <p className="text-xs text-slate-500 dark:text-[#888] font-bold">No information pages yet</p>
+                    <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
                   </div>
                 )}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
@@ -2959,7 +2959,7 @@ export function WorkspacePage() {
                 }}>
                   <SortableContext items={(editingTrip.info ?? []).map(i => i.id)} strategy={verticalListSortingStrategy}>
                     {(editingTrip.info ?? []).map((item, idx) => (
-                      <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3 z-10 h-7 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                      <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
                         <div className="mb-3 rounded-2xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex items-center gap-3 px-4 py-3">
                             <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
@@ -2983,7 +2983,7 @@ export function WorkspacePage() {
                                 updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
-                              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-300 dark:text-[#333] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-[#666] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
                             >
                               {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </button>
@@ -2993,7 +2993,7 @@ export function WorkspacePage() {
                                 const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
-                              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
                             >
                               <Trash className="h-3.5 w-3.5" />
                             </button>
@@ -3058,7 +3058,7 @@ export function WorkspacePage() {
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Organizer</DialogTitle>
-                  <p className="text-[10px] text-slate-500 dark:text-[#666] font-medium mt-0.5">Trip contact person visible to travelers</p>
+                  <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium mt-0.5">Trip contact person visible to travelers</p>
                 </div>
               </div>
             </DialogHeader>
@@ -3101,7 +3101,7 @@ export function WorkspacePage() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Information</DialogTitle>
-                    <p className="text-[10px] text-slate-500 dark:text-[#666] font-medium mt-0.5">Pages visible to travelers</p>
+                    <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium mt-0.5">Pages visible to travelers</p>
                   </div>
                 </div>
                 <button
@@ -3119,8 +3119,8 @@ export function WorkspacePage() {
                   <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
                     <FileText className="h-6 w-6 text-brand/50" />
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-[#666] font-bold">No pages yet</p>
-                  <p className="text-xs text-slate-400 dark:text-[#444] mt-1">Add travel tips, visa info, packing lists</p>
+                  <p className="text-sm text-slate-500 dark:text-[#888] font-bold">No pages yet</p>
+                  <p className="text-xs text-slate-500 dark:text-[#888] mt-1">Add travel tips, visa info, packing lists</p>
                 </div>
               )}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
@@ -3133,7 +3133,7 @@ export function WorkspacePage() {
               }}>
                 <SortableContext items={editInfoData.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   {editInfoData.map((item, idx) => (
-                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-slate-300 dark:text-[#333] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
                       <div className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden transition-shadow hover:shadow-md">
                         <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-[#1a1a1a]">
                           <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
@@ -3157,14 +3157,14 @@ export function WorkspacePage() {
                               updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
                               setEditInfoData(updated);
                             }}
-                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-300 dark:text-[#333] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-[#666] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
                           >
                             {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
-                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
                           >
                             <Trash className="h-3.5 w-3.5" />
                           </button>
@@ -3215,7 +3215,7 @@ export function WorkspacePage() {
                                       title="Double-click to rename"
                                     >{doc.name}</span>
                                   )}
-                                  <span className="text-[9px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                  <span className="text-[9px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -3223,7 +3223,7 @@ export function WorkspacePage() {
                                       updated[idx] = { ...updated[idx], documents: (updated[idx].documents || []).filter(d => d.id !== doc.id) };
                                       setEditInfoData(updated);
                                     }}
-                                    className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/pdoc:opacity-100 transition-all"
+                                    className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/pdoc:opacity-100 transition-all"
                                   >
                                     <Trash className="h-3 w-3" />
                                   </button>
@@ -3231,7 +3231,7 @@ export function WorkspacePage() {
                               ))}
                             </div>
                           )}
-                          <label className="flex items-center gap-2 cursor-pointer text-slate-400 dark:text-[#555] hover:text-brand transition-colors">
+                          <label className="flex items-center gap-2 cursor-pointer text-slate-500 dark:text-[#888] hover:text-brand transition-colors">
                             <input type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={e => { handleInfoPageDocFiles(Array.from(e.target.files || []), idx); e.target.value = ""; }} className="hidden" />
                             <Paperclip className="h-3 w-3" />
                             <span className="text-[10px] font-bold uppercase tracking-wider">Attach files</span>
@@ -3247,7 +3247,7 @@ export function WorkspacePage() {
               <div className="mt-6">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#555]">Documents</span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Documents</span>
                   <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
                 </div>
                 {trip.documents && trip.documents.length > 0 && (
@@ -3273,8 +3273,8 @@ export function WorkspacePage() {
                             >{doc.name}</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 dark:text-[#555] font-medium shrink-0">{formatFileSize(doc.size)}</span>
-                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-[#333] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                        <span className="text-[10px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                           <Trash className="h-3 w-3" />
                         </button>
                       </div>
@@ -3287,8 +3287,8 @@ export function WorkspacePage() {
                   onClick={() => tripDocInputRef2.current?.click()}
                   className="w-full py-4 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
                 >
-                  <Upload className="h-5 w-5 text-slate-300 dark:text-[#333]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#555]">Drop files here or click to upload</span>
+                  <Upload className="h-5 w-5 text-slate-400 dark:text-[#666]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">Drop files here or click to upload</span>
                 </button>
               </div>
             </div>

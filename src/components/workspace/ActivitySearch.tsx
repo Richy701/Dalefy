@@ -96,7 +96,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
                       <Star className="h-2.5 w-2.5 fill-brand" />{a.rating}
                     </span>
                   )}
-                  {a.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-400">({a.reviews.toLocaleString()})</span>}
+                  {a.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-500">({a.reviews.toLocaleString()})</span>}
                   {a.type && <span className="text-[10px] text-slate-500 dark:text-[#888888]">{a.type}</span>}
                 </div>
               </div>

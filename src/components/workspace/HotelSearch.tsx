@@ -67,10 +67,10 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Check-in</label>
             <Popover>
               <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                <span className={`truncate ${checkin ? "" : "text-slate-400 dark:text-[#555]"}`}>
+                <span className={`truncate ${checkin ? "" : "text-slate-500 dark:text-[#888]"}`}>
                   {checkin ? format(parse(checkin, "yyyy-MM-dd", new Date()), "d MMM") : "Select date"}
                 </span>
-                <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
               </PopoverTrigger>
               <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                 <Calendar mode="single" selected={checkin ? parse(checkin, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setCheckin(format(d, "yyyy-MM-dd"))} />
@@ -81,10 +81,10 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Check-out</label>
             <Popover>
               <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                <span className={`truncate ${checkout ? "" : "text-slate-400 dark:text-[#555]"}`}>
+                <span className={`truncate ${checkout ? "" : "text-slate-500 dark:text-[#888]"}`}>
                   {checkout ? format(parse(checkout, "yyyy-MM-dd", new Date()), "d MMM") : "Select date"}
                 </span>
-                <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-400 dark:text-[#666] shrink-0" />
+                <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
               </PopoverTrigger>
               <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                 <Calendar mode="single" selected={checkout ? parse(checkout, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setCheckout(format(d, "yyyy-MM-dd"))} />
@@ -133,7 +133,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
                       <Flame className="h-2.5 w-2.5 fill-brand" />{h.rating}
                     </span>
                   )}
-                  {h.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-400">({h.reviews.toLocaleString()})</span>}
+                  {h.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-500">({h.reviews.toLocaleString()})</span>}
                   {h.stars && <span className="text-[10px] text-slate-500 dark:text-[#888888]">· {h.stars}</span>}
                 </div>
               </div>

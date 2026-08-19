@@ -14,7 +14,7 @@ export function DaySection({ date, dayNumber, children, onAddEvent }: { date: st
         <div className="flex items-end justify-between">
           <div className="flex items-baseline gap-2.5 flex-wrap">
             {dayNumber !== undefined && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-[#555] leading-none tabular-nums">Day {dayNumber}</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] leading-none tabular-nums">Day {dayNumber}</span>
             )}
             <span className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{weekday}</span>
             <span className="text-lg font-black uppercase tracking-tight text-brand leading-none">{dateInfo}</span>

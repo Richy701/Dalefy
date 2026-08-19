@@ -294,7 +294,7 @@ export function DestinationsPage() {
             <BrandIllustration src="/illustrations/illus-movement.svg" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
               <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
-              <p className="text-xs font-medium text-slate-400 dark:text-[#666]">Create trips to populate your world map</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Create trips to populate your world map</p>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
@@ -452,17 +452,17 @@ export function DestinationsPage() {
                   </div>
                   <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{pin.name}</p>
                 </div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#666] pl-7">{pin.region}</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] pl-7">{pin.region}</p>
               </div>
               {/* Stats */}
               <div className="flex items-center border-t border-slate-100 dark:border-[#1a1a1a]">
                 <div className="flex-1 px-4 py-2.5 text-center border-r border-slate-100 dark:border-[#1a1a1a]">
                   <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.tripCount}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-1">{pin.tripCount === 1 ? "Trip" : "Trips"}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mt-1">{pin.tripCount === 1 ? "Trip" : "Trips"}</p>
                 </div>
                 <div className="flex-1 px-4 py-2.5 text-center">
                   <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.eventCount}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#666] mt-1">Events</p>
+                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mt-1">Events</p>
                 </div>
               </div>
               {/* Event type breakdown */}

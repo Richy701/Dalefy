@@ -194,7 +194,7 @@ export function AcceptInvitePage() {
                   <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white">
                     Not now
                   </button>
-                  <span className="text-slate-300 dark:text-[#333]">·</span>
+                  <span className="text-slate-400 dark:text-[#666]">·</span>
                   <button onClick={handleSwitchAccount} className="text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white">
                     Not you? Switch account
                   </button>

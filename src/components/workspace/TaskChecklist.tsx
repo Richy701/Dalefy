@@ -90,7 +90,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
       {/* Task list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {sortedTasks.length === 0 && !showForm && (
-          <div className="text-center py-8 text-slate-400 dark:text-[#555]">
+          <div className="text-center py-8 text-slate-500 dark:text-[#888]">
             <p className="text-xs font-bold uppercase tracking-wider">No tasks yet</p>
             <p className="text-[10px] mt-1 opacity-70">Add tasks to track trip preparation</p>
           </div>
@@ -118,7 +118,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               </button>
               <div className="flex-1 min-w-0">
                 <p className={`text-xs font-bold leading-tight ${
-                  task.completed ? "line-through text-slate-400 dark:text-[#555]" : "text-slate-800 dark:text-white"
+                  task.completed ? "line-through text-slate-500 dark:text-[#888]" : "text-slate-800 dark:text-white"
                 }`}>
                   {task.title}
                 </p>
@@ -126,19 +126,19 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                   {task.category && (
                     <span className="flex items-center gap-1">
                       <span className={`h-1.5 w-1.5 rounded-full ${getCategoryColor(task.category)}`} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#666]">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                         {CATEGORIES.find(c => c.value === task.category)?.label}
                       </span>
                     </span>
                   )}
                   {task.assignee && (
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-[#666] uppercase tracking-wider">
+                    <span className="text-[9px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
                       {travelers?.find(t => t.id === task.assignee)?.name?.split(" ")[0] || task.assignee}
                     </span>
                   )}
                   {task.dueDate && (
                     <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                      isOverdue ? "text-red-500" : "text-slate-400 dark:text-[#666]"
+                      isOverdue ? "text-red-500" : "text-slate-500 dark:text-[#888]"
                     }`}>
                       {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
@@ -147,7 +147,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               </div>
               <button
                 onClick={() => handleDelete(task.id)}
-                className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
+                className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
               >
                 <Trash className="h-3 w-3" />
               </button>
@@ -170,7 +170,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
           <div className="flex items-center gap-2">
             {/* Category selector */}
             <div className="flex items-center gap-1">
-              <Tag className="h-3 w-3 text-slate-400" />
+              <Tag className="h-3 w-3 text-slate-500" />
               <select
                 value={newCategory}
                 onChange={e => setNewCategory(e.target.value as TripTask["category"])}
@@ -184,8 +184,8 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             {/* Due date */}
             <Popover>
               <PopoverTrigger className="h-7 px-2 rounded-lg bg-white dark:bg-[#111] border border-slate-200 dark:border-[#252525] hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
-                <CalendarDots className="h-3 w-3 text-slate-400 dark:text-[#666] shrink-0" />
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-400 dark:text-[#555]"}`}>
+                <CalendarDots className="h-3 w-3 text-slate-500 dark:text-[#888] shrink-0" />
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-500 dark:text-[#888]"}`}>
                   {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
                 </span>
               </PopoverTrigger>
@@ -196,7 +196,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             {/* Assignee */}
             {travelers && travelers.length > 0 && (
               <div className="flex items-center gap-1">
-                <User className="h-3 w-3 text-slate-400" />
+                <User className="h-3 w-3 text-slate-500" />
                 <select
                   value={newAssignee}
                   onChange={e => setNewAssignee(e.target.value)}
@@ -230,7 +230,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
         <div className="p-3 border-t border-slate-200 dark:border-[#1f1f1f]">
           <button
             onClick={() => setShowForm(true)}
-            className="w-full h-9 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#252525] hover:border-brand text-slate-400 dark:text-[#555] hover:text-brand flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-9 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#252525] hover:border-brand text-slate-500 dark:text-[#888] hover:text-brand flex items-center justify-center gap-2 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Add Task</span>

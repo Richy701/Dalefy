@@ -38,13 +38,13 @@ function StepIndicator({ current }: { current: Step }) {
                     ? "bg-brand text-black"
                     : active
                       ? "bg-brand/15 text-brand ring-2 ring-brand/30"
-                      : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-400 dark:text-[#555]"
+                      : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]"
                 }`}
               >
                 {done ? <Check className="h-3.5 w-3.5" weight="bold" /> : n}
               </div>
               <span className={`text-[11px] font-bold uppercase tracking-[0.12em] hidden sm:inline transition-colors ${
-                active ? "text-brand" : done ? "text-slate-500 dark:text-[#888]" : "text-slate-300 dark:text-[#444]"
+                active ? "text-brand" : done ? "text-slate-500 dark:text-[#888]" : "text-slate-400 dark:text-[#888]"
               }`}>
                 {label}
               </span>
@@ -230,7 +230,7 @@ export function CreateOrgPage() {
             <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#999]">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#999]">
               {step === 1 ? "One last step" : "Make it yours"}
             </p>
           </div>
@@ -286,7 +286,7 @@ export function CreateOrgPage() {
                     maxLength={40}
                     className={inputClass}
                   />
-                  <p className="text-xs text-slate-400 dark:text-[#666]">
+                  <p className="text-xs text-slate-500 dark:text-[#888]">
                     Travelers enter this code to connect their app to your agency.
                   </p>
                 </div>
@@ -345,7 +345,7 @@ export function CreateOrgPage() {
                     </div>
                     <div className="flex-1 space-y-2">
                       <label className="flex items-center justify-center gap-2.5 cursor-pointer h-12 rounded-xl bg-white dark:bg-[#0a0a0a] border border-dashed border-slate-300 dark:border-[#2a2a2a] hover:border-brand/50 dark:hover:border-brand/30 transition-colors">
-                        <Upload className="h-4 w-4 text-slate-400 dark:text-[#666]" weight="regular" />
+                        <Upload className="h-4 w-4 text-slate-500 dark:text-[#888]" weight="regular" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                           {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
                         </span>
@@ -372,7 +372,7 @@ export function CreateOrgPage() {
                           className="hidden"
                         />
                       </label>
-                      <p className="text-[11px] text-slate-400 dark:text-[#555] text-center">PNG, JPG, SVG - max 2 MB</p>
+                      <p className="text-[11px] text-slate-500 dark:text-[#888] text-center">PNG, JPG, SVG - max 2 MB</p>
                     </div>
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export function CreateOrgPage() {
                       <button
                         type="button"
                         onClick={() => setBrandColor(BRAND.accentColor)}
-                        className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-brand transition-colors cursor-pointer shrink-0"
+                        className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-brand transition-colors cursor-pointer shrink-0"
                       >
                         Reset
                       </button>
@@ -429,7 +429,7 @@ export function CreateOrgPage() {
                       <p className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
                         {brandCompanyName || BRAND.name}
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-[#666]">
+                      <p className="text-xs text-slate-500 dark:text-[#888]">
                         Powered by {BRAND.name}
                       </p>
                     </div>
@@ -459,7 +459,7 @@ export function CreateOrgPage() {
             </>
           )}
 
-          <p className="text-center text-xs font-medium text-slate-400 dark:text-[#777] mt-8">
+          <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
             {step === 1
               ? "Your trips and data will belong to this agency"
               : "You can change these anytime in Settings"}

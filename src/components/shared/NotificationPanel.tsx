@@ -42,7 +42,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           {onClose && (
             <button
               onClick={onClose}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors sm:hidden"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors sm:hidden"
             >
               <X className="h-4 w-4" />
             </button>
@@ -55,10 +55,10 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4">
             <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center mb-3">
-              <Bell className="h-4 w-4 text-slate-300 dark:text-[#444]" />
+              <Bell className="h-4 w-4 text-slate-400 dark:text-[#888]" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 dark:text-[#555]">All clear</p>
-            <p className="text-[10px] font-bold text-slate-300 dark:text-[#444] mt-1">No notifications yet</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">All clear</p>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-[#888] mt-1">No notifications yet</p>
           </div>
         ) : (
           <div className="p-1.5 space-y-0.5">
@@ -86,9 +86,9 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                         </p>
                         {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </div>
-                      <p className="text-[10px] text-slate-400 dark:text-[#555] truncate leading-tight">{n.detail}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[#888] truncate leading-tight">{n.detail}</p>
                     </div>
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300 dark:text-[#444] shrink-0">{n.time}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#888] shrink-0">{n.time}</p>
                   </div>
                 </button>
               );

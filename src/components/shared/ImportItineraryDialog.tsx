@@ -1113,11 +1113,11 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
         onClick={() => setExpanded(p => !p)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-[#0f0f0f] transition-colors"
       >
-        <CaretRight className={`h-3 w-3 text-slate-400 dark:text-[#555] shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
+        <CaretRight className={`h-3 w-3 text-slate-500 dark:text-[#888] shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
         <span className="text-[13px] font-semibold text-slate-900 dark:text-white flex-1 truncate">
           {item.title || "Untitled"}
         </span>
-        <span className="text-[10px] text-slate-400 dark:text-[#555] shrink-0 tabular-nums">
+        <span className="text-[10px] text-slate-500 dark:text-[#888] shrink-0 tabular-nums">
           {item.body.split("\n").length} line{item.body.split("\n").length !== 1 ? "s" : ""}
         </span>
       </button>
@@ -1167,7 +1167,7 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-[#555] hover:text-brand transition-colors"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
                 >
                   <PencilSimple className="h-3 w-3" />
                   Edit
@@ -1175,7 +1175,7 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
                 <button
                   type="button"
                   onClick={onRemove}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-[#555] hover:text-red-400 transition-colors"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-[#888] hover:text-red-400 transition-colors"
                 >
                   <X className="h-3 w-3" />
                   Remove
@@ -1667,7 +1667,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
               <div className="h-full bg-brand transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-[#666]">This can take a minute for large itineraries.</p>
+            <p className="text-[11px] text-slate-500 dark:text-[#888]">This can take a minute for large itineraries.</p>
             <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
               Close
             </Button>
@@ -1686,7 +1686,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
                 </div>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-400 dark:text-[#555] hover:text-brand transition-colors">
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-500 dark:text-[#888] hover:text-brand transition-colors">
                   ← Back
                 </button>
               </div>
@@ -1767,7 +1767,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     <p className="text-xs font-bold text-slate-900 dark:text-white flex-1">
                       Information
                     </p>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#666] tabular-nums">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] tabular-nums">
                       {editInfo.length} item{editInfo.length !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -1809,7 +1809,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       <button
                         aria-label="Remove event"
                         onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)}
-                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-300 dark:text-[#444] hover:text-red-400 transition-colors shrink-0"
+                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-400 dark:text-[#888] hover:text-red-400 transition-colors shrink-0"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -1859,14 +1859,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <button
                     type="button"
                     onClick={() => { setImportMode("merge"); setConfirmReplace(false); }}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-[#666] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
                   >
                     Add new items
                   </button>
                   <button
                     type="button"
                     onClick={() => setImportMode("replace")}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-[#666] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
                   >
                     Replace everything
                   </button>
