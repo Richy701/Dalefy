@@ -35,6 +35,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { SharedTripPage } from "@/pages/SharedTripPage";
 import { CreateOrgPage } from "@/pages/CreateOrgPage";
 import { AcceptInvitePage } from "@/pages/AcceptInvitePage";
+import { getPendingInvite } from "@/lib/pendingInvite";
 import { LandingPage } from "@/pages/LandingPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -47,8 +48,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   // Wait briefly for org check, but don't block forever
   if (isRealUser && orgLoading) return <AuthLoadingScreen />;
-  // Real auth users without an org → create one first (skip if accepting an invite)
-  if (isRealUser && tablesReady && !hasOrg && !sessionStorage.getItem("daf-pending-invite")) return <Navigate to="/create-org" replace />;
+  // A pending team invite takes priority over everything else
+  const pendingInvite = isRealUser ? getPendingInvite() : null;
+  if (pendingInvite) return <Navigate to={`/invite/${pendingInvite}`} replace />;
+  // Real auth users without an org → create one first
+  if (isRealUser && tablesReady && !hasOrg) return <Navigate to="/create-org" replace />;
   return <>{children}</>;
 }
 

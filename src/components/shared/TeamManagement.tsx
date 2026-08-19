@@ -29,7 +29,7 @@ interface TeamManagementProps {
 }
 
 export function TeamManagement({ onInvite }: TeamManagementProps) {
-  const { currentOrg, orgRole } = useOrg();
+  const { currentOrg, orgRole, orgMembers } = useOrg();
   const { user } = useAuth();
   const { showToast } = useNotifications();
   const [members, setMembers] = useState<Member[]>([]);
@@ -43,12 +43,16 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
 
   useEffect(() => {
     if (!currentOrg) return;
+    let cancelled = false;
     setLoading(true);
     getOrgMembersWithProfiles(currentOrg.id)
-      .then(setMembers)
-      .catch(() => showToast("Failed to load team"))
-      .finally(() => setLoading(false));
-  }, [currentOrg]);
+      .then(list => { if (!cancelled) setMembers(list); })
+      .catch(() => { if (!cancelled) showToast("Failed to load team"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // orgMembers.length: refetch when the shared org roster changes (e.g. an invite was accepted)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrg, orgMembers.length]);
 
   const handleRoleChange = async (member: Member, newRole: OrgRole) => {
     if (!currentOrg) return;
@@ -97,7 +101,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
     setConfirmTransfer(null);
   };
 
-  if (loading) {
+  if (loading && currentOrg) {
     return (
       <div className="flex items-center justify-center py-8">
         <SpinnerGap className="h-5 w-5 animate-spin text-brand" />

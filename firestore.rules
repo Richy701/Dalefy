@@ -57,54 +57,93 @@ service cloud.firestore {
     }
 
     // ── Org members ────────────────────────────────────────────────────────
-    match /org_members/{docId} {
-      // Authenticated users can read memberships (needed for org bootstrapping and member lists)
-      allow read: if request.auth != null;
+    function isOrgOwner(orgId) {
+      let mem = get(/databases/$(database)/documents/org_members/$(request.auth.uid + '_' + orgId));
+      return mem != null && mem.data.role == "owner";
+    }
 
-      // Only the org creator can create the first membership (owner bootstrap);
-      // after that, only admins/owners of the org can add members
+    function inviteFor(token) {
+      return get(/databases/$(database)/documents/org_invites/$(token)).data;
+    }
+
+    match /org_members/{docId} {
+      // A user can read their own memberships; org members can read their org's roster
+      allow read: if request.auth != null
+        && (resource.data.user_id == request.auth.uid
+            || isOrgMember(resource.data.organization_id));
+
+      // Doc ID must always be `${user_id}_${organization_id}` so the helper lookups work
       allow create: if request.auth != null
         && request.resource.data.user_id is string
         && request.resource.data.organization_id is string
+        && docId == request.resource.data.user_id + '_' + request.resource.data.organization_id
         && (
           // Bootstrap: the user is creating their own owner membership AND they created the org
           (request.resource.data.user_id == request.auth.uid
            && request.resource.data.role == "owner"
            && get(/databases/$(database)/documents/organizations/$(request.resource.data.organization_id)).data.created_by == request.auth.uid)
           ||
-          // Existing admin/owner is adding a member
-          isOrgAdmin(request.resource.data.organization_id)
+          // Existing admin/owner is adding a non-owner member
+          (request.resource.data.role in ["admin", "agent", "viewer"]
+           && isOrgAdmin(request.resource.data.organization_id))
           ||
-          // Accepting an invite: user is adding themselves AND a pending invite exists for their email
+          // Accepting an invite: user adds themselves with the invited role, from a
+          // pending, unexpired invite addressed to their verified email
           (request.resource.data.user_id == request.auth.uid
-           && request.resource.data.role in ["admin", "agent", "viewer"]
+           && request.auth.token.email_verified == true
            && request.resource.data.invite_token is string
-           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.status == "pending"
-           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.email.lower() == request.auth.token.email.lower()
-           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.organization_id == request.resource.data.organization_id)
+           && inviteFor(request.resource.data.invite_token).status == "pending"
+           && inviteFor(request.resource.data.invite_token).email.lower() == request.auth.token.email.lower()
+           && inviteFor(request.resource.data.invite_token).organization_id == request.resource.data.organization_id
+           && inviteFor(request.resource.data.invite_token).role == request.resource.data.role
+           && request.resource.data.role in ["admin", "agent", "viewer"]
+           && inviteFor(request.resource.data.invite_token).expires_at_ms is number
+           && inviteFor(request.resource.data.invite_token).expires_at_ms > request.time.toMillis())
         );
 
-      // Only org admins/owners can update roles; users can remove themselves
+      // Only the role may change. Admins can set admin/agent/viewer on other non-owners;
+      // only the owner can grant owner, change an owner's role, or change their own role.
       allow update: if request.auth != null
-        && isOrgAdmin(resource.data.organization_id);
+        && isOrgAdmin(resource.data.organization_id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["role"])
+        && request.resource.data.role in ["owner", "admin", "agent", "viewer"]
+        && (request.resource.data.role != "owner" || isOrgOwner(resource.data.organization_id))
+        && (resource.data.role != "owner" || isOrgOwner(resource.data.organization_id))
+        && (resource.data.user_id != request.auth.uid || isOrgOwner(resource.data.organization_id));
 
+      // Users can leave (unless they are the owner); admins can remove non-owners
       allow delete: if request.auth != null
+        && resource.data.role != "owner"
         && (resource.data.user_id == request.auth.uid
             || isOrgAdmin(resource.data.organization_id));
     }
 
     // ── Org invites ─────────────────────────────────────────────────────────
     match /org_invites/{inviteId} {
-      // Anyone authenticated can read (needed to validate token on accept page)
-      allow read: if request.auth != null;
+      // Org admins see their org's invites; an invitee can read the invite addressed to them
+      allow read: if request.auth != null
+                  && (isOrgAdmin(resource.data.organization_id)
+                      || isCronUser()
+                      || (request.auth.token.email != null
+                          && resource.data.email.lower() == request.auth.token.email.lower()));
       // Only org admins/owners can create invites
       allow create: if request.auth != null
                     && request.resource.data.organization_id is string
+                    && request.resource.data.status == "pending"
+                    && request.resource.data.role in ["admin", "agent", "viewer"]
                     && isOrgAdmin(request.resource.data.organization_id);
-      // Org admins can update (revoke), or the invited user can update (accept)
+      // Admins can revoke; the invitee can only flip a pending invite to accepted
       allow update: if request.auth != null
-                    && (isOrgAdmin(resource.data.organization_id)
-                        || resource.data.email.lower() == request.auth.token.email.lower());
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "accepted_at"])
+                    && (
+                      (isOrgAdmin(resource.data.organization_id)
+                       && request.resource.data.status in ["pending", "revoked"])
+                      ||
+                      (resource.data.status == "pending"
+                       && request.resource.data.status == "accepted"
+                       && request.auth.token.email != null
+                       && resource.data.email.lower() == request.auth.token.email.lower())
+                    );
       allow delete: if request.auth != null
                     && isOrgAdmin(resource.data.organization_id);
     }

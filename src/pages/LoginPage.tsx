@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { resetPassword } from "@/services/firebaseAuth";
+import { getPendingInvite, getPendingInviteEmail } from "@/lib/pendingInvite";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -173,7 +174,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>("sign-in");
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => getPendingInviteEmail() ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -189,14 +190,11 @@ export function LoginPage() {
   const { signIn, signUp, signInWithGoogle, demoLogin } = useAuth();
   const navigate = useNavigate();
 
+  const pendingInviteEmail = getPendingInvite() ? getPendingInviteEmail() : null;
+
   const goPostLogin = () => {
-    const pending = sessionStorage.getItem("daf-pending-invite");
-    if (pending) {
-      sessionStorage.removeItem("daf-pending-invite");
-      navigate(`/invite/${pending}`);
-    } else {
-      navigate("/dashboard");
-    }
+    const pending = getPendingInvite();
+    navigate(pending ? `/invite/${pending}` : "/dashboard");
   };
 
   // ── Handlers ──────────────────────────────────────────────────────────
@@ -253,7 +251,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await demoLogin();
-      goPostLogin();
+      navigate("/dashboard");
     } catch {
       setError("Demo login failed");
     } finally {
@@ -313,6 +311,15 @@ export function LoginPage() {
               {BRAND.tagline}
             </p>
           </div>
+
+          {realAuth && pendingInviteEmail && (
+            <div className="mb-8 rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-brand mb-1">Team invitation</p>
+              <p className="text-sm text-slate-700 dark:text-[#ddd]">
+                Sign in or create an account using <strong className="text-slate-900 dark:text-white">{pendingInviteEmail}</strong> to join your team.
+              </p>
+            </div>
+          )}
 
           {/* ── SIGN IN ─────────────────────────────────────────── */}
           {realAuth && mode === "sign-in" && (

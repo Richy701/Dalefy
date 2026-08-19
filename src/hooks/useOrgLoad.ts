@@ -109,8 +109,10 @@ export function useOrgLoad() {
           setIsLoading(false);
         }
       } catch (err) {
+        // Transient failure: leave org state unknown (tablesReady=false) so the
+        // route guard doesn't mistake this for "user has no org".
         logger.warn("OrgLoad", "load failed:", err);
-        clear();
+        if (mounted) { setTablesReady(false); setIsLoading(false); }
       }
     }
 

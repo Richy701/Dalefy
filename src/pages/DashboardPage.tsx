@@ -119,7 +119,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const { showToast, addNotification } = useNotifications();
   usePreferences();
-  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
+  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer, canInviteMembers } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
   const stats = useTripStats(trips);
@@ -537,13 +537,15 @@ export function DashboardPage() {
               >
                 <Upload className="h-3 w-3" /> Import
               </button>
-              <button
-                type="button"
-                onClick={() => setInviteOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
-              >
-                <Users className="h-3 w-3" /> Invite Team
-              </button>
+              {canInviteMembers && (
+                <button
+                  type="button"
+                  onClick={() => setInviteOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                >
+                  <Users className="h-3 w-3" /> Invite Team
+                </button>
+              )}
             </div>
 
             <BrandIllustration

@@ -77,6 +77,15 @@ export async function listCollection(collectionName: string): Promise<FirestoreD
   return docs;
 }
 
+/** Get a single document, or null if it does not exist / is not readable */
+export async function getDocument(collectionName: string, id: string): Promise<FirestoreDoc | null> {
+  const token = await getAuthToken();
+  const resp = await fetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { headers: authHeaders(token) });
+  if (resp.status === 404 || resp.status === 403) return null;
+  if (!resp.ok) throw new Error(`Firestore get ${collectionName}/${id}: ${resp.status}`);
+  return (await resp.json()) as FirestoreDoc;
+}
+
 /** Update specific fields on a document */
 export async function updateDocument(
   collectionName: string,

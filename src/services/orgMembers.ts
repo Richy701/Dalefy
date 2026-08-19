@@ -1,4 +1,4 @@
-import { doc, updateDoc, deleteDoc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, getDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { firebaseDb } from "./firebase";
 import type { OrgRole } from "@/types";
 
@@ -27,8 +27,10 @@ export async function transferOwnership(
   const newMemberDoc = await getDoc(doc(firebaseDb(), "org_members", newMemberId));
   if (!newMemberDoc.exists()) throw new Error("Target user is not a member of this org");
 
-  await updateDoc(doc(firebaseDb(), "org_members", newMemberId), { role: "owner" });
-  await updateDoc(doc(firebaseDb(), "org_members", currentMemberId), { role: "admin" });
+  const batch = writeBatch(firebaseDb());
+  batch.update(doc(firebaseDb(), "org_members", newMemberId), { role: "owner" });
+  batch.update(doc(firebaseDb(), "org_members", currentMemberId), { role: "admin" });
+  await batch.commit();
 }
 
 export async function getMemberProfile(userId: string): Promise<{ name: string; email: string; initials: string } | null> {

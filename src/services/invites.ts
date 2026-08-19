@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { firebaseDb, firebaseAuth } from "./firebase";
 import type { OrgRole } from "@/types";
 
@@ -16,31 +16,50 @@ export interface OrgInvite {
   expiresAt: string;
 }
 
-export async function sendInvite(params: {
-  email: string;
-  role: "admin" | "agent" | "viewer";
-  orgId: string;
-  orgName: string;
-  inviterName: string;
-}): Promise<{ ok: boolean; acceptUrl?: string; emailSent?: boolean; error?: string }> {
+export interface SendInviteResult {
+  ok: boolean;
+  inviteToken?: string;
+  acceptUrl?: string;
+  email?: string;
+  role?: OrgInvite["role"];
+  expiresAt?: string;
+  emailSent?: boolean;
+  emailError?: string;
+  resent?: boolean;
+  error?: string;
+}
+
+async function postInvite(body: Record<string, unknown>): Promise<SendInviteResult> {
   const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
   if (!idToken) return { ok: false, error: "Not authenticated" };
 
-  const res = await fetch("/api/send-invite", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify(params),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    return { ok: false, error: data.error || `Request failed (${res.status})` };
+  let res: Response;
+  try {
+    res = await fetch("/api/send-invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, error: "Network error, please try again" };
   }
 
-  return res.json();
+  const data = await res.json().catch(() => ({})) as SendInviteResult;
+  if (!res.ok) return { ok: false, error: data.error || `Request failed (${res.status})` };
+  return data;
+}
+
+export function sendInvite(params: {
+  email: string;
+  role: "admin" | "agent" | "viewer";
+  orgId: string;
+  inviterName: string;
+}): Promise<SendInviteResult> {
+  return postInvite(params);
+}
+
+export function resendInvite(params: { inviteToken: string; orgId: string; inviterName: string }): Promise<SendInviteResult> {
+  return postInvite({ resendToken: params.inviteToken, orgId: params.orgId, inviterName: params.inviterName });
 }
 
 export async function fetchPendingInvites(orgId: string): Promise<OrgInvite[]> {
@@ -74,43 +93,79 @@ export async function revokeInvite(inviteId: string): Promise<void> {
   await updateDoc(doc(firebaseDb(), "org_invites", inviteId), { status: "revoked" });
 }
 
-export async function acceptInvite(token: string): Promise<{ orgId: string; orgName: string } | { error: string }> {
-  const inviteRef = doc(firebaseDb(), "org_invites", token);
-  const inviteSnap = await getDoc(inviteRef);
+export interface InvitePreview {
+  orgId: string;
+  orgName: string;
+  inviterName: string;
+  role: OrgRole;
+  email: string;
+  expiresAt: string;
+}
 
-  if (!inviteSnap.exists()) return { error: "Invite not found" };
+export type AcceptInviteResult =
+  | { orgId: string; orgName: string; alreadyMember: boolean }
+  | { error: string; code?: "not-found" | "used" | "expired" | "wrong-email" | "unverified" | "unauthenticated" };
 
-  const data = inviteSnap.data();
+/** Load an invite for preview. Throws FirebaseError (permission-denied) if the signed-in email doesn't match. */
+export async function getInvitePreview(token: string): Promise<InvitePreview | { error: string; code: "not-found" | "used" | "expired" }> {
+  const snap = await getDoc(doc(firebaseDb(), "org_invites", token));
+  if (!snap.exists()) return { error: "Invite not found", code: "not-found" };
+  const data = snap.data();
+  if (data.status !== "pending") return { error: "This invite has already been used or was revoked", code: "used" };
+  if (new Date(data.expires_at) < new Date()) return { error: "This invitation has expired", code: "expired" };
+  return {
+    orgId: data.organization_id,
+    orgName: data.org_name,
+    inviterName: data.inviter_name || "",
+    role: data.role as OrgRole,
+    email: data.email,
+    expiresAt: data.expires_at,
+  };
+}
 
-  if (data.status !== "pending") return { error: "This invite has already been used" };
-
-  if (new Date(data.expires_at) < new Date()) {
-    return { error: "This invitation has expired" };
-  }
-
+export async function acceptInvite(token: string): Promise<AcceptInviteResult> {
   const auth = firebaseAuth();
   const user = auth.currentUser;
-  if (!user) return { error: "Please sign in first" };
+  if (!user) return { error: "Please sign in first", code: "unauthenticated" };
+
+  const db = firebaseDb();
+  const inviteRef = doc(db, "org_invites", token);
+  const inviteSnap = await getDoc(inviteRef);
+
+  if (!inviteSnap.exists()) return { error: "Invite not found", code: "not-found" };
+  const data = inviteSnap.data();
+  if (data.status !== "pending") return { error: "This invite has already been used or was revoked", code: "used" };
+  if (new Date(data.expires_at) < new Date()) return { error: "This invitation has expired", code: "expired" };
 
   if (user.email?.toLowerCase() !== data.email?.toLowerCase()) {
-    return { error: "This invite was sent to a different email address" };
+    return { error: `This invite was sent to ${data.email}. You're signed in as ${user.email ?? "a different account"}.`, code: "wrong-email" };
   }
 
-  const orgId = data.organization_id;
+  // Rules require a verified email; make sure the token we send reflects it.
+  await user.reload().catch(() => {});
+  if (!user.emailVerified) {
+    return { error: "Verify your email address before accepting this invite", code: "unverified" };
+  }
+  await user.getIdToken(true).catch(() => {});
+
+  const orgId: string = data.organization_id;
   const role = data.role as OrgRole;
+  const memberRef = doc(db, "org_members", `${user.uid}_${orgId}`);
+  const existing = await getDoc(memberRef);
 
-  const { setDoc } = await import("firebase/firestore");
-  const memberId = `${user.uid}_${orgId}`;
-  await setDoc(doc(firebaseDb(), "org_members", memberId), {
-    organization_id: orgId,
-    user_id: user.uid,
-    role,
-    invite_token: token,
-    joined_at: new Date().toISOString(),
-  });
+  const batch = writeBatch(db);
+  if (!existing.exists()) {
+    batch.set(memberRef, {
+      organization_id: orgId,
+      user_id: user.uid,
+      role,
+      invite_token: token,
+      joined_at: new Date().toISOString(),
+    });
+  }
+  batch.update(inviteRef, { status: "accepted", accepted_at: new Date().toISOString() });
+  batch.set(doc(db, "profiles", user.uid), { current_org_id: orgId }, { merge: true });
+  await batch.commit();
 
-  await updateDoc(doc(firebaseDb(), "profiles", user.uid), { current_org_id: orgId }).catch(() => {});
-  await updateDoc(inviteRef, { status: "accepted", accepted_at: new Date().toISOString() });
-
-  return { orgId, orgName: data.org_name };
+  return { orgId, orgName: data.org_name, alreadyMember: existing.exists() };
 }
