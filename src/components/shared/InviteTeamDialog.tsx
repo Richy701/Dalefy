@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   UserPlus, Envelope, Check, X, SpinnerGap, Link, PaperPlaneTilt,
-  WarningCircle, CheckCircle, Clock,
+  WarningCircle, CheckCircle, Clock, Crown, Shield, UserGear, Eye, GearSix,
 } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -28,12 +29,29 @@ function inviteUrl(token: string) {
   return `${base}/#/invite/${token}`;
 }
 
-const ROLE_LABEL: Record<string, string> = { admin: "Admin", agent: "Agent", viewer: "Viewer" };
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", agent: "Agent", viewer: "Viewer" };
 const ROLE_HINT: Record<string, string> = {
-  viewer: "Can view trips and itineraries",
-  agent: "Can build and edit trips and travelers",
-  admin: "Can also manage the team and branding",
+  viewer: "Can view trips and itineraries, nothing else",
+  agent: "Can build and edit trips and manage travelers",
+  admin: "Everything an agent can, plus team and branding",
 };
+const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Shield, agent: UserGear, viewer: Eye };
+const ROLE_BADGE: Record<string, string> = {
+  owner: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  admin: "bg-brand/10 text-brand border-brand/20",
+  agent: "bg-slate-900/[0.06] dark:bg-white/[0.08] text-slate-700 dark:text-[#ccc] border-slate-900/10 dark:border-white/10",
+  viewer: "bg-transparent text-slate-500 dark:text-[#888] border-slate-300 dark:border-[#2a2a2a]",
+};
+
+function RoleBadge({ role }: { role: string }) {
+  const Icon = ROLE_ICON[role] ?? Eye;
+  return (
+    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded-md border text-[9px] font-bold uppercase tracking-wider ${ROLE_BADGE[role] ?? ROLE_BADGE.viewer}`}>
+      <Icon className="h-3 w-3" weight="bold" />
+      {ROLE_LABEL[role] ?? role}
+    </span>
+  );
+}
 
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
@@ -63,6 +81,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   const { currentOrg, orgMembers } = useOrg();
   const { user } = useAuth();
   const { accentFg } = usePreferences();
+  const navigate = useNavigate();
 
   const loadPending = useCallback(async (orgId: string) => {
     setPendingLoading(true);
@@ -172,122 +191,141 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   };
 
   const orgName = currentOrg?.name || "your team";
+  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="dialog-mobile-full content-start border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-y-auto sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
+        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
-        <DialogHeader className="px-5 pt-5 pb-0 text-left space-y-1">
-          <DialogTitle className="text-xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+        {/* Header */}
+        <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
+          <DialogTitle className="text-[22px] leading-none font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
             Invite to {orgName}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-[#888]">
-            They'll get a sign-in email from Dalefy, one click and they're in. Invites expire after 7 days.
+            They get a one-click sign-in email from Dalefy. Invites expire after 7 days.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-5 space-y-5">
-          {/* Email + role input */}
-          <div className="space-y-3">
-            <Label className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Email Address</Label>
+        {/* Scrollable body */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {/* ── Invite form ── */}
+          <section className="px-5 sm:px-6 pt-5 pb-5 space-y-3 bg-white dark:bg-[#0a0a0a] border-b border-slate-200/80 dark:border-[#161616]">
+            <Label htmlFor="invite-email" className={sectionLabel}>Email address</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Envelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#888]" />
+                <Envelope className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#666]" />
                 <Input
+                  id="invite-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="colleague@company.com"
                   autoComplete="off"
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
-                  className="h-11 pl-10 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
+                  className="h-12 pl-10 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
                 />
               </div>
               <Button
                 onClick={handleInvite}
                 disabled={sending || !isValidEmail(normalizedEmail) || alreadyMember}
-                className="h-11 rounded-xl bg-brand hover:opacity-90 px-4 shadow-lg shadow-brand/20 text-xs font-bold uppercase tracking-wider gap-2"
+                className="h-12 rounded-xl bg-brand hover:opacity-90 px-4 sm:px-5 shadow-lg shadow-brand/20 text-xs font-bold uppercase tracking-wider gap-2 disabled:opacity-40 disabled:shadow-none"
                 style={{ color: accentFg }}
               >
                 {sending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" weight="bold" />}
-                <span className="hidden sm:inline">Send</span>
+                <span className="hidden sm:inline">Send invite</span>
               </Button>
             </div>
             {alreadyMember && (
               <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">That person is already on your team.</p>
             )}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(["viewer", "agent", "admin"] as const).map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                    role === r
-                      ? "bg-brand"
-                      : "bg-white dark:bg-[#0f0f0f] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f]"
-                  }`}
-                  style={role === r ? { color: accentFg } : undefined}
-                >
-                  {r}
-                </button>
-              ))}
-              <span className="text-[11px] text-slate-500 dark:text-[#777] ml-1">{ROLE_HINT[role]}</span>
-            </div>
-          </div>
 
-          {/* Result card, shown after sending */}
-          {lastInvite && (
-            <div className="bg-white dark:bg-[#0f0f0f] rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f]">
-              <div className="px-4 py-4 flex items-start gap-3">
-                {lastInvite.emailSent ? (
-                  <CheckCircle className="h-5 w-5 text-brand shrink-0 mt-0.5" weight="fill" />
-                ) : (
-                  <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                    {lastInvite.emailSent
-                      ? `${lastInvite.resent ? "Sign-in email re-sent" : "Sign-in email sent"} to ${lastInvite.email}`
-                      : `Invite created for ${lastInvite.email}`}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-[#888] mt-0.5">
-                    {lastInvite.emailSent
-                      ? `Tell them to look for "Sign in to Dalefy" from noreply@dalefy-d87c9.firebaseapp.com (check spam). They'll join as ${ROLE_LABEL[lastInvite.role] ?? lastInvite.role}. You can also share the link below.`
-                      : `We couldn't send the email${lastInvite.emailError ? ` (${lastInvite.emailError})` : ""}. Share this link with them instead.`}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="w-full px-4 py-3 flex items-center gap-2 border-t border-slate-100 dark:border-[#1a1a1a] hover:bg-slate-50 dark:hover:bg-[#141414] transition-colors text-left"
-                onClick={() => handleCopy("last", lastInvite.link)}
+            {/* Role: segmented control */}
+            <div className="space-y-2 pt-1">
+              <div
+                role="radiogroup"
+                aria-label="Role"
+                className="grid grid-cols-3 p-1 rounded-xl bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f]"
               >
-                <Link className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
-                <span className="text-[10px] font-mono text-slate-500 dark:text-[#777] truncate flex-1">{lastInvite.link}</span>
-                <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>
-                  {copiedId === "last" ? "Copied" : "Copy link"}
-                </span>
-              </button>
+                {(["viewer", "agent", "admin"] as const).map(r => {
+                  const Icon = ROLE_ICON[r];
+                  const active = role === r;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setRole(r)}
+                      className={`flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
+                        active
+                          ? "bg-white dark:bg-[#1c1c1c] text-slate-900 dark:text-white shadow-sm"
+                          : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#bbb]"
+                      }`}
+                    >
+                      <Icon className={`h-3.5 w-3.5 ${active ? "text-brand" : ""}`} weight={active ? "fill" : "regular"} />
+                      {ROLE_LABEL[r]}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-[#777] px-1">{ROLE_HINT[role]}</p>
             </div>
-          )}
 
-          {/* Pending invites */}
-          <div className="space-y-2">
-            <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
-              Pending{pendingInvites.length > 0 ? ` (${pendingInvites.length})` : ""}
-            </Label>
+            {/* Result card */}
+            {lastInvite && (
+              <div className={`rounded-xl overflow-hidden border ${lastInvite.emailSent ? "border-brand/30 bg-brand/[0.06]" : "border-amber-500/30 bg-amber-500/[0.06]"}`}>
+                <div className="px-4 py-3.5 flex items-start gap-3">
+                  {lastInvite.emailSent ? (
+                    <CheckCircle className="h-5 w-5 text-brand shrink-0 mt-0.5" weight="fill" />
+                  ) : (
+                    <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      {lastInvite.emailSent
+                        ? `${lastInvite.resent ? "Sign-in email re-sent" : "Sign-in email sent"} to ${lastInvite.email}`
+                        : `Invite created for ${lastInvite.email}`}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-[#999] mt-0.5 leading-relaxed">
+                      {lastInvite.emailSent
+                        ? <>Tell them to look for <strong className="font-semibold text-slate-800 dark:text-[#ddd]">"Sign in to Dalefy"</strong> (check spam). They'll join as {ROLE_LABEL[lastInvite.role] ?? lastInvite.role}. You can also share the link below.</>
+                        : <>We couldn't send the email{lastInvite.emailError ? ` (${lastInvite.emailError})` : ""}. Share this link with them instead.</>}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="w-full px-4 py-2.5 flex items-center gap-2 border-t border-black/[0.06] dark:border-white/[0.06] hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-left"
+                  onClick={() => handleCopy("last", lastInvite.link)}
+                >
+                  <Link className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-[#666]" />
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-[#777] truncate flex-1">{lastInvite.link}</span>
+                  <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>
+                    {copiedId === "last" ? "Copied" : "Copy link"}
+                  </span>
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* ── Pending ── */}
+          <section className="px-5 sm:px-6 py-5 space-y-2.5 border-b border-slate-200/80 dark:border-[#161616]">
+            <div className="flex items-center justify-between">
+              <span className={sectionLabel}>Pending invites</span>
+              {pendingInvites.length > 0 && (
+                <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-[#555]">{pendingInvites.length}</span>
+              )}
+            </div>
             {pendingLoading && pendingInvites.length === 0 && (
               <div className="space-y-2">
-                {[0, 1].map(i => <div key={i} className="h-[52px] rounded-xl bg-white/60 dark:bg-[#0f0f0f] animate-pulse" />)}
+                {[0, 1].map(i => <div key={i} className="h-[54px] rounded-xl bg-white dark:bg-[#0f0f0f] animate-pulse" />)}
               </div>
             )}
-            {pendingError && (
-              <p className="text-xs text-red-500">{pendingError}</p>
-            )}
+            {pendingError && <p className="text-xs text-red-500">{pendingError}</p>}
             {!pendingLoading && !pendingError && pendingInvites.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-[#666] px-1">No pending invites.</p>
+              <p className="text-xs text-slate-500 dark:text-[#666]">Nobody's waiting to join. Invites you send will show up here.</p>
             )}
             {pendingInvites.map(invite => {
               const isCopied = copiedId === invite.id;
@@ -296,108 +334,122 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               const isBusy = busyId === invite.id;
               const confirming = confirmRevokeId === invite.id;
               return (
-                <div key={invite.id} className="flex items-center gap-2 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-3 py-2.5">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${exp.expired ? "bg-amber-500/10 text-amber-500" : "bg-brand/10 text-brand"}`}>
-                    {exp.expired ? <Clock className="h-3.5 w-3.5" /> : <Envelope className="h-3.5 w-3.5" />}
+                <div key={invite.id} className="flex items-center gap-3 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl pl-3 pr-2 py-2.5">
+                  <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${exp.expired ? "bg-amber-500/10 text-amber-500" : "bg-brand/10 text-brand"}`}>
+                    {exp.expired ? <Clock className="h-4 w-4" weight="bold" /> : <Envelope className="h-4 w-4" weight="bold" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{invite.email}</p>
-                    <p className="text-[9px] text-slate-400 dark:text-[#666] uppercase tracking-wider truncate">
-                      {ROLE_LABEL[invite.role] ?? invite.role}
-                      {invite.inviterName ? ` · by ${invite.inviterName}` : ""}
-                      {" · "}
-                      <span className={exp.expired ? "text-amber-500" : undefined}>{exp.text}</span>
-                    </p>
+                    <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">{invite.email}</p>
+                    <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                      <RoleBadge role={invite.role} />
+                      <span className={`text-[10px] truncate ${exp.expired ? "text-amber-500 font-semibold" : "text-slate-400 dark:text-[#666]"}`}>
+                        {exp.text}{invite.inviterName ? ` · by ${invite.inviterName}` : ""}
+                      </span>
+                    </div>
                   </div>
                   {confirming ? (
-                    <>
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => handleRevoke(invite)}
                         disabled={isBusy}
-                        className="h-8 px-3 rounded-lg bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider shrink-0"
+                        className="h-8 px-3 rounded-lg bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider"
                       >
                         {isBusy ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Revoke"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmRevokeId(null)}
-                        className="h-8 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] shrink-0"
+                        className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
                       >
                         Keep
                       </button>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleResend(invite)}
-                        disabled={isBusy}
-                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center shrink-0 hover:bg-slate-200 dark:hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
-                        title={exp.expired ? "Expired, revoke and re-invite" : "Resend email"}
-                        aria-label="Resend invite email"
-                      >
-                        {isBusy
-                          ? <SpinnerGap className="h-3.5 w-3.5 animate-spin text-slate-500" />
-                          : <PaperPlaneTilt className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(invite.id, link)}
-                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center shrink-0 hover:bg-slate-200 dark:hover:bg-[#2a2a2a] transition-colors"
-                        title="Copy invite link"
-                        aria-label="Copy invite link"
-                      >
-                        {isCopied
-                          ? <Check className="h-3.5 w-3.5 text-brand" weight="bold" />
-                          : <Link className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRevoke(invite)}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
-                        title="Revoke invite"
-                        aria-label="Revoke invite"
-                      >
+                    <div className="flex items-center gap-1 shrink-0">
+                      <IconButton onClick={() => handleResend(invite)} disabled={isBusy} label={exp.expired ? "Expired, revoke and re-invite" : "Resend email"}>
+                        {isBusy ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <PaperPlaneTilt className="h-3.5 w-3.5" />}
+                      </IconButton>
+                      <IconButton onClick={() => handleCopy(invite.id, link)} label="Copy invite link">
+                        {isCopied ? <Check className="h-3.5 w-3.5 text-brand" weight="bold" /> : <Link className="h-3.5 w-3.5" />}
+                      </IconButton>
+                      <IconButton onClick={() => handleRevoke(invite)} label="Revoke invite" danger>
                         <X className="h-3.5 w-3.5" />
-                      </button>
-                    </>
+                      </IconButton>
+                    </div>
                   )}
                 </div>
               );
             })}
-          </div>
+          </section>
 
-          {/* Current members */}
-          {orgMembers.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-[#555]">
-                Team ({orgMembers.length})
-              </Label>
-              {orgMembers.map(m => (
-                <div key={m.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-white dark:hover:bg-[#0f0f0f] transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center font-black text-[10px] shrink-0" style={{ color: accentFg }}>
-                    {m.profile?.initials || m.userId.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{m.profile?.name || "Team Member"}</p>
-                    <p className="text-[9px] text-slate-400 dark:text-[#666] truncate">
-                      <span className="uppercase tracking-wider">{ROLE_LABEL[m.role] ?? m.role}</span>
-                      {m.profile?.email ? ` · ${m.profile.email}` : ""}
-                    </p>
-                  </div>
-                </div>
-              ))}
+          {/* ── Team ── */}
+          <section className="px-5 sm:px-6 py-5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className={sectionLabel}>Team</span>
+              <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-[#555]">{orgMembers.length}</span>
             </div>
-          )}
+            {orgMembers.length === 0 && (
+              <p className="text-xs text-slate-500 dark:text-[#666]">Just you so far.</p>
+            )}
+            <div className="rounded-xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] divide-y divide-slate-100 dark:divide-[#161616]">
+              {orgMembers.map(m => {
+                const isYou = m.userId === user?.id;
+                return (
+                  <div key={m.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <div className="h-9 w-9 rounded-lg bg-brand flex items-center justify-center font-black text-[11px] shrink-0" style={{ color: accentFg }}>
+                      {m.profile?.initials || m.userId.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">
+                        {m.profile?.name || "Team member"}
+                        {isYou && <span className="ml-1.5 text-[10px] font-semibold text-slate-400 dark:text-[#666]">(you)</span>}
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-[#666] truncate mt-0.5">{m.profile?.email || "\u00a0"}</p>
+                    </div>
+                    <RoleBadge role={m.role} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
 
-          <div className="flex justify-end pt-1 pb-1">
-            <Button variant="ghost" onClick={handleClose} className="rounded-xl h-10 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
-              Close
-            </Button>
-          </div>
+        {/* Footer */}
+        <div className="shrink-0 px-5 sm:px-6 py-3 border-t border-slate-200/80 dark:border-[#161616] bg-slate-100 dark:bg-[#050505] flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => { handleClose(); navigate("/settings"); }}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            <GearSix className="h-3.5 w-3.5" /> Manage roles in Settings
+          </button>
+          <Button variant="ghost" onClick={handleClose} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+            Done
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function IconButton({ children, onClick, label, disabled, danger }: {
+  children: React.ReactNode; onClick: () => void; label: string; disabled?: boolean; danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 ${
+        danger
+          ? "text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          : "text-slate-500 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] hover:text-slate-900 dark:hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

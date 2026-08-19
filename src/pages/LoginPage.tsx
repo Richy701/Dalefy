@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
-  SpinnerGap, ArrowRight, Eye, EyeSlash, X,
-  Globe, MapPin, Calendar, AirplaneTilt,
+  SpinnerGap, ArrowRight, Eye, EyeSlash, X, LockKey,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,26 +63,6 @@ const inputClass =
 // ── Animated hero background ────────────────────────────────────────────
 
 function HeroBackground() {
-  const [titleNumber, setTitleNumber] = useState(0);
-  const titles = useMemo(
-    () => ["sorted", "covered", "handled", "done"],
-    []
-  );
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setTitleNumber(titleNumber === titles.length - 1 ? 0 : titleNumber + 1);
-    }, 2500);
-    return () => clearTimeout(timeoutId);
-  }, [titleNumber, titles]);
-
-  const features = [
-    { icon: Globe, label: "Team workspaces" },
-    { icon: MapPin, label: "Route maps" },
-    { icon: Calendar, label: "Day-by-day builder" },
-    { icon: AirplaneTilt, label: "Share via PIN" },
-  ];
-
   return (
     <div className="absolute inset-0 pointer-events-none select-none">
       <div className="absolute inset-y-0 left-0 right-[520px] xl:right-[580px] flex flex-col justify-center px-12 xl:px-20">
@@ -106,28 +85,10 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.95]">
-            Travel
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.95]">
+            Team
             <br />
-            management,
-            <span className="relative flex overflow-hidden h-[1.1em]">
-              &nbsp;
-              {titles.map((title, index) => (
-                <motion.span
-                  key={index}
-                  className="absolute font-black uppercase text-brand drop-shadow-[0_0_40px_rgba(11,210,181,0.3)]"
-                  initial={{ opacity: 0, y: "-100%" }}
-                  transition={{ type: "spring", stiffness: 50, damping: 15 }}
-                  animate={
-                    titleNumber === index
-                      ? { y: 0, opacity: 1 }
-                      : { y: titleNumber > index ? "-120%" : "120%", opacity: 0 }
-                  }
-                >
-                  {title}.
-                </motion.span>
-              ))}
-            </span>
+            <span className="text-brand drop-shadow-[0_0_40px_rgba(11,210,181,0.3)]">workspace.</span>
           </h1>
         </motion.div>
 
@@ -137,8 +98,7 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
         >
-          Build itineraries, map routes, and share them with
-          your travelers. One platform, no back and forth.
+          Trips, travelers and live itineraries for the team. Sign in with the account you were invited with.
         </motion.p>
 
         <motion.div
@@ -147,18 +107,10 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
         >
-          {features.map(({ icon: Icon, label }, i) => (
-            <motion.div
-              key={label}
-              className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.8 + i * 0.1 }}
-            >
-              <Icon className="h-3.5 w-3.5 text-brand" weight="bold" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">{label}</span>
-            </motion.div>
-          ))}
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
+            <LockKey className="h-3.5 w-3.5 text-brand" weight="bold" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">Internal · access by invitation</span>
+          </div>
         </motion.div>
       </div>
     </div>

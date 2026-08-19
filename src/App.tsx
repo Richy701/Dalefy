@@ -36,7 +36,6 @@ import { SharedTripPage } from "@/pages/SharedTripPage";
 import { CreateOrgPage } from "@/pages/CreateOrgPage";
 import { AcceptInvitePage } from "@/pages/AcceptInvitePage";
 import { getPendingInvite } from "@/lib/pendingInvite";
-import { LandingPage } from "@/pages/LandingPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
@@ -80,7 +79,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+      <Route path="/" element={isLoading ? <AuthLoadingScreen /> : <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
       <Route path="/login" element={isLoading ? <AuthLoadingScreen /> : isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
       <Route
         element={
