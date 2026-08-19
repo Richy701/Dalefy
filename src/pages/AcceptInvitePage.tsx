@@ -39,6 +39,15 @@ export function AcceptInvitePage() {
         setOrgName(result.orgName);
         setMessage(`You've joined ${result.orgName}`);
       }
+    }).catch((err: unknown) => {
+      sessionStorage.removeItem("daf-pending-invite");
+      setStatus("error");
+      const code = typeof err === "object" && err && "code" in err ? String((err as { code: unknown }).code) : "";
+      setMessage(
+        code === "permission-denied"
+          ? "We couldn't add you to this team. Make sure you're signed in with the email address the invite was sent to."
+          : err instanceof Error ? err.message : "Something went wrong accepting this invite",
+      );
     });
   }, [token, isAuthenticated, authLoading]);
 

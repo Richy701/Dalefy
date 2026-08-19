@@ -23,7 +23,8 @@ export default async function handler(req: any, res: any) {
   const payload = await verifyFirebaseToken(token);
   if (!payload) return res.status(401).json({ error: "Unauthorized" });
 
-  const { email, role, orgId, orgName, inviterName } = req.body as InviteRequest;
+  const { email: rawEmail, role, orgId, orgName, inviterName } = req.body as InviteRequest;
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
   if (!email || !role || !orgId || !orgName) {
     return res.status(400).json({ error: "email, role, orgId, and orgName required" });
   }

@@ -80,7 +80,7 @@ service cloud.firestore {
            && request.resource.data.role in ["admin", "agent", "viewer"]
            && request.resource.data.invite_token is string
            && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.status == "pending"
-           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.email == request.auth.token.email
+           && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.email.lower() == request.auth.token.email.lower()
            && get(/databases/$(database)/documents/org_invites/$(request.resource.data.invite_token)).data.organization_id == request.resource.data.organization_id)
         );
 
@@ -104,7 +104,7 @@ service cloud.firestore {
       // Org admins can update (revoke), or the invited user can update (accept)
       allow update: if request.auth != null
                     && (isOrgAdmin(resource.data.organization_id)
-                        || resource.data.email == request.auth.token.email);
+                        || resource.data.email.lower() == request.auth.token.email.lower());
       allow delete: if request.auth != null
                     && isOrgAdmin(resource.data.organization_id);
     }
