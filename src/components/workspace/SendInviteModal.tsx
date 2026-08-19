@@ -226,22 +226,22 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
+        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
-        {/* Header */}
-        <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-200 dark:border-[#1f1f1f]">
+        {/* Header (pinned) */}
+        <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Send Itinerary Email
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-slate-500 dark:text-[#888] mt-1">
-            Compose your email, then copy and paste into your email client.
+            Pick travelers and a template. Sending opens your email app with everything filled in.
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-[#1f1f1f]">
+        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-[#1f1f1f] flex-1 min-h-0 overflow-y-auto lg:overflow-hidden [&>*]:lg:overflow-y-auto">
           {/* Left: Compose */}
           <div className="flex-1 p-5 sm:p-8 space-y-5 min-w-0">
             {/* To */}

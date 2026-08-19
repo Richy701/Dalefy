@@ -147,7 +147,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               </div>
               <button
                 onClick={() => handleDelete(task.id)}
-                className="opacity-0 group-hover:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
+                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0"
               >
                 <Trash className="h-3 w-3" />
               </button>

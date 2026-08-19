@@ -1568,8 +1568,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "review" && <>
               {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - review before importing`}
               {parserUsed && (
-                <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"}`}>
-                  {parserUsed === "ai" ? "✦ AI" : "⚙ Offline"}
+                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
+                  {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
                 </span>
               )}
             </>}
@@ -1581,20 +1581,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "upload" && (
           <div className="space-y-6">
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Upload an itinerary file"
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              className="flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-brand/60 transition-colors group"
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-brand/60 transition-colors group"
             >
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center cursor-pointer hover:bg-brand/25 hover:scale-105 transition-all shadow-sm"
-                aria-label="Choose a file to upload"
-              >
+              <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center hover:bg-brand/25 transition-colors shadow-sm" aria-hidden="true">
                 <Upload className="h-6 w-6 text-brand" />
-              </button>
+              </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Click the icon or drop a file</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Drop a file here or click to browse</p>
                 <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT · JPG · PNG</p>
               </div>
             </div>
@@ -1623,9 +1623,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             </div>
 
             <div className="space-y-3">
+              <label htmlFor="import-paste" className="sr-only">Paste itinerary text</label>
               <textarea
-                placeholder="Paste itinerary text here - the parser will extract dates, flights, hotels, and activities automatically..."
-                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-base sm:text-xs text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-brand resize-none transition-colors"
+                id="import-paste"
+                placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
+                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-brand resize-none transition-colors"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}
               />

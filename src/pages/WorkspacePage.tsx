@@ -1433,7 +1433,7 @@ export function WorkspacePage() {
 
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">{BRAND.name} · Itinerary</p>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">Itinerary</p>
                 <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
 
                 {/* Stat chips */}
@@ -1519,7 +1519,7 @@ export function WorkspacePage() {
                             </div>
                             {/* Name + meta */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand mb-1">Your Organizer</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand mb-1">Organizer</p>
                               <p className="text-base font-extrabold text-slate-900 dark:text-white truncate">{trip.organizer.name}</p>
                               {(trip.organizer.role || trip.organizer.company) && (
                                 <p className="text-xs text-slate-500 dark:text-[#888] font-medium truncate mt-0.5">
@@ -1964,7 +1964,7 @@ export function WorkspacePage() {
                         className="space-y-2"
                       >
                         <input name="qname" required placeholder="Name" className="w-full h-9 px-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors" />
-                        <input name="qemail" type="email" placeholder="Email (for auto-linking)" className="w-full h-9 px-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors" />
+                        <input name="qemail" type="email" placeholder="Email (links their app account)" className="w-full h-9 px-3 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors" />
                         <button type="submit" className="w-full h-9 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
                           <UserPlus className="h-3.5 w-3.5" /> Add to Trip
                         </button>
@@ -2297,20 +2297,20 @@ export function WorkspacePage() {
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Arrival Time</label>
-                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</label>
-                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="col-span-2 space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Seat / Ticket Details</label>
-                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         ) : (
@@ -2346,7 +2346,7 @@ export function WorkspacePage() {
                             })}
                             <div className="space-y-1.5">
                               <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Room Type</label>
-                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         )}

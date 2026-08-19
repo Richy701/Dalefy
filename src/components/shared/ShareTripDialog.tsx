@@ -77,8 +77,8 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
           <DialogDescription>Scan QR to open itinerary</DialogDescription>
         </DialogHeader>
 
-        {/* Mobile close button */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2 sm:hidden">
+        {/* Header with close */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-2">
           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Share Trip</p>
           <button
             onClick={() => onOpenChange(false)}
