@@ -3,11 +3,12 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -399,7 +400,8 @@ export function WorkspacePage() {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -2238,8 +2240,10 @@ export function WorkspacePage() {
 
                   {/* Location - with Mapbox autocomplete */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
+                    <label htmlFor="event-location" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
                     <LocationAutocomplete
+                      id="event-location"
+                      ariaLabel="Location"
                       value={editingEvent?.location || ""}
                       onChange={(val, coords) => setEditingEvent(prev => prev ? { ...prev, location: val, locationCoords: coords ?? prev.locationCoords } : null)}
                       placeholder="Search for a place..."
@@ -2708,13 +2712,13 @@ export function WorkspacePage() {
 
       {/* Edit Trip Dialog */}
       <Dialog open={editTripOpen} onOpenChange={setEditTripOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
-          <form onSubmit={handleSaveTrip}>
-            <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f]">
+        <DialogContent className="max-w-2xl bg-white dark:bg-[#111111] rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0 flex flex-col max-h-[calc(100dvh-2rem)]">
+          <form onSubmit={handleSaveTrip} className="flex flex-col min-h-0 flex-1">
+            <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
               <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
               <p className="text-xs text-slate-500 dark:text-[#888] font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
-            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-8 space-y-6 flex-1 min-h-0 overflow-y-auto">
 
               {/* ── Section: Cover Image ── */}
               <div className="space-y-2.5">
@@ -3039,7 +3043,7 @@ export function WorkspacePage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
+            <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
               <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>

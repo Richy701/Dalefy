@@ -1,14 +1,19 @@
 import { SidebarSimple } from "@phosphor-icons/react";
 import { useSidebar } from "@/components/ui/sidebar";
 
-export function MobileSidebar() {
-  const { toggleSidebar } = useSidebar();
+/** Sidebar toggle button (named MobileSidebar for history; it works at every width). */
+export function MobileSidebar({ className }: { className?: string }) {
+  const { toggleSidebar, open, openMobile, isMobile } = useSidebar();
+  const expanded = isMobile ? openMobile : open;
 
   return (
     <button
+      type="button"
       onClick={toggleSidebar}
-      aria-label="Toggle sidebar"
-      className="h-10 w-10 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors shadow-sm flex items-center justify-center shrink-0"
+      aria-label={expanded ? "Hide navigation" : "Show navigation"}
+      aria-expanded={expanded}
+      aria-controls="app-sidebar"
+      className={`h-10 w-10 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors shadow-sm flex items-center justify-center shrink-0 ${className ?? ""}`}
     >
       <SidebarSimple className="h-4 w-4" />
     </button>

@@ -96,7 +96,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
           </div>
         )}
         {sortedTasks.map(task => {
-          const isOverdue = task.dueDate && !task.completed && new Date(task.dueDate) < new Date();
+          const isOverdue = task.dueDate && !task.completed && task.dueDate < new Date().toISOString().slice(0, 10);
           return (
             <div
               key={task.id}
@@ -172,6 +172,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             <div className="flex items-center gap-1">
               <Tag className="h-3 w-3 text-slate-500" />
               <select
+                aria-label="Task category"
                 value={newCategory}
                 onChange={e => setNewCategory(e.target.value as TripTask["category"])}
                 className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-[#888] focus:outline-none cursor-pointer"
@@ -198,6 +199,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               <div className="flex items-center gap-1">
                 <User className="h-3 w-3 text-slate-500" />
                 <select
+                  aria-label="Assign task to"
                   value={newAssignee}
                   onChange={e => setNewAssignee(e.target.value)}
                   className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-[#888] focus:outline-none cursor-pointer max-w-[80px]"

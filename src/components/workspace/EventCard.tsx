@@ -28,11 +28,28 @@ function AssignedDots({ people }: { people?: AssignedPerson[] }) {
   );
 }
 
+/** Keyboard + screen-reader access for card shells that open the editor on click. */
+function cardA11y(title: string, onClick: (() => void) | undefined) {
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": `Edit ${title || "event"}`,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.target !== e.currentTarget || !onClick) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+    },
+  };
+}
+
 function StatusChip({ status }: { status?: string }) {
   if (!status) return null;
   const cls =
     status === "On Time" || status === "Confirmed"
-      ? "bg-emerald-500/10 text-emerald-400"
+      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      : status === "Cancelled"
+      ? "bg-red-500/10 text-red-600 dark:text-red-400"
+      : status === "Delayed"
+      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
       : status === "Proposed"
       ? "bg-brand/10 text-brand"
       : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]";
@@ -116,7 +133,8 @@ function CompactCard({
   return (
     <div
       onClick={onClick}
-      className="group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 rounded-2xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
+      {...cardA11y(event.title, onClick)}
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 rounded-2xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
     >
       {event.image ? (
         <img src={event.image} alt="" className="h-12 w-16 rounded-lg object-cover shrink-0" />
@@ -162,15 +180,20 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
     );
   }
 
-  const fromCode = from.length <= 4 ? from.toUpperCase() : from.slice(0, 3).toUpperCase();
-  const toCode = to.length <= 4 ? to.toUpperCase() : to.slice(0, 3).toUpperCase();
-  const fromLabel = from.length > 4 ? from.slice(0, 14) : "Departure";
-  const toLabel = to.length > 4 ? to.slice(0, 14) : "Arrival";
+  // Only show a big 3-letter code when we actually have one; otherwise show the place name as-is
+  const isCode = (v: string) => /^[A-Z]{3}$/i.test(v.trim());
+  const fromIsCode = isCode(from);
+  const toIsCode = isCode(to);
+  const fromCode = fromIsCode ? from.toUpperCase() : from;
+  const toCode = toIsCode ? to.toUpperCase() : to;
+  const fromLabel = "Departure";
+  const toLabel = "Arrival";
 
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      {...cardA11y(event.title, onClick)}
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
       <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4 sm:gap-6">
@@ -187,7 +210,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <div className="text-center shrink-0">
-              <p className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{fromCode}</p>
+              <p className={`${fromIsCode ? "text-xl sm:text-2xl" : "text-sm sm:text-base max-w-[120px] truncate"} font-black tracking-tighter text-slate-900 dark:text-white leading-none`} title={from}>{fromCode}</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
@@ -197,7 +220,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
             </div>
             {to && (
               <div className="text-center shrink-0">
-                <p className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{toCode}</p>
+                <p className={`${toIsCode ? "text-xl sm:text-2xl" : "text-sm sm:text-base max-w-[120px] truncate"} font-black tracking-tighter text-slate-900 dark:text-white leading-none`} title={to}>{toCode}</p>
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
               </div>
             )}
@@ -240,7 +263,8 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      {...cardA11y(event.title, onClick)}
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
@@ -323,7 +347,8 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
+      {...cardA11y(event.title, onClick)}
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (

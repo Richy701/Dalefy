@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Check, CheckCircle, Info, Warning, X } from "@phosphor-icons/react";
+import { Bell, Check, CheckCircle, Info, Warning, X, Trash } from "@phosphor-icons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/context/NotificationContext";
@@ -12,7 +12,7 @@ const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: stri
 };
 
 function NotificationList({ onClose }: { onClose?: () => void }) {
-  const { notifications, unreadCount, markRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
 
   return (
     <>
@@ -30,13 +30,23 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {notifications.length > 0 && (
+          {unreadCount > 0 && (
             <button
-              onClick={clearAll}
+              onClick={markAllRead}
               className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-brand hover:bg-brand/10 px-2.5 py-1.5 rounded-lg transition-colors"
             >
               <Check className="h-3 w-3" />
-              Clear all
+              Mark all read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button
+              onClick={clearAll}
+              aria-label="Clear all notifications"
+              className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              <Trash className="h-3 w-3" />
+              Clear
             </button>
           )}
           {onClose && (
@@ -136,7 +146,15 @@ export function NotificationPanel() {
 
       {/* Mobile: full-screen overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 sm:hidden flex flex-col bg-white dark:bg-[#111111]">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notifications"
+          tabIndex={-1}
+          ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
+          onKeyDown={e => { if (e.key === "Escape") setMobileOpen(false); }}
+          className="fixed inset-0 z-50 sm:hidden flex flex-col bg-white dark:bg-[#111111] focus:outline-none"
+        >
           <NotificationList onClose={() => setMobileOpen(false)} />
         </div>
       )}

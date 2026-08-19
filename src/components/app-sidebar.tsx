@@ -148,18 +148,47 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { showToast } = useNotifications();
   const canSwitch = orgs.length > 1;
 
+  const [switching, setSwitching] = React.useState(false);
   const handleSwitch = async (orgId: string) => {
-    if (orgId === currentOrg?.id) return;
+    if (orgId === currentOrg?.id || switching) return;
+    setSwitching(true);
     const { error } = await switchOrg(orgId);
+    setSwitching(false);
     if (error) showToast(error);
-    else navigate("/dashboard");
+    else { showToast("Switched organization"); navigate("/dashboard"); }
   };
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar id="app-sidebar" collapsible="icon" {...props}>
       {/* ── Logo ── */}
       <SidebarHeader className="border-b border-sidebar-border p-0">
-        {canSwitch && !collapsed ? (
+        {canSwitch && collapsed ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label={`Switch organization (current: ${currentOrg?.name ?? brand.name})`}
+              title="Switch organization"
+              className="flex items-center justify-center w-full h-16 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
+            >
+              {brand.logoUrl ? (
+                <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded-lg object-contain shrink-0" />
+              ) : (
+                <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right" className="min-w-[220px] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-1">
+              {orgs.map(o => (
+                <DropdownMenuItem
+                  key={o.id}
+                  onClick={() => handleSwitch(o.id)}
+                  className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer"
+                >
+                  <span className="flex-1 truncate">{o.name}</span>
+                  {o.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-brand" weight="bold" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : canSwitch && !collapsed ? (
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label="Switch organization"

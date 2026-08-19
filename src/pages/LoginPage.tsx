@@ -269,6 +269,8 @@ export function LoginPage() {
                     type="email"
                     required
                     autoFocus
+                    autoComplete="username"
+                    inputMode="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -281,6 +283,7 @@ export function LoginPage() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete="current-password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Enter your password"
@@ -289,9 +292,11 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-pressed={showPassword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
                     >
-                      {showPassword ? <EyeSlash className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                      {showPassword ? <EyeSlash className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                     </button>
                   </div>
                   <div className="flex justify-end">
@@ -310,7 +315,7 @@ export function LoginPage() {
                   disabled={loading}
                   className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                 >
-                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-4.5 w-4.5" /></>}
+                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
               </form>
 
@@ -360,19 +365,29 @@ export function LoginPage() {
                   disabled={loading || name.trim().length < 2}
                   className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 gap-2.5 transition-all duration-150"
                 >
-                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-4.5 w-4.5" /></>}
+                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
               </form>
             </>
           )}
 
-          <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
-            {realAuth ? "" : "Your profile is stored on this device only"}
-          </p>
+          {!realAuth && (
+            <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
+              Your profile is stored on this device only
+            </p>
+          )}
 
           {/* ── Forgot Password Overlay ──────────────────────── */}
           {showForgot && (
-            <div className="absolute inset-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm rounded-3xl flex items-center justify-center p-8 z-30">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Reset password"
+              tabIndex={-1}
+              ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
+              onKeyDown={e => { if (e.key === "Escape") { setShowForgot(false); setForgotSent(false); } }}
+              className="absolute inset-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm lg:rounded-3xl flex items-center justify-center p-8 z-30 focus:outline-none"
+            >
               <div className="w-full max-w-sm space-y-6">
                 <div className="text-center">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
@@ -408,6 +423,7 @@ export function LoginPage() {
                         type="email"
                         required
                         autoFocus
+                        autoComplete="username"
                         value={forgotEmail}
                         onChange={e => setForgotEmail(e.target.value)}
                         placeholder="you@example.com"

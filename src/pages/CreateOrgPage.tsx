@@ -295,7 +295,7 @@ export function CreateOrgPage() {
                   disabled={!canSubmit || loading}
                   className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed gap-2.5 transition-all duration-150"
                 >
-                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-4.5 w-4.5" /></>}
+                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
               </form>
             </>
@@ -452,7 +452,7 @@ export function CreateOrgPage() {
                     onClick={handleFinishBranding}
                     className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                   >
-                    {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-4.5 w-4.5" /></>}
+                    {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-[18px] w-[18px]" /></>}
                   </Button>
                 </div>
               </div>

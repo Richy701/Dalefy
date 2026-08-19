@@ -33,11 +33,12 @@ export function NavUser() {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "justify-center" : ""}`}>
+          <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "flex-col justify-center gap-1.5 px-0" : ""}`}>
             <button
               onClick={() => navigate("/settings")}
-              className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-brand/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center" : ""}`}
-              aria-label="Settings"
+              className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-brand/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center ml-0" : ""}`}
+              aria-label={`${displayName}, open settings`}
+              title={collapsed ? `${displayName} · Settings` : undefined}
             >
               <div className="h-8 w-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-[10px] font-black shrink-0 border border-brand/20">
                 {initials}
@@ -46,9 +47,9 @@ export function NavUser() {
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[11px] font-bold text-sidebar-foreground truncate leading-none">{displayName}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-[9px] text-sidebar-foreground/55 leading-none truncate uppercase tracking-wider">{displayRole}</p>
+                    <p className="text-[10px] text-sidebar-foreground/70 leading-none truncate uppercase tracking-wider">{displayRole}</p>
                     {orgRole && (
-                      <span className="text-[8px] font-bold uppercase tracking-wider leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
+                      <span className="text-[9px] font-bold uppercase tracking-wider leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
                         {orgRole}
                       </span>
                     )}
@@ -56,12 +57,12 @@ export function NavUser() {
                 </div>
               )}
             </button>
-            {!collapsed && (
+            {(
               <Tooltip>
                 <TooltipTrigger
                   aria-label="Sign out"
                   onClick={() => setSignOutOpen(true)}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sidebar-foreground/45 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-sidebar-foreground/60 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
                 >
                   <SignOut className="h-3 w-3" />
                 </TooltipTrigger>

@@ -104,8 +104,10 @@ export function TravelersPage() {
   useEffect(() => {
     if (!showSortMenu && !showFilterMenu && !showActionsMenu) return;
     const close = () => { setShowSortMenu(false); setShowFilterMenu(false); setShowActionsMenu(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     const timer = setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
-    return () => { clearTimeout(timer); document.removeEventListener("click", close); };
+    document.addEventListener("keydown", onKey);
+    return () => { clearTimeout(timer); document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
   }, [showSortMenu, showFilterMenu, showActionsMenu]);
 
   useEffect(() => {
@@ -1170,16 +1172,19 @@ export function TravelersPage() {
                   <div className="relative">
                     <button
                       onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); setShowActionsMenu(false); }}
+                      aria-haspopup="menu"
+                      aria-expanded={showSortMenu}
                       className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
                     >
                       <ArrowsDownUp className="h-3.5 w-3.5" />
                       {appUserSort === "name" ? "Name" : appUserSort === "trips" ? "Trips" : "Recent"}
                     </button>
                     {showSortMenu && (
-                      <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                      <div role="menu" aria-label="Sort app users" className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
                         {([["recent", "Most Recent"], ["name", "Name A-Z"], ["trips", "Most Trips"]] as const).map(([key, label]) => (
                           <button
                             key={key}
+                            role="menuitem"
                             onClick={() => { setAppUserSort(key); setShowSortMenu(false); }}
                             className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
                               appUserSort === key
@@ -1199,6 +1204,8 @@ export function TravelersPage() {
                   <div className="relative">
                     <button
                       onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); setShowActionsMenu(false); }}
+                      aria-haspopup="menu"
+                      aria-expanded={showFilterMenu}
                       className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
                         appUserTripFilter !== "all"
                           ? "bg-brand/10 border-brand/30 text-brand"
@@ -1209,7 +1216,7 @@ export function TravelersPage() {
                       {appUserTripFilter !== "all" ? "Filtered" : "Trip"}
                     </button>
                     {showFilterMenu && (
-                      <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
+                      <div role="menu" aria-label="Filter by trip" className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
                         <button
                           onClick={() => { setAppUserTripFilter("all"); setShowFilterMenu(false); }}
                           className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
@@ -1241,12 +1248,15 @@ export function TravelersPage() {
                   <div className="relative">
                     <button
                       onClick={() => { setShowActionsMenu(!showActionsMenu); setShowSortMenu(false); setShowFilterMenu(false); }}
+                      aria-haspopup="menu"
+                      aria-expanded={showActionsMenu}
+                      aria-label="More actions"
                       className="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
                     >
                       <DotsThree className="h-4 w-4" weight="bold" />
                     </button>
                     {showActionsMenu && (
-                      <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                      <div role="menu" aria-label="More actions" className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
                         <button
                           onClick={() => { setShowActionsMenu(false); exportAppUsersCSV(); }}
                           className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center gap-2"
@@ -1498,7 +1508,12 @@ export function TravelersPage() {
               <div className="fixed inset-0 z-50 flex justify-end" onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}>
                 <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
                 <div
-                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-[#0a0a0a] sm:border-l border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-y-auto animate-slide-in-right"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`${panelUser.name || "App user"} details`}
+                  tabIndex={-1}
+                  ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
+                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-[#0a0a0a] sm:border-l border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-y-auto animate-slide-in-right focus:outline-none"
                   onClick={e => e.stopPropagation()}
                 >
                   {/* Panel header */}

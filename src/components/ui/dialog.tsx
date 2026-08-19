@@ -37,20 +37,30 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
 function DialogContent({
   className,
   children,
+  showCloseButton = false,
   ...props
-}: DialogPrimitive.Popup.Props) {
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed inset-0 z-50 m-auto grid w-full max-w-lg h-fit gap-4 border border-border bg-background p-6 shadow-lg transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:scale-95 data-starting-style:scale-95 rounded-2xl",
+          // h-fit + max-h + overflow so no dialog can grow past the viewport or lose its footer
+          "fixed inset-0 z-50 m-auto grid w-full max-w-lg h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 border border-border bg-background p-6 shadow-lg transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:scale-95 data-starting-style:scale-95 rounded-2xl",
           className
         )}
         {...props}
       >
         {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            aria-label="Close"
+            className="absolute right-3 top-3 h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Popup>
     </DialogPortal>
   )
@@ -74,7 +84,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

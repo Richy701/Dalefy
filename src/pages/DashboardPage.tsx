@@ -113,6 +113,19 @@ function getRelativeDay(dateStr: string) {
 }
 
 
+/** Makes a clickable div behave like a button for keyboard and screen-reader users. */
+function buttonA11y(label: string, onActivate: () => void) {
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": label,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); }
+    },
+  };
+}
+
 export function DashboardPage() {
   const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
   const { theme } = useTheme();
@@ -1158,7 +1171,7 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
 
@@ -1240,7 +1253,8 @@ export function DashboardPage() {
                       key={trip.id}
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
-                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex items-stretch cursor-pointer hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
+                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
@@ -1573,7 +1587,7 @@ export function DashboardPage() {
         title="Delete Trip"
         description="This will permanently remove the trip and all its events. This cannot be undone."
         confirmLabel="Delete"
-        onConfirm={() => deletingTripId && handleDeleteTrip(deletingTripId)}
+        onConfirm={() => { if (deletingTripId) handleDeleteTrip(deletingTripId); }}
         destructive
       />
       <ImportItineraryDialog

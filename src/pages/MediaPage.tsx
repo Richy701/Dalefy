@@ -404,8 +404,10 @@ export function MediaPage() {
         setTripPickerOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTripPickerOpen(false); };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("keydown", onKey); };
   }, [tripPickerOpen]);
 
   return (
@@ -586,6 +588,9 @@ export function MediaPage() {
           <div className="relative shrink-0 flex-1 sm:flex-none" ref={pickerRef}>
             <button
               onClick={() => setTripPickerOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={tripPickerOpen}
+              aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
               className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
             >
               {selectedTrip ? (
@@ -602,7 +607,7 @@ export function MediaPage() {
             </button>
 
             {tripPickerOpen && (
-              <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+              <div role="listbox" aria-label="Trips" className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
                 {trips.map((t) => (
                   <button
                     key={t.id}
@@ -885,6 +890,9 @@ export function MediaPage() {
               <div className="relative flex-1 min-w-0" ref={pickerRef}>
                 <button
                   onClick={() => setTripPickerOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={tripPickerOpen}
+              aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
                   className={`w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white ${
                     tripPickerOpen
                       ? "bg-white dark:bg-[#111111] border-brand/50 shadow-md"
@@ -904,7 +912,7 @@ export function MediaPage() {
                   <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
                 </button>
                 {tripPickerOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+                  <div role="listbox" aria-label="Trips" className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
                     {trips.map((t) => (
                       <button
                         key={t.id}

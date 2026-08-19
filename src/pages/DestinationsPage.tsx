@@ -60,6 +60,11 @@ export function DestinationsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [expandedDest, setExpandedDest] = useState<string | null>(null);
+  const openDest = (dest: Destination) => {
+    if (dest.tripIds.length > 1) { setExpandedDest(prev => (prev === dest.name ? null : dest.name)); return; }
+    if (dest.tripIds[0]) navigate(`/trip/${dest.tripIds[0]}`);
+  };
   const isDark = theme === "dark";
 
   const [geoCountry, setGeoCountry] = useState<Record<string, string>>({});
@@ -519,9 +524,14 @@ export function DestinationsPage() {
             {filtered.map((dest, idx) => (
               <div
                 key={dest.name}
-                onClick={() => dest.tripIds[0] && navigate(`/trip/${dest.tripIds[0]}`)}
+                role="button"
+                tabIndex={0}
+                aria-label={dest.tripCount > 1 ? `${dest.name}: choose one of ${dest.tripCount} trips` : `Open trip for ${dest.name}`}
+                aria-expanded={dest.tripCount > 1 ? expandedDest === dest.name : undefined}
+                onClick={() => openDest(dest)}
+                onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDest(dest); } if (e.key === "Escape") setExpandedDest(null); }}
                 data-dest-card
-                className={`group relative rounded-2xl sm:rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
+                className={`group relative rounded-2xl sm:rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
                 style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
                 <div className="absolute inset-0">
@@ -575,6 +585,22 @@ export function DestinationsPage() {
                     </div>
                   </div>
                 </div>
+                {expandedDest === dest.name && dest.tripCount > 1 && (
+                  <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm p-5 flex flex-col gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/60 mb-1">Open a trip</p>
+                    {dest.tripIds.map((id, i) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => navigate(`/trip/${id}`)}
+                        className="text-left px-4 py-3 rounded-xl bg-white/10 hover:bg-brand hover:text-black text-white text-sm font-bold transition-colors truncate"
+                      >
+                        {dest.tripNames[i] ?? "Trip"}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setExpandedDest(null)} className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:text-white self-start">Cancel</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
