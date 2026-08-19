@@ -196,7 +196,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
+        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
         {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
