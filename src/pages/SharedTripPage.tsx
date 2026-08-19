@@ -33,10 +33,10 @@ function rowToTrip(row: Record<string, unknown>): Trip {
   };
 }
 
-function EventRow({ ev, tripTz }: { ev: TravelEvent; tripTz?: string }) {
+function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; accent?: string | null }) {
   const [open, setOpen] = useState(false);
   const Icon = EVENT_ICONS[ev.type] ?? Compass;
-  const color = EVENT_HEX[ev.type] ?? "#0bd2b5";
+  const color = EVENT_HEX[ev.type] ?? accent ?? "#0bd2b5";
   const hasDetail = !!(ev.description || ev.notes || ev.image || ev.airline || ev.terminal || ev.arrTerminal || ev.status || ev.flightNum || ev.confNumber || ev.roomType);
 
   return (
@@ -109,7 +109,7 @@ function ordinal(n: number) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function DaySection({ date, events, dayIdx, tripTz }: { date: string; events: TravelEvent[]; dayIdx: number; tripTz?: string }) {
+function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; events: TravelEvent[]; dayIdx: number; tripTz?: string; accent?: string | null }) {
   const [collapsed, setCollapsed] = useState(false);
   const d = new Date(date + "T12:00:00");
 
@@ -140,7 +140,7 @@ function DaySection({ date, events, dayIdx, tripTz }: { date: string; events: Tr
         {!collapsed && (
           <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
             {events.map(ev => (
-              <EventRow key={ev.id} ev={ev} tripTz={tripTz} />
+              <EventRow key={ev.id} ev={ev} tripTz={tripTz} accent={accent} />
             ))}
           </div>
         )}
@@ -303,9 +303,9 @@ export function SharedTripPage() {
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
               <CalendarDots className="h-3 w-3 text-white/70" />
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
-                {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 {" - "}
-                {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 {" · "}{nights} nights
               </span>
             </div>
@@ -446,7 +446,7 @@ export function SharedTripPage() {
 
           <div className="space-y-6">
             {grouped.map(([date, events], dayIdx) => (
-              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} tripTz={tripTz} />
+              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} tripTz={tripTz} accent={brand.accentColor} />
             ))}
           </div>
         </div>

@@ -707,7 +707,7 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
             <div style={{ borderRadius: 42, overflow: "hidden", height: "100%", position: "relative" }}>
               {/* Status bar */}
               <div style={{ background: c.bg, padding: "6px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", height: 40, position: "relative", zIndex: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: c.textPrimary }}>9:41</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: c.textPrimary }}>{new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
                 {/* Dynamic Island */}
                 <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 6, width: 100, height: 24, borderRadius: 16, background: "#000" }} />
                 <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
