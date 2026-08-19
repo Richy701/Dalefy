@@ -466,7 +466,7 @@ export function ReportsPage() {
                     </div>
                   </div>
                   {trips.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 -mr-1">
                       {trips.map((t) => {
                         const pax = parseInt(t.paxCount || "0") || (t.travelers?.length ?? 0);
                         const maxPax = Math.max(...trips.map(tr => parseInt(tr.paxCount || "0") || (tr.travelers?.length ?? 0)), 1);

@@ -344,7 +344,7 @@ export function CreateOrgPage() {
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <label className="flex items-center justify-center gap-2.5 cursor-pointer h-12 rounded-xl bg-white dark:bg-[#0a0a0a] border border-dashed border-slate-300 dark:border-[#2a2a2a] hover:border-brand/50 dark:hover:border-brand/30 transition-colors">
+                      <label className={`flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white dark:bg-[#0a0a0a] border border-dashed border-slate-300 dark:border-[#2a2a2a] hover:border-brand/50 dark:hover:border-brand/30 transition-colors ${uploadingLogo ? "opacity-60 cursor-wait" : "cursor-pointer"}`}>
                         <Upload className="h-4 w-4 text-slate-500 dark:text-[#888]" weight="regular" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
                           {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
@@ -352,6 +352,7 @@ export function CreateOrgPage() {
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          disabled={uploadingLogo}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file || !createdOrgId) {

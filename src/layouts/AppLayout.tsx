@@ -47,7 +47,7 @@ function DemoBadge() {
   return (
     <button
       onClick={() => navigate("/login")}
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 hover:bg-amber-400 transition-colors cursor-pointer"
+      className="fixed bottom-20 right-4 z-40 flex items-center gap-2 px-3.5 py-2 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/30 hover:bg-amber-400 transition-colors cursor-pointer"
     >
       <Flask className="h-3.5 w-3.5" weight="bold" />
       Demo Mode

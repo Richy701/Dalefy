@@ -68,6 +68,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
         {!forPrint && onClose && (
           <button
             onClick={onClose}
+            aria-label="Close preview"
             className="absolute top-3 sm:top-4 right-3 sm:right-4 z-10 h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-black/30 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/50 transition-colors"
           >
             <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -228,7 +229,17 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
           <DialogTitle>{trip.name} - Preview</DialogTitle>
           <DialogDescription>Read-only itinerary preview</DialogDescription>
         </DialogHeader>
-        <ItineraryPreviewContent trip={trip} onClose={() => onOpenChange(false)} />
+        {/* Sticky close: stays visible once the hero (with its own close) scrolls away */}
+        <div className="sticky top-2 z-20 h-0 flex justify-end pr-2 pointer-events-none" aria-hidden="false">
+          <button
+            onClick={() => onOpenChange(false)}
+            aria-label="Close preview"
+            className="pointer-events-auto h-9 w-9 rounded-xl bg-white/90 dark:bg-[#111]/90 backdrop-blur-md border border-slate-200 dark:border-[#2a2a2a] shadow-lg flex items-center justify-center text-slate-600 dark:text-[#aaa] hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <ItineraryPreviewContent trip={trip} />
       </DialogContent>
     </Dialog>
   );
@@ -277,7 +288,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Description */}
           {ev.description && (
-            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-slate-500" : "text-slate-600 dark:text-[#999] line-clamp-3")}>{ev.description}</p>
+            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-slate-500 line-clamp-3" : "text-slate-600 dark:text-[#999] line-clamp-3")}>{ev.description}</p>
           )}
 
           {/* Time + location */}
@@ -374,7 +385,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Notes */}
           {ev.notes && (
-            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888] line-clamp-2")}>
+            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-500 line-clamp-2" : "text-slate-500 dark:text-[#888] line-clamp-2")}>
               {ev.notes}
             </p>
           )}

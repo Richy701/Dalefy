@@ -32,7 +32,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const addNotification = useCallback((n: Omit<Notification, "id" | "read">) => {
-    setNotifications(prev => [{ ...n, id: Date.now().toString(), read: false }, ...prev]);
+    setNotifications(prev => [{ ...n, id: Date.now().toString(), createdAt: Date.now(), read: false }, ...prev]);
   }, []);
 
   const markRead = useCallback((id: string) => {

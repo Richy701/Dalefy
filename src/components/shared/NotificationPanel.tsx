@@ -11,6 +11,17 @@ const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: stri
   warning: { icon: Warning, color: "text-amber-400", bg: "bg-amber-500/10" },
 };
 
+function relativeTime(n: { time: string; createdAt?: number }): string {
+  if (!n.createdAt) return n.time;
+  const mins = Math.floor((Date.now() - n.createdAt) / 60_000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "Yesterday" : `${days}d ago`;
+}
+
 function NotificationList({ onClose }: { onClose?: () => void }) {
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
 
@@ -98,7 +109,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                       </div>
                       <p className="text-[10px] text-slate-500 dark:text-[#888] truncate leading-tight">{n.detail}</p>
                     </div>
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#888] shrink-0">{n.time}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] shrink-0">{relativeTime(n)}</p>
                   </div>
                 </button>
               );

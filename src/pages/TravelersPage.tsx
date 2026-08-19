@@ -42,10 +42,11 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   return <>{text.slice(0, idx)}<mark className="bg-brand/25 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
 }
 
+// One palette per status, shared meaning with ComplianceDocSheet: done / waiting / problem
 const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
-  Signed: { color: "text-brand", bg: "bg-brand/10", icon: FileText, bar: "bg-brand" },
-  Pending: { color: "text-brand", bg: "bg-brand/10", icon: FileDashed, bar: "bg-brand" },
-  Expired: { color: "text-brand", bg: "bg-brand/10", icon: FileX, bar: "bg-brand" },
+  Signed: { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: FileText, bar: "bg-emerald-500" },
+  Pending: { color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", icon: FileDashed, bar: "bg-amber-500" },
+  Expired: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },
   "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
@@ -54,6 +55,45 @@ const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string 
   Away: { dot: "bg-brand/50", badge: "bg-brand/10 text-brand/70 ring-1 ring-brand/20", label: "Away" },
   Offline: { dot: "bg-slate-400", badge: "bg-slate-200 dark:bg-[#222] text-slate-600 dark:text-[#888] ring-1 ring-slate-300 dark:ring-[#333]", label: "Offline" },
 };
+
+/** Page numbers with truncation: 1 … n-1 n n+1 … last (0-indexed input, 0-indexed output). */
+function pageWindow(current: number, total: number): (number | "gap")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+  const pages = new Set<number>([0, total - 1, current - 1, current, current + 1]);
+  const sorted = [...pages].filter(pn => pn >= 0 && pn < total).sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push("gap");
+    out.push(sorted[i]);
+  }
+  return out;
+}
+
+function PageNumbers({ current, total, onSelect }: { current: number; total: number; onSelect: (i: number) => void }) {
+  return (
+    <>
+      {pageWindow(current, total).map((pn, idx) =>
+        pn === "gap" ? (
+          <span key={`gap-${idx}`} className="w-4 text-center text-[10px] font-black text-slate-400 dark:text-[#666]">…</span>
+        ) : (
+          <button
+            key={pn}
+            onClick={() => onSelect(pn)}
+            aria-label={`Page ${pn + 1}`}
+            aria-current={current === pn ? "page" : undefined}
+            className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+              current === pn
+                ? "bg-brand text-black shadow-sm"
+                : "text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5"
+            }`}
+          >
+            {pn + 1}
+          </button>
+        ),
+      )}
+    </>
+  );
+}
 
 export function TravelersPage() {
   const { trips } = useTrips();
@@ -896,19 +936,7 @@ export function TravelersPage() {
                     >
                       <PgLeft className="h-4 w-4" />
                     </button>
-                    {Array.from({ length: table.getPageCount() }, (_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => table.setPageIndex(i)}
-                        className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                          table.getState().pagination.pageIndex === i
-                            ? "bg-brand text-black shadow-sm"
-                            : "text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5"
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                    <PageNumbers current={table.getState().pagination.pageIndex} total={table.getPageCount()} onSelect={i => table.setPageIndex(i)} />
                     <button
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
@@ -1107,19 +1135,7 @@ export function TravelersPage() {
                       >
                         <PgLeft className="h-4 w-4" />
                       </button>
-                      {Array.from({ length: hrTotalPages }, (_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setHrPage(i)}
-                          className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                            safePage === i
-                              ? "bg-brand text-black shadow-sm"
-                              : "text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5"
-                          }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
+                      <PageNumbers current={safePage} total={hrTotalPages} onSelect={setHrPage} />
                       <button
                         onClick={() => setHrPage(p => Math.min(hrTotalPages - 1, p + 1))}
                         disabled={safePage >= hrTotalPages - 1}
@@ -1470,19 +1486,7 @@ export function TravelersPage() {
                     >
                       <PgLeft className="h-4 w-4" />
                     </button>
-                    {Array.from({ length: appUserTotalPages }, (_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setAppUserPage(i)}
-                        className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                          safeAppUserPage === i
-                            ? "bg-brand text-black shadow-sm"
-                            : "text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5"
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                    <PageNumbers current={safeAppUserPage} total={appUserTotalPages} onSelect={setAppUserPage} />
                     <button
                       onClick={() => setAppUserPage(p => Math.min(appUserTotalPages - 1, p + 1))}
                       disabled={safeAppUserPage >= appUserTotalPages - 1}

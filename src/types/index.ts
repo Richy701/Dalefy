@@ -182,7 +182,10 @@ export interface Notification {
   id: string;
   message: string;
   detail: string;
+  /** Caller-supplied display string; superseded by createdAt when present. */
   time: string;
+  /** Epoch ms, set automatically when the notification is created. */
+  createdAt?: number;
   read: boolean;
   type: "info" | "success" | "warning";
 }
