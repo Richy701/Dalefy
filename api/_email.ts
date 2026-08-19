@@ -2,13 +2,11 @@
  * Provider-agnostic transactional email for API routes.
  *
  * Provider is chosen by env:
- *   EMAIL_PROVIDER=resend | brevo   (explicit override)
- *   otherwise: Resend when RESEND_FROM_EMAIL is set (verified domain),
- *              Brevo when BREVO_API_KEY is set,
- *              Resend sandbox as a last resort (only delivers to the account owner).
- *
- * Switching providers later (e.g. when a domain is available) is env-only:
- * set RESEND_API_KEY + RESEND_FROM_EMAIL and remove BREVO_API_KEY.
+ *   Brevo  when BREVO_API_KEY + BREVO_FROM_EMAIL are set (no domain needed,
+ *          sender is a single verified address).
+ *   Resend only when RESEND_API_KEY + RESEND_FROM_EMAIL (verified domain) are
+ *          both set AND EMAIL_PROVIDER=resend. Never falls back to the Resend
+ *          sandbox sender, which can't deliver to anyone but the account owner.
  */
 
 export interface SendEmailInput {
@@ -31,12 +29,8 @@ const env = (k: string) => (process.env[k] ?? "").trim();
 const DEFAULT_FROM_NAME = "Dalefy";
 
 function resolveProvider(): "resend" | "brevo" | "none" {
-  const explicit = env("EMAIL_PROVIDER").toLowerCase();
-  if (explicit === "resend" && env("RESEND_API_KEY")) return "resend";
-  if (explicit === "brevo" && env("BREVO_API_KEY")) return "brevo";
-  if (env("RESEND_API_KEY") && env("RESEND_FROM_EMAIL")) return "resend";
-  if (env("BREVO_API_KEY")) return "brevo";
-  if (env("RESEND_API_KEY")) return "resend";
+  if (env("EMAIL_PROVIDER").toLowerCase() === "resend" && env("RESEND_API_KEY") && env("RESEND_FROM_EMAIL")) return "resend";
+  if (env("BREVO_API_KEY") && env("BREVO_FROM_EMAIL")) return "brevo";
   return "none";
 }
 
@@ -60,7 +54,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 async function viaResend(input: SendEmailInput): Promise<SendEmailResult> {
   const { Resend } = await import("resend");
   const resend = new Resend(env("RESEND_API_KEY"));
-  const from = env("RESEND_FROM_EMAIL") || `${DEFAULT_FROM_NAME} <onboarding@resend.dev>`;
+  const from = env("RESEND_FROM_EMAIL");
   const { data, error } = await resend.emails.send({
     from,
     to: input.to,
