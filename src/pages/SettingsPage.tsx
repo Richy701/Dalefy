@@ -40,18 +40,18 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
   return (
     <section
       id={id}
-      className="border-t border-slate-200 dark:border-border py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_1fr] gap-6 lg:gap-12 scroll-mt-20"
+      className="border-t border-slate-200 dark:border-border first:border-t-0 first:pt-0 py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-6 lg:gap-12 scroll-mt-20"
     >
       <div className="space-y-2">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-card border border-slate-200 dark:border-border flex items-center justify-center">
+          <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
             <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
           </div>
           <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">
             {title}
           </h2>
         </div>
-        <p className="text-[11px] text-slate-500 dark:text-muted-foreground leading-relaxed max-w-[280px]">
+        <p className="text-[13px] text-slate-500 dark:text-muted-foreground leading-relaxed max-w-[300px]">
           {description}
         </p>
       </div>
@@ -66,11 +66,11 @@ function Row({
   return (
     <div className="flex items-center justify-between gap-4 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-900 dark:text-white">
+        <p className="text-[13px] font-medium text-slate-900 dark:text-white">
           {label}
         </p>
         {value && (
-          <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-1 truncate">
+          <p className="text-[12px] text-slate-500 dark:text-muted-foreground mt-0.5 truncate">
             {value}
           </p>
         )}
@@ -303,7 +303,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-24">
+        <div className="px-4 lg:px-8 py-6 pb-24 max-w-5xl">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -358,7 +358,7 @@ export function SettingsPage() {
                     <Button
                       onClick={handleChangePassword}
                       disabled={changingPassword || newPassword.length < 6}
-                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-3 disabled:opacity-40"
+                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 disabled:opacity-40"
                     >
                       {changingPassword ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Update"}
                     </Button>
@@ -387,7 +387,7 @@ export function SettingsPage() {
                 <Button
                   onClick={handleCreateOrg}
                   disabled={creatingOrg || !newOrgName.trim()}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-4 disabled:opacity-40"
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-4 disabled:opacity-40"
                 >
                   {creatingOrg ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Create Agency"}
                 </Button>
@@ -508,7 +508,7 @@ export function SettingsPage() {
                       )}
                     </div>
                     {!currentOrg?.agencyCode && (
-                      <p className="text-[10px] text-amber-500 dark:text-amber-400 font-semibold">
+                      <p className="text-[12px] text-amber-500 dark:text-amber-400 font-medium">
                         Set a code so travelers can connect to your agency
                       </p>
                     )}
@@ -548,7 +548,7 @@ export function SettingsPage() {
                   <Button
                     onClick={handleSaveBranding}
                     disabled={savingBrand}
-                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-5 disabled:opacity-40"
+                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-5 disabled:opacity-40"
                   >
                     {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                   </Button>
@@ -633,7 +633,7 @@ export function SettingsPage() {
               action={
                 <Button
                   onClick={exportTrips}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-3 gap-1.5"
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-3 gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
@@ -651,7 +651,7 @@ export function SettingsPage() {
                 <Button
                   onClick={() => { if (!demoGate()) setResetOpen(true); }}
                   variant="ghost"
-                  className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-semibold text-[10px] px-3 gap-1.5"
+                  className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-semibold text-[13px] px-3 gap-1.5"
                 >
                   <Trash className="h-3.5 w-3.5" />
                   Reset
