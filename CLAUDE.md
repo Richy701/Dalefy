@@ -4,7 +4,7 @@
 
 This workspace contains multiple apps/projects. Always confirm which app/codebase is being discussed before making changes.
 
-- **Web app** (this repo): React 19 + TypeScript + Vite 8 + Tailwind CSS 3
+- **Web app** (this repo): React 19 + TypeScript + Vite 8 + Tailwind CSS 4
 - **Mobile app**: Expo/React Native in `/mobile`
 
 ## General Rules
@@ -25,7 +25,10 @@ This workspace contains multiple apps/projects. Always confirm which app/codebas
 - When the user shares inspiration screenshots, match the specific aesthetic rather than producing generic Material/Tailwind defaults.
 - Prefer subtle, warm, human-feeling design over clinical defaults.
 - For color and contrast changes: always verify contrast ratios programmatically (WCAG AA minimum 4.5:1 for text). Do not guess at color combinations.
-- Existing palette: accent `#0bd2b5`, dark bg `#050505`, card `#111111`, border `#1f1f1f`.
+- Use semantic tokens, never raw hex. `bg-background` / `bg-card` / `bg-secondary` (raised) / `border-border` / `text-muted-foreground`, accent `text-brand`, warm secondary `text-sand` (accommodation).
+- Palette resolves per theme: dark page `#0E0E10`, card `#17181C`, raised `#202127`, border `#26272E`; light page `#F7F7F9`, card `#FFFFFF`, raised `#F1F1F4`, border `#E4E4E9`. Accent `#0bd2b5`.
+- Radius tops out at `rounded-xl`; `rounded-full` is only for avatars, dots, spinners, and circular icon buttons.
+- Build forms and surfaces from `src/components/ui/*` (real shadcn, Base UI primitives), not hand-rolled divs.
 - Font style: uppercase, black italic, tight tracking (Barlow Condensed).
 - Every dark-mode color class needs a light-mode counterpart -- never use bare `bg-[#111111]` without a `light:` variant.
 
