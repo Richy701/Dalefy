@@ -60,7 +60,7 @@ function AuthLoadingScreen() {
     <div className="min-h-screen bg-slate-50 dark:bg-background flex flex-col items-center justify-center gap-6">
       <div className="flex items-center gap-3">
         <Logo className="h-10 w-10 text-brand" />
-        <span className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
           {BRAND.name}
         </span>
       </div>
@@ -145,7 +145,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetEr
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">App Error</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">App Error</h1>
         <p className="text-sm text-slate-500 dark:text-muted-foreground">{error.message}</p>
         <button
           onClick={resetErrorBoundary}

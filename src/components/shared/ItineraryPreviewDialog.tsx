@@ -87,7 +87,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
 
         {/* Title block */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8">
-          <h2 className="text-xl sm:text-3xl font-extrabold uppercase tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
+          <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
             {trip.name}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">

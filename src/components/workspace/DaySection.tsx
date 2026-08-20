@@ -16,8 +16,8 @@ export function DaySection({ date, dayNumber, children, onAddEvent }: { date: st
             {dayNumber !== undefined && (
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground leading-none tabular-nums">Day {dayNumber}</span>
             )}
-            <span className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{weekday}</span>
-            <span className="text-lg font-black uppercase tracking-tight text-brand leading-none">{dateInfo}</span>
+            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">{weekday}</span>
+            <span className="text-lg font-bold tracking-tight text-brand leading-none">{dateInfo}</span>
           </div>
 
           <button

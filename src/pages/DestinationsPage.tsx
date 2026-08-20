@@ -301,7 +301,7 @@ export function DestinationsPage() {
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
             <BrandIllustration src="/illustrations/illus-movement.svg" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
-              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No destinations yet</p>
+              <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No destinations yet</p>
               <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create trips to populate your world map</p>
             </div>
             <button
@@ -458,7 +458,7 @@ export function DestinationsPage() {
                   <div className="h-5 w-5 rounded-lg flex items-center justify-center" style={{ background: `rgba(${ACCENT_RGB},0.15)` }}>
                     <MapPin className="h-2.5 w-2.5" style={{ color: ACCENT }} />
                   </div>
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{pin.name}</p>
+                  <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">{pin.name}</p>
                 </div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground pl-7">{pin.region}</p>
               </div>
@@ -546,7 +546,7 @@ export function DestinationsPage() {
                   <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
-                  <h3 className="text-3xl font-black uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
+                  <h3 className="text-3xl font-bold tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">

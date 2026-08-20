@@ -11,7 +11,15 @@ export default {
         active: 'active',
       },
       fontFamily: {
-        condensed: ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
+        // Body, UI and headings. `font-sans` previously fell through to the
+        // system stack, so the fonts the app downloaded were never rendered.
+        sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
+        // Kept as aliases so existing/future `font-display` usage resolves;
+        // Geist carries headings through weight and tracking, not a second face.
+        display: ['Geist', 'system-ui', 'sans-serif'],
+        condensed: ['Geist', 'system-ui', 'sans-serif'],
+        // Times, flight numbers, IATA codes — anything that lines up in columns.
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         // Third elevation tier, above card

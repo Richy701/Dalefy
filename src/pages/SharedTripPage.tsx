@@ -256,7 +256,7 @@ export function SharedTripPage() {
           <MapPin className="h-7 w-7 text-slate-500 dark:text-muted-foreground" />
         </div>
         <div className="max-w-sm space-y-2">
-          <p className="text-lg font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+          <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
             {errorKind === "unpublished" ? "Almost there" : errorKind === "network" ? "Connection problem" : "Itinerary unavailable"}
           </p>
           <p className="text-sm text-slate-600 dark:text-muted-foreground">{error}</p>
@@ -296,7 +296,7 @@ export function SharedTripPage() {
               {brand.name} · Itinerary
             </p>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-none mb-4">
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-4">
             {trip.name}
           </h1>
           <div className="flex flex-wrap items-center gap-2">

@@ -529,7 +529,7 @@ export function WorkspacePage() {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
         <div className="text-center space-y-4">
-          <p className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Trip not found</p>
+          <p className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Trip not found</p>
           <Button onClick={() => navigate("/dashboard")} className="bg-brand text-black font-bold rounded-xl">Back to Dashboard</Button>
         </div>
       </div>
@@ -1156,7 +1156,7 @@ export function WorkspacePage() {
       <header className="h-16 bg-white dark:bg-card border-b border-slate-200 dark:border-border px-3 sm:px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-50 shadow-xl">
           <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-border transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
           <div className="h-6 w-px bg-slate-200 dark:bg-secondary hidden sm:block" />
-          <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate min-w-0 hidden sm:block">{trip.name}</h2>
+          <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-none truncate min-w-0 hidden sm:block">{trip.name}</h2>
 
         {/* Presence avatars */}
         {presenceUsers.length > 0 && (
@@ -1345,7 +1345,7 @@ export function WorkspacePage() {
           </DropdownMenu>
 
           <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
-            {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">PUBLISH</span></>)}
+            {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">Publish</span></>)}
           </Button>
         </div>
       </header>
@@ -1442,7 +1442,7 @@ export function WorkspacePage() {
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
                 <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">Itinerary</p>
-                <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
+                <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
 
                 {/* Stat chips */}
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1521,7 +1521,7 @@ export function WorkspacePage() {
                           <div className="flex items-center gap-4 p-5">
                             {/* Avatar */}
                             <div className="shrink-0 w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
-                              <span className="text-lg font-black text-brand uppercase tracking-tight">
+                              <span className="text-lg font-bold text-brand tracking-tight">
                                 {trip.organizer.name.split(" ").slice(0, 2).map(w => w[0]).join("")}
                               </span>
                             </div>
@@ -2051,7 +2051,7 @@ export function WorkspacePage() {
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
               <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
+                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                   {editingEvent?.title ? "Edit Travel Event" : "Add Event to Itinerary"}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Fill in the travel details for this event.</p>
@@ -2731,7 +2731,7 @@ export function WorkspacePage() {
         <DialogContent className="max-w-2xl bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border shadow-2xl overflow-hidden p-0 flex flex-col max-h-[calc(100dvh-2rem)]">
           <form onSubmit={handleSaveTrip} className="flex flex-col min-h-0 flex-1">
             <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-border shrink-0">
-              <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
+              <DialogTitle className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
               <p className="text-xs text-slate-500 dark:text-muted-foreground font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
             <div className="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto">
@@ -2906,7 +2906,7 @@ export function WorkspacePage() {
                   <div className="shrink-0 flex flex-col items-center gap-2">
                     <div className="w-16 h-16 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
                       {editingTrip.organizer?.name ? (
-                        <span className="text-lg font-black text-brand uppercase">
+                        <span className="text-lg font-bold text-brand">
                           {editingTrip.organizer.name.split(" ").slice(0, 2).map((w: string) => w[0]).join("")}
                         </span>
                       ) : (
@@ -3077,7 +3077,7 @@ export function WorkspacePage() {
                   <Users className="h-4 w-4 text-brand" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Organizer</DialogTitle>
+                  <DialogTitle className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">Organizer</DialogTitle>
                   <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium mt-0.5">Trip contact person visible to travelers</p>
                 </div>
               </div>
@@ -3120,7 +3120,7 @@ export function WorkspacePage() {
                     <FileText className="h-4 w-4 text-brand" />
                   </div>
                   <div>
-                    <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Information</DialogTitle>
+                    <DialogTitle className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">Information</DialogTitle>
                     <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium mt-0.5">Pages visible to travelers</p>
                   </div>
                 </div>

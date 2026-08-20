@@ -232,7 +232,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         {/* Header (pinned) */}
         <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-200 dark:border-border shrink-0">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <DialogTitle className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
               Send Itinerary Email
             </DialogTitle>
           </DialogHeader>

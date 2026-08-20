@@ -414,7 +414,7 @@ export function MediaPage() {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
       <PageHeader
         left={
-          <h1 className="text-sm font-black uppercase tracking-[0.25em] text-slate-900 dark:text-white">
+          <h1 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
             Media Library
           </h1>
         }
@@ -426,7 +426,7 @@ export function MediaPage() {
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
             <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-72 h-72 object-contain" draggable={false} />
             <div className="text-center space-y-1.5">
-              <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No media yet</p>
+              <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No media yet</p>
               <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create a trip first, then upload your photos and videos</p>
             </div>
             <button
@@ -830,7 +830,7 @@ export function MediaPage() {
                       <img src={group.tripImage} alt="" className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
                       <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
                         {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
                       </p>
@@ -877,7 +877,7 @@ export function MediaPage() {
               }`}>
                 <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-400 dark:text-muted-foreground"}`} />
               </div>
-              <p className={`text-base font-black uppercase tracking-[0.2em] ${isDragging ? "text-brand" : "text-slate-700 dark:text-foreground/80"}`}>
+              <p className={`text-base font-bold tracking-tight ${isDragging ? "text-brand" : "text-slate-700 dark:text-foreground/80"}`}>
                 {isDragging ? "Drop files here" : "Drop photos here"}
               </p>
               <p className="text-xs text-slate-500 dark:text-muted-foreground mt-2">

@@ -200,7 +200,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       >
         {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
-          <DialogTitle className="text-[22px] leading-none font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
+          <DialogTitle className="text-[22px] leading-none font-black tracking-tight text-slate-900 dark:text-white">
             Invite to {orgName}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-muted-foreground">

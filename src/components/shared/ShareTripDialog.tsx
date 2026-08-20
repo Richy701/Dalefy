@@ -142,7 +142,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                   Itinerary
                 </p>
-                <h3 className="mt-1 text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-2">
+                <h3 className="mt-1 text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-2">
                   {tripName}
                 </h3>
                 {trip?.destination && (

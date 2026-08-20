@@ -186,7 +186,7 @@ export function ReportsPage() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/6 dark:border-border">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
-              <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
+              <h1 className="text-2xl lg:text-4xl font-bold tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
             <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/6 dark:border-border shrink-0">
               {(["operations", "compliance"] as const).map(t => (
@@ -215,7 +215,7 @@ export function ReportsPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-sitting.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
-                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No data yet</p>
+                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No data yet</p>
                 <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create trips to see your analytics</p>
               </div>
               <button
@@ -263,7 +263,7 @@ export function ReportsPage() {
               {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Status breakdown across all trips</p>
                 </div>
                 {pipelineData.length === 0 ? (
@@ -325,7 +325,7 @@ export function ReportsPage() {
                 {/* Team Overview */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="mb-5">
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team</h3>
+                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Team</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} members`; })()}</p>
                   </div>
                   {(() => {
@@ -378,7 +378,7 @@ export function ReportsPage() {
                 {/* Trips by Month */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
                   <div className="mb-6">
-                    <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
+                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Departure schedule</p>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
@@ -413,7 +413,7 @@ export function ReportsPage() {
                       <AirplaneTilt className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
                       <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-0.5">Most booked</p>
                     </div>
                   </div>
@@ -461,7 +461,7 @@ export function ReportsPage() {
                       <Users className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">Travelers per Trip</h3>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Travelers per Trip</h3>
                       <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-0.5">Group sizes</p>
                     </div>
                   </div>
@@ -513,7 +513,7 @@ export function ReportsPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-together.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
-                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Add travelers to track compliance</p>
               </div>
               <button
@@ -536,7 +536,7 @@ export function ReportsPage() {
               {/* Overall Compliance - full-width hero with donut + breakdown bars */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Across all team members</p>
                 </div>
                 <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
@@ -598,7 +598,7 @@ export function ReportsPage() {
               {/* By Document Type - full width */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Signed / Pending / Expired per type</p>
                 </div>
                 <div className="space-y-4">
@@ -646,7 +646,7 @@ export function ReportsPage() {
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
+                      <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Latest signed documents</p>
                     </div>
                   </div>
@@ -676,7 +676,7 @@ export function ReportsPage() {
                       <Warning className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
+                      <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
                       <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Members with pending or expired docs</p>
                     </div>
                   </div>
@@ -721,7 +721,7 @@ export function ReportsPage() {
               {/* Team Compliance Grid / Heatmap */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Overview by traveler and document</p>
                 </div>
                 <div className="overflow-x-auto">

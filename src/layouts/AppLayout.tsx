@@ -26,7 +26,7 @@ function PageErrorFallback({ error, resetErrorBoundary }: { error: Error; resetE
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold uppercase tracking-wide text-slate-900 dark:text-white">Something went wrong</h2>
+        <h2 className="text-lg font-bold tracking-wide text-slate-900 dark:text-white">Something went wrong</h2>
         <p className="text-sm text-slate-500 dark:text-muted-foreground">{error.message}</p>
         <button
           onClick={resetErrorBoundary}

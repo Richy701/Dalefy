@@ -398,7 +398,7 @@ export function DashboardPage() {
               <Upload className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-xl font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">Drop to Import</p>
+              <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Drop to Import</p>
               <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
             </div>
           </div>
@@ -533,7 +533,7 @@ export function DashboardPage() {
                   </p>
                 </button>
               ) : (
-                <p className="mt-4 text-sm sm:text-base font-black uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                <p className="mt-4 text-sm sm:text-base font-bold tracking-tight text-slate-500 dark:text-muted-foreground">
                   Where to next?
                 </p>
               )}
@@ -1002,7 +1002,7 @@ export function DashboardPage() {
 
                       {/* Title block */}
                       <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <h3 className="italic font-black tracking-tight text-white text-xl leading-[1.1] uppercase line-clamp-2">
+                        <h3 className="font-bold tracking-tight text-white text-xl leading-[1.1] line-clamp-2">
                           {spotlightTrip.name}
                         </h3>
                         {spotlightTrip.destination ? (
@@ -1386,7 +1386,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
+                  <Drawer.Title className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
                   <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">Build your next adventure</p>
                 </div>
                 <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
@@ -1415,7 +1415,7 @@ export function DashboardPage() {
                 <div className="space-y-2">
                   <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Itinerary Title</label>
                   <input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
-                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-xl font-bold tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Trip Type */}

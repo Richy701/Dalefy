@@ -112,6 +112,14 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* Headings sit on the same family as the UI and get their presence from
+     weight and negative tracking rather than a second, louder typeface. */
+  h1, h2, h3, h4,
+  [data-slot="dialog-title"],
+  [data-slot="alert-dialog-title"],
+  [data-slot="card-title"] {
+    letter-spacing: -0.02em;
+  }
   .theme-switching,
   .theme-switching *,
   .theme-switching *::before,

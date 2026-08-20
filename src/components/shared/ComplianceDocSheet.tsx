@@ -63,7 +63,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 <Badge className={`text-xs font-black px-2.5 py-0.5 rounded-full border-none uppercase tracking-widest mb-2 ${statusCfg.bg} ${statusCfg.color}`}>
                   {doc.status}
                 </Badge>
-                <h2 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none">
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-none">
                   {doc.name}
                 </h2>
               </div>

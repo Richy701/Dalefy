@@ -79,12 +79,12 @@ function BrandPanel() {
           <div className="h-11 w-11 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/20">
             <Logo className="text-black h-6 w-6" />
           </div>
-          <span className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             {BRAND.nameUpper}
           </span>
         </div>
 
-        <h2 className="text-3xl xl:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-[1.1] mb-4">
+        <h2 className="text-3xl xl:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-[1.1] mb-4">
           Almost there.<br />
           <span className="text-brand">Set up your agency.</span>
         </h2>
@@ -147,7 +147,7 @@ export function CreateOrgPage() {
         <div className="w-full max-w-sm text-center space-y-6">
           <Logo className="h-8 mx-auto text-brand" />
           <div className="space-y-3">
-            <h1 className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">You're not on a team yet</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">You're not on a team yet</h1>
             <p className="text-sm text-slate-600 dark:text-muted-foreground">
               {BRAND.name} is invitation only. Ask your agency admin to invite
               {user?.email ? <> <strong className="text-slate-900 dark:text-white">{user.email}</strong></> : " you"}, then open the link in that email.
@@ -156,14 +156,14 @@ export function CreateOrgPage() {
           <div className="space-y-2">
             <Button
               onClick={() => { refreshOrg(); navigate("/dashboard"); }}
-              className="w-full h-12 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+              className="w-full h-12 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
             >
               I've been invited, check again
             </Button>
             <Button
               variant="ghost"
               onClick={() => { logout(); navigate("/login"); }}
-              className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground"
+              className="w-full h-12 rounded-xl font-bold text-slate-500 dark:text-muted-foreground"
             >
               Sign out
             </Button>
@@ -227,7 +227,7 @@ export function CreateOrgPage() {
             <div className="h-14 w-14 bg-brand rounded-xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20">
               <Logo className="text-black h-8 w-8" />
             </div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
@@ -245,7 +245,7 @@ export function CreateOrgPage() {
               </div>
 
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
                   Create Your Agency
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-foreground/80">
@@ -293,7 +293,7 @@ export function CreateOrgPage() {
                 <Button
                   type="submit"
                   disabled={!canSubmit || loading}
-                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed gap-2.5 transition-all duration-150"
+                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed gap-2.5 transition-all duration-150"
                 >
                   {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
@@ -309,7 +309,7 @@ export function CreateOrgPage() {
               </div>
 
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
                   Brand Your Agency
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-foreground/80">
@@ -427,7 +427,7 @@ export function CreateOrgPage() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                      <p className="text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
                         {brandCompanyName || BRAND.name}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-muted-foreground">
@@ -451,7 +451,7 @@ export function CreateOrgPage() {
                     type="button"
                     disabled={savingBrand}
                     onClick={handleFinishBranding}
-                    className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
+                    className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                   >
                     {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-[18px] w-[18px]" /></>}
                   </Button>

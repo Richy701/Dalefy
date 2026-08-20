@@ -26,7 +26,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
           <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto">
             <Lock className="h-6 w-6 text-brand" />
           </div>
-          <DialogTitle className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
+          <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Demo Mode
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-muted-foreground text-sm leading-relaxed">
@@ -36,7 +36,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
         <DialogFooter className="pt-4 flex flex-col gap-2 sm:flex-col">
           <Button
             onClick={handleSignUp}
-            className="w-full rounded-xl h-10 px-8 font-bold uppercase tracking-wider bg-brand hover:opacity-90 text-black shadow-xl shadow-brand/20"
+            className="w-full rounded-xl h-10 px-8 font-bold bg-brand hover:opacity-90 text-black shadow-xl shadow-brand/20"
           >
             Sign In
           </Button>

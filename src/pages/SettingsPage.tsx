@@ -46,7 +46,7 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
           <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-card border border-slate-200 dark:border-border flex items-center justify-center">
             <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
           </div>
-          <h2 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
+          <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">
             {title}
           </h2>
         </div>
@@ -291,7 +291,7 @@ export function SettingsPage() {
       <PageHeader
         left={
           <div className="flex items-baseline gap-3 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
               Settings
             </h1>
             <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground hidden md:inline">
@@ -314,7 +314,7 @@ export function SettingsPage() {
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">
                   {user?.name ?? ""}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-muted-foreground truncate">

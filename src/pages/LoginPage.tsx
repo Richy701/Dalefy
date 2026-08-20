@@ -75,7 +75,7 @@ function HeroBackground() {
           <div className="h-12 w-12 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/25">
             <Logo className="text-black h-7 w-7" />
           </div>
-          <span className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+          <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             {BRAND.nameUpper}
           </span>
         </motion.div>
@@ -85,7 +85,7 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white leading-[0.95]">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter text-slate-900 dark:text-white leading-[0.95]">
             Team
             <br />
             <span className="text-brand drop-shadow-[0_0_40px_rgba(11,210,181,0.3)]">workspace.</span>
@@ -220,7 +220,7 @@ export function LoginPage() {
             >
               <Logo className="text-black h-8 w-8" />
             </div>
-            <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
@@ -241,7 +241,7 @@ export function LoginPage() {
           {realAuth && (
             <>
               <div className="mb-10">
-                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
                   Welcome back
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-foreground/80">
@@ -313,7 +313,7 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
+                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                 >
                   {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
@@ -329,7 +329,7 @@ export function LoginPage() {
           {!realAuth && (
             <>
               <div className="mb-10 text-center">
-                <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
                   Welcome
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-foreground/80">
@@ -363,7 +363,7 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading || name.trim().length < 2}
-                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 gap-2.5 transition-all duration-150"
+                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 disabled:opacity-40 gap-2.5 transition-all duration-150"
                 >
                   {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
@@ -390,7 +390,7 @@ export function LoginPage() {
             >
               <div className="w-full max-w-sm space-y-6">
                 <div className="text-center">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
                     Reset Password
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-foreground/80">
@@ -410,7 +410,7 @@ export function LoginPage() {
                     </p>
                     <Button
                       onClick={() => { setShowForgot(false); setForgotSent(false); }}
-                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider"
+                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold tracking-tight"
                     >
                       Back to Sign In
                     </Button>
@@ -433,7 +433,7 @@ export function LoginPage() {
                     <Button
                       type="submit"
                       disabled={forgotSending || !forgotEmail.trim()}
-                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2 disabled:opacity-40"
+                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 gap-2 disabled:opacity-40"
                     >
                       {forgotSending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
                     </Button>

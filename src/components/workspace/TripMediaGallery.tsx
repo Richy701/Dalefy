@@ -191,7 +191,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
               <Upload className="h-7 w-7" />
             </div>
             <div className="text-center pointer-events-none">
-              <p className="font-black text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white">
+              <p className="font-bold text-sm tracking-tight text-slate-900 dark:text-white">
                 {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
               </p>
               <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">

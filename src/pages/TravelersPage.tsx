@@ -670,7 +670,7 @@ export function TravelersPage() {
         ) : undefined}
         cta={!isViewer ? (
           <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-lg bg-brand hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
-            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">ADD TRAVELER</span>
+            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add traveler</span>
           </Button>
         ) : undefined}
       />
@@ -679,7 +679,7 @@ export function TravelersPage() {
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-200 dark:border-border">
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
+              <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
               <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-muted-foreground">People & Documents</span>
                 <span className="text-slate-200 dark:text-muted-foreground">·</span>
@@ -732,7 +732,7 @@ export function TravelersPage() {
             <div className="flex flex-col items-center justify-center py-20 gap-3 animate-fade-in">
               <BrandIllustration src="/illustrations/illus-discussion.svg" className="w-72 h-72 object-contain mb-[-24px]" draggable={false} />
               <div className="text-center space-y-1.5">
-                <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
+                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No team members</p>
                 <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Add your first traveler to get started</p>
               </div>
               {!isViewer && (
@@ -767,7 +767,7 @@ export function TravelersPage() {
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
+                          <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
                           <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-muted-foreground italic">No email</span>}</div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
@@ -869,7 +869,7 @@ export function TravelersPage() {
                           <div className="flex items-center gap-3.5">
                             <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
-                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name}</div>
+                              <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name}</div>
                               <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-muted-foreground italic">No email</span>}</div>
                             </div>
                           </div>
@@ -1411,7 +1411,7 @@ export function TravelersPage() {
                                   <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                                  <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                                   {appUser.email && <div className="text-[10px] text-slate-500 dark:text-muted-foreground truncate">{appUser.email}</div>}
                                   <div className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
@@ -1439,7 +1439,7 @@ export function TravelersPage() {
                               <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                              <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                               <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5 flex items-center gap-1">
                                 {appUser.email ? (
                                   <><Envelope className="h-3 w-3" /> {appUser.email}</>
@@ -1564,7 +1564,7 @@ export function TravelersPage() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{panelUser.name || "Unknown"}</p>
+                            <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">{panelUser.name || "Unknown"}</p>
                             <button
                               onClick={() => { setRenamingUser(panelUser.deviceId); setRenameValue(panelUser.name); }}
                               className="h-6 w-6 rounded-md bg-slate-100 dark:bg-secondary flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0"
@@ -1769,7 +1769,7 @@ export function TravelersPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
+                  <Drawer.Title className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
                   <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">New team member</p>
                 </div>
                 <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
@@ -1876,7 +1876,7 @@ export function TravelersPage() {
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card rounded-t-xl border-t border-slate-200 dark:border-border max-h-[85vh] overflow-y-auto">
             <div className="mx-auto w-12 h-1.5 bg-slate-200 dark:bg-[#333] rounded-full mt-3 mb-2" />
             <div className="px-6 sm:px-8 pb-8">
-              <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
+              <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
               <p className="text-xs font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
 
               {/* Document name */}

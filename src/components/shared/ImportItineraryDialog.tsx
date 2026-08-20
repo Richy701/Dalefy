@@ -1643,7 +1643,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-5 sm:p-6 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
-          <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
+          <DialogTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-muted-foreground font-medium uppercase text-xs tracking-[0.2em]">
@@ -1694,7 +1694,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <Upload className="h-5 w-5 text-brand" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                     {dragging ? "Drop to import" : "Drop a file here or click to browse"}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-1">
@@ -1726,7 +1726,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     }
                   }}
                   disabled={!rawText.trim()}
-                  className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
+                  className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20"
                 >
                   Parse Text <CaretRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -1761,14 +1761,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-10 text-brand" />
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Extracting text, images &amp; attachments...</p>
+            <p className="text-sm font-bold tracking-tight text-slate-500 dark:text-muted-foreground">Extracting text, images &amp; attachments...</p>
           </div>
         )}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-10 text-brand" />
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
+            <p className="text-sm font-bold tracking-tight text-slate-500 dark:text-muted-foreground">
               Matching images {importProgress.done}/{importProgress.total}
             </p>
             <Progress
@@ -1837,7 +1837,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                      <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
                         {parsed.name}
                       </h3>
                       <Button
@@ -1989,7 +1989,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                                 {ev.title}
                               </p>
                               <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-muted-foreground mt-1 wrap-break-word">
-                                {ev.time || "No time"}
+                                <span className="font-mono tabular-nums">{ev.time || "No time"}</span>
                                 {ev.location ? ` · ${ev.location}` : ""}
                               </p>
                             </button>
@@ -2109,7 +2109,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <AlertDialog>
                     <AlertDialogTrigger
                       disabled={parsed.events.length > 0 && includedEvents.length === 0}
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl h-10 font-bold uppercase tracking-wider bg-red-500 text-white shadow-lg shadow-red-500/20 hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl h-10 font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Replace with {includedEvents.length} Events
@@ -2136,7 +2136,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <Button
                     onClick={handleImport}
                     disabled={parsed.events.length > 0 && includedEvents.length === 0}
-                    className="flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 bg-brand shadow-brand/20"
+                    className="flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg gap-2 bg-brand shadow-brand/20"
                   >
                     <CheckCircle className="h-4 w-4" />
                     {parsed.events.length === 0
@@ -2157,7 +2157,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <CheckCircle className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-1">
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-900 dark:text-white">Trip Updated</p>
+              <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Trip Updated</p>
               <p className="text-xs text-slate-500 dark:text-muted-foreground">
                 {importMode === "merge" ? "New items were added to the trip." : "Trip data was replaced."}
               </p>
