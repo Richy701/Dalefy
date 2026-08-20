@@ -61,7 +61,7 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
           </p>
         </div>
       </div>
-      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border [&>*]:flex-1 [&>*]:min-h-0">
+      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border [&>*]:grow">
         {children}
       </div>
     </section>
