@@ -1166,7 +1166,7 @@ export function DashboardPage() {
           <section className="space-y-4">
             <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">All Trips</h3>
+                <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">All Trips</h3>
                 <span className="text-[10px] font-bold text-brand bg-brand/10 px-3 py-1.5 rounded-lg">{filteredTrips.length}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -1175,8 +1175,8 @@ export function DashboardPage() {
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
 <div className="flex gap-1 bg-white dark:bg-card p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-primary-foreground shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-primary-foreground shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -1191,64 +1191,69 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/10" />
+                      {/* Light wash for the top chips, then a dedicated scrim behind the
+                          text block so legibility never depends on the photo. */}
+                      <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/45 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 h-[62%] bg-linear-to-t from-black/92 via-black/72 to-transparent" />
 
-                      {/* Top row: status + delete */}
-                      <div className="relative z-10 flex items-center justify-between p-4">
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg backdrop-blur-md ${isActive ? "bg-brand/90 text-black" : "bg-white/15 text-white"}`}>
-                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />}
+                      {/* Row actions, anchored to the card so a wrapping title cannot move them */}
+                      <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger aria-label={`Actions for ${trip.name}`} className="h-8 w-8 rounded-lg bg-black/55 backdrop-blur text-white/80 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
+                            <DotsThreeVertical className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
+                            {(!isOrgMember || canDeleteTrip) && (
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Top row: status + countdown */}
+                      <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-brand/90 text-primary-foreground" : "bg-black/45 text-white"}`}>
+                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
                           {isActive ? "Active" : trip.status}
                         </span>
                         {isUpcoming && (
-                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-lg">
+                          <span className="text-[10px] font-semibold tabular-nums text-white/90 bg-black/45 backdrop-blur-md px-2 py-1 rounded-md">
                             {daysLeft === 0 ? "Today" : `${daysLeft}d away`}
                           </span>
                         )}
                       </div>
 
                       {/* Bottom content */}
-                      <div data-compact-card-bottom className="relative z-10 mt-auto p-5">
+                      <div data-compact-card-bottom className="relative z-10 mt-auto p-4">
                         {trip.destination && (
-                          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-brand mb-2 flex items-center gap-1.5">
-                            <MapPin className="h-2.5 w-2.5" /> {trip.destination}
+                          <p className="text-[11px] font-medium text-white/75 mb-1.5 flex items-center gap-1.5 truncate">
+                            <MapPin className="h-3 w-3 text-brand shrink-0" /> {trip.destination}
                           </p>
                         )}
-                        <h3 className="text-2xl font-black leading-[1.05] text-white mb-3 line-clamp-2 tracking-tight">{trip.name}</h3>
-                        <div className="flex items-center gap-3 text-white/70 pt-3 border-t border-white/15">
+                        <h3 className="text-xl font-bold leading-[1.15] text-white mb-2.5 line-clamp-2 tracking-tight">{trip.name}</h3>
+                        <div className="flex items-center gap-3 text-white/70 pt-2.5 border-t border-white/15">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <LucideCalendar className="h-3 w-3 text-brand shrink-0" />
-                            <span className="text-[11px] font-bold tracking-wide truncate">{dateStr}</span>
+                            <span className="text-[11px] font-medium tabular-nums truncate">{dateStr}</span>
                           </div>
-                          <span className="text-white/20">·</span>
+                          <span className="text-white/25">·</span>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Users className="h-3 w-3 text-brand shrink-0" />
-                            <span className="text-[11px] font-bold tracking-wide truncate">{trip.paxCount || trip.attendees.split(",").length}</span>
+                            <span className="text-[11px] font-medium tabular-nums truncate">{trip.paxCount || trip.attendees.split(",").length}</span>
                           </div>
-                        </div>
-                        <div className="absolute -top-14 right-4 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
-                              <DotsThreeVertical className="h-3.5 w-3.5" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
-                              {(!isOrgMember || canDeleteTrip) && (
-                                <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-slate-200 dark:border-border flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
-                  <div className="h-16 w-16 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-1">Plan your next adventure</p>
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-slate-200 dark:border-border flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[280px]">
+                  <div className="h-14 w-14 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
+                  <p className="text-[13px] font-semibold">New trip</p>
+                  <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">Plan your next adventure</p>
                 </button>
               </div>
             ) : (
@@ -1285,10 +1290,10 @@ export function DashboardPage() {
                       {/* Content */}
                       <div data-compact-table-content className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate group-hover:text-brand transition-colors">
+                          <p className="text-[14px] font-semibold tracking-tight text-slate-900 dark:text-white leading-tight truncate group-hover:text-brand transition-colors">
                             {trip.name}
                           </p>
-                          <span className={`inline-flex items-center gap-1 shrink-0 text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest ${
+                          <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] ${
                             isActive
                               ? "bg-brand/10 text-brand"
                               : trip.status === "Published"
@@ -1304,7 +1309,7 @@ export function DashboardPage() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-slate-500 dark:text-muted-foreground">
                           {trip.destination && (
                             <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5 text-brand" />{trip.destination}</span>
                           )}
