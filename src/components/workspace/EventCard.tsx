@@ -54,7 +54,7 @@ function StatusChip({ status }: { status?: string }) {
       ? "bg-brand/10 text-brand"
       : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]";
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${cls}`}>
+    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 ${cls}`}>
       {status}
     </span>
   );
@@ -68,17 +68,17 @@ function MediaBadge({ media, documents }: { media?: TravelEvent["media"]; docume
   return (
     <div className="flex items-center gap-1.5">
       {images > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
           <ImageIcon className="h-2.5 w-2.5" />{images}
         </span>
       )}
       {videos > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
           <Video className="h-2.5 w-2.5" />{videos}
         </span>
       )}
       {docs > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
           <Paperclip className="h-2.5 w-2.5" />{docs}
         </span>
       )}
@@ -134,7 +134,7 @@ function CompactCard({
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 rounded-2xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 rounded-xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
     >
       {event.image ? (
         <img src={event.image} alt="" className="h-12 w-16 rounded-lg object-cover shrink-0" />
@@ -193,7 +193,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
       <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4 sm:gap-6">
@@ -264,7 +264,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
@@ -314,7 +314,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
             )}
             <StatusChip status={event.status} />
             {event.roomType && (
-              <span className="ml-auto text-[11px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full shrink-0">{event.roomType}</span>
+              <span className="ml-auto text-[11px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-lg shrink-0">{event.roomType}</span>
             )}
             <MediaBadge media={event.media} documents={event.documents} />
             <AssignedDots people={assignedPeople} />
@@ -348,7 +348,7 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (

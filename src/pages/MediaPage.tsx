@@ -431,7 +431,7 @@ export function MediaPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -440,7 +440,7 @@ export function MediaPage() {
 
         {/* Hero Banner - rotating carousel (All) or trip-specific cover */}
         <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-          <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]">
+          <div className="relative overflow-hidden rounded-xl min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]">
             {/* Background image layer */}
             {bannerTrip ? (
               /* ── Trip-specific: full cover image ── */
@@ -513,13 +513,13 @@ export function MediaPage() {
                 {bannerTrip ? (
                   <button
                     onClick={() => navigate(`/trip/${bannerTrip.id}`)}
-                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-4 py-2 hover:bg-white/20 transition-colors"
+                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
                   >
                     Open Trip
                     <ArrowUpRight className="h-3 w-3" />
                   </button>
                 ) : currentCarouselTrip ? (
-                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
+                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                     {currentCarouselTrip.name}
                   </div>
@@ -577,7 +577,7 @@ export function MediaPage() {
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 rounded-2xl border transition-all ${
+          className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 rounded-xl border transition-all ${
             isDragging
               ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
               : "border-black/[0.06] dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none"
@@ -688,7 +688,7 @@ export function MediaPage() {
             >
               <button
                 onClick={() => setActiveTripFilter("all")}
-                className={`px-4 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
+                className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
                   activeTripFilter === "all"
                     ? "bg-brand text-black border-transparent"
                     : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
@@ -700,7 +700,7 @@ export function MediaPage() {
                 <button
                   key={t.id}
                   onClick={() => setActiveTripFilter(t.id)}
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
+                  className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
                       ? "bg-brand text-black border-transparent"
                       : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
@@ -755,7 +755,7 @@ export function MediaPage() {
 
         {/* ── Selection toolbar ── */}
         {selectMode && filtered.length > 0 && (
-          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-2xl border border-brand/20 bg-brand/5 dark:bg-brand/[0.08]">
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/[0.08]">
             <button
               onClick={() => selected.size === filtered.length ? setSelected(new Set()) : selectAllFiltered()}
               className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:text-brand transition-colors"
@@ -866,13 +866,13 @@ export function MediaPage() {
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
               onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
-              className={`flex flex-col items-center justify-center py-24 sm:py-32 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+              className={`flex flex-col items-center justify-center py-24 sm:py-32 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
                 isDragging
                   ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
                   : "border-black/[0.08] dark:border-[#222] bg-white/50 dark:bg-white/[0.02] hover:border-brand/30 hover:bg-brand/[0.02]"
               }`}
             >
-              <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mb-5 transition-colors ${
+              <div className={`h-16 w-16 rounded-xl flex items-center justify-center mb-5 transition-colors ${
                 isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
               }`}>
                 <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-400 dark:text-[#888]"}`} />
@@ -985,7 +985,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
 }) {
   return (
     <div
-      className={`group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border shadow-sm dark:shadow-none hover:shadow-xl transition-all duration-300 ${
+      className={`group relative rounded-xl overflow-hidden bg-white dark:bg-[#111111] border shadow-sm dark:shadow-none hover:shadow-xl transition-all duration-300 ${
         isSelected
           ? "border-brand ring-2 ring-brand/30"
           : "border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/30"

@@ -303,7 +303,7 @@ export function DestinationsPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -313,7 +313,7 @@ export function DestinationsPage() {
         {/* ── Hero Banner ── */}
         <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
           {/* Banner - same style as dashboard */}
-          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/15 via-brand/[0.03] to-slate-50 dark:from-brand/15 dark:via-brand/[0.03] dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand/15 via-brand/[0.03] to-slate-50 dark:from-brand/15 dark:via-brand/[0.03] dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
             {/* Mobile: stacked layout / Desktop: side-by-side */}
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
               {/* Text content */}
@@ -334,7 +334,7 @@ export function DestinationsPage() {
               </div>
               {/* Globe map - below text on mobile, right side on sm+ */}
               <div
-                className="relative h-[220px] sm:h-auto sm:flex-1 overflow-hidden rounded-b-2xl sm:rounded-b-none sm:rounded-r-3xl"
+                className="relative h-[220px] sm:h-auto sm:flex-1 overflow-hidden rounded-b-xl sm:rounded-b-none sm:rounded-r-xl"
                 onMouseMove={e => { mousePos.current = { x: e.clientX, y: e.clientY }; }}
               >
               <MapboxMap
@@ -448,7 +448,7 @@ export function DestinationsPage() {
             className="fixed z-[9999] pointer-events-none"
             style={hoveredPin ? { left: mousePos.current.x + 16, top: mousePos.current.y - 16 } : { left: "50%", bottom: 24, transform: "translateX(-50%)" }}
           >
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl min-w-[200px] overflow-hidden">
+            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl min-w-[200px] overflow-hidden">
               {/* Header */}
               <div className="px-4 pt-3 pb-2">
                 <div className="flex items-center gap-2 mb-1">
@@ -512,7 +512,7 @@ export function DestinationsPage() {
                 <button
                   key={r}
                   onClick={() => setFilter(r)}
-                  className={`px-3 sm:px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40"}`}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40"}`}
                 >
                   {r === "all" ? "All Regions" : r}
                 </button>
@@ -531,7 +531,7 @@ export function DestinationsPage() {
                 onClick={() => openDest(dest)}
                 onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDest(dest); } if (e.key === "Escape") setExpandedDest(null); }}
                 data-dest-card
-                className={`group relative rounded-2xl sm:rounded-[2rem] overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
+                className={`group relative rounded-xl overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
                 style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
                 <div className="absolute inset-0">
@@ -539,32 +539,32 @@ export function DestinationsPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/5" />
                 </div>
                 <div className="relative z-10 flex items-start justify-between p-6">
-                  <span className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
-                  <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/15">{dest.eventCount} Events</span>
+                  <span className="rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
+                  <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
                   <h3 className="text-3xl font-black uppercase tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
                         <AirplaneTilt className="h-2.5 w-2.5 text-white/90" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.flights}</span>
                       </div>
                     )}
                     {dest.types.hotels > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
                         <Bed className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.hotels}</span>
                       </div>
                     )}
                     {dest.types.activities > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
                         <Compass className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.activities}</span>
                       </div>
                     )}
                     {dest.types.dining > 0 && (
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-2 py-0.5">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
                         <ForkKnife className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.dining}</span>
                       </div>

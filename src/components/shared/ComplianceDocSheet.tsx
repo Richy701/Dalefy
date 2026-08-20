@@ -56,7 +56,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
           {/* Refined Header */}
           <div className="p-10 pb-8 bg-slate-50/50 dark:bg-[#0c0c0c] border-b border-slate-200 dark:border-[#1a1a1a]">
             <div className="flex items-center gap-4 mb-6">
-              <div className={`h-14 w-14 rounded-2xl ${statusCfg.bg} ${statusCfg.color} flex items-center justify-center shadow-inner`}>
+              <div className={`h-14 w-14 rounded-xl ${statusCfg.bg} ${statusCfg.color} flex items-center justify-center shadow-inner`}>
                 <StatusIcon className="h-7 w-7" />
               </div>
               <div className="flex-1 min-w-0">
@@ -117,7 +117,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               )}
 
               {isSigned && doc.date && (
-                <div className="bg-brand/5 border border-brand/20 rounded-2xl p-6 flex items-center gap-5">
+                <div className="bg-brand/5 border border-brand/20 rounded-xl p-6 flex items-center gap-5">
                   <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
                     <ShieldCheck className="h-6 w-6 text-brand" />
                   </div>
@@ -146,7 +146,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               <Button
                 onClick={handleSign}
                 disabled={signing}
-                className="w-full h-16 rounded-2xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-lg shadow-brand/25 disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
+                className="w-full h-16 rounded-xl bg-brand hover:opacity-90 text-black font-black text-xs uppercase tracking-[0.25em] shadow-lg shadow-brand/25 disabled:opacity-50 transition-[transform,opacity] duration-150 group relative overflow-hidden active:scale-[0.98]"
               >
                 {signing ? (
                   <><SpinnerGap className="h-5 w-5 animate-spin mr-3" /> Recording...</>

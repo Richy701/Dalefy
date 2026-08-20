@@ -525,7 +525,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
       {/* Route timeline strip */}
       <div className="absolute bottom-0 left-0 right-0 z-[1000]">
-        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-2xl sm:rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
+        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl sm:rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
           <div className="px-3 sm:px-4 py-2.5 sm:py-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">

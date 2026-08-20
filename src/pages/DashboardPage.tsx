@@ -393,8 +393,8 @@ export function DashboardPage() {
       {/* ── Drag-to-import overlay ── */}
       {isDragging && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-[2rem] border-2 border-dashed border-brand bg-brand/[0.04]">
-            <div className="h-16 w-16 rounded-2xl bg-brand/15 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-xl border-2 border-dashed border-brand bg-brand/[0.04]">
+            <div className="h-16 w-16 rounded-xl bg-brand/15 flex items-center justify-center">
               <Upload className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-2">
@@ -410,11 +410,11 @@ export function DashboardPage() {
           <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
             <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
-          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-full bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{isViewer ? "View Only" : "New Trip"}</span>
           </Button>
         }
@@ -422,7 +422,7 @@ export function DashboardPage() {
 
       {/* ── Demo welcome banner ── */}
       {isDemo && !demoBannerDismissed && (
-        <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-2xl border border-brand/20 bg-brand/[0.06] px-5 py-3.5">
+        <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/[0.06] px-5 py-3.5">
           <Compass className="h-5 w-5 text-brand shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
@@ -454,14 +454,14 @@ export function DashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                className="inline-flex items-center gap-2 rounded-full bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" /> New Trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-[#aaa] px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-[#aaa] px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
@@ -474,7 +474,7 @@ export function DashboardPage() {
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-brand/[0.08] dark:border-brand/[0.06] shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
+          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-brand/[0.08] dark:border-brand/[0.06] shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
             <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                 {greeting}, {firstName}
@@ -544,14 +544,14 @@ export function DashboardPage() {
                 type="button"
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
                 disabled={isViewer}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
               >
                 <Plus className="h-3 w-3" /> New Trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
               >
                 <Upload className="h-3 w-3" /> Import
               </button>
@@ -559,7 +559,7 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setInviteOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
                 >
                   <Users className="h-3 w-3" /> Invite Team
                 </button>
@@ -576,7 +576,7 @@ export function DashboardPage() {
 
           {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
-            <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+            <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
@@ -638,7 +638,7 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/[0.06] transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/[0.06] transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
@@ -663,7 +663,7 @@ export function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
+                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/[0.06] dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
@@ -759,7 +759,7 @@ export function DashboardPage() {
                           <button
                             key={ev.id}
                             onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/[0.05] transition-[border-color,box-shadow] duration-200 group"
+                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/[0.05] transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
                             <div data-compact-place-img className="h-28 sm:h-auto sm:w-[160px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
@@ -777,7 +777,7 @@ export function DashboardPage() {
                               {/* Top: type pill + title + inline time on mobile */}
                               <div className="min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
+                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
                                     <cfg.Icon className="h-2.5 w-2.5" weight="bold" />
                                     {typeLabel}
                                   </div>
@@ -806,12 +806,12 @@ export function DashboardPage() {
                               {(ev.status || ev.confNumber) && (
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {ev.status && (
-                                    <span className={cn("text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full border", cfg.bg, cfg.text, "border-current/20")}>
+                                    <span className={cn("text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-lg border", cfg.bg, cfg.text, "border-current/20")}>
                                       {ev.status}
                                     </span>
                                   )}
                                   {ev.confNumber && (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-lg bg-brand/10 text-brand border border-brand/20">
                                       <Hash className="h-2.5 w-2.5" weight="bold" />
                                       {ev.confNumber}
                                     </span>
@@ -857,7 +857,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-2xl border border-dashed border-black/[0.06] dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-[#111111] rounded-xl border border-dashed border-black/[0.06] dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
@@ -875,7 +875,7 @@ export function DashboardPage() {
 
               {/* Needs Attention */}
               {attentionItems.length > 0 && (
-                <div className="bg-white dark:bg-[#111111] border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+                <div className="bg-white dark:bg-[#111111] border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                   <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
                     <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
                     <div>
@@ -907,7 +907,7 @@ export function DashboardPage() {
               )}
 
               {/* At a Glance - stats card */}
-              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                 <div className="px-5 pt-5 pb-3">
                   <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
                   <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Your travel snapshot</p>
@@ -922,7 +922,7 @@ export function DashboardPage() {
                   ].map(({ icon: Icon, label, value }) => (
                     <div
                       key={label}
-                      className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/[0.04] dark:hover:bg-brand/[0.06] transition-colors"
+                      className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/[0.04] dark:hover:bg-brand/[0.06] transition-colors"
                     >
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
@@ -974,7 +974,7 @@ export function DashboardPage() {
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden">
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                     {/* Full-bleed hero */}
                     <div data-compact-spotlight-hero className="relative h-[200px]">
                       <img src={spotlightTrip.image} alt={spotlightTrip.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -987,7 +987,7 @@ export function DashboardPage() {
                           Dalefy · Spotlight
                         </span>
                         <span className={cn(
-                          "px-2.5 py-1 rounded-full text-[9px] font-bold tracking-[0.12em] uppercase inline-flex items-center gap-1",
+                          "px-2.5 py-1 rounded-lg text-[9px] font-bold tracking-[0.12em] uppercase inline-flex items-center gap-1",
                           statusStyle
                         )}>
                           {spotlightTrip.status === "In Progress" ? (
@@ -1037,7 +1037,7 @@ export function DashboardPage() {
                       ].map(({ icon: Icon, label, value }) => (
                         <div
                           key={label}
-                          className="rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent px-3 py-2.5"
+                          className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent px-3 py-2.5"
                         >
                           <div className="flex items-center gap-1.5 mb-1">
                             <Icon className="h-3 w-3 text-brand" weight="regular" />
@@ -1056,7 +1056,7 @@ export function DashboardPage() {
                     <div className="px-4 pb-4">
                       <button
                         onClick={() => handleOpenTrip(spotlightTrip)}
-                        className="w-full h-11 rounded-2xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
+                        className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
                       >
                         Open Itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
                       </button>
@@ -1102,7 +1102,7 @@ export function DashboardPage() {
                 };
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-3xl overflow-hidden flex-1 flex flex-col">
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
                     <div className="px-4 pt-4 pb-1 flex items-center justify-between">
                       <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
                       <button
@@ -1157,14 +1157,14 @@ export function DashboardPage() {
             <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">All Trips</h3>
-                <span className="text-[10px] font-bold text-brand bg-brand/10 px-3 py-1.5 rounded-full">{filteredTrips.length}</span>
+                <span className="text-[10px] font-bold text-brand bg-brand/10 px-3 py-1.5 rounded-lg">{filteredTrips.length}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-500" />
-                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-full text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
+                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
-<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-2xl border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none">
+<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none">
                   <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
                   <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
@@ -1181,18 +1181,18 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-[2rem] overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
 
                       {/* Top row: status + delete */}
                       <div className="relative z-10 flex items-center justify-between p-4">
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-full backdrop-blur-md ${isActive ? "bg-brand/90 text-black" : "bg-white/15 text-white"}`}>
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg backdrop-blur-md ${isActive ? "bg-brand/90 text-black" : "bg-white/15 text-white"}`}>
                           {isActive && <span className="h-1.5 w-1.5 rounded-full bg-black animate-pulse" />}
                           {isActive ? "Active" : trip.status}
                         </span>
                         {isUpcoming && (
-                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-full">
+                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-lg">
                             {daysLeft === 0 ? "Today" : `${daysLeft}d away`}
                           </span>
                         )}
@@ -1235,8 +1235,8 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
-                  <div className="h-16 w-16 rounded-2xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-xl border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                  <div className="h-16 w-16 rounded-xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
                   <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-1">Plan your next adventure</p>
                 </button>
@@ -1244,8 +1244,8 @@ export function DashboardPage() {
             ) : (
               <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-2xl flex flex-col items-center justify-center py-20">
-                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
+                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No trips yet</p>
@@ -1264,7 +1264,7 @@ export function DashboardPage() {
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-2xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
@@ -1278,7 +1278,7 @@ export function DashboardPage() {
                           <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate group-hover:text-brand transition-colors">
                             {trip.name}
                           </p>
-                          <span className={`inline-flex items-center gap-1 shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                          <span className={`inline-flex items-center gap-1 shrink-0 text-[8px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest ${
                             isActive
                               ? "bg-brand/10 text-brand"
                               : trip.status === "Published"
@@ -1307,7 +1307,7 @@ export function DashboardPage() {
                       {/* Right: countdown + actions */}
                       <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4">
                         {dLeft > 0 && parseTripDate(trip.end) >= new Date() && (
-                          <span className="text-[10px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-full leading-none tracking-wide whitespace-nowrap">
+                          <span className="text-[10px] font-black bg-brand/10 text-brand px-2.5 py-1 rounded-lg leading-none tracking-wide whitespace-nowrap">
                             {dLeft === 0 ? "Today" : `${dLeft}d`}
                           </span>
                         )}
@@ -1333,7 +1333,7 @@ export function DashboardPage() {
                 {filteredTrips.length > 0 && (
                   <button
                     onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                    className="group bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#222] rounded-2xl flex items-center gap-3 px-4 py-3.5 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
+                    className="group bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#222] rounded-xl flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
                   >
                     <div className="h-9 w-9 rounded-xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
@@ -1349,14 +1349,14 @@ export function DashboardPage() {
               <div className="mt-6">
                 <div data-compact-section-head className="flex items-center gap-3 mb-3">
                   <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Templates</h3>
-                  <span className="text-[10px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-full">{templates.length}</span>
+                  <span className="text-[10px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-lg">{templates.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {templates.map(tpl => (
                     <button
                       key={tpl.id}
                       onClick={() => handleCreateFromTemplate(tpl)}
-                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-2xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                     >
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -1381,7 +1381,7 @@ export function DashboardPage() {
       <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[2rem] bg-white dark:bg-[#111111] border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-[#111111] border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
             <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
@@ -1398,7 +1398,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-black/[0.06] dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/[0.06] dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
               >
                 <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
                   <Upload className="h-4 w-4 text-brand" />
@@ -1415,7 +1415,7 @@ export function DashboardPage() {
                 <div className="space-y-2">
                   <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Itinerary Title</label>
                   <input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
-                    className="w-full h-14 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Trip Type */}
@@ -1424,7 +1424,7 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
+                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -1436,12 +1436,12 @@ export function DashboardPage() {
                   <div className="space-y-2">
                     <label htmlFor="nt-destination" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
                     <input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                      className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="nt-pax" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
                     <input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
-                      className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                      className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                 </div>
 
@@ -1449,7 +1449,7 @@ export function DashboardPage() {
                 <div className="space-y-2">
                   <label htmlFor="nt-group" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
                   <input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
-                    className="w-full h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
@@ -1465,7 +1465,7 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className={`rounded-2xl border bg-slate-50 dark:bg-[#0a0a0a] w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-[#1f1f1f]"}`}>
+                  <div className={`rounded-xl border bg-slate-50 dark:bg-[#0a0a0a] w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-[#1f1f1f]"}`}>
                     <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={1} className="w-full" />
                   </div>
                   {newTripDateError
@@ -1487,13 +1487,13 @@ export function DashboardPage() {
                       value={newTripData.budget}
                       onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
                       placeholder="45000"
-                      className="flex-1 h-12 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
+                      className="flex-1 h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
                     />
                     <select
                       aria-label="Currency"
                       value={newTripData.currency}
                       onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-12 w-28 px-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      className="h-10 w-28 px-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                     >
                       {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -1507,7 +1507,7 @@ export function DashboardPage() {
                   </label>
                   {/* Preview */}
                   {newTripData.image?.startsWith("http") && (
-                    <div className="h-28 rounded-2xl overflow-hidden relative">
+                    <div className="h-28 rounded-xl overflow-hidden relative">
                       <img src={newTripData.image} alt="" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                     </div>
@@ -1522,25 +1522,25 @@ export function DashboardPage() {
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
                         placeholder="Search photos, e.g. Maasai Mara"
                         aria-label="Search cover photos"
-                        className="w-full h-12 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-2xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                       />
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
-                      className="h-12 px-4 rounded-2xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
+                      className="h-10 px-4 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
                       {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-12 w-12 rounded-2xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
@@ -1577,11 +1577,11 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-12 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/[0.1] dark:hover:border-white/[0.1] transition-all">
+                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/[0.1] dark:hover:border-white/[0.1] transition-all">
                     Cancel
                   </button>
                   <button type="submit"
-                    className="flex-[2] h-12 rounded-2xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    className="flex-[2] h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
                     <Plus className="h-4 w-4" /> Create Itinerary
                   </button>
                 </div>

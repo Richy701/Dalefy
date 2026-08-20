@@ -56,7 +56,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
   return (
     <div className={forPrint ? "bg-white" : "bg-slate-50 dark:bg-[#050505]"}>
       {/* ── Hero ── */}
-      <div className={cn("relative overflow-hidden shrink-0", forPrint ? "h-[160px]" : "h-[180px] sm:h-[280px] rounded-t-2xl sm:rounded-t-[2rem]")}>
+      <div className={cn("relative overflow-hidden shrink-0", forPrint ? "h-[160px]" : "h-[180px] sm:h-[280px] rounded-t-xl sm:rounded-t-xl")}>
         {trip.image ? (
           <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
@@ -154,7 +154,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
           </div>
 
           {grouped.length === 0 ? (
-            <div className={cn("border border-dashed rounded-2xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888]")}>
+            <div className={cn("border border-dashed rounded-xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888]")}>
               <Compass className="h-7 w-7 mb-3 opacity-40" />
               <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
               <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>Add events in the workspace to see them here</p>
@@ -186,7 +186,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
                     </div>
 
                     {/* Events */}
-                    <div className={cn("border rounded-xl sm:rounded-2xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] divide-slate-100 dark:divide-[#1a1a1a]")}>
+                    <div className={cn("border rounded-xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] divide-slate-100 dark:divide-[#1a1a1a]")}>
                       {events.map(ev => (
                         <PreviewEventCard key={ev.id} ev={ev} forPrint={forPrint} tripTz={tripTz} />
                       ))}
@@ -222,7 +222,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
+        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-0 gap-0 shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -248,7 +248,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
 /* ── Pill badge (hero) ── */
 function Pill({ icon: Icon, children, className, forPrint }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; className?: string; forPrint?: boolean }) {
   return (
-    <div className={cn("flex items-center gap-1.5 border border-white/10 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5", forPrint ? "bg-white/15" : "bg-white/10 backdrop-blur-sm", className)}>
+    <div className={cn("flex items-center gap-1.5 border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5", forPrint ? "bg-white/15" : "bg-white/10 backdrop-blur-sm", className)}>
       <Icon className="h-3 w-3 text-brand" />
       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{children}</span>
     </div>

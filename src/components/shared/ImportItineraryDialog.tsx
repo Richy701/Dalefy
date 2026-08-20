@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import { Upload, FileText, SpinnerGap, CheckCircle, WarningCircle, CaretRight, CaretDown, X, AirplaneTilt, Bed, Compass, ForkKnife, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
@@ -1030,19 +1033,31 @@ function parseItinerary(text: string, extractedMedia: ExtractedMedia[] = []): Pa
 
 // ─── AI-powered parser (Claude Haiku 4.5) ────────────────────────────────────
 
-async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = []): Promise<ParsedTrip> {
+async function parseItineraryAI(text: string, extractedMedia: ExtractedMedia[] = [], pdfDataUrl?: string): Promise<ParsedTrip> {
   const images = extractedMedia
     .filter(m => m.type === "image" && m.dataUrl.startsWith("data:image/"))
     .map(m => m.dataUrl);
 
   const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+  if (!idToken) throw new Error("Sign in to use AI import");
+
+  // When we have the original PDF, send it alone — Claude reads the document
+  // natively (layout, tables, embedded images), so the extracted text/images
+  // would only duplicate tokens.
+  const payload = pdfDataUrl
+    ? { pdf: pdfDataUrl }
+    : { text: text || undefined, images: images.length > 0 ? images : undefined };
+
   const resp = await fetch("/api/parse-itinerary", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ text: text || undefined, images: images.length > 0 ? images : undefined }),
+    body: JSON.stringify(payload),
   });
 
-  if (!resp.ok) throw new Error(`AI parse failed: ${resp.status}`);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.error || `AI parse failed: ${resp.status}`);
+  }
   const data = await resp.json();
 
   // Map AI response to ParsedTrip shape
@@ -1136,18 +1151,18 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
         <div className="px-4 pb-4 pl-10 space-y-3">
           {editing ? (
             <>
-              <input
+              <Input
                 type="text"
                 value={item.title}
                 onChange={(e) => onChangeTitle(e.target.value)}
-                className="w-full text-sm font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-lg px-3 py-2 outline-none focus:border-brand/40 transition-colors"
+                className="w-full"
                 placeholder="Title"
               />
-              <textarea
+              <Textarea
                 value={item.body}
                 onChange={(e) => onChangeBody(e.target.value)}
                 rows={Math.min(Math.max(item.body.split("\n").length, 3), 10)}
-                className="w-full text-[13px] text-slate-700 dark:text-[#bbb] bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-lg px-3 py-2.5 leading-relaxed resize-y outline-none focus:border-brand/40 transition-colors"
+                className="w-full resize-y"
                 placeholder="Details..."
               />
               <button
@@ -1233,13 +1248,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   const [parserUsed, setParserUsed] = useState<"ai" | "heuristic" | null>(null);
 
-  const processText = async (text: string, media: ExtractedMedia[] = []) => {
+  const processText = async (text: string, media: ExtractedMedia[] = [], pdfDataUrl?: string) => {
     setRawText(text);
     let result: ParsedTrip;
 
     // Try AI parser first, fall back to heuristic
     try {
-      result = await parseItineraryAI(text, media);
+      result = await parseItineraryAI(text, media, pdfDataUrl);
       setParserUsed("ai");
       logger.log("Import", "AI parsed:", result.events.length, "events,", result.parsedTravelerNames.length, "travelers");
     } catch (aiErr) {
@@ -1259,8 +1274,19 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setStep("extracting");
     try {
       const { text, media } = await extractContent(file);
-      if (!text.trim() && media.length === 0) throw new Error("No readable text found in this file.");
-      await processText(text, media);
+      // Keep the original PDF for the AI parser — it reads documents natively.
+      // 20MB cap keeps the request under the AI API's size limit.
+      let pdfDataUrl: string | undefined;
+      if (file.name.toLowerCase().endsWith(".pdf") && file.size <= 20 * 1024 * 1024) {
+        pdfDataUrl = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = e => res(e.target?.result as string ?? "");
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        }).catch(() => undefined);
+      }
+      if (!text.trim() && media.length === 0 && !pdfDataUrl) throw new Error("No readable text found in this file.");
+      await processText(text, media, pdfDataUrl);
     } catch (e: any) {
       setError(e.message ?? "Could not read this file.");
       setStep("upload");
@@ -1557,7 +1583,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-8 md:p-10 shadow-2xl">
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-6 md:p-10 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
@@ -1568,7 +1594,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "review" && <>
               {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - review before importing`}
               {parserUsed && (
-                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
+                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
                   {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
                 </span>
               )}
@@ -1588,9 +1614,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-2xl hover:border-brand/60 transition-colors group"
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl hover:border-brand/60 transition-colors group"
             >
-              <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center hover:bg-brand/25 transition-colors shadow-sm" aria-hidden="true">
+              <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center hover:bg-brand/25 transition-colors shadow-sm" aria-hidden="true">
                 <Upload className="h-6 w-6 text-brand" />
               </div>
               <div className="text-center">
@@ -1623,11 +1649,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             </div>
 
             <div className="space-y-3">
-              <label htmlFor="import-paste" className="sr-only">Paste itinerary text</label>
-              <textarea
+              <Label htmlFor="import-paste" className="sr-only">Paste itinerary text</Label>
+              <Textarea
                 id="import-paste"
                 placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
-                className="w-full min-h-[140px] p-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#444] focus:outline-none focus:border-brand resize-none transition-colors"
+                className="w-full min-h-[140px] resize-none"
                 onChange={e => setRawText(e.target.value)}
                 value={rawText}
               />
@@ -1644,7 +1670,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   }
                 }}
                 disabled={!rawText.trim()}
-                className="w-full h-12 rounded-2xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
+                className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
               >
                 Parse Text <CaretRight className="h-4 w-4 ml-1" />
               </Button>
@@ -1681,7 +1707,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           <div className="flex flex-col min-h-0 flex-1">
           <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
             {/* Trip summary */}
-            <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white dark:bg-[#111111]">
+            <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white dark:bg-[#111111]">
               {/* Teal accent strip + back */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-[#1a1a1a] bg-gradient-to-r from-brand/[0.06] to-transparent">
                 <div className="flex items-center gap-2">
@@ -1702,12 +1728,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 {/* Metadata chips */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {parsed.destination && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 text-[11px] font-bold text-brand">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 text-[11px] font-bold text-brand">
                       <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                       {parsed.destination}
                     </span>
                   )}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
                     {(() => {
                       const fmt = (iso: string) => {
                         const d = new Date(iso + "T12:00:00");
@@ -1722,18 +1748,18 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     const e = new Date(parsed.end + "T00:00:00");
                     const nights = Math.round((e.getTime() - s.getTime()) / 86400000);
                     return nights > 0 ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
                         {nights} night{nights !== 1 ? "s" : ""}
                       </span>
                     ) : null;
                   })()}
                   {parsed.events.length > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
                       {parsed.events.length} event{parsed.events.length !== 1 ? "s" : ""}
                     </span>
                   )}
                   {parsed.paxCount > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
                       {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
                     </span>
                   )}
@@ -1761,7 +1787,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
             {/* Information & Documents preview (editable) */}
               {editInfo.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden">
+                <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden">
                   <div className="px-4 py-3 flex items-center gap-2.5 border-b border-slate-200 dark:border-[#1f1f1f]">
                     <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
                       <FileText className="h-3.5 w-3.5 text-brand" />
@@ -1820,7 +1846,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-2xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
+              <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
                 <WarningCircle className="h-5 w-5 text-amber-400" />
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
                 <p className="text-[10px] text-slate-500 dark:text-[#888888] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
@@ -1885,10 +1911,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 </div>
               )}
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
-                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-2xl h-12 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
+                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
                 <Button
                   onClick={handleImport}
-                  className={`flex-1 rounded-2xl h-12 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
+                  className={`flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
                 >
                   <CheckCircle className="h-4 w-4" />
                   {isReimport
@@ -1906,7 +1932,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {/* ── STEP 5: DONE (re-import with undo) ── */}
         {step === "done" && (
           <div className="flex flex-col items-center justify-center py-12 gap-5">
-            <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
               <CheckCircle className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-1">
@@ -1916,10 +1942,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </p>
             </div>
             <div className="flex gap-3">
-              <Button variant="ghost" onClick={handleUndo} className="rounded-2xl h-10 px-5 font-bold text-red-400 hover:bg-red-500/10 uppercase tracking-wider text-xs">
+              <Button variant="ghost" onClick={handleUndo} className="rounded-xl h-10 px-5 font-bold text-red-400 hover:bg-red-500/10 uppercase tracking-wider text-xs">
                 Undo Changes
               </Button>
-              <Button onClick={() => handleClose(false)} className="rounded-2xl h-10 px-5 font-bold bg-brand hover:opacity-90 text-black uppercase tracking-wider text-xs">
+              <Button onClick={() => handleClose(false)} className="rounded-xl h-10 px-5 font-bold bg-brand hover:opacity-90 text-black uppercase tracking-wider text-xs">
                 Done
               </Button>
             </div>

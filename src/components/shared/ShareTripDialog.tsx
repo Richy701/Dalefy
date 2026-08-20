@@ -69,7 +69,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-3xl border border-slate-200 dark:border-[#1f1f1f]"
+        className="border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl border border-slate-200 dark:border-[#1f1f1f]"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -90,7 +90,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
         <div className="p-5 pt-2 sm:pt-5">
           {!isPublished && (
-            <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
               <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">This trip is still a draft</p>
@@ -109,7 +109,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
             </div>
           )}
           {/* Boarding pass ticket */}
-          <div className="relative bg-white dark:bg-[#0f0f0f] rounded-2xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
+          <div className="relative bg-white dark:bg-[#0f0f0f] rounded-xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
             {/* Top accent bar */}
             <div
               className="px-4 py-3 flex items-center justify-center gap-2 border-b"

@@ -115,7 +115,7 @@ function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; ev
 
   return (
     <div>
-      <div className="bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden">
+      <div className="bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden">
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
@@ -252,7 +252,7 @@ export function SharedTripPage() {
   if (error || !trip) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="h-16 w-16 rounded-2xl bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
+        <div className="h-16 w-16 rounded-xl bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
           <MapPin className="h-7 w-7 text-slate-500 dark:text-[#888]" />
         </div>
         <div className="max-w-sm space-y-2">
@@ -327,14 +327,14 @@ export function SharedTripPage() {
 
       {/* Itinerary */}
       <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
-        <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-4 sm:p-6 shadow-sm">
           {/* Traveler picker */}
           {hasTravelers && (
             <div className="mb-6">
               <div className="relative">
                 <button
                   onClick={() => setPickerOpen(!pickerOpen)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                     viewAsId
                       ? "bg-brand/5 dark:bg-brand/10 border-brand/20"
                       : "bg-slate-50 dark:bg-[#111] border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"
@@ -357,7 +357,7 @@ export function SharedTripPage() {
                 </button>
 
                 {pickerOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl overflow-hidden z-20">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl overflow-hidden z-20">
                     <button
                       onClick={() => { setViewAsId(null); setPickerOpen(false); }}
                       className={`w-full flex items-center gap-3 p-3 text-left transition-colors cursor-pointer ${

@@ -149,7 +149,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         onClick={() => !uploading && fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-[2rem] transition-all cursor-pointer flex flex-col items-center justify-center gap-4 py-14 mb-8 select-none ${
+        className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-4 py-14 mb-8 select-none ${
           isDragging
             ? "border-brand bg-brand/5"
             : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-brand/50"
@@ -182,7 +182,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         ) : (
           <>
             <div
-              className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${
+              className={`h-16 w-16 rounded-xl flex items-center justify-center transition-all ${
                 isDragging
                   ? "bg-brand text-black scale-110"
                   : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"
@@ -223,7 +223,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
               return (
                 <div
                   key={item.id}
-                  className="group relative rounded-2xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
+                  className="group relative rounded-xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
                 >
                   {/* Thumbnail */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
@@ -275,7 +275,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                     {/* Type pill */}
                     <div className="absolute top-2 left-2">
                       <div
-                        className={`h-5 px-2 rounded-full flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm ${
+                        className={`h-5 px-2 rounded-lg flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm ${
                           item.type === "video"
                             ? "bg-pink-500/80 text-white"
                             : "bg-black/50 text-white/90"

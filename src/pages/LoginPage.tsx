@@ -27,7 +27,7 @@ const GoogleIcon = () => (
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
+    <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
       <div className="h-9 w-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
         <X className="h-4 w-4 text-red-500" weight="bold" />
       </div>
@@ -58,7 +58,7 @@ function OrDivider() {
 }
 
 const inputClass =
-  "h-14 bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] rounded-xl text-base text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
+  "h-10 bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] rounded-xl text-base text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
 
 // ── Animated hero background ────────────────────────────────────────────
 
@@ -107,7 +107,7 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
         >
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
             <LockKey className="h-3.5 w-3.5 text-brand" weight="bold" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">Internal · access by invitation</span>
           </div>
@@ -207,7 +207,7 @@ export function LoginPage() {
 
       <div className="relative z-20 min-h-dvh flex items-center justify-center lg:justify-end p-6 sm:p-10 lg:pr-16 xl:pr-24">
         <motion.div
-          className="relative w-full max-w-[480px] lg:bg-white/70 lg:dark:bg-[#0a0a0a]/80 lg:backdrop-blur-2xl lg:border lg:border-slate-200/50 lg:dark:border-[#1f1f1f] lg:rounded-3xl lg:shadow-2xl lg:shadow-black/5 lg:dark:shadow-black/40 lg:p-10 xl:lg:p-12"
+          className="relative w-full max-w-[480px] lg:bg-white/70 lg:dark:bg-[#0a0a0a]/80 lg:backdrop-blur-2xl lg:border lg:border-slate-200/50 lg:dark:border-[#1f1f1f] lg:rounded-xl lg:shadow-2xl lg:shadow-black/5 lg:dark:shadow-black/40 lg:p-10 xl:lg:p-12"
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
@@ -216,7 +216,7 @@ export function LoginPage() {
           <div className="text-center mb-10 lg:hidden">
             <div
               aria-hidden="true"
-              className="h-14 w-14 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20"
+              className="h-12 w-12 bg-brand rounded-xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20"
             >
               <Logo className="text-black h-8 w-8" />
             </div>
@@ -229,7 +229,7 @@ export function LoginPage() {
           </div>
 
           {realAuth && pendingInviteEmail && (
-            <div className="mb-8 rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3">
+            <div className="mb-8 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-brand mb-1">Team invitation</p>
               <p className="text-sm text-slate-700 dark:text-[#ddd]">
                 Sign in or create an account using <strong className="text-slate-900 dark:text-white">{pendingInviteEmail}</strong> to join your team.
@@ -256,7 +256,7 @@ export function LoginPage() {
                 onClick={handleGoogle}
                 disabled={loading || googleLoading}
                 variant="outline"
-                className="w-full h-14 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
+                className="w-full h-10 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
               >
                 {googleLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
               </Button>
@@ -313,7 +313,7 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
+                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
                 >
                   {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
@@ -363,7 +363,7 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading || name.trim().length < 2}
-                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 gap-2.5 transition-all duration-150"
+                  className="w-full h-10 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 disabled:opacity-40 gap-2.5 transition-all duration-150"
                 >
                   {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Get Started <ArrowRight className="h-[18px] w-[18px]" /></>}
                 </Button>
@@ -386,7 +386,7 @@ export function LoginPage() {
               tabIndex={-1}
               ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
               onKeyDown={e => { if (e.key === "Escape") { setShowForgot(false); setForgotSent(false); } }}
-              className="absolute inset-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm lg:rounded-3xl flex items-center justify-center p-8 z-30 focus:outline-none"
+              className="absolute inset-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm lg:rounded-xl flex items-center justify-center p-6 z-30 focus:outline-none"
             >
               <div className="w-full max-w-sm space-y-6">
                 <div className="text-center">
@@ -402,7 +402,7 @@ export function LoginPage() {
 
                 {forgotSent ? (
                   <div className="space-y-4 text-center">
-                    <div className="h-14 w-14 rounded-2xl bg-brand/10 flex items-center justify-center mx-auto">
+                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mx-auto">
                       <ArrowRight className="h-6 w-6 text-brand" />
                     </div>
                     <p className="text-sm font-semibold text-slate-600 dark:text-[#aaa]">
@@ -410,7 +410,7 @@ export function LoginPage() {
                     </p>
                     <Button
                       onClick={() => { setShowForgot(false); setForgotSent(false); }}
-                      className="w-full h-12 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider"
+                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider"
                     >
                       Back to Sign In
                     </Button>
@@ -433,7 +433,7 @@ export function LoginPage() {
                     <Button
                       type="submit"
                       disabled={forgotSending || !forgotEmail.trim()}
-                      className="w-full h-12 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2 disabled:opacity-40"
+                      className="w-full h-10 rounded-xl bg-brand hover:brightness-110 text-black text-sm font-bold uppercase tracking-wider shadow-lg shadow-brand/25 gap-2 disabled:opacity-40"
                     >
                       {forgotSending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
                     </Button>

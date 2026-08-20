@@ -26,7 +26,7 @@ type Tab = "operations" | "compliance";
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-2xl border border-black/[0.06] dark:border-[#1a1a1a] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
+    <div className="rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
@@ -170,7 +170,7 @@ export function ReportsPage() {
           <button
             onClick={handleExportCsv}
             disabled={trips.length === 0}
-            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-full bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Export trips as CSV"
             title={trips.length === 0 ? "Nothing to export yet" : undefined}
           >
@@ -188,7 +188,7 @@ export function ReportsPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
-            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-2xl border border-black/[0.06] dark:border-[#1f1f1f] shrink-0">
+            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shrink-0">
               {(["operations", "compliance"] as const).map(t => (
                 <button
                   key={t}
@@ -220,7 +220,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/dashboard")}
-                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Create a Trip
               </button>
@@ -228,7 +228,7 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-8 animate-fade-in mt-8">
               {/* ── Hero Stats Strip ── */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
                   <div className="text-center lg:text-left shrink-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
@@ -261,14 +261,14 @@ export function ReportsPage() {
               </div>
 
               {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
                 </div>
                 {pipelineData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
-                    <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
                     <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No trips in pipeline</p>
@@ -323,7 +323,7 @@ export function ReportsPage() {
               {/* ── Team Overview + Trips by Month - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Team Overview */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="mb-5">
                     <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} members`; })()}</p>
@@ -331,8 +331,8 @@ export function ReportsPage() {
                   {(() => {
                     const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
                     if (allTravelers.length === 0) return (
-                      <div className="h-52 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
-                        <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                        <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                           <Users className="h-5 w-5 text-brand opacity-60" />
                         </div>
                         <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members</p>
@@ -376,14 +376,14 @@ export function ReportsPage() {
                 </div>
 
                 {/* Trips by Month */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8 flex flex-col">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Departure schedule</p>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
-                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
-                      <div className="h-12 w-12 rounded-2xl bg-brand/10 flex items-center justify-center mb-3">
+                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                      <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
                       <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No data yet</p>
@@ -407,7 +407,7 @@ export function ReportsPage() {
               {/* ── Top Airlines + Travelers per Trip - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Airlines */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <AirplaneTilt className="h-4 w-4" />
@@ -455,7 +455,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Travelers per Trip */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Users className="h-4 w-4" />
@@ -518,7 +518,7 @@ export function ReportsPage() {
               </div>
               <button
                 onClick={() => navigate("/travelers")}
-                className="h-10 px-6 rounded-full bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Add Travelers
               </button>
@@ -534,7 +534,7 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance - full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
@@ -596,7 +596,7 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type - full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
@@ -640,7 +640,7 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action - side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileText className="h-4 w-4" />
@@ -670,7 +670,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
                       <Warning className="h-4 w-4" />
@@ -699,12 +699,12 @@ export function ReportsPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {t.pend > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500">
                                 <Clock className="h-3 w-3" />{t.pend}
                               </span>
                             )}
                             {t.exp > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
+                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-red-500/10 text-red-400">
                                 <WarningCircle className="h-3 w-3" />{t.exp}
                               </span>
                             )}
@@ -719,7 +719,7 @@ export function ReportsPage() {
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-[#111111] rounded-2xl sm:rounded-[2rem] border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 lg:p-8">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
@@ -772,7 +772,7 @@ export function ReportsPage() {
                               );
                             })}
                             <td className="text-center py-4 px-3">
-                              <Badge className={`text-xs font-bold px-2.5 py-1 rounded-full border-none uppercase tracking-wider ${allSigned ? "bg-emerald-500/10 text-emerald-400" : hasExpired ? "bg-red-500/10 text-red-400" : "bg-amber-500/10 text-amber-400"}`}>
+                              <Badge className={`text-xs font-bold px-2.5 py-1 rounded-lg border-none uppercase tracking-wider ${allSigned ? "bg-emerald-500/10 text-emerald-400" : hasExpired ? "bg-red-500/10 text-red-400" : "bg-amber-500/10 text-amber-400"}`}>
                                 {allSigned ? "Complete" : hasExpired ? "Action Req." : "Pending"}
                               </Badge>
                             </td>

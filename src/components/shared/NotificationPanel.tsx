@@ -137,7 +137,7 @@ export function NotificationPanel() {
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent className="w-[22rem] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl shadow-2xl" align="end">
+        <PopoverContent className="w-[22rem] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl" align="end">
           <NotificationList />
         </PopoverContent>
       </Popover>

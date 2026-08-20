@@ -196,7 +196,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:max-h-[85vh] sm:rounded-3xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
+        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
       >
         {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
@@ -224,13 +224,13 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   placeholder="colleague@company.com"
                   autoComplete="off"
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
-                  className="h-12 pl-10 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
+                  className="h-10 pl-10 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
                 />
               </div>
               <Button
                 onClick={handleInvite}
                 disabled={sending || !isValidEmail(normalizedEmail) || alreadyMember}
-                className="h-12 rounded-xl bg-brand hover:opacity-90 px-4 sm:px-5 shadow-lg shadow-brand/20 text-xs font-bold uppercase tracking-wider gap-2 disabled:opacity-40 disabled:shadow-none"
+                className="h-10 rounded-xl bg-brand hover:opacity-90 px-4 sm:px-5 shadow-lg shadow-brand/20 text-xs font-bold uppercase tracking-wider gap-2 disabled:opacity-40 disabled:shadow-none"
                 style={{ color: accentFg }}
               >
                 {sending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" weight="bold" />}

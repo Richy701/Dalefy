@@ -226,7 +226,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl sm:rounded-[2rem] p-0 gap-0 shadow-2xl"
+        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-0 gap-0 shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         {/* Header (pinned) */}
@@ -351,7 +351,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             {/* Primary: Open in email client */}
             <Button
               onClick={openInEmailClient}
-              className="w-full rounded-xl text-xs font-bold uppercase tracking-widest h-12 gap-2.5 transition-all duration-150 hover:opacity-90"
+              className="w-full rounded-xl text-xs font-bold uppercase tracking-widest h-10 gap-2.5 transition-all duration-150 hover:opacity-90"
               style={{ background: accentColor, color: accentFg }}
             >
               <EnvelopeSimple className="h-4 w-4" weight="bold" />
@@ -405,7 +405,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               </span>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white shadow-sm">
+            <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white shadow-sm">
               {/* Email Header */}
               <div className="text-center py-5 px-6 border-b border-slate-100">
                 {brand.logoUrl ? (
@@ -435,7 +435,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               {/* CTA */}
               <div className="px-6 pb-6 text-center">
                 <span
-                  className="inline-block px-8 py-2.5 text-xs font-bold rounded-full text-white"
+                  className="inline-block px-8 py-2.5 text-xs font-bold rounded-lg text-white"
                   style={{ background: accentColor }}
                 >
                   View Itinerary

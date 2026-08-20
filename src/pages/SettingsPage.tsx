@@ -310,7 +310,7 @@ export function SettingsPage() {
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-5 flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-brand/15 text-brand flex items-center justify-center text-lg font-black border border-brand/20 shrink-0">
+              <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-black border border-brand/20 shrink-0">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">

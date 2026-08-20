@@ -47,7 +47,7 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           // h-fit + max-h + overflow so no dialog can grow past the viewport or lose its footer
-          "fixed inset-0 z-50 m-auto grid w-full max-w-lg h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 border border-border bg-background p-6 shadow-lg transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:scale-95 data-starting-style:scale-95 rounded-2xl",
+          "fixed inset-0 z-50 m-auto grid w-full max-w-lg h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 border border-border bg-background p-6 shadow-lg transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:scale-95 data-starting-style:scale-95 rounded-xl",
           className
         )}
         {...props}

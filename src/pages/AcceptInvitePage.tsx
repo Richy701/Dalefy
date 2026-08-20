@@ -173,7 +173,7 @@ export function AcceptInvitePage() {
                 </p>
                 <Button
                   onClick={handleSignIn}
-                  className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+                  className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
                 >
                   Sign in to accept
                 </Button>
@@ -186,7 +186,7 @@ export function AcceptInvitePage() {
                 <Button
                   onClick={handleAccept}
                   disabled={busy || status === "accepting"}
-                  className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+                  className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
                 >
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
@@ -215,7 +215,7 @@ export function AcceptInvitePage() {
             <Button
               onClick={handleAccept}
               disabled={busy}
-              className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
             >
               I've verified, continue
             </Button>
@@ -223,7 +223,7 @@ export function AcceptInvitePage() {
               onClick={handleResendVerification}
               disabled={busy}
               variant="ghost"
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl font-bold uppercase tracking-wider"
             >
               Resend verification email
             </Button>
@@ -237,14 +237,14 @@ export function AcceptInvitePage() {
             <p className="text-sm text-slate-600 dark:text-[#aaa]">{message}</p>
             <Button
               onClick={handleSwitchAccount}
-              className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
             >
               Sign out and switch account
             </Button>
             <Button
               onClick={() => { clearPendingInvite(); navigate("/dashboard"); }}
               variant="ghost"
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl font-bold uppercase tracking-wider"
             >
               Stay signed in
             </Button>
@@ -258,7 +258,7 @@ export function AcceptInvitePage() {
             <p className="text-sm text-slate-600 dark:text-[#aaa]">{message}</p>
             <Button
               onClick={() => navigate("/dashboard")}
-              className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
             >
               Go to Dashboard
             </Button>
@@ -273,7 +273,7 @@ export function AcceptInvitePage() {
             <Button
               onClick={() => navigate("/")}
               variant="ghost"
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wider"
+              className="w-full h-10 rounded-xl font-bold uppercase tracking-wider"
             >
               Go Home
             </Button>
@@ -286,7 +286,7 @@ export function AcceptInvitePage() {
 
 function InviteCard({ preview, inviter, roleLabel }: { preview: Preview; inviter: string; roleLabel: string }) {
   return (
-    <div className="rounded-3xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#111111] p-6 text-left">
+    <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#111111] p-6 text-left">
       <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand mb-3">Team invitation</p>
       <div className="flex items-center gap-3 mb-4">
         {preview.logoUrl ? (

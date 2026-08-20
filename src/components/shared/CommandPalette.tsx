@@ -61,7 +61,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
 
       {/* Palette */}
       <Command
-        className="relative w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-[#2a2a2a] bg-white dark:bg-[#111111] animate-scale-in"
+        className="relative w-full max-w-xl rounded-xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-[#2a2a2a] bg-white dark:bg-[#111111] animate-scale-in"
         loop
       >
         {/* Search bar */}

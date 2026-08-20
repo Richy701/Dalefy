@@ -156,14 +156,14 @@ export function CreateOrgPage() {
           <div className="space-y-2">
             <Button
               onClick={() => { refreshOrg(); navigate("/dashboard"); }}
-              className="w-full h-12 rounded-2xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
+              className="w-full h-12 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider"
             >
               I've been invited, check again
             </Button>
             <Button
               variant="ghost"
               onClick={() => { logout(); navigate("/login"); }}
-              className="w-full h-12 rounded-2xl font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]"
+              className="w-full h-12 rounded-xl font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]"
             >
               Sign out
             </Button>
@@ -224,7 +224,7 @@ export function CreateOrgPage() {
         <div className="w-full max-w-[480px] relative z-10">
           {/* Mobile-only logo */}
           <div className="text-center mb-10 lg:hidden">
-            <div className="h-14 w-14 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20">
+            <div className="h-14 w-14 bg-brand rounded-xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20">
               <Logo className="text-black h-8 w-8" />
             </div>
             <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
@@ -254,7 +254,7 @@ export function CreateOrgPage() {
               </div>
 
               {error && (
-                <div className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
+                <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
                   <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex-1">{error}</p>
                 </div>
               )}
@@ -324,10 +324,10 @@ export function CreateOrgPage() {
                   <div className="flex items-center gap-5">
                     <div className="relative group">
                       {brandLogo ? (
-                        <img src={brandLogo} alt="" className="h-20 w-20 rounded-2xl object-contain border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] p-2" />
+                        <img src={brandLogo} alt="" className="h-20 w-20 rounded-xl object-contain border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] p-2" />
                       ) : (
                         <div
-                          className="h-20 w-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white/90"
+                          className="h-20 w-20 rounded-xl flex items-center justify-center text-2xl font-black text-white/90"
                           style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
                         >
                           {(brandCompanyName || "A").charAt(0)}
@@ -408,7 +408,7 @@ export function CreateOrgPage() {
                 </div>
 
                 {/* Live preview */}
-                <div className="relative bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-2xl overflow-hidden">
+                <div className="relative bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden">
                   <div className="px-5 pt-3.5 pb-3 flex items-center gap-2" style={{ backgroundColor: `${brandColor}10`, borderBottom: `1px solid ${brandColor}20` }}>
                     <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} weight="bold" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: brandColor }}>

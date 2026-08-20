@@ -190,7 +190,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                   {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
                 </span>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-2xl bg-white dark:bg-[#1a1a1a]">
+              <PopoverContent align="start" className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-xl bg-white dark:bg-[#1a1a1a]">
                 <Calendar mode="single" selected={newDueDate ? parse(newDueDate, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setNewDueDate(format(d, "yyyy-MM-dd"))} />
               </PopoverContent>
             </Popover>
