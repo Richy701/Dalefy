@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Shield, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope } from "@phosphor-icons/react";
+import { Crown, Key, UserGear, Eye, CaretDown, UserMinus, ArrowsLeftRight, SpinnerGap, UserPlus, SignOut, Envelope } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useOrg } from "@/context/OrgContext";
@@ -12,7 +12,7 @@ import type { OrgRole } from "@/types";
 
 const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: string; blurb: string }> = {
   owner: { icon: Crown, label: "Owner", color: "text-amber-500", blurb: "Full control, including ownership transfer" },
-  admin: { icon: Shield, label: "Admin", color: "text-brand", blurb: "Manages trips, travelers, branding and the team" },
+  admin: { icon: Key, label: "Admin", color: "text-brand", blurb: "Manages trips, travelers, branding and the team" },
   agent: { icon: UserGear, label: "Agent", color: "text-slate-600 dark:text-muted-foreground", blurb: "Builds and edits trips and manages travelers" },
   viewer: { icon: Eye, label: "Viewer", color: "text-slate-500 dark:text-muted-foreground", blurb: "Views trips and itineraries only" },
 };

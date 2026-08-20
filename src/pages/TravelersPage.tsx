@@ -11,7 +11,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { Drawer } from "vaul";
-import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, ShieldWarning, ShieldCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square, SpinnerGap } from "@phosphor-icons/react";
+import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, SealWarning, SealCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square, SpinnerGap } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -988,9 +988,9 @@ export function TravelersPage() {
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {[
-                  { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <ShieldCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <SealCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldWarning className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <SealWarning className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                 ].map(card => (
                   <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
@@ -1626,7 +1626,7 @@ export function TravelersPage() {
                                       : "bg-white dark:bg-secondary text-slate-500 dark:text-muted-foreground ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
                                   }`}
                                 >
-                                  <ShieldCheck className="h-3 w-3" />
+                                  <SealCheck className="h-3 w-3" />
                                   {t.role === "leader" ? "Leader" : "Traveler"}
                                 </button>
                                 <button

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, FileDashed, FileX, SpinnerGap, CheckCircle, ShieldCheck, ArrowRight, Info } from "@phosphor-icons/react";
+import { FileText, FileDashed, FileX, SpinnerGap, CheckCircle, SealCheck, ArrowRight, Info } from "@phosphor-icons/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -119,7 +119,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               {isSigned && doc.date && (
                 <div className="bg-brand/5 border border-brand/20 rounded-xl p-6 flex items-center gap-5">
                   <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="h-6 w-6 text-brand" />
+                    <SealCheck className="h-6 w-6 text-brand" />
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-brand">Signed & Verified</p>

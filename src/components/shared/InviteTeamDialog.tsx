@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   UserPlus, Envelope, Check, X, SpinnerGap, Link, PaperPlaneTilt,
-  WarningCircle, CheckCircle, Clock, Crown, Shield, UserGear, Eye, GearSix,
+  WarningCircle, CheckCircle, Clock, Crown, Key, UserGear, Eye, GearSix,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -35,7 +35,7 @@ const ROLE_HINT: Record<string, string> = {
   agent: "Can build and edit trips and manage travelers",
   admin: "Everything an agent can, plus team and branding",
 };
-const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Shield, agent: UserGear, viewer: Eye };
+const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Key, agent: UserGear, viewer: Eye };
 const ROLE_BADGE: Record<string, string> = {
   owner: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   admin: "bg-brand/10 text-brand border-brand/20",

@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -2046,7 +2047,7 @@ export function WorkspacePage() {
         onConfirm={discardEventChanges}
       />
       <Dialog open={isEditPanelOpen} onOpenChange={handleEventDialogOpenChange}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        <DialogContent className="max-w-2xl w-[95vw] p-0 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
@@ -2074,10 +2075,9 @@ export function WorkspacePage() {
               </div>
             </div>
 
-            {/* Body - two columns on desktop, stacked on mobile */}
-            <div className="flex-1 flex flex-col md:grid md:grid-cols-5 min-h-0 overflow-y-auto md:overflow-hidden">
-              {/* Left: core event fields */}
-              <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-border">
+            {/* Body - one column, essentials open and the rest behind sections */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+              <div>
                 {/* Category tabs */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-border">
                   {([
@@ -2130,7 +2130,7 @@ export function WorkspacePage() {
                   />
                 )}
 
-                <div className="p-4 sm:p-7 space-y-5">
+                <div className="p-4 sm:p-6 space-y-5">
                   {/* Title - large underline style */}
                   <div className="space-y-1">
                     <Label htmlFor="event-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Event Title</Label>
@@ -2267,6 +2267,22 @@ export function WorkspacePage() {
                     />
                   </div>
 
+                </div>
+
+                {/* ── Details: everything optional, collapsed by default ── */}
+                <Collapsible className="border-t border-slate-200 dark:border-border">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors group/sec">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Details</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                        {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length || "Optional"}
+                        {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length ? " set" : ""}
+                      </span>
+                      <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 sm:p-6 pt-1 space-y-5">
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -2361,11 +2377,27 @@ export function WorkspacePage() {
                       </div>
                     </div>
                   )}
-                </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
-              {/* Right: image search panel */}
-              <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-border bg-slate-50/40 dark:bg-background">
+              {/* ── Media: image, photos and documents, collapsed by default ── */}
+              <Collapsible className="border-t border-slate-200 dark:border-border">
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors group/sec">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Media &amp; documents</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                      {(() => {
+                        const n = (editingEvent?.media?.length ?? 0) + (editingEvent?.documents?.length ?? 0) + (editingEvent?.image ? 1 : 0);
+                        return n === 0 ? "None" : `${n} attached`;
+                      })()}
+                    </span>
+                    <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+              <div className="flex flex-col bg-slate-50/40 dark:bg-background">
                 {/* Search bar */}
                 <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-border shrink-0 bg-white dark:bg-card">
                   <div className="flex gap-2">
@@ -2659,8 +2691,28 @@ export function WorkspacePage() {
                   )}
                 </div>
 
+                </div>{/* end media scroll area */}
+              </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* ── Description & notes: traveler-facing copy and internal notes ── */}
+              <Collapsible className="border-t border-slate-200 dark:border-border">
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors group/sec">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Description &amp; notes</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                      {[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length
+                        ? `${[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length} written`
+                        : "Empty"}
+                    </span>
+                    <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground transition-transform group-data-[panel-open]/sec:rotate-180" />
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+              <div>
                 {/* AI Assist */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card">
+                <div className="p-3 sm:p-4 bg-white dark:bg-card">
                   <button
                     type="button"
                     onClick={handleAiAssist}
@@ -2683,15 +2735,16 @@ export function WorkspacePage() {
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Agent Notes (Internal)</Label>
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
-                </div>{/* end scrollable area */}
               </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
             {/* Footer */}
             <div className="px-4 sm:px-8 py-4 sm:py-5 bg-white dark:bg-card border-t border-slate-200 dark:border-border flex items-center justify-between gap-3 shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setIsEditPanelOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-10 sm:h-11 px-6 sm:px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">
-                Save Event
+              <Button type="button" variant="ghost" onClick={() => setIsEditPanelOpen(false)} className="h-10 px-4 text-[13px] font-medium text-slate-500 dark:text-muted-foreground">Cancel</Button>
+              <Button type="submit" className="h-10 px-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] shadow-lg shadow-brand/20">
+                Save event
               </Button>
             </div>
           </form>

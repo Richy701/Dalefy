@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { parseTripDate } from "@/lib/dates";
-import { AirplaneTilt, Bed, Calendar as LucideCalendar, Briefcase, Users, ShieldCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download, TrendUp, MapPin, Lightning } from "@phosphor-icons/react";
+import { AirplaneTilt, Bed, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download, TrendUp, MapPin, Lightning } from "@phosphor-icons/react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
@@ -527,7 +527,7 @@ export function ReportsPage() {
             <div className="space-y-8 animate-fade-in mt-8">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<ShieldCheck className="h-5 w-5" />} /></div>
+                <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<SealCheck className="h-5 w-5" />} /></div>
                 <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub="All done" icon={<FileText className="h-5 w-5" />} accent="text-emerald-400" /></div>
                 <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<Warning className="h-5 w-5" />} accent="text-amber-500" /></div>
                 <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={complianceData.travelers.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>

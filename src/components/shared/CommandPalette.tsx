@@ -8,7 +8,7 @@ import { useTrips } from "@/context/TripsContext";
 import {
   SquaresFour, Users, Globe, ChartBar, Sun, Moon,
   AirplaneTilt, MapPin, MagnifyingGlass, ArrowRight, Command as CmdIcon, Gear,
-  UserPlus, Shield, Images,
+  UserPlus, UsersThree, Images,
 } from "@phosphor-icons/react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useOrg } from "@/context/OrgContext";
@@ -156,7 +156,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
               >
                 <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground flex items-center justify-center shrink-0">
-                  <Shield className="h-3.5 w-3.5" />
+                  <UsersThree className="h-3.5 w-3.5" />
                 </div>
                 Manage Team
               </Command.Item>
