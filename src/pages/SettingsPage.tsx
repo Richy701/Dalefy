@@ -550,9 +550,9 @@ export function SettingsPage() {
                       {(brandName || BRAND.name).charAt(0)}
                     </div>
                   )}
-                  <span className="text-xs font-bold uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
-                  <span className="text-[9px] text-slate-400 dark:text-muted-foreground">·</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
+                  <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
+                  <span className="text-[11px] text-slate-400 dark:text-muted-foreground">·</span>
+                  <span className="text-[11px] text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
                 <div className="shrink-0">
                   <Button
