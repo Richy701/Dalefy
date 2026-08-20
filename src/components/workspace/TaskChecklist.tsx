@@ -70,15 +70,15 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+      <div className="p-4 border-b border-slate-200 dark:border-border">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">TASKS</span>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
             {completed}/{total}
           </span>
         </div>
         {total > 0 && (
-          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-[#1f1f1f] overflow-hidden">
+          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full bg-brand transition-all duration-500"
               style={{ width: `${progress}%` }}
@@ -90,7 +90,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
       {/* Task list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {sortedTasks.length === 0 && !showForm && (
-          <div className="text-center py-8 text-slate-500 dark:text-[#888]">
+          <div className="text-center py-8 text-slate-500 dark:text-muted-foreground">
             <p className="text-xs font-bold uppercase tracking-wider">No tasks yet</p>
             <p className="text-[10px] mt-1 opacity-70">Add tasks to track trip preparation</p>
           </div>
@@ -103,7 +103,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               className={`group flex items-start gap-2.5 p-2.5 rounded-xl transition-all ${
                 task.completed
                   ? "opacity-50"
-                  : "hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                  : "hover:bg-slate-50 dark:hover:bg-background"
               }`}
             >
               <button
@@ -118,7 +118,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
               </button>
               <div className="flex-1 min-w-0">
                 <p className={`text-xs font-bold leading-tight ${
-                  task.completed ? "line-through text-slate-500 dark:text-[#888]" : "text-slate-800 dark:text-white"
+                  task.completed ? "line-through text-slate-500 dark:text-muted-foreground" : "text-slate-800 dark:text-white"
                 }`}>
                   {task.title}
                 </p>
@@ -126,19 +126,19 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                   {task.category && (
                     <span className="flex items-center gap-1">
                       <span className={`h-1.5 w-1.5 rounded-full ${getCategoryColor(task.category)}`} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                         {CATEGORIES.find(c => c.value === task.category)?.label}
                       </span>
                     </span>
                   )}
                   {task.assignee && (
-                    <span className="text-[9px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
+                    <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
                       {travelers?.find(t => t.id === task.assignee)?.name?.split(" ")[0] || task.assignee}
                     </span>
                   )}
                   {task.dueDate && (
                     <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                      isOverdue ? "text-red-500" : "text-slate-500 dark:text-[#888]"
+                      isOverdue ? "text-red-500" : "text-slate-500 dark:text-muted-foreground"
                     }`}>
                       {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
@@ -158,14 +158,14 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
 
       {/* Add task form */}
       {showForm ? (
-        <div className="p-3 border-t border-slate-200 dark:border-[#1f1f1f] space-y-2.5 bg-slate-50/50 dark:bg-[#0a0a0a]/50">
+        <div className="p-3 border-t border-slate-200 dark:border-border space-y-2.5 bg-slate-50/50 dark:bg-background/50">
           <input
             autoFocus
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") setShowForm(false); }}
             placeholder="Task title..."
-            className="w-full h-9 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-[#111] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
+            className="w-full h-9 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors"
           />
           <div className="flex items-center gap-2">
             {/* Category selector */}
@@ -175,7 +175,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                 aria-label="Task category"
                 value={newCategory}
                 onChange={e => setNewCategory(e.target.value as TripTask["category"])}
-                className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-[#888] focus:outline-none cursor-pointer"
+                className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-muted-foreground focus:outline-none cursor-pointer"
               >
                 {CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -184,13 +184,13 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             </div>
             {/* Due date */}
             <Popover>
-              <PopoverTrigger className="h-7 px-2 rounded-lg bg-white dark:bg-[#111] border border-slate-200 dark:border-[#252525] hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
-                <CalendarDots className="h-3 w-3 text-slate-500 dark:text-[#888] shrink-0" />
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-500 dark:text-[#888]"}`}>
+              <PopoverTrigger className="h-7 px-2 rounded-lg bg-white dark:bg-card border border-slate-200 dark:border-border hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
+                <CalendarDots className="h-3 w-3 text-slate-500 dark:text-muted-foreground shrink-0" />
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-slate-700 dark:text-white" : "text-slate-500 dark:text-muted-foreground"}`}>
                   {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
                 </span>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-xl bg-white dark:bg-[#1a1a1a]">
+              <PopoverContent align="start" className="w-auto p-0 border border-slate-200 dark:border-border shadow-2xl rounded-xl bg-white dark:bg-secondary">
                 <Calendar mode="single" selected={newDueDate ? parse(newDueDate, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setNewDueDate(format(d, "yyyy-MM-dd"))} />
               </PopoverContent>
             </Popover>
@@ -202,7 +202,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                   aria-label="Assign task to"
                   value={newAssignee}
                   onChange={e => setNewAssignee(e.target.value)}
-                  className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-[#888] focus:outline-none cursor-pointer max-w-[80px]"
+                  className="text-[10px] font-bold uppercase bg-transparent border-none text-slate-500 dark:text-muted-foreground focus:outline-none cursor-pointer max-w-[80px]"
                 >
                   <option value="">Unassigned</option>
                   {travelers.map(t => (
@@ -229,10 +229,10 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
           </div>
         </div>
       ) : (
-        <div className="p-3 border-t border-slate-200 dark:border-[#1f1f1f]">
+        <div className="p-3 border-t border-slate-200 dark:border-border">
           <button
             onClick={() => setShowForm(true)}
-            className="w-full h-9 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#252525] hover:border-brand text-slate-500 dark:text-[#888] hover:text-brand flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-9 rounded-xl border-2 border-dashed border-slate-200 dark:border-border hover:border-brand text-slate-500 dark:text-muted-foreground hover:text-brand flex items-center justify-center gap-2 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Add Task</span>

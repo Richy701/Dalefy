@@ -38,7 +38,7 @@ export function SortableEventCard({ event, onClick, onDuplicate, onDelete, assig
         type="button"
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-8 z-10 h-8 w-6 flex items-center justify-center rounded-md text-slate-400 dark:text-[#888] opacity-0 group-hover/sortable:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-brand dark:hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-opacity cursor-grab active:cursor-grabbing touch-none"
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-8 z-10 h-8 w-6 flex items-center justify-center rounded-md text-slate-400 dark:text-muted-foreground opacity-0 group-hover/sortable:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-brand dark:hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-opacity cursor-grab active:cursor-grabbing touch-none"
         title="Drag to reorder (or focus and use arrow keys)"
         aria-label={`Reorder ${event.title || "event"}`}
       >

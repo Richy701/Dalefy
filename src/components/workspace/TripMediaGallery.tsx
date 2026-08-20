@@ -152,7 +152,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         className={`relative border-2 border-dashed rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-4 py-14 mb-8 select-none ${
           isDragging
             ? "border-brand bg-brand/5"
-            : "border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] hover:border-brand/50"
+            : "border-slate-200 dark:border-border bg-white dark:bg-card hover:border-brand/50"
         }`}
       >
         <input
@@ -169,7 +169,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
             <div className="h-14 w-14 rounded-full border-2 border-brand/20 flex items-center justify-center">
               <div className="h-9 w-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />
             </div>
-            <div className="w-52 h-1.5 bg-slate-100 dark:bg-[#1f1f1f] rounded-full overflow-hidden">
+            <div className="w-52 h-1.5 bg-slate-100 dark:bg-secondary rounded-full overflow-hidden">
               <div
                 className="h-full bg-brand rounded-full transition-all duration-200"
                 style={{ width: `${uploadProgress}%` }}
@@ -185,7 +185,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
               className={`h-16 w-16 rounded-xl flex items-center justify-center transition-all ${
                 isDragging
                   ? "bg-brand text-black scale-110"
-                  : "bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888]"
+                  : "bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground"
               }`}
             >
               <Upload className="h-7 w-7" />
@@ -194,7 +194,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
               <p className="font-black text-sm uppercase tracking-[0.2em] text-slate-900 dark:text-white">
                 {isDragging ? "DROP FILES HERE" : "DRAG & DROP PHOTOS · VIDEOS"}
               </p>
-              <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">
+              <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
                 or click to browse your device
               </p>
             </div>
@@ -211,7 +211,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888888] hover:text-brand transition-colors flex items-center gap-1.5"
+              className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors flex items-center gap-1.5"
             >
               <Upload className="h-3 w-3" /> ADD MORE
             </button>
@@ -223,10 +223,10 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
               return (
                 <div
                   key={item.id}
-                  className="group relative rounded-xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
+                  className="group relative rounded-xl overflow-hidden bg-white dark:bg-card border border-slate-200 dark:border-border shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
                 >
                   {/* Thumbnail */}
-                  <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
+                  <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-background">
                     {item.type === "image" ? (
                       <img
                         src={item.url}
@@ -297,10 +297,10 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                       {item.name}
                     </p>
                     <div className="flex items-center justify-between mt-1">
-                      <p className="text-[10px] text-slate-500 dark:text-[#888888]">
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground">
                         {item.uploadedBy ? `by ${item.uploadedBy}` : fmt(item.size)}
                       </p>
-                      <p className="text-[10px] text-slate-500 dark:text-[#888888]">
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground">
                         {new Date(item.uploadedAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -315,7 +315,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         </>
       ) : (
         !uploading && (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-[#888888]">
+          <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-muted-foreground">
             <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
             <p className="text-xs font-black uppercase tracking-[0.3em]">
               NO MEDIA YET

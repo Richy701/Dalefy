@@ -37,7 +37,7 @@ export function ColorPicker({
     <Popover>
       <PopoverTrigger
         className={cn(
-          "flex items-center gap-3 h-12 px-3 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] hover:border-slate-300 dark:hover:border-[#333] transition-colors cursor-pointer w-full",
+          "flex items-center gap-3 h-12 px-3 rounded-xl bg-white dark:bg-background border border-slate-200 dark:border-border hover:border-slate-300 dark:hover:border-[#333] transition-colors cursor-pointer w-full",
           className
         )}
       >
@@ -52,11 +52,11 @@ export function ColorPicker({
             style={{ backgroundColor: displayValue }}
           />
         )}
-        <span className="text-sm font-mono font-bold text-slate-700 dark:text-[#ccc] flex-1 text-left">
+        <span className="text-sm font-mono font-bold text-slate-700 dark:text-foreground/80 flex-1 text-left">
           {isMono ? "MONO" : displayValue.toUpperCase()}
         </span>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-3 bg-white dark:bg-[#111] border-slate-200 dark:border-[#1f1f1f]">
+      <PopoverContent align="start" className="w-auto p-3 bg-white dark:bg-card border-slate-200 dark:border-border">
         <div className="flex flex-col gap-3">
           {!isMono && (
             <>
@@ -72,7 +72,7 @@ export function ColorPicker({
                   if (v.match(/^#[0-9a-fA-F]{0,6}$/)) onChange(v);
                 }}
                 maxLength={7}
-                className="h-9 font-mono text-sm font-bold bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] rounded-lg"
+                className="h-9 font-mono text-sm font-bold bg-slate-50 dark:bg-background border-slate-200 dark:border-border rounded-lg"
               />
             </>
           )}

@@ -352,16 +352,16 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   if (points.length === 0) {
     const hasLocations = trip.events.some(e => !!e.location?.trim());
     return (
-      <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
+      <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-background">
         <div className="text-center space-y-3 max-w-xs px-6">
-          <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-[#111111] flex items-center justify-center mx-auto border border-slate-200 dark:border-[#1f1f1f]">
-            {resolving ? <SpinnerGap className="h-6 w-6 text-brand animate-spin" /> : <MapPin className="h-6 w-6 text-slate-500 dark:text-[#888]" />}
+          <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-card flex items-center justify-center mx-auto border border-slate-200 dark:border-border">
+            {resolving ? <SpinnerGap className="h-6 w-6 text-brand animate-spin" /> : <MapPin className="h-6 w-6 text-slate-500 dark:text-muted-foreground" />}
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
             {resolving ? "Locating events" : hasLocations ? "Couldn't place these locations" : "No locations yet"}
           </p>
           {!resolving && (
-            <p className="text-[11px] text-slate-500 dark:text-[#777]">
+            <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
               {hasLocations
                 ? "Try the Geocode button in the toolbar, or make the locations more specific (city, country)."
                 : "Add a location to an event and it will appear here."}
@@ -525,14 +525,14 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
 
       {/* Route timeline strip */}
       <div className="absolute bottom-0 left-0 right-0 z-1000">
-        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl sm:rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
+        <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl sm:rounded-[1.25rem] border border-slate-200 dark:border-border bg-white/95 dark:bg-card/95 backdrop-blur-xl shadow-2xl">
           <div className="px-3 sm:px-4 py-2.5 sm:py-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
                 <span className="text-[11px] font-extrabold uppercase tracking-tight text-brand">Route</span>
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
             </div>
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
               {points.map((pt, i) => {

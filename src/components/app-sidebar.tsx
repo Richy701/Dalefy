@@ -175,7 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
               )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right" className="min-w-[220px] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-1">
+            <DropdownMenuContent align="start" side="right" className="min-w-[220px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
               {orgs.map(o => (
                 <DropdownMenuItem
                   key={o.id}
@@ -211,7 +211,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
                 <CaretUpDown className="h-3.5 w-3.5 text-sidebar-foreground/40 shrink-0" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-1">
+            <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
               {orgs.map(o => (
                 <DropdownMenuItem
                   key={o.id}

@@ -14,13 +14,13 @@ function AssignedDots({ people }: { people?: AssignedPerson[] }) {
         <div
           key={i}
           title={p.name}
-          className="h-5 w-5 rounded-full bg-brand/15 border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-brand uppercase"
+          className="h-5 w-5 rounded-full bg-brand/15 border-2 border-white dark:border-card flex items-center justify-center text-[7px] font-black text-brand uppercase"
         >
           {p.initials}
         </div>
       ))}
       {people.length > 4 && (
-        <div className="h-5 w-5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-slate-500 dark:text-[#888]">
+        <div className="h-5 w-5 rounded-full bg-slate-100 dark:bg-secondary border-2 border-white dark:border-card flex items-center justify-center text-[7px] font-black text-slate-500 dark:text-muted-foreground">
           +{people.length - 4}
         </div>
       )}
@@ -52,7 +52,7 @@ function StatusChip({ status }: { status?: string }) {
       ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
       : status === "Proposed"
       ? "bg-brand/10 text-brand"
-      : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]";
+      : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground";
   return (
     <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 ${cls}`}>
       {status}
@@ -68,17 +68,17 @@ function MediaBadge({ media, documents }: { media?: TravelEvent["media"]; docume
   return (
     <div className="flex items-center gap-1.5">
       {images > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-secondary px-2 py-0.5 rounded-lg">
           <ImageIcon className="h-2.5 w-2.5" />{images}
         </span>
       )}
       {videos > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-secondary px-2 py-0.5 rounded-lg">
           <Video className="h-2.5 w-2.5" />{videos}
         </span>
       )}
       {docs > 0 && (
-        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg">
+        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-secondary px-2 py-0.5 rounded-lg">
           <Paperclip className="h-2.5 w-2.5" />{docs}
         </span>
       )}
@@ -90,17 +90,17 @@ function CardMenu({ onClick, onDuplicate, onDelete }: { onClick: () => void; onD
   return (
     <div onClick={e => e.stopPropagation()} className="shrink-0">
       <DropdownMenu>
-        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#0a0a0a] text-slate-500 dark:text-[#888888] flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-[#2a2a2a] hover:text-slate-600 dark:hover:text-[#aaa] transition-[border-color,color] duration-150">
+        <DropdownMenuTrigger aria-label="Event options" className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-background text-slate-500 dark:text-muted-foreground flex items-center justify-center border border-transparent hover:border-slate-200 dark:hover:border-border hover:text-slate-600 dark:hover:text-muted-foreground transition-[border-color,color] duration-150">
           <DotsThreeVertical className="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
-          <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
+        <DropdownMenuContent align="end" className="bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl shadow-2xl p-1 min-w-[160px]">
+          <DropdownMenuItem onClick={onClick} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-background">
             <Gear className="h-3.5 w-3.5 text-brand" /> Edit Event
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDuplicate} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-[#050505]">
+          <DropdownMenuItem onClick={onDuplicate} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-background">
             <Copy className="h-3.5 w-3.5 text-brand" /> Duplicate
           </DropdownMenuItem>
-          <div className="my-1 h-px bg-slate-100 dark:bg-[#1f1f1f]" />
+          <div className="my-1 h-px bg-slate-100 dark:bg-secondary" />
           <DropdownMenuItem onClick={onDelete} className="gap-2 p-2 rounded-lg font-bold text-[11px] uppercase tracking-wider text-red-500 hover:bg-red-500/5">
             <Trash className="h-3.5 w-3.5" /> Delete
           </DropdownMenuItem>
@@ -134,7 +134,7 @@ function CompactCard({
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30 rounded-xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group bg-white dark:bg-card border border-slate-200 dark:border-border hover:border-brand/30 rounded-xl pl-3 pr-4 sm:pr-5 py-3 flex items-center gap-3 cursor-pointer transition-[border-color] duration-200 overflow-hidden"
     >
       {event.image ? (
         <img src={event.image} alt="" className="h-12 w-16 rounded-lg object-cover shrink-0" />
@@ -146,7 +146,7 @@ function CompactCard({
       {event.time && (
         <div className="shrink-0 flex flex-col leading-none">
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 tabular-nums">{event.time.split(" ")[0]}</span>
-          {(eventTzLabel(event, tripTz) || event.time.split(" ")[1]) && <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">{eventTzLabel(event, tripTz) || event.time.split(" ")[1]}</span>}
+          {(eventTzLabel(event, tripTz) || event.time.split(" ")[1]) && <span className="text-[9px] font-semibold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mt-0.5">{eventTzLabel(event, tripTz) || event.time.split(" ")[1]}</span>}
         </div>
       )}
       <div className="min-w-0 flex-1">
@@ -193,7 +193,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="h-px w-full bg-linear-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
       <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4 sm:gap-6">
@@ -203,7 +203,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
             <AirplaneTilt className="h-3.5 w-3.5" />
           </div>
           <span className="text-sm sm:text-base font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.time.split(" ")[0]}</span>
-          <span className="text-[9px] font-semibold text-slate-500 dark:text-[#888888] uppercase tracking-wider mt-0.5">{tzAbbr(eventTz(event, tripTz, "dep") ?? "", event.date) || event.time.split(" ")[1]}</span>
+          <span className="text-[9px] font-semibold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mt-0.5">{tzAbbr(eventTz(event, tripTz, "dep") ?? "", event.date) || event.time.split(" ")[1]}</span>
         </div>
 
         {/* Route visualization */}
@@ -211,17 +211,17 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
           <div className="flex items-center gap-2 sm:gap-3 mb-3">
             <div className="text-center shrink-0">
               <p className={`${fromIsCode ? "text-xl sm:text-2xl" : "text-sm sm:text-base max-w-[120px] truncate"} font-black tracking-tighter text-slate-900 dark:text-white leading-none`} title={from}>{fromCode}</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground mt-0.5 leading-none max-w-[60px] truncate">{fromLabel}</p>
             </div>
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
+              <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-border" />
               <AirplaneTilt className="h-3 w-3 text-brand shrink-0" />
-              <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-[#2a2a2a]" />
+              <div className="h-px flex-1 border-t border-dashed border-slate-300 dark:border-border" />
             </div>
             {to && (
               <div className="text-center shrink-0">
                 <p className={`${toIsCode ? "text-xl sm:text-2xl" : "text-sm sm:text-base max-w-[120px] truncate"} font-black tracking-tighter text-slate-900 dark:text-white leading-none`} title={to}>{toCode}</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888] mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground mt-0.5 leading-none max-w-[60px] truncate">{toLabel}</p>
               </div>
             )}
           </div>
@@ -232,7 +232,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
             <MediaBadge media={event.media} documents={event.documents} />
             <AssignedDots people={assignedPeople} />
           </div>
-          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888888]">
+          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground">
             {event.airline && <span>{event.airline}{event.flightNum ? ` · ${event.flightNum}` : ""}</span>}
             {event.terminal && <span>Terminal {event.terminal.replace("T", "")}</span>}
             {event.duration && (
@@ -264,7 +264,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
@@ -273,7 +273,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
             <div className="absolute inset-0 bg-linear-to-b sm:bg-linear-to-r from-transparent to-black/10" />
           </div>
         ) : (
-          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">
+          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-border sm:self-stretch">
             <Bed className="h-7 w-7 text-brand/30" />
           </div>
         )}
@@ -287,7 +287,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-brand transition-colors">{event.title}</h4>
               {event.location && (
-                <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
+                <p className="text-xs text-slate-500 dark:text-muted-foreground flex items-center gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 shrink-0" />{event.location}
                 </p>
               )}
@@ -295,22 +295,22 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
             <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
+          <div className="flex items-center gap-3 sm:gap-4 pt-3 border-t border-slate-100 dark:border-border flex-wrap">
             {!event.isOvernight && event.time && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check In</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-0.5">Check In</p>
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.time}</p>
               </div>
             )}
             {!event.isOvernight && event.time && event.endTime && <ArrowRight className="h-3.5 w-3.5 text-brand shrink-0" />}
             {!event.isOvernight && event.endTime && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-0.5">Check Out</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-0.5">Check Out</p>
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 leading-none">{event.endTime}</p>
               </div>
             )}
             {event.isOvernight && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Overnight</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Overnight</span>
             )}
             <StatusChip status={event.status} />
             {event.roomType && (
@@ -348,7 +348,7 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
     <div
       onClick={onClick}
       {...cardA11y(event.title, onClick)}
-      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
+      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden transition-[border-color,box-shadow] duration-200 cursor-pointer hover:shadow-lg hover:border-brand/30"
     >
       <div className="flex flex-col sm:flex-row">
         {event.image ? (
@@ -356,7 +356,7 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
             <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           </div>
         ) : (
-          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch bg-brand/5">
+          <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-border sm:self-stretch bg-brand/5">
             <Icon className="h-7 w-7 opacity-20 text-brand" />
           </div>
         )}
@@ -372,18 +372,18 @@ function ActivityCard({ event, onClick, onDuplicate, onDelete, assignedPeople, t
               </div>
               <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand">{event.title}</h4>
               {event.location && (
-                <p className="text-xs text-slate-500 dark:text-[#888888] flex items-center gap-1.5 mt-1">
+                <p className="text-xs text-slate-500 dark:text-muted-foreground flex items-center gap-1.5 mt-1">
                   <MapPin className="h-3 w-3 shrink-0" />{event.location}
                 </p>
               )}
               {event.notes && (
-                <p className="text-xs text-slate-500 dark:text-[#888] mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
+                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-2 line-clamp-2 leading-relaxed">{event.notes}</p>
               )}
             </div>
             <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a] flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-border flex-wrap">
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{event.time}</span>
             {event.endTime && (
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">→ {event.endTime}</span>

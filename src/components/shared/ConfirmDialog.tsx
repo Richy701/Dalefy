@@ -33,14 +33,14 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!busy) { setError(null); onOpenChange(o); } }}>
-      <DialogContent className="max-w-md bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] p-6 shadow-2xl">
+      <DialogContent className="max-w-md bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-6 shadow-2xl">
         <DialogHeader className="space-y-2 text-left">
           <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{title}</DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-[#888888] text-sm">{description}</DialogDescription>
+          <DialogDescription className="text-slate-500 dark:text-muted-foreground text-sm">{description}</DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>}
         <DialogFooter className="pt-4 flex gap-3">
-          <Button variant="ghost" disabled={busy} onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-6 font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888] hover:bg-slate-100 dark:hover:bg-[#1f1f1f]">
+          <Button variant="ghost" disabled={busy} onClick={() => onOpenChange(false)} className="rounded-xl h-10 px-6 font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:bg-slate-100 dark:hover:bg-secondary">
             Cancel
           </Button>
           <Button

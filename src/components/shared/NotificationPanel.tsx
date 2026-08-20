@@ -28,7 +28,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
   return (
     <>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-[#1f1f1f] flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
             <Bell className="h-3.5 w-3.5 text-brand" />
@@ -54,7 +54,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
             <button
               onClick={clearAll}
               aria-label="Clear all notifications"
-              className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] px-2.5 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary px-2.5 py-1.5 rounded-lg transition-colors"
             >
               <Trash className="h-3 w-3" />
               Clear
@@ -63,7 +63,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           {onClose && (
             <button
               onClick={onClose}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors sm:hidden"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors sm:hidden"
             >
               <X className="h-4 w-4" />
             </button>
@@ -75,11 +75,11 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
       <ScrollArea className="sm:max-h-80 max-sm:flex-1 max-sm:overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center mb-3">
-              <Bell className="h-4 w-4 text-slate-400 dark:text-[#888]" />
+            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary flex items-center justify-center mb-3">
+              <Bell className="h-4 w-4 text-slate-400 dark:text-muted-foreground" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">All clear</p>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-[#888] mt-1">No notifications yet</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">All clear</p>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-muted-foreground mt-1">No notifications yet</p>
           </div>
         ) : (
           <div className="p-1.5 space-y-0.5">
@@ -92,7 +92,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                   onClick={() => markRead(n.id)}
                   className={`w-full text-left px-3 py-2 rounded-lg transition-all ${
                     n.read
-                      ? "hover:bg-slate-50 dark:hover:bg-[#0a0a0a] opacity-50"
+                      ? "hover:bg-slate-50 dark:hover:bg-background opacity-50"
                       : "bg-brand/3 dark:bg-brand/4 hover:bg-brand/6 dark:hover:bg-brand/8"
                   }`}
                 >
@@ -102,14 +102,14 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className={`text-[11px] font-bold leading-tight truncate ${n.read ? "text-slate-500 dark:text-[#777]" : "text-slate-900 dark:text-white"}`}>
+                        <p className={`text-[11px] font-bold leading-tight truncate ${n.read ? "text-slate-500 dark:text-muted-foreground" : "text-slate-900 dark:text-white"}`}>
                           {n.message}
                         </p>
                         {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </div>
-                      <p className="text-[10px] text-slate-500 dark:text-[#888] truncate leading-tight">{n.detail}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground truncate leading-tight">{n.detail}</p>
                     </div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] shrink-0">{relativeTime(n)}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground shrink-0">{relativeTime(n)}</p>
                   </div>
                 </button>
               );
@@ -129,7 +129,7 @@ export function NotificationPanel() {
     <>
       {/* Desktop: Popover */}
       <Popover>
-        <PopoverTrigger className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand relative border border-slate-200 dark:border-[#1f1f1f] shadow-sm items-center justify-center transition-colors">
+        <PopoverTrigger className="hidden sm:flex h-10 w-10 rounded-xl bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-background text-slate-500 dark:text-muted-foreground hover:text-brand relative border border-slate-200 dark:border-border shadow-sm items-center justify-center transition-colors">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 bg-brand text-black text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-[#111111]">
@@ -137,7 +137,7 @@ export function NotificationPanel() {
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent className="w-88 p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl" align="end">
+        <PopoverContent className="w-88 p-0 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-2xl" align="end">
           <NotificationList />
         </PopoverContent>
       </Popover>
@@ -145,7 +145,7 @@ export function NotificationPanel() {
       {/* Mobile: trigger button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand relative border border-slate-200 dark:border-[#1f1f1f] shadow-sm flex items-center justify-center transition-colors"
+        className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-background text-slate-500 dark:text-muted-foreground hover:text-brand relative border border-slate-200 dark:border-border shadow-sm flex items-center justify-center transition-colors"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
@@ -164,7 +164,7 @@ export function NotificationPanel() {
           tabIndex={-1}
           ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
           onKeyDown={e => { if (e.key === "Escape") setMobileOpen(false); }}
-          className="fixed inset-0 z-50 sm:hidden flex flex-col bg-white dark:bg-[#111111] focus:outline-none"
+          className="fixed inset-0 z-50 sm:hidden flex flex-col bg-white dark:bg-card focus:outline-none"
         >
           <NotificationList onClose={() => setMobileOpen(false)} />
         </div>

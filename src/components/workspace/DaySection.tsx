@@ -14,7 +14,7 @@ export function DaySection({ date, dayNumber, children, onAddEvent }: { date: st
         <div className="flex items-end justify-between">
           <div className="flex items-baseline gap-2.5 flex-wrap">
             {dayNumber !== undefined && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] leading-none tabular-nums">Day {dayNumber}</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground leading-none tabular-nums">Day {dayNumber}</span>
             )}
             <span className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">{weekday}</span>
             <span className="text-lg font-black uppercase tracking-tight text-brand leading-none">{dateInfo}</span>
@@ -28,7 +28,7 @@ export function DaySection({ date, dayNumber, children, onAddEvent }: { date: st
           </button>
         </div>
 
-        <div className="mt-3 h-px w-full bg-slate-200 dark:bg-[#1f1f1f]" />
+        <div className="mt-3 h-px w-full bg-slate-200 dark:bg-secondary" />
       </div>
 
       <div className="space-y-5">{children}</div>

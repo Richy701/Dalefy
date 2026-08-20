@@ -53,9 +53,9 @@ function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; ac
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{ev.title}</p>
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-[#888] flex-wrap">
+          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-muted-foreground flex-wrap">
             {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}</span>}
-            {ev.endTime && <span className="text-slate-500 dark:text-[#888]">-</span>}
+            {ev.endTime && <span className="text-slate-500 dark:text-muted-foreground">-</span>}
             {ev.endTime && <span>{ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</span>}
             {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
             {ev.duration && <span>{ev.duration}</span>}
@@ -63,7 +63,7 @@ function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; ac
         </div>
         {hasDetail && (
           <CaretDown
-            className={`h-3.5 w-3.5 text-slate-400 dark:text-[#888] shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         )}
       </div>
@@ -76,26 +76,26 @@ function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; ac
 
           {(ev.airline || ev.flightNum || ev.terminal || ev.arrTerminal || ev.status) && (
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
-              {ev.airline && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><AirplaneTilt className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
-              {ev.terminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Door className="h-3 w-3" />Dep T{ev.terminal}</span>}
-              {ev.arrTerminal && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Door className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
-              {ev.status && <span className="flex items-center gap-1 text-slate-600 dark:text-[#aaa]"><Info className="h-3 w-3" />{ev.status}</span>}
+              {ev.airline && <span className="flex items-center gap-1 text-slate-600 dark:text-muted-foreground"><AirplaneTilt className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
+              {ev.terminal && <span className="flex items-center gap-1 text-slate-600 dark:text-muted-foreground"><Door className="h-3 w-3" />Dep T{ev.terminal}</span>}
+              {ev.arrTerminal && <span className="flex items-center gap-1 text-slate-600 dark:text-muted-foreground"><Door className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
+              {ev.status && <span className="flex items-center gap-1 text-slate-600 dark:text-muted-foreground"><Info className="h-3 w-3" />{ev.status}</span>}
             </div>
           )}
 
           {(ev.confNumber || ev.roomType) && (
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
-              {ev.roomType && <span className="text-slate-600 dark:text-[#aaa]">{ev.roomType}</span>}
-              {ev.confNumber && <span className="text-slate-500 dark:text-[#777] font-mono">Ref: {ev.confNumber}</span>}
+              {ev.roomType && <span className="text-slate-600 dark:text-muted-foreground">{ev.roomType}</span>}
+              {ev.confNumber && <span className="text-slate-500 dark:text-muted-foreground font-mono">Ref: {ev.confNumber}</span>}
             </div>
           )}
 
           {ev.description && (
-            <p className="text-[12px] leading-relaxed text-slate-600 dark:text-[#aaa]">{ev.description}</p>
+            <p className="text-[12px] leading-relaxed text-slate-600 dark:text-muted-foreground">{ev.description}</p>
           )}
 
           {ev.notes && (
-            <p className="text-[11px] leading-relaxed text-slate-500 dark:text-[#888] italic">{ev.notes}</p>
+            <p className="text-[11px] leading-relaxed text-slate-500 dark:text-muted-foreground italic">{ev.notes}</p>
           )}
         </div>
       )}
@@ -115,7 +115,7 @@ function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; ev
 
   return (
     <div>
-      <div className="bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden">
+      <div className="bg-slate-50 dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden">
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
@@ -131,14 +131,14 @@ function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; ev
                 {d.toLocaleDateString("en-GB", { weekday: "long" })} {ordinal(d.getDate())} {d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
               </span>
             </div>
-            <p className="text-[10px] font-semibold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-1">
+            <p className="text-[10px] font-semibold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mt-1">
               {events.length} event{events.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-[#888] transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
+          <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
         </button>
         {!collapsed && (
-          <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a] border-t border-slate-200 dark:border-[#1f1f1f]">
+          <div className="divide-y divide-slate-100 dark:divide-border border-t border-slate-200 dark:border-border">
             {events.map(ev => (
               <EventRow key={ev.id} ev={ev} tripTz={tripTz} accent={accent} />
             ))}
@@ -242,26 +242,26 @@ export function SharedTripPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-background flex flex-col items-center justify-center gap-4">
         <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Loading your itinerary</p>
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Loading your itinerary</p>
       </div>
     );
   }
 
   if (error || !trip) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="h-16 w-16 rounded-xl bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
-          <MapPin className="h-7 w-7 text-slate-500 dark:text-[#888]" />
+      <div className="min-h-screen bg-slate-50 dark:bg-background flex flex-col items-center justify-center gap-5 px-6 text-center">
+        <div className="h-16 w-16 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border flex items-center justify-center">
+          <MapPin className="h-7 w-7 text-slate-500 dark:text-muted-foreground" />
         </div>
         <div className="max-w-sm space-y-2">
           <p className="text-lg font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
             {errorKind === "unpublished" ? "Almost there" : errorKind === "network" ? "Connection problem" : "Itinerary unavailable"}
           </p>
-          <p className="text-sm text-slate-600 dark:text-[#aaa]">{error}</p>
+          <p className="text-sm text-slate-600 dark:text-muted-foreground">{error}</p>
           {errorKind === "unpublished" && (
-            <p className="text-xs text-slate-500 dark:text-[#888]">Check back soon, or contact your travel organiser if you think this is a mistake.</p>
+            <p className="text-xs text-slate-500 dark:text-muted-foreground">Check back soon, or contact your travel organiser if you think this is a mistake.</p>
           )}
         </div>
         {errorKind === "network" && (
@@ -273,14 +273,14 @@ export function SharedTripPage() {
             Try again
           </button>
         )}
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Powered by {brand.platformName}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Powered by {brand.platformName}</p>
       </div>
     );
   }
 
   return (
     <div
-      className="min-h-screen bg-slate-100 dark:bg-[#050505]"
+      className="min-h-screen bg-slate-100 dark:bg-background"
       style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
     >
       {/* Hero */}
@@ -327,7 +327,7 @@ export function SharedTripPage() {
 
       {/* Itinerary */}
       <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
-        <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white dark:bg-background border border-slate-200 dark:border-border rounded-xl p-4 sm:p-6 shadow-sm">
           {/* Traveler picker */}
           {hasTravelers && (
             <div className="mb-6">
@@ -337,48 +337,48 @@ export function SharedTripPage() {
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                     viewAsId
                       ? "bg-brand/5 dark:bg-brand/10 border-brand/20"
-                      : "bg-slate-50 dark:bg-[#111] border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"
+                      : "bg-slate-50 dark:bg-card border-slate-200 dark:border-border hover:border-brand/30"
                   }`}
                 >
                   <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-black uppercase shrink-0 ${
-                    viewAsId ? "bg-brand/15 text-brand" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]"
+                    viewAsId ? "bg-brand/15 text-brand" : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground"
                   }`}>
                     {viewAsTraveler ? viewAsTraveler.initials : <Users className="h-4 w-4" />}
                   </div>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                       {viewAsId ? "Viewing as" : "Who are you?"}
                     </p>
                     <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                       {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
                     </p>
                   </div>
-                  <CaretDown className={`h-4 w-4 text-slate-500 dark:text-[#888] transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
+                  <CaretDown className={`h-4 w-4 text-slate-500 dark:text-muted-foreground transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {pickerOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl overflow-hidden z-20">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-2xl overflow-hidden z-20">
                     <button
                       onClick={() => { setViewAsId(null); setPickerOpen(false); }}
                       className={`w-full flex items-center gap-3 p-3 text-left transition-colors cursor-pointer ${
-                        !viewAsId ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                        !viewAsId ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-background"
                       }`}
                     >
-                      <div className="h-8 w-8 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-[#888]">ALL</div>
-                      <span className="text-xs font-bold text-slate-700 dark:text-[#ccc] uppercase tracking-wider">Everyone - Full itinerary</span>
+                      <div className="h-8 w-8 rounded-md bg-slate-100 dark:bg-secondary flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-muted-foreground">ALL</div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-foreground/80 uppercase tracking-wider">Everyone - Full itinerary</span>
                       {!viewAsId && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
                     </button>
-                    <div className="h-px bg-slate-100 dark:bg-[#1a1a1a]" />
+                    <div className="h-px bg-slate-100 dark:bg-secondary" />
                     {trip.travelers!.map(t => (
                       <button
                         key={t.id}
                         onClick={() => { setViewAsId(t.id); setPickerOpen(false); }}
                         className={`w-full flex items-center gap-3 p-3 text-left transition-colors cursor-pointer ${
-                          viewAsId === t.id ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                          viewAsId === t.id ? "bg-brand/5" : "hover:bg-slate-50 dark:hover:bg-background"
                         }`}
                       >
                         <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-[#ccc]">{t.name}</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-foreground/80">{t.name}</span>
                         {viewAsId === t.id && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
                       </button>
                     ))}
@@ -404,15 +404,15 @@ export function SharedTripPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {trip.info.map(item => (
-                      <div key={item.id} className="rounded-xl p-3.5 bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a]">
+                      <div key={item.id} className="rounded-xl p-3.5 bg-slate-50 dark:bg-card border border-slate-100 dark:border-border">
                         <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight mb-1">{item.title}</p>
                         {item.body && (
-                          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-[#999] whitespace-pre-wrap"><Linkify text={item.body} /></p>
+                          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>
                         )}
                         {item.documents && item.documents.length > 0 && (
                           <div className="mt-2 space-y-1">
                             {item.documents.map(doc => (
-                              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-background border border-slate-100 dark:border-border hover:border-brand/30 transition-colors">
                                 <Paperclip className="h-3 w-3 text-brand shrink-0" />
                                 <span className="text-[10px] font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
                               </a>
@@ -432,10 +432,10 @@ export function SharedTripPage() {
                   </div>
                   <div className="space-y-1.5">
                     {trip.documents.map(doc => (
-                      <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                      <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border hover:border-brand/30 transition-colors">
                         <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
                         <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
-                        <span className="text-[10px] text-slate-500 dark:text-[#888] font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
                       </a>
                     ))}
                   </div>
@@ -453,7 +453,7 @@ export function SharedTripPage() {
 
         {/* Footer */}
         <div className="mt-10 text-center pb-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
             Powered by {brand.platformName}
           </p>
         </div>

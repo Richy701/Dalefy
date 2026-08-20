@@ -39,18 +39,18 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
   return (
     <section
       id={id}
-      className="border-t border-slate-200 dark:border-[#1f1f1f] py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_1fr] gap-6 lg:gap-12 scroll-mt-20"
+      className="border-t border-slate-200 dark:border-border py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_1fr] gap-6 lg:gap-12 scroll-mt-20"
     >
       <div className="space-y-2">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center">
-            <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
+          <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-card border border-slate-200 dark:border-border flex items-center justify-center">
+            <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
           </div>
           <h2 className="text-base font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-none">
             {title}
           </h2>
         </div>
-        <p className="text-[11px] text-slate-500 dark:text-[#888] leading-relaxed max-w-[280px]">
+        <p className="text-[11px] text-slate-500 dark:text-muted-foreground leading-relaxed max-w-[280px]">
           {description}
         </p>
       </div>
@@ -63,13 +63,13 @@ function Row({
   label, value, action,
 }: { label: string; value?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-3">
+    <div className="flex items-center justify-between gap-4 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">
           {label}
         </p>
         {value && (
-          <p className="text-[11px] text-slate-500 dark:text-[#888888] mt-1 truncate">
+          <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-1 truncate">
             {value}
           </p>
         )}
@@ -294,7 +294,7 @@ export function SettingsPage() {
             <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
               Settings
             </h1>
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] hidden md:inline">
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground hidden md:inline">
               Preferences & Data
             </span>
           </div>
@@ -309,7 +309,7 @@ export function SettingsPage() {
             title="Profile"
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-5 flex items-center gap-4">
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-5 flex items-center gap-4">
               <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-black border border-brand/20 shrink-0">
                 {initials}
               </div>
@@ -317,7 +317,7 @@ export function SettingsPage() {
                 <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">
                   {user?.name ?? ""}
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-[#888888] truncate">
+                <p className="text-[11px] text-slate-500 dark:text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-brand mt-1">
@@ -352,7 +352,7 @@ export function SettingsPage() {
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="New password"
                       title="At least 6 characters"
-                      className="h-9 w-40 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                      className="h-9 w-40 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                     <Button
                       onClick={handleChangePassword}
@@ -381,7 +381,7 @@ export function SettingsPage() {
                   value={newOrgName}
                   onChange={e => setNewOrgName(e.target.value)}
                   placeholder="Agency name"
-                  className="h-9 flex-1 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="h-9 flex-1 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
                 <Button
                   onClick={handleCreateOrg}
@@ -413,7 +413,7 @@ export function SettingsPage() {
                 action={
                   <div className="flex items-center gap-3">
                     {brandLogo ? (
-                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] p-0.5" />
+                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-slate-200 dark:border-border bg-white dark:bg-background p-0.5" />
                     ) : (
                       <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-black text-white" style={{ background: brandColor }}>
                         {(brandName || BRAND.name).charAt(0)}
@@ -431,7 +431,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-red-400 transition-colors"
+                        className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -440,13 +440,13 @@ export function SettingsPage() {
                 }
               />
               {/* Agency Code */}
-              <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-4 py-3">
+              <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
                     <label htmlFor="settings-agency-code" className="block text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
                       Agency Code
                     </label>
-                    <p className="text-[11px] text-slate-500 dark:text-[#888]">
+                    <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
                       Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
                   </div>
@@ -459,7 +459,7 @@ export function SettingsPage() {
                         onChange={e => setAgencyCodeEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                         placeholder={brandName ? brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) : "your-agency-code"}
                         maxLength={40}
-                        className="h-10 w-full sm:w-52 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                        className="h-10 w-full sm:w-52 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                       />
                       {agencyCodeEdit && agencyCodeEdit === currentOrg?.agencyCode ? (
                         <button
@@ -524,13 +524,13 @@ export function SettingsPage() {
                     value={brandName}
                     onChange={e => setBrandName(e.target.value)}
                     placeholder={BRAND.name}
-                    className="h-9 w-48 rounded-xl bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    className="h-9 w-48 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                   />
                 }
               />
               {/* Preview + Save */}
               <div className="pt-3 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Preview</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Preview</p>
                 <div className="flex items-center gap-2.5">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
@@ -540,8 +540,8 @@ export function SettingsPage() {
                     </div>
                   )}
                   <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
-                  <span className="text-[9px] text-slate-400 dark:text-[#666]">·</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-[#888]">Powered by {BRAND.name}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-muted-foreground">·</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
                 <div className="flex justify-end">
                   <Button
@@ -582,7 +582,7 @@ export function SettingsPage() {
               action={
                 <button
                   onClick={toggleTheme}
-                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1f1f1f] hover:bg-slate-200 dark:hover:bg-[#2a2a2a] border border-slate-200 dark:border-[#2a2a2a] text-slate-600 dark:text-[#888888] hover:text-brand flex items-center justify-center transition-colors"
+                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-[#2a2a2a] border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
@@ -666,12 +666,12 @@ export function SettingsPage() {
             title="Shortcuts"
             description="Keyboard shortcuts work anywhere in the app. Press ⌘K to open the command palette."
           >
-            <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden">
               {SHORTCUTS.map((s, i) => (
                 <div
                   key={s.label}
                   className={`flex items-center justify-between px-4 py-3 ${
-                    i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-[#1a1a1a]" : ""
+                    i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
                   }`}
                 >
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-[#bbbbbb]">
@@ -681,7 +681,7 @@ export function SettingsPage() {
                     {s.keys.map((k, j) => (
                       <kbd
                         key={j}
-                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#2a2a2a] text-[10px] font-black text-slate-600 dark:text-[#888888] flex items-center justify-center"
+                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black text-slate-600 dark:text-muted-foreground flex items-center justify-center"
                       >
                         {k}
                       </kbd>
@@ -693,7 +693,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="border-t border-slate-200 dark:border-[#1f1f1f] pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>

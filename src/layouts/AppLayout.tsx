@@ -27,7 +27,7 @@ function PageErrorFallback({ error, resetErrorBoundary }: { error: Error; resetE
           </svg>
         </div>
         <h2 className="text-lg font-bold uppercase tracking-wide text-slate-900 dark:text-white">Something went wrong</h2>
-        <p className="text-sm text-slate-500 dark:text-[#888]">{error.message}</p>
+        <p className="text-sm text-slate-500 dark:text-muted-foreground">{error.message}</p>
         <button
           onClick={resetErrorBoundary}
           className="h-10 px-6 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
@@ -65,7 +65,7 @@ export function AppLayout() {
         className="font-sans antialiased text-slate-900 dark:text-white selection:bg-brand/30"
       >
         <AppSidebar />
-        <SidebarInset className="bg-slate-50 dark:bg-[#050505] h-dvh overflow-hidden flex flex-col">
+        <SidebarInset className="bg-slate-50 dark:bg-background h-dvh overflow-hidden flex flex-col">
           <EmailVerificationBanner />
           <div className="flex-1 flex flex-col overflow-hidden">
             <ErrorBoundary FallbackComponent={PageErrorFallback}>

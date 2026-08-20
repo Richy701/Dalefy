@@ -26,28 +26,37 @@
     --brand-rgb: 11 210 181; /* Cyber Teal — default */
   }
 
-  /* LIGHT MODE COLORS (Default Shadcn-like) */
+  /* LIGHT MODE — three-tier elevation ramp.
+     Surfaces step page → card → raised so nesting reads without borders
+     doing all the work. Every value below is contrast-verified against
+     its foreground (WCAG AA 4.5:1 minimum for body text). */
   :root {
-    --background: 0 0% 100%;
+    --background: 240 14.3% 97.3%; /* #F7F7F9 page */
     --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
+    --card: 0 0% 100%; /* #FFFFFF */
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
     --primary: 171 85% 43%; /* Cyber Teal #0bd2b5 */
     --primary-foreground: 0 0% 0%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 240 12% 95.1%; /* #F1F1F4 raised */
     --secondary-foreground: 0 0% 9%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --muted: 240 12% 95.1%;
+    --muted-foreground: 219 9.3% 42%; /* #616875 — 5.6:1 on card, 4.97:1 on raised */
+    --accent: 240 12% 95.1%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 240 10.2% 90.4%; /* #E4E4E9 */
+    --input: 240 10.2% 90.4%;
     --ring: 171 85% 43%;
     --radius: 0.625rem;
+    /* Third elevation tier, for surfaces raised above a card */
+    --surface-raised: 0 0% 100%;
+    /* Warm secondary — carries stays, hotels and non-urgent state so the
+       teal accent can go back to meaning "live". 5.23:1 on white. */
+    --sand: 35.2 86.7% 32.4%; /* #9A5F0B */
+    --sand-foreground: 0 0% 100%;
     /* Sidebar (light) */
     --sidebar: 220 16% 96%;
     --sidebar-foreground: 220 13% 22%;
@@ -57,27 +66,32 @@
     --sidebar-ring: 171 85% 43%;
   }
 
-  /* EXECUTIVE CYBER DARK MODE */
+  /* EXECUTIVE CYBER DARK MODE — three-tier elevation ramp.
+     Neutrals carry a slight cool bias rather than being pure grey, and the
+     tiers sit ~4% apart in lightness so depth reads without heavy borders. */
   .dark {
-    --background: 0 0% 2%; /* #050505 */
+    --background: 240 6.7% 5.9%; /* #0E0E10 page */
     --foreground: 0 0% 100%;
-    --card: 0 0% 7%; /* #111111 */
+    --card: 228 9.8% 10%; /* #17181C */
     --card-foreground: 0 0% 100%;
-    --popover: 0 0% 7%;
+    --popover: 228 9.8% 10%;
     --popover-foreground: 0 0% 100%;
     --primary: 171 85% 43%; /* #0bd2b5 */
     --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%; /* #1a1a1a */
+    --secondary: 231.4 9.9% 13.9%; /* #202127 raised */
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 12%; /* #1f1f1f */
-    --muted-foreground: 0 0% 53%; /* #888888 */
-    --accent: 0 0% 12%;
+    --muted: 231.4 9.9% 13.9%;
+    --muted-foreground: 240 4.1% 62%; /* #9A9AA2 — 6.35:1 on card */
+    --accent: 231.4 9.9% 13.9%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 12%; /* #1f1f1f */
-    --input: 0 0% 12%;
+    --border: 232.5 9.5% 16.5%; /* #26272E */
+    --input: 232.5 9.5% 16.5%;
     --ring: 171 85% 43%;
+    --surface-raised: 231.4 9.9% 13.9%;
+    --sand: 35.5 79.1% 56.9%; /* #E8A13A — 8.10:1 on card */
+    --sand-foreground: 36 62.5% 6.3%; /* #1A1206 */
     /* Sidebar (dark) */
     --sidebar: 0 0% 3%; /* #080808 */
     --sidebar-foreground: 0 0% 75%;

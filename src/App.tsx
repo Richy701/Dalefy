@@ -57,7 +57,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthLoadingScreen() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex flex-col items-center justify-center gap-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-background flex flex-col items-center justify-center gap-6">
       <div className="flex items-center gap-3">
         <Logo className="h-10 w-10 text-brand" />
         <span className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
@@ -69,7 +69,7 @@ function AuthLoadingScreen() {
         <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:150ms]" />
         <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:300ms]" />
       </div>
-      <p className="text-sm text-slate-500 dark:text-[#888]">Loading your workspace</p>
+      <p className="text-sm text-slate-500 dark:text-muted-foreground">Loading your workspace</p>
     </div>
   );
 }
@@ -138,7 +138,7 @@ function AppToaster() {
 
 function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-background flex items-center justify-center p-4">
       <div className="text-center max-w-md space-y-6">
         <div className="h-16 w-16 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto">
           <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" weight="regular">
@@ -146,7 +146,7 @@ function AppErrorFallback({ error, resetErrorBoundary }: { error: Error; resetEr
           </svg>
         </div>
         <h1 className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">App Error</h1>
-        <p className="text-sm text-slate-500 dark:text-[#888]">{error.message}</p>
+        <p className="text-sm text-slate-500 dark:text-muted-foreground">{error.message}</p>
         <button
           onClick={resetErrorBoundary}
           className="h-12 px-8 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-xl shadow-brand/20"

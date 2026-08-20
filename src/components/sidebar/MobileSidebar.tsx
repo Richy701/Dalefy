@@ -13,7 +13,7 @@ export function MobileSidebar({ className }: { className?: string }) {
       aria-label={expanded ? "Hide navigation" : "Show navigation"}
       aria-expanded={expanded}
       aria-controls="app-sidebar"
-      className={`h-10 w-10 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors shadow-sm flex items-center justify-center shrink-0 ${className ?? ""}`}
+      className={`h-10 w-10 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-slate-100 dark:hover:bg-secondary transition-colors shadow-sm flex items-center justify-center shrink-0 ${className ?? ""}`}
     >
       <SidebarSimple className="h-4 w-4" />
     </button>

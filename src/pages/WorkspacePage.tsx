@@ -521,13 +521,13 @@ export function WorkspacePage() {
   if (!trip) {
     if (!ready) {
       return (
-        <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
-          <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-[#1f1f1f] border-t-brand animate-spin" />
+        <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
+          <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-border border-t-brand animate-spin" />
         </div>
       );
     }
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#050505]">
+      <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
         <div className="text-center space-y-4">
           <p className="text-xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Trip not found</p>
           <Button onClick={() => navigate("/dashboard")} className="bg-brand text-black font-bold rounded-xl">Back to Dashboard</Button>
@@ -1151,11 +1151,11 @@ export function WorkspacePage() {
   const handleSendEmail = () => setSendInviteOpen(true);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-[#050505] w-full relative overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 dark:bg-background w-full relative overflow-hidden">
       {/* Header */}
-      <header className="h-16 bg-white dark:bg-[#111111] border-b border-slate-200 dark:border-[#1f1f1f] px-3 sm:px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-50 shadow-xl">
-          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-[#050505] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-[#1f1f1f] transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-[#1f1f1f] hidden sm:block" />
+      <header className="h-16 bg-white dark:bg-card border-b border-slate-200 dark:border-border px-3 sm:px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-50 shadow-xl">
+          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-border transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
+          <div className="h-6 w-px bg-slate-200 dark:bg-secondary hidden sm:block" />
           <h2 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-none truncate min-w-0 hidden sm:block">{trip.name}</h2>
 
         {/* Presence avatars */}
@@ -1166,13 +1166,13 @@ export function WorkspacePage() {
                 <TooltipTrigger asChild>
                   <div className="relative">
                     {p.avatar ? (
-                      <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] object-cover" />
+                      <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full border-2 border-white dark:border-card object-cover" />
                     ) : (
-                      <div className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] bg-brand/15 flex items-center justify-center text-[9px] font-black text-brand uppercase">
+                      <div className="h-8 w-8 rounded-full border-2 border-white dark:border-card bg-brand/15 flex items-center justify-center text-[9px] font-black text-brand uppercase">
                         {p.initials}
                       </div>
                     )}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-[#111111]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-card" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
@@ -1186,7 +1186,7 @@ export function WorkspacePage() {
               </Tooltip>
             ))}
             {presenceUsers.length > 5 && (
-              <div className="h-8 w-8 rounded-full border-2 border-white dark:border-[#111111] bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-[9px] font-bold text-slate-500">
+              <div className="h-8 w-8 rounded-full border-2 border-white dark:border-card bg-slate-200 dark:bg-secondary flex items-center justify-center text-[9px] font-bold text-slate-500">
                 +{presenceUsers.length - 5}
               </div>
             )}
@@ -1200,29 +1200,29 @@ export function WorkspacePage() {
               <PopoverTrigger className={`hidden sm:flex h-10 items-center gap-2 px-3 rounded-xl border transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm cursor-pointer ${
                 viewAsId
                   ? "bg-brand/10 border-brand/30 text-brand"
-                  : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:text-brand"
+                  : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand"
               }`}>
                 <Users className="h-3.5 w-3.5" />
                 {viewAsTraveler ? `Viewing as ${viewAsTraveler.name.split(" ")[0]}` : "View As"}
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-2 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl">
+              <PopoverContent align="end" className="w-56 p-2 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl">
                 <button
                   onClick={() => setViewAsId(null)}
                   className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
-                    !viewAsId ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-[#aaa] hover:bg-slate-50 dark:hover:bg-[#050505]"
+                    !viewAsId ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
                   }`}
                 >
-                  <div className="h-7 w-7 rounded-md bg-slate-100 dark:bg-[#1f1f1f] flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-[#888]">ALL</div>
+                  <div className="h-7 w-7 rounded-md bg-slate-100 dark:bg-secondary flex items-center justify-center text-[9px] font-black text-slate-500 dark:text-muted-foreground">ALL</div>
                   <span className="uppercase tracking-wider">Everyone</span>
                   {!viewAsId && <Check className="h-3 w-3 ml-auto" />}
                 </button>
-                <div className="h-px bg-slate-100 dark:bg-[#1f1f1f] my-1" />
+                <div className="h-px bg-slate-100 dark:bg-secondary my-1" />
                 {tripTravelers.map(t => (
                   <button
                     key={t.id}
                     onClick={() => setViewAsId(t.id)}
                     className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-xs font-bold transition-colors text-left ${
-                      viewAsId === t.id ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-[#aaa] hover:bg-slate-50 dark:hover:bg-[#050505]"
+                      viewAsId === t.id ? "bg-brand/10 text-brand" : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
                     }`}
                   >
                     <div className="h-7 w-7 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
@@ -1237,13 +1237,13 @@ export function WorkspacePage() {
           {(() => {
             const panelBtn = (active: boolean) =>
               `h-8 px-2.5 lg:px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                active ? "bg-white dark:bg-[#1c1c1c] text-brand shadow-sm" : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+                active ? "bg-white dark:bg-[#1c1c1c] text-brand shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"
               }`;
-            const menuBtn = "hidden sm:flex h-10 px-3 lg:px-4 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] text-slate-600 dark:text-[#aaa] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors text-xs font-bold uppercase tracking-widest items-center gap-2 cursor-pointer shadow-sm";
+            const menuBtn = "hidden sm:flex h-10 px-3 lg:px-4 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-600 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors text-xs font-bold uppercase tracking-widest items-center gap-2 cursor-pointer shadow-sm";
             const item = "flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer";
             return (
               <>
-                <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-1 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a]">
+                <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-1 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background">
                   <button type="button" aria-pressed={showTasks} title="Tasks" onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className={panelBtn(showTasks)}>
                     <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">Tasks</span>
                   </button>
@@ -1259,10 +1259,10 @@ export function WorkspacePage() {
                   <DropdownMenuTrigger className={menuBtn} aria-label="Share and export">
                     <ShareNetwork className="h-4 w-4" /> <span className="hidden lg:inline">Share</span> <CaretDown className="h-3 w-3 opacity-50" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl p-1">
                     <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-brand" /> Send to travelers</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-brand" /> Share link &amp; PIN</DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
                     <DropdownMenuItem onClick={() => setPreviewOpen(true)} className={item}><Eye className="h-4 w-4" /> Preview itinerary</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className={item}>{exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {exporting ? "Exporting..." : "Export PDF"}</DropdownMenuItem>
                   </DropdownMenuContent>
@@ -1272,15 +1272,15 @@ export function WorkspacePage() {
                   <DropdownMenuTrigger className={menuBtn} aria-label="Trip settings">
                     <Pencil className="h-4 w-4" /> <span className="hidden lg:inline">Trip</span> <CaretDown className="h-3 w-3 opacity-50" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+                  <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl p-1">
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setReimportOpen(true)} className={item}><Upload className="h-4 w-4" /> Re-import itinerary</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className={item}>{geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode locations"}</DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                    <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
                     <DropdownMenuItem onClick={toggleTheme} className={item}>{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light mode" : "Dark mode"}</DropdownMenuItem>
                     {(!isOrgMember || canDeleteTrip) && (
                       <>
-                        <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                        <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
                         <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className={`${item} text-red-500 focus:text-red-500`}><Trash className="h-4 w-4" /> Delete trip</DropdownMenuItem>
                       </>
                     )}
@@ -1294,10 +1294,10 @@ export function WorkspacePage() {
 
           {/* Mobile overflow menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-[#111111] hover:bg-slate-50 dark:hover:bg-[#050505] text-slate-500 dark:text-[#888888] hover:text-brand transition-all border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center cursor-pointer shadow-sm">
+            <DropdownMenuTrigger aria-label="More actions" className="sm:hidden h-10 w-10 rounded-xl bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-background text-slate-500 dark:text-muted-foreground hover:text-brand transition-all border border-slate-200 dark:border-border flex items-center justify-center cursor-pointer shadow-sm">
                 <DotsThreeVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl p-1">
+            <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl p-1">
               <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <ListChecks className="h-4 w-4 text-brand" /> {showTasks ? "Hide Tasks" : "Tasks"}
               </DropdownMenuItem>
@@ -1319,7 +1319,7 @@ export function WorkspacePage() {
               <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode Locations"}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
               <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <ShareNetwork className="h-4 w-4" /> Share Link
               </DropdownMenuItem>
@@ -1329,13 +1329,13 @@ export function WorkspacePage() {
               <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 <FileText className="h-4 w-4" /> Export PDF
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+              <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
               <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light Mode" : "Dark Mode"}
               </DropdownMenuItem>
               {(!isOrgMember || canDeleteTrip) && (
                 <>
-                  <DropdownMenuSeparator className="bg-slate-100 dark:bg-[#1f1f1f]" />
+                  <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
                   <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
                     <Trash className="h-4 w-4" /> Delete Trip
                   </DropdownMenuItem>
@@ -1353,10 +1353,10 @@ export function WorkspacePage() {
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Day sidebar */}
-        <aside className="w-64 border-r border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] flex flex-col hidden lg:flex shadow-sm relative z-30">
-          <div className="p-5 border-b border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between bg-slate-50/30 dark:bg-[#050505]/30">
+        <aside className="w-64 border-r border-slate-200 dark:border-border bg-white dark:bg-card flex flex-col hidden lg:flex shadow-sm relative z-30">
+          <div className="p-5 border-b border-slate-200 dark:border-border flex items-center justify-between bg-slate-50/30 dark:bg-background/30">
             <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">ITINERARY</span>
-            {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>}
+            {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-card border border-slate-200 dark:border-border hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>}
           </div>
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-1">
@@ -1382,19 +1382,19 @@ export function WorkspacePage() {
                   >
                     <div className="flex items-center gap-2.5 relative z-10 leading-none">
                       <div className="relative shrink-0">
-                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888]"}`}>
+                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground"}`}>
                           <span className="text-[8px] font-bold uppercase leading-none">{parseTripDate(date).toLocaleDateString("en-US", { month: "short" })}</span>
                           <span className="text-sm font-black leading-none mt-0.5">{parseTripDate(date).getDate()}</span>
                         </div>
                         {dayPeers.length > 0 && (
-                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-[#111111] flex items-center justify-center text-[7px] font-black text-white">
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-card flex items-center justify-center text-[7px] font-black text-white">
                             {dayPeers.length}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-[#999]"}`}>{highlight}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-muted-foreground"}`}>{highlight}</span>
                         <div className="flex items-center gap-1 mt-1">
                           {typeIcons.map(t => {
                             const IC = TypeIcon(t);
@@ -1403,7 +1403,7 @@ export function WorkspacePage() {
                           {dayPeers.length > 0 && (
                             <div className="flex -space-x-1 ml-auto">
                               {dayPeers.slice(0, 3).map(p => (
-                                <div key={p.userId} className="h-4 w-4 rounded-full bg-brand/15 border border-white dark:border-[#111111] flex items-center justify-center text-[6px] font-black text-brand uppercase">{p.initials.slice(0, 1)}</div>
+                                <div key={p.userId} className="h-4 w-4 rounded-full bg-brand/15 border border-white dark:border-card flex items-center justify-center text-[6px] font-black text-brand uppercase">{p.initials.slice(0, 1)}</div>
                               ))}
                             </div>
                           )}
@@ -1419,7 +1419,7 @@ export function WorkspacePage() {
         </aside>
 
         <div className="flex-1 flex flex-row overflow-hidden relative">
-          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-[#050505] overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview ? "lg:w-[60%]" : "w-full"}`}>
+          <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
@@ -1492,7 +1492,7 @@ export function WorkspacePage() {
                       className={`flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 ${
                         active
                           ? "bg-brand text-black border-transparent shadow-lg shadow-brand/20"
-                          : "bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] border-slate-200 dark:border-[#1f1f1f] hover:text-slate-900 dark:hover:text-white"
+                          : "bg-white dark:bg-card text-slate-500 dark:text-muted-foreground border-slate-200 dark:border-border hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       {t.toUpperCase()}
@@ -1517,7 +1517,7 @@ export function WorkspacePage() {
                     <div className="mb-8 space-y-3">
                       {/* Organizer contact card */}
                       {trip.organizer?.name && (
-                        <div className="group/org rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden hover:border-brand/30 transition-colors">
+                        <div className="group/org rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border overflow-hidden hover:border-brand/30 transition-colors">
                           <div className="flex items-center gap-4 p-5">
                             {/* Avatar */}
                             <div className="shrink-0 w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
@@ -1530,7 +1530,7 @@ export function WorkspacePage() {
                               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand mb-1">Organizer</p>
                               <p className="text-base font-extrabold text-slate-900 dark:text-white truncate">{trip.organizer.name}</p>
                               {(trip.organizer.role || trip.organizer.company) && (
-                                <p className="text-xs text-slate-500 dark:text-[#888] font-medium truncate mt-0.5">
+                                <p className="text-xs text-slate-500 dark:text-muted-foreground font-medium truncate mt-0.5">
                                   {[trip.organizer.role, trip.organizer.company].filter(Boolean).join(" · ")}
                                 </p>
                               )}
@@ -1549,7 +1549,7 @@ export function WorkspacePage() {
                                   <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Call</span>
                                 </a>
                               )}
-                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
+                              <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -1560,7 +1560,7 @@ export function WorkspacePage() {
                       {/* Information & Documents card */}
                       {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0) || !isViewer) && (
                         <div
-                          className={`group/info rounded-xl bg-white dark:bg-[#111111] border overflow-hidden transition-colors ${tripDocDragOver ? "border-brand bg-brand/5 dark:bg-brand/5" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/30"}`}
+                          className={`group/info rounded-xl bg-white dark:bg-card border overflow-hidden transition-colors ${tripDocDragOver ? "border-brand bg-brand/5 dark:bg-brand/5" : "border-slate-200 dark:border-border hover:border-brand/30"}`}
                           onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setTripDocDragOver(true); }}
                           onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setTripDocDragOver(false); }}
@@ -1571,7 +1571,7 @@ export function WorkspacePage() {
                               <FileText className="h-3.5 w-3.5 text-brand" />
                               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
-                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center gap-1.5 text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
+                              <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
                               </button>
@@ -1583,7 +1583,7 @@ export function WorkspacePage() {
                               {trip.info.map(item => {
                                 const isExpanded = expandedInfoIds.has(item.id);
                                 return (
-                                <div key={item.id} className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden hover:border-brand/30 transition-colors">
+                                <div key={item.id} className="rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border overflow-hidden hover:border-brand/30 transition-colors">
                                   <button type="button" onClick={() => setExpandedInfoIds(prev => { const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} className="w-full text-left cursor-pointer">
                                     <div className="flex items-start gap-3 p-3.5">
                                       <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mt-0.5">
@@ -1599,22 +1599,22 @@ export function WorkspacePage() {
                                           )}
                                         </p>
                                         {item.body && (
-                                          <p className={`text-xs text-slate-500 dark:text-[#888] font-medium mt-1 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
+                                          <p className={`text-xs text-slate-500 dark:text-muted-foreground font-medium mt-1 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}><Linkify text={item.body} /></p>
                                         )}
                                         {item.documents && item.documents.length > 0 && !isExpanded && (
                                           <p className="text-[10px] text-brand font-bold mt-1">{item.documents.length} attachment{item.documents.length > 1 ? "s" : ""}</p>
                                         )}
                                       </div>
-                                      <CaretRight className={`h-4 w-4 text-slate-400 dark:text-[#666] shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                                      <CaretRight className={`h-4 w-4 text-slate-400 dark:text-muted-foreground shrink-0 mt-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
                                     </div>
                                   </button>
                                   {isExpanded && item.documents && item.documents.length > 0 && (
                                     <div className="px-3.5 pb-3 space-y-1">
                                       {item.documents.map(doc => (
-                                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-brand/30 transition-colors">
                                           <Paperclip className="h-3 w-3 text-brand shrink-0" />
                                           <span className="text-xs font-bold text-slate-900 dark:text-white truncate flex-1">{doc.name}</span>
-                                          <span className="text-[9px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                          <span className="text-[9px] text-slate-500 dark:text-muted-foreground font-medium shrink-0">{formatFileSize(doc.size)}</span>
                                         </a>
                                       ))}
                                     </div>
@@ -1630,14 +1630,14 @@ export function WorkspacePage() {
                               <div className={trip.info && trip.info.length > 0 ? "mt-4" : ""}>
                                 {trip.info && trip.info.length > 0 && (
                                   <div className="flex items-center gap-3 mb-3">
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Documents</span>
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                                    <div className="h-px flex-1 bg-slate-100 dark:bg-secondary" />
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Documents</span>
+                                    <div className="h-px flex-1 bg-slate-100 dark:bg-secondary" />
                                   </div>
                                 )}
                                 <div className="space-y-1.5">
                                   {trip.documents.map(doc => (
-                                    <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                    <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border hover:border-brand/30 transition-colors">
                                       <div className="shrink-0 w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
                                         <Paperclip className="h-3.5 w-3.5 text-brand" />
                                       </div>
@@ -1656,10 +1656,10 @@ export function WorkspacePage() {
                                             <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
                                           </button>
                                         )}
-                                        <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium">{formatFileSize(doc.size)}</p>
+                                        <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium">{formatFileSize(doc.size)}</p>
                                       </div>
                                       {!isViewer && (
-                                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                                           <Trash className="h-3 w-3" />
                                         </button>
                                       )}
@@ -1676,10 +1676,10 @@ export function WorkspacePage() {
                                 <button
                                   type="button"
                                   onClick={() => tripDocInputRef.current?.click()}
-                                  className={`w-full py-2.5 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center gap-1.5 ${tripDocDragOver ? "border-brand bg-brand/10 dark:bg-brand/10" : "border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808]"}`}
+                                  className={`w-full py-2.5 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center gap-1.5 ${tripDocDragOver ? "border-brand bg-brand/10 dark:bg-brand/10" : "border-slate-200 dark:border-border hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808]"}`}
                                 >
-                                  <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-slate-400 dark:text-[#666]"}`} />
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                                  <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-slate-400 dark:text-muted-foreground"}`} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                                     {tripDocDragOver ? "Drop to upload" : "Drop files here or click to upload"}
                                   </span>
                                 </button>
@@ -1724,7 +1724,7 @@ export function WorkspacePage() {
                       ))}
                     </DndContext>
                   ) : (
-                      <div className={`flex flex-col items-center justify-center py-32 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl text-slate-500 dark:text-[#888888] transition-colors ${isViewer ? "" : "hover:border-brand cursor-pointer group"}`} onClick={isViewer ? undefined : () => handleAddEvent()}>
+                      <div className={`flex flex-col items-center justify-center py-32 bg-white dark:bg-card border-2 border-dashed border-slate-200 dark:border-border rounded-xl text-slate-500 dark:text-muted-foreground transition-colors ${isViewer ? "" : "hover:border-brand cursor-pointer group"}`} onClick={isViewer ? undefined : () => handleAddEvent()}>
                         <Plus className={`h-12 w-12 mb-4 opacity-20 ${isViewer ? "" : "group-hover:scale-110 group-hover:text-brand"} transition-all`} />
                         <p className="font-bold text-xs uppercase tracking-[0.3em]">{isViewer ? "NO EVENTS YET" : "ADD YOUR FIRST EVENT"}</p>
                       </div>
@@ -1770,22 +1770,22 @@ export function WorkspacePage() {
                             Edit All Emails
                           </button>
                         )}
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">{tripTravelers.length} assigned</span>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">{tripTravelers.length} assigned</span>
                       </div>
                     </div>
 
                     {/* Bulk email editor */}
                     {bulkEmailMode && tripTravelers.length > 0 && (
-                      <div className="mb-6 rounded-xl bg-white dark:bg-[#111111] border border-brand/30 overflow-hidden">
+                      <div className="mb-6 rounded-xl bg-white dark:bg-card border border-brand/30 overflow-hidden">
                         <div className="px-4 py-3 bg-brand/5 border-b border-brand/20 flex items-center justify-between">
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Bulk Email Editor</p>
-                          <p className="text-[10px] font-bold text-slate-500 dark:text-[#888]">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
                         </div>
-                        <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                        <div className="divide-y divide-slate-100 dark:divide-border">
                           {tripTravelers.map(t => (
                             <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
                               <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand text-[10px] font-black uppercase shrink-0">{t.initials}</div>
-                              <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] w-32 sm:w-40 truncate shrink-0">{t.name}</p>
+                              <p className="text-xs font-bold text-slate-700 dark:text-foreground/80 w-32 sm:w-40 truncate shrink-0">{t.name}</p>
                               <Input
                                 type="email"
                                 value={bulkEmails[t.id] || ""}
@@ -1796,8 +1796,8 @@ export function WorkspacePage() {
                             </div>
                           ))}
                         </div>
-                        <div className="px-4 py-3 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center gap-2 justify-end">
-                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors">
+                        <div className="px-4 py-3 border-t border-slate-100 dark:border-border flex items-center gap-2 justify-end">
+                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
                             Cancel
                           </button>
                           <button
@@ -1825,7 +1825,7 @@ export function WorkspacePage() {
                           const eventCount = trip.events.filter(e => e.assignedTo?.includes(t.id)).length;
                           const isEditing = editingEmailId === t.id;
                           return (
-                            <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] group hover:border-brand/30 transition-colors">
+                            <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border group hover:border-brand/30 transition-colors">
                               <div className="h-10 w-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand text-xs font-black uppercase shrink-0">{t.initials}</div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
@@ -1858,7 +1858,7 @@ export function WorkspacePage() {
                                     className="text-[10px] font-medium truncate mt-0.5 text-left block"
                                   >
                                     {t.email
-                                      ? <span className="text-slate-500 dark:text-[#888]">{t.email}</span>
+                                      ? <span className="text-slate-500 dark:text-muted-foreground">{t.email}</span>
                                       : <span className="text-brand/50 hover:text-brand transition-colors">+ Add email</span>
                                     }
                                   </button>
@@ -1883,7 +1883,7 @@ export function WorkspacePage() {
                                     });
                                     toast.success(`Removed ${t.name} from trip`);
                                   }}
-                                  className="h-8 w-8 rounded-lg text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                                  className="h-8 w-8 rounded-lg text-slate-500 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
@@ -1893,10 +1893,10 @@ export function WorkspacePage() {
                         })}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-[#111111] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl text-slate-500 dark:text-[#888]">
+                      <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-card border-2 border-dashed border-slate-200 dark:border-border rounded-xl text-slate-500 dark:text-muted-foreground">
                         <Users className="h-10 w-10 mb-3 opacity-20" />
                         <p className="text-xs font-bold uppercase tracking-[0.2em]">No travelers assigned yet</p>
-                        <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1">Add travelers below to tag them on specific events</p>
+                        <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1">Add travelers below to tag them on specific events</p>
                       </div>
                     )}
                   </div>
@@ -1904,10 +1904,10 @@ export function WorkspacePage() {
                   {/* Add Travelers */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Add Travelers</h3>
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Add Travelers</h3>
                     </div>
                     <div className="relative mb-3">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
                       <Input
                         value={peopleSearch}
                         onChange={e => setPeopleSearch(e.target.value)}
@@ -1931,27 +1931,27 @@ export function WorkspacePage() {
                                 updateTrip(trip.id, { travelerIds: newIds, travelers: newTravelers });
                                 toast.success(`Added ${t.name} to trip`);
                               }}
-                              className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 hover:bg-brand/5 transition-all group text-left"
+                              className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border hover:border-brand/30 hover:bg-brand/5 transition-all group text-left"
                             >
-                              <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
+                              <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-secondary flex items-center justify-center text-slate-500 dark:text-muted-foreground text-[10px] font-black uppercase shrink-0 group-hover:bg-brand/10 group-hover:text-brand transition-colors">{t.initials}</div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-slate-700 dark:text-[#ccc] truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
-                                <p className="text-[10px] text-slate-500 dark:text-[#888] truncate">{t.email || <span className="italic text-slate-400 dark:text-[#666]">No email</span>}</p>
+                                <p className="text-xs font-bold text-slate-700 dark:text-foreground/80 truncate group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-muted-foreground truncate">{t.email || <span className="italic text-slate-400 dark:text-muted-foreground">No email</span>}</p>
                               </div>
-                              <Plus className="h-4 w-4 text-slate-400 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
+                              <Plus className="h-4 w-4 text-slate-400 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                             </button>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-4 text-slate-500 dark:text-[#888]">
+                        <div className="text-center py-4 text-slate-500 dark:text-muted-foreground">
                           <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
                         </div>
                       );
                     })()}
 
                     {/* Quick add traveler inline */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-3">Quick Add</p>
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-3">Quick Add</p>
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
@@ -1985,19 +1985,19 @@ export function WorkspacePage() {
           </main>
 
           {showMap && (
-            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-border bg-white dark:bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
               {/* Mobile header bar */}
-              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-sm shrink-0 z-50">
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-border bg-white/95 dark:bg-card/95 backdrop-blur-sm shrink-0 z-50">
                 <div className="flex items-center gap-2.5">
                   <MapIcon className="h-4 w-4 text-brand" />
                   <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Route Map</span>
                 </div>
                 <button
                   onClick={() => setShowMap(false)}
-                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center active:scale-95 transition-transform"
+                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center active:scale-95 transition-transform"
                   aria-label="Close map"
                 >
-                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-muted-foreground" />
                 </button>
               </div>
               <div className="flex-1 min-h-0">
@@ -2006,18 +2006,18 @@ export function WorkspacePage() {
             </aside>
           )}
           {showTasks && (
-            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
-              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-sm shrink-0 z-50">
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-border bg-white dark:bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+              <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-border bg-white/95 dark:bg-card/95 backdrop-blur-sm shrink-0 z-50">
                 <div className="flex items-center gap-2.5">
                   <ListChecks className="h-4 w-4 text-brand" />
                   <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Tasks</span>
                 </div>
                 <button
                   onClick={() => setShowTasks(false)}
-                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center active:scale-95 transition-transform"
+                  className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center active:scale-95 transition-transform"
                   aria-label="Close tasks"
                 >
-                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-[#aaa]" />
+                  <X className="h-3.5 w-3.5 text-slate-600 dark:text-muted-foreground" />
                 </button>
               </div>
               <TaskChecklist
@@ -2028,7 +2028,7 @@ export function WorkspacePage() {
             </aside>
           )}
           {showMobilePreview && (
-            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
+            <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-border bg-white dark:bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
               <MobilePreview trip={trip} events={groupedEvents.flatMap(([, evs]) => evs)} onClose={() => setShowMobilePreview(false)} />
             </aside>
           )}
@@ -2046,15 +2046,15 @@ export function WorkspacePage() {
         onConfirm={discardEventChanges}
       />
       <Dialog open={isEditPanelOpen} onOpenChange={handleEventDialogOpenChange}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]">
           <form onSubmit={handleSaveEvent} className="flex flex-col h-full min-h-0">
             {/* Header */}
-            <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-[#1f1f1f] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
               <div>
                 <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
                   {editingEvent?.title ? "Edit Travel Event" : "Add Event to Itinerary"}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Fill in the travel details for this event.</p>
+                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Fill in the travel details for this event.</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                 {(["Proposed", "Confirmed", "Cancelled"] as const).map(s => (
@@ -2065,7 +2065,7 @@ export function WorkspacePage() {
                         ? s === "Confirmed" ? "bg-emerald-400 text-black shadow-lg shadow-emerald-400/20"
                           : s === "Cancelled" ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
                           : "bg-brand text-black shadow-lg shadow-brand/20"
-                        : "bg-slate-100 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888] hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
+                        : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
                     }`}
                   >
                     {s}
@@ -2077,9 +2077,9 @@ export function WorkspacePage() {
             {/* Body - two columns on desktop, stacked on mobile */}
             <div className="flex-1 flex flex-col md:grid md:grid-cols-5 min-h-0 overflow-y-auto md:overflow-hidden">
               {/* Left: core event fields */}
-              <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#1f1f1f]">
+              <div className="md:col-span-3 md:overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-border">
                 {/* Category tabs */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-[#1f1f1f]">
+                <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-slate-200 dark:border-border">
                   {([
                     { id: "flight", label: "Flight", icon: AirplaneTilt },
                     { id: "hotel", label: "Hotel", icon: Bed },
@@ -2088,7 +2088,7 @@ export function WorkspacePage() {
                     { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-2.5 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-slate-500 dark:text-[#888888] hover:text-slate-600 dark:hover:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"}`}>
+                      className={`flex flex-col items-center justify-center py-2.5 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"}`}>
                       <cat.icon className="h-5 w-5" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
                     </button>
@@ -2148,16 +2148,16 @@ export function WorkspacePage() {
                   {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Date</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Date</label>
                       <Popover>
                         <PopoverTrigger className={cn(
-                          "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/50 transition-colors text-left",
-                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-[#888888]"
+                          "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border hover:border-brand/50 transition-colors text-left",
+                          editingEvent?.date ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-muted-foreground"
                         )}>
                           <CalendarDots className="h-3.5 w-3.5 text-brand shrink-0" />
                           <span className="text-sm">{editingEvent?.date ? format(parseISO(editingEvent.date), "MMM d, yyyy") : "Pick a date..."}</span>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-xl bg-white dark:bg-[#1a1a1a]" align="start">
+                        <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-border shadow-2xl rounded-xl bg-white dark:bg-secondary" align="start">
                           <Calendar mode="single" selected={editingEvent?.date ? parseISO(editingEvent.date) : undefined}
                             onSelect={(day) => { if (!day) return; setEventErrors(prev => ({ ...prev, date: undefined })); setEditingEvent(prev => {
                               if (!prev) return null;
@@ -2171,8 +2171,8 @@ export function WorkspacePage() {
                       {eventErrors.date && <p className="text-[11px] font-semibold text-red-500">{eventErrors.date}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</Label>
-                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-slate-200 dark:border-[#252525]"}`} />
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</Label>
+                      <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-slate-50 dark:bg-background text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-slate-200 dark:border-border"}`} />
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>
                   </div>
@@ -2193,15 +2193,15 @@ export function WorkspacePage() {
                           editingEvent.isOvernight ? "translate-x-4" : "translate-x-0.5"
                         )} />
                       </div>
-                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-slate-500 dark:text-[#888]")} />
-                      <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Overnight</span>
+                      <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-slate-500 dark:text-muted-foreground")} />
+                      <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Overnight</span>
                     </button>
                   )}
 
                   {/* Transfer type selector */}
                   {editingEvent?.type === "transfer" && (
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Transport Type</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Transport Type</label>
                       <div className="flex gap-2">
                         {([
                           { value: "car", label: "Car", Icon: Car },
@@ -2219,7 +2219,7 @@ export function WorkspacePage() {
                               "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all",
                               (editingEvent.transferType || "car") === value
                                 ? "border-brand bg-brand/10 text-brand"
-                                : "border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#888] hover:border-brand/30 hover:text-brand/70"
+                                : "border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-brand/30 hover:text-brand/70"
                             )}
                           >
                             <Icon className="h-4 w-4" />
@@ -2234,8 +2234,8 @@ export function WorkspacePage() {
                   {editingEvent?.type === "hotel" && !editingEvent?.isOvernight && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Check-out Time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Check-out Time</Label>
+                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
                   )}
@@ -2244,45 +2244,45 @@ export function WorkspacePage() {
                   {(editingEvent?.type === "activity" || editingEvent?.type === "dining" || editingEvent?.type === "transfer") && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Time</Label>
-                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="14:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">End Time</Label>
+                        <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="14:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</Label>
-                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Duration</Label>
+                        <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
                   )}
 
                   {/* Location - with Mapbox autocomplete */}
                   <div className="space-y-1.5">
-                    <label htmlFor="event-location" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Location / Address</label>
+                    <label htmlFor="event-location" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Location / Address</label>
                     <LocationAutocomplete
                       id="event-location"
                       ariaLabel="Location"
                       value={editingEvent?.location || ""}
                       onChange={(val, coords) => setEditingEvent(prev => prev ? { ...prev, location: val, locationCoords: coords ?? prev.locationCoords } : null)}
                       placeholder="Search for a place..."
-                      className="h-10 w-full text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
+                      className="h-10 w-full text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 focus-visible:outline-none transition-colors"
                     />
                   </div>
 
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Supplier / Provider</Label>
-                      <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Supplier / Provider</Label>
+                      <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Confirmation #</Label>
-                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Confirmation #</Label>
+                      <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Price (Optional)</Label>
-                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Price (Optional)</Label>
+                    <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
                   {/* Type-specific fields */}
@@ -2304,21 +2304,21 @@ export function WorkspacePage() {
                               { key: "gate", label: "Gate" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</Label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
+                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Arrival Time</Label>
-                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Arrival Time</Label>
+                              <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Duration</Label>
-                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Duration</Label>
+                              <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="col-span-2 space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Seat / Ticket Details</Label>
-                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Seat / Ticket Details</Label>
+                              <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         ) : (
@@ -2329,16 +2329,16 @@ export function WorkspacePage() {
                               const isValid = parsed && !isNaN(parsed.getTime());
                               return (
                                 <div key={f.key} className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</label>
+                                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</label>
                                   <Popover>
                                     <PopoverTrigger className={cn(
-                                      "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/50 transition-colors text-left",
-                                      isValid ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-[#888888]"
+                                      "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm bg-slate-50 dark:bg-background border border-slate-200 dark:border-border hover:border-brand/50 transition-colors text-left",
+                                      isValid ? "text-slate-900 dark:text-white font-semibold" : "text-slate-500 dark:text-muted-foreground"
                                     )}>
                                       <CalendarDots className="h-3.5 w-3.5 text-brand shrink-0" />
                                       <span className="text-sm truncate">{isValid ? format(parsed!, "MMM d, yyyy") : "Pick a date..."}</span>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-[#2a2a2a] shadow-2xl rounded-xl bg-white dark:bg-[#1a1a1a]" align="start">
+                                    <PopoverContent className="w-auto p-0 border border-slate-200 dark:border-border shadow-2xl rounded-xl bg-white dark:bg-secondary" align="start">
                                       <Calendar mode="single" selected={isValid ? parsed! : undefined}
                                         onSelect={(day) => day && setEditingEvent(prev => {
                                           if (!prev) return null;
@@ -2353,8 +2353,8 @@ export function WorkspacePage() {
                               );
                             })}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Room Type</Label>
-                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Room Type</Label>
+                              <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
                         )}
@@ -2365,12 +2365,12 @@ export function WorkspacePage() {
               </div>
 
               {/* Right: image search panel */}
-              <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-[#1f1f1f] bg-slate-50/40 dark:bg-[#0a0a0a]">
+              <div className="md:col-span-2 flex flex-col min-h-0 overflow-y-auto md:overflow-hidden md:border-l border-slate-200 dark:border-border bg-slate-50/40 dark:bg-background">
                 {/* Search bar */}
-                <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0 bg-white dark:bg-[#111111]">
+                <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-border shrink-0 bg-white dark:bg-card">
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
                       <Input
                         value={imageSearch}
                         onChange={e => setImageSearch(e.target.value)}
@@ -2385,7 +2385,7 @@ export function WorkspacePage() {
                     </button>
                     {imageSearch && (
                       <button type="button" onClick={() => { setImageSearch(""); setImageResults([]); setImageSearchSource(null); }}
-                        className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                        className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -2393,20 +2393,20 @@ export function WorkspacePage() {
                   <div className="flex items-center gap-1 mt-2">
                     {(["auto", "google", "unsplash", "pexels"] as const).map(s => (
                       <button key={s} type="button" onClick={() => { setPreferredImageSource(s); if (imageLastQuery) runImageSearch(imageLastQuery, 1, s); }}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#999]"}`}>
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground"}`}>
                         {s === "auto" ? "Auto" : s === "google" ? "Google" : s === "unsplash" ? "Unsplash" : "Pexels"}
                       </button>
                     ))}
                   </div>
                   {imageIsAuto && (
-                    <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-2 flex items-center gap-1">
                       <MagicWand className="h-3 w-3 text-brand" /> Auto-matching from title
                     </p>
                   )}
                 </div>
 
                 {/* Selected image preview */}
-                <div className="relative h-28 sm:h-44 shrink-0 bg-slate-200 dark:bg-[#111] overflow-hidden">
+                <div className="relative h-28 sm:h-44 shrink-0 bg-slate-200 dark:bg-card overflow-hidden">
                   {editingEvent?.image ? (
                     <>
                       <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" />
@@ -2428,8 +2428,8 @@ export function WorkspacePage() {
                     </>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
-                      <Camera className="h-7 w-7 text-slate-400 dark:text-[#666]" />
-                      <p className="text-[10px] text-slate-500 dark:text-[#888888] uppercase tracking-widest font-bold">No image selected</p>
+                      <Camera className="h-7 w-7 text-slate-400 dark:text-muted-foreground" />
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground uppercase tracking-widest font-bold">No image selected</p>
                     </div>
                   )}
                 </div>
@@ -2439,7 +2439,7 @@ export function WorkspacePage() {
                 {/* Results grid */}
                 <div className="p-3">
                   {isSearchingImages ? (
-                    <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-[#888888]">
+                    <div className="flex items-center justify-center h-24 gap-2 text-slate-500 dark:text-muted-foreground">
                       <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
                     </div>
@@ -2457,7 +2457,7 @@ export function WorkspacePage() {
                       {(imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
                         <div className="flex items-center gap-1.5 pt-1">
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
-                            className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#aaa] hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
+                            className="flex-1 h-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
                             <ArrowsClockwise className="h-3 w-3" /> Refresh
                           </button>
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
@@ -2467,7 +2467,7 @@ export function WorkspacePage() {
                         </div>
                       )}
                       {imageSearchSource === "local" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-muted-foreground font-bold uppercase tracking-widest text-center pt-1">
                           Suggested images · APIs unavailable
                         </p>
                       )}
@@ -2477,28 +2477,28 @@ export function WorkspacePage() {
                         </p>
                       )}
                       {imageSearchSource === "unsplash" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-muted-foreground font-bold uppercase tracking-widest text-center pt-1">
                           Unsplash
                         </p>
                       )}
                       {imageSearchSource === "pexels" && (
-                        <p className="text-[9px] text-slate-500/60 dark:text-[#888] font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-slate-500/60 dark:text-muted-foreground font-bold uppercase tracking-widest text-center pt-1">
                           Pexels
                         </p>
                       )}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
-                      <MagnifyingGlass className="h-5 w-5 text-slate-400 dark:text-[#666]" />
-                      <p className="text-[10px] text-slate-500 dark:text-[#888888] font-bold uppercase tracking-widest">Type to search images</p>
+                      <MagnifyingGlass className="h-5 w-5 text-slate-400 dark:text-muted-foreground" />
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-bold uppercase tracking-widest">Type to search images</p>
                     </div>
                   )}
                 </div>
 
                 {/* Media Upload */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Photos & Videos</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
                       className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Upload className="h-3 w-3" /> Upload
@@ -2511,13 +2511,13 @@ export function WorkspacePage() {
                         <div key={i} className="relative group">
                           {m.type === "image" ? (
                             <button type="button" onClick={() => { setEditingEvent(prev => prev ? { ...prev, image: m.url } : null); setImageIsAuto(false); }}
-                              className={`block w-full h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === m.url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-slate-200 dark:border-[#252525] hover:border-brand/50"}`}>
+                              className={`block w-full h-14 rounded-lg overflow-hidden border-2 transition-all hover:scale-[1.02] ${editingEvent?.image === m.url ? "border-brand shadow-lg shadow-brand/30 scale-[1.02]" : "border-slate-200 dark:border-border hover:border-brand/50"}`}>
                               <img src={m.url} alt={m.name} className="w-full h-full object-cover" />
                             </button>
                           ) : (
-                            <div className="h-14 w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-lg border border-slate-200 dark:border-[#252525] flex flex-col items-center justify-center gap-0.5 px-1">
+                            <div className="h-14 w-full bg-slate-100 dark:bg-secondary rounded-lg border border-slate-200 dark:border-border flex flex-col items-center justify-center gap-0.5 px-1">
                               <Video className="h-4 w-4 text-brand" />
-                              <span className="text-[8px] text-slate-500 dark:text-[#888888] font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
+                              <span className="text-[8px] text-slate-500 dark:text-muted-foreground font-bold truncate w-full text-center leading-none">{m.name.replace(/\.[^.]+$/, "")}</span>
                             </div>
                           )}
                           <button type="button" onClick={() => handleRemoveMedia(i)}
@@ -2529,7 +2529,7 @@ export function WorkspacePage() {
                     </div>
                   ) : (
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="w-full h-10 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-brand/50 hover:text-brand transition-colors group">
+                      className="w-full h-10 rounded-lg border-2 border-dashed border-slate-200 dark:border-border flex items-center justify-center gap-2 text-slate-500 dark:text-muted-foreground hover:border-brand/50 hover:text-brand transition-colors group">
                       <ImageIcon2 className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Add photos or videos</span>
                     </button>
@@ -2537,9 +2537,9 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Documents / Vouchers */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2 sm:space-y-2.5">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Documents / Vouchers</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Documents / Vouchers</label>
                     <button type="button" onClick={() => documentInputRef.current?.click()}
                       className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Paperclip className="h-3 w-3" /> Attach
@@ -2558,17 +2558,17 @@ export function WorkspacePage() {
                       <SortableContext items={editingEvent!.documents!.map(d => d.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1.5">
                           {editingEvent!.documents!.map((doc, i) => (
-                            <SortableItem key={doc.id} id={doc.id} handleClass="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 h-6 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
-                              <div className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] hover:border-brand/40 transition-colors">
+                            <SortableItem key={doc.id} id={doc.id} handleClass="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 h-6 w-5 flex items-center justify-center text-slate-400 dark:text-muted-foreground opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                              <div className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 dark:bg-background border border-slate-200 dark:border-border hover:border-brand/40 transition-colors">
                                 <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center shrink-0">
                                   <FileText className="h-3.5 w-3.5 text-brand" />
                                 </div>
                                 <button type="button" onClick={() => handleOpenDocument(doc.url)} className="flex-1 min-w-0 text-left">
                                   <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{doc.name}</p>
-                                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#888888] uppercase tracking-wider">{formatFileSize(doc.size)}</p>
+                                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground uppercase tracking-wider">{formatFileSize(doc.size)}</p>
                                 </button>
                                 <button type="button" onClick={() => handleRemoveDocument(i)}
-                                  className="h-6 w-6 rounded-md text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover/sort:opacity-100 shrink-0">
+                                  className="h-6 w-6 rounded-md text-slate-500 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover/sort:opacity-100 shrink-0">
                                   <Trash className="h-3 w-3" />
                                 </button>
                               </div>
@@ -2579,7 +2579,7 @@ export function WorkspacePage() {
                     </DndContext>
                   ) : (
                     <button type="button" onClick={() => documentInputRef.current?.click()}
-                      className="w-full h-10 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#252525] flex items-center justify-center gap-2 text-slate-500 dark:text-[#888888] hover:border-brand/50 hover:text-brand transition-colors">
+                      className="w-full h-10 rounded-lg border-2 border-dashed border-slate-200 dark:border-border flex items-center justify-center gap-2 text-slate-500 dark:text-muted-foreground hover:border-brand/50 hover:text-brand transition-colors">
                       <Paperclip className="h-4 w-4" />
                       <span className="text-[10px] font-bold uppercase tracking-wider">Attach PDF, voucher, or booking confirmation</span>
                     </button>
@@ -2587,10 +2587,10 @@ export function WorkspacePage() {
                 </div>
 
                 {/* People Assignment */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2.5">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">People</label>
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#1a1a1a] rounded-lg p-0.5">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">People</label>
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-secondary rounded-lg p-0.5">
                       <button
                         type="button"
                         onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
@@ -2598,7 +2598,7 @@ export function WorkspacePage() {
                         className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
                           !editingEvent?.assignedTo
                             ? "bg-brand text-black shadow-sm"
-                            : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+                            : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         Everyone
@@ -2610,7 +2610,7 @@ export function WorkspacePage() {
                         className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
                           Array.isArray(editingEvent?.assignedTo)
                             ? "bg-brand text-black shadow-sm"
-                            : "text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white"
+                            : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         Specific
@@ -2640,10 +2640,10 @@ export function WorkspacePage() {
                                 className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
                                   isAssigned
                                     ? "bg-brand/10 border-brand/30 text-brand"
-                                    : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-500 dark:text-[#888] hover:border-brand/30"
+                                    : "bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-brand/30"
                                 }`}
                               >
-                                <span className="h-5 w-5 rounded-md bg-slate-200 dark:bg-[#1f1f1f] flex items-center justify-center text-[8px] font-black shrink-0">{t.initials}</span>
+                                <span className="h-5 w-5 rounded-md bg-slate-200 dark:bg-secondary flex items-center justify-center text-[8px] font-black shrink-0">{t.initials}</span>
                                 {t.name.split(" ")[0]}
                                 {isAssigned && <Check className="h-3 w-3" />}
                               </button>
@@ -2651,7 +2651,7 @@ export function WorkspacePage() {
                           })}
                         </div>
                       ) : (
-                        <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium">
+                        <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium">
                           Add travelers in the People tab first to assign them to events.
                         </p>
                       )}
@@ -2660,7 +2660,7 @@ export function WorkspacePage() {
                 </div>
 
                 {/* AI Assist */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111]">
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card">
                   <button
                     type="button"
                     onClick={handleAiAssist}
@@ -2673,23 +2673,23 @@ export function WorkspacePage() {
                 </div>
 
                 {/* Description (visible to travelers) */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Description (Visible to Travelers)</Label>
-                  <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Description (Visible to Travelers)</Label>
+                  <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
 
                 {/* Notes */}
-                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Agent Notes (Internal)</Label>
-                  <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
+                <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Agent Notes (Internal)</Label>
+                  <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
                 </div>{/* end scrollable area */}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="px-4 sm:px-8 py-4 sm:py-5 bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between gap-3 shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setIsEditPanelOpen(false)}>Cancel</button>
+            <div className="px-4 sm:px-8 py-4 sm:py-5 bg-white dark:bg-card border-t border-slate-200 dark:border-border flex items-center justify-between gap-3 shrink-0">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setIsEditPanelOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 sm:h-11 px-6 sm:px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">
                 Save Event
               </Button>
@@ -2728,11 +2728,11 @@ export function WorkspacePage() {
 
       {/* Edit Trip Dialog */}
       <Dialog open={editTripOpen} onOpenChange={setEditTripOpen}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0 flex flex-col max-h-[calc(100dvh-2rem)]">
+        <DialogContent className="max-w-2xl bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border shadow-2xl overflow-hidden p-0 flex flex-col max-h-[calc(100dvh-2rem)]">
           <form onSubmit={handleSaveTrip} className="flex flex-col min-h-0 flex-1">
-            <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
+            <DialogHeader className="px-8 pt-8 pb-5 border-b border-slate-200 dark:border-border shrink-0">
               <DialogTitle className="text-2xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Edit Trip</DialogTitle>
-              <p className="text-xs text-slate-500 dark:text-[#888] font-medium mt-1">Configure trip details, organizer, and traveler information</p>
+              <p className="text-xs text-slate-500 dark:text-muted-foreground font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
             <div className="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto">
 
@@ -2751,7 +2751,7 @@ export function WorkspacePage() {
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888] pointer-events-none" />
+                    <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground pointer-events-none" />
                     <Input
                       value={tripImageSearch}
                       onChange={e => setTripImageSearch(e.target.value)}
@@ -2761,7 +2761,7 @@ export function WorkspacePage() {
                     />
                   </div>
                   <button type="button" onClick={() => coverInputRef.current?.click()}
-                    className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0"
+                    className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0"
                     title="Upload cover image">
                     <Upload className="h-3.5 w-3.5" />
                   </button>
@@ -2772,15 +2772,15 @@ export function WorkspacePage() {
                   {tripImageResults.length > 0 && (
                     <>
                       <button type="button" aria-label="Refresh" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                         <ArrowsClockwise className={`h-3.5 w-3.5 ${isTripImageSearching ? "animate-spin" : ""}`} />
                       </button>
                       <button type="button" aria-label="Next page" onClick={() => runTripImageSearch(tripImageLastQuery || tripImageSearch, tripImagePage + 1)} disabled={isTripImageSearching}
-                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                         <CaretRight className="h-3.5 w-3.5" />
                       </button>
                       <button type="button" onClick={() => { setTripImageResults([]); setTripImageSearch(""); setTripImagePage(1); setTripImageLastQuery(""); }}
-                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                        className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </>
@@ -2788,7 +2788,7 @@ export function WorkspacePage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
                   {isTripImageSearching ? (
-                    <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                    <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-muted-foreground">
                       <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                       <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                     </div>
@@ -2813,35 +2813,35 @@ export function WorkspacePage() {
               </div>
 
               {/* ── Section: Trip Details ── */}
-              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+              <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin className="h-3.5 w-3.5 text-brand" />
                   <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Details</h4>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trip Name</Label>
-                    <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Trip Name</Label>
+                    <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Destination</Label>
-                      <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Destination</Label>
+                      <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Attendees</Label>
-                      <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Attendees</Label>
+                      <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Start Date</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Start Date</label>
                       <Popover>
-                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                          <span className={editingTrip.start ? "" : "text-slate-500 dark:text-[#888]"}>
+                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
+                          <span className={editingTrip.start ? "" : "text-slate-500 dark:text-muted-foreground"}>
                             {editingTrip.start ? format(parseISO(editingTrip.start), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.start ? parseISO(editingTrip.start) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, start: format(d, "yyyy-MM-dd") }))} />
@@ -2849,13 +2849,13 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">End Date</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">End Date</label>
                       <Popover>
-                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
-                          <span className={editingTrip.end ? "" : "text-slate-500 dark:text-[#888]"}>
+                        <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
+                          <span className={editingTrip.end ? "" : "text-slate-500 dark:text-muted-foreground"}>
                             {editingTrip.end ? format(parseISO(editingTrip.end), "d MMM yyyy") : "Select date"}
                           </span>
-                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
+                          <CalendarDots className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground shrink-0" />
                         </PopoverTrigger>
                         <PopoverContent align="start" className="p-0 w-auto">
                           <Calendar mode="single" selected={editingTrip.end ? parseISO(editingTrip.end) : undefined} onSelect={d => d && setEditingTrip(prev => ({ ...prev, end: format(d, "yyyy-MM-dd") }))} />
@@ -2863,11 +2863,11 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Currency</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Currency</label>
                       <select
                         value={editingTrip.currency ?? "USD"}
                         onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
-                        className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
+                        className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
                       >
                         {[
                           ["USD", "USD - US Dollar"],
@@ -2896,7 +2896,7 @@ export function WorkspacePage() {
               </div>
 
               {/* ── Section: Organizer / Agent ── */}
-              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+              <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="h-3.5 w-3.5 text-brand" />
                   <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Organizer / Agent</h4>
@@ -2913,7 +2913,7 @@ export function WorkspacePage() {
                         <Users className="h-6 w-6 text-brand/40" />
                       )}
                     </div>
-                    <span className="text-[8px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Preview</span>
+                    <span className="text-[8px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">Preview</span>
                   </div>
                   {/* Fields */}
                   <div className="flex-1 grid grid-cols-2 gap-3">
@@ -2925,12 +2925,12 @@ export function WorkspacePage() {
                       { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
                     ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string; span?: number }[]).map(f => (
                       <div key={f.key} className={`space-y-1 ${f.span === 2 ? "col-span-2" : ""}`}>
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">{f.label}</Label>
+                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
                         <Input
                           value={editingTrip.organizer?.[f.key] ?? ""}
                           onChange={e => setEditingTrip(prev => ({ ...prev, organizer: { ...(prev.organizer ?? { name: "" }), [f.key]: e.target.value } }))}
                           placeholder={f.placeholder}
-                          className="h-9 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
+                          className="h-9 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
                         />
                       </div>
                     ))}
@@ -2939,7 +2939,7 @@ export function WorkspacePage() {
               </div>
 
               {/* ── Section: Information & Documents ── */}
-              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+              <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-brand" />
@@ -2960,12 +2960,12 @@ export function WorkspacePage() {
                   </button>
                 </div>
                 {(editingTrip.info ?? []).length === 0 && (
-                  <div className="text-center py-8 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
+                  <div className="text-center py-8 rounded-xl border-2 border-dashed border-slate-200 dark:border-border bg-slate-50/50 dark:bg-[#080808]">
                     <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
                       <FileText className="h-5 w-5 text-brand/50" />
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-[#888] font-bold">No information pages yet</p>
-                    <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground font-bold">No information pages yet</p>
+                    <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1 max-w-[200px] mx-auto">Add travel tips, visa info, packing lists, and more for your travelers</p>
                   </div>
                 )}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
@@ -2979,8 +2979,8 @@ export function WorkspacePage() {
                 }}>
                   <SortableContext items={(editingTrip.info ?? []).map(i => i.id)} strategy={verticalListSortingStrategy}>
                     {(editingTrip.info ?? []).map((item, idx) => (
-                      <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
-                        <div className="mb-3 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-muted-foreground opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                        <div className="mb-3 rounded-xl bg-white dark:bg-background border border-slate-200 dark:border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex items-center gap-3 px-4 py-3">
                             <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
                               <span className="text-[11px] font-black text-brand">{idx + 1}</span>
@@ -3003,7 +3003,7 @@ export function WorkspacePage() {
                                 updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
-                              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-[#666] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                              className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-muted-foreground hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
                             >
                               {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </button>
@@ -3013,7 +3013,7 @@ export function WorkspacePage() {
                                 const updated = (editingTrip.info ?? []).filter((_, i) => i !== idx);
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
-                              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                              className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
                             >
                               <Trash className="h-3.5 w-3.5" />
                             </button>
@@ -3027,7 +3027,7 @@ export function WorkspacePage() {
                                 setEditingTrip(prev => ({ ...prev, info: updated }));
                               }}
                               placeholder="Write content that travelers will see... URLs become clickable links automatically."
-                              className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-[#1a1a1a] text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                              className="min-h-[100px] text-sm bg-slate-50 dark:bg-[#080808] border border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none rounded-xl focus-visible:border-brand focus-visible:ring-0 px-3 py-2.5 leading-relaxed placeholder:text-slate-300 dark:placeholder:text-[#333]"
                             />
                           </div>
                         </div>
@@ -3038,7 +3038,7 @@ export function WorkspacePage() {
               </div>
 
               {/* ── Section: Status ── */}
-              <div className="pt-5 border-t border-slate-200 dark:border-[#1f1f1f]">
+              <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag className="h-3.5 w-3.5 text-brand" />
                   <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Status</h4>
@@ -3051,7 +3051,7 @@ export function WorkspacePage() {
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
                             : s === "In Progress" ? "bg-brand text-black shadow-lg shadow-brand/20"
                             : "bg-slate-800 dark:bg-white text-white dark:text-black shadow-lg"
-                          : "bg-slate-100 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
+                          : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
                       }`}>
                       {s}
                     </button>
@@ -3059,8 +3059,8 @@ export function WorkspacePage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
+            <DialogFooter className="px-8 py-5 border-t border-slate-200 dark:border-border flex items-center justify-between shrink-0">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
               <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>
           </form>
@@ -3069,16 +3069,16 @@ export function WorkspacePage() {
 
       {/* ── Organizer mini-dialog ── */}
       <Dialog open={editOrgOpen} onOpenChange={setEditOrgOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-hidden p-0">
+        <DialogContent className="max-w-md bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border shadow-2xl overflow-hidden p-0">
           <form onSubmit={handleSaveOrg}>
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f]">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-border">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center">
                   <Users className="h-4 w-4 text-brand" />
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Organizer</DialogTitle>
-                  <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium mt-0.5">Trip contact person visible to travelers</p>
+                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium mt-0.5">Trip contact person visible to travelers</p>
                 </div>
               </div>
             </DialogHeader>
@@ -3091,18 +3091,18 @@ export function WorkspacePage() {
                 { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
               ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string }[]).map(f => (
                 <div key={f.key} className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">{f.label}</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
                   <Input
                     value={editOrgData[f.key] ?? ""}
                     onChange={e => setEditOrgData(prev => ({ ...prev, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
-                    className="h-10 text-sm bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#252525] text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
+                    className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0"
                   />
                 </div>
               ))}
             </div>
-            <DialogFooter className="px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
+            <DialogFooter className="px-6 py-4 border-t border-slate-200 dark:border-border flex items-center justify-between">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
@@ -3111,9 +3111,9 @@ export function WorkspacePage() {
 
       {/* ── Information mini-dialog ── */}
       <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
-        <DialogContent className="dialog-mobile-full border-0 bg-white dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f] shadow-2xl flex flex-col">
+        <DialogContent className="dialog-mobile-full border-0 bg-white dark:bg-background p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:dark:border-border shadow-2xl flex flex-col">
           <form onSubmit={handleSaveInfo} className="flex flex-col h-full sm:h-auto sm:max-h-[85vh]">
-            <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
+            <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-200 dark:border-border shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
@@ -3121,7 +3121,7 @@ export function WorkspacePage() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">Information</DialogTitle>
-                    <p className="text-[10px] text-slate-500 dark:text-[#888] font-medium mt-0.5">Pages visible to travelers</p>
+                    <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium mt-0.5">Pages visible to travelers</p>
                   </div>
                 </div>
                 <button
@@ -3135,12 +3135,12 @@ export function WorkspacePage() {
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {editInfoData.length === 0 && (
-                <div className="text-center py-14 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#080808]">
+                <div className="text-center py-14 rounded-xl border-2 border-dashed border-slate-200 dark:border-border bg-slate-50/50 dark:bg-[#080808]">
                   <div className="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto mb-3">
                     <FileText className="h-6 w-6 text-brand/50" />
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-[#888] font-bold">No pages yet</p>
-                  <p className="text-xs text-slate-500 dark:text-[#888] mt-1">Add travel tips, visa info, packing lists</p>
+                  <p className="text-sm text-slate-500 dark:text-muted-foreground font-bold">No pages yet</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Add travel tips, visa info, packing lists</p>
                 </div>
               )}
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e: DragEndEvent) => {
@@ -3153,9 +3153,9 @@ export function WorkspacePage() {
               }}>
                 <SortableContext items={editInfoData.map(i => i.id)} strategy={verticalListSortingStrategy}>
                   {editInfoData.map((item, idx) => (
-                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-[#666] opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
-                      <div className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] overflow-hidden transition-shadow hover:shadow-md">
-                        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-[#1a1a1a]">
+                    <SortableItem key={item.id} id={item.id} handleClass="absolute left-1 top-3.5 z-10 h-7 w-5 flex items-center justify-center text-slate-400 dark:text-muted-foreground opacity-0 group-hover/sort:opacity-100 hover:text-brand cursor-grab active:cursor-grabbing transition-opacity">
+                      <div className="rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border overflow-hidden transition-shadow hover:shadow-md">
+                        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-border">
                           <div className="shrink-0 w-7 h-7 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
                             <span className="text-[11px] font-black text-brand">{idx + 1}</span>
                           </div>
@@ -3177,14 +3177,14 @@ export function WorkspacePage() {
                               updated[idx] = { ...updated[idx], leaderOnly: !updated[idx].leaderOnly };
                               setEditInfoData(updated);
                             }}
-                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-[#666] hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
+                            className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-all ${item.leaderOnly ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" : "text-slate-400 dark:text-muted-foreground hover:text-brand hover:bg-brand/10 opacity-0 group-hover/sort:opacity-100"}`}
                           >
                             {item.leaderOnly ? <EyeSlash className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditInfoData(prev => prev.filter((_, i) => i !== idx))}
-                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
+                            className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/sort:opacity-100 transition-all"
                           >
                             <Trash className="h-3.5 w-3.5" />
                           </button>
@@ -3199,13 +3199,13 @@ export function WorkspacePage() {
                             }}
                             placeholder="Write content that travelers will see... URLs become clickable links automatically."
                             rows={Math.max(4, (item.body.match(/\n/g) || []).length + 2)}
-                            className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] text-slate-700 dark:text-[#ccc] resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
+                            className="min-h-[120px] text-sm leading-relaxed bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-700 dark:text-foreground/80 resize-y rounded-xl focus-visible:border-brand focus-visible:ring-0 px-4 py-3 placeholder:text-slate-300 dark:placeholder:text-[#333]"
                           />
                           {/* Per-page attachments */}
                           {item.documents && item.documents.length > 0 && (
                             <div className="space-y-1.5">
                               {item.documents.map((doc, docIdx) => (
-                                <div key={doc.id} className="group/pdoc flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                                <div key={doc.id} className="group/pdoc flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-brand/30 transition-colors">
                                   <Paperclip className="h-3 w-3 text-brand shrink-0" />
                                   {renamingDocId === doc.id ? (
                                     <Input
@@ -3235,7 +3235,7 @@ export function WorkspacePage() {
                                       title="Double-click to rename"
                                     >{doc.name}</span>
                                   )}
-                                  <span className="text-[9px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                                  <span className="text-[9px] text-slate-500 dark:text-muted-foreground font-medium shrink-0">{formatFileSize(doc.size)}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -3243,7 +3243,7 @@ export function WorkspacePage() {
                                       updated[idx] = { ...updated[idx], documents: (updated[idx].documents || []).filter(d => d.id !== doc.id) };
                                       setEditInfoData(updated);
                                     }}
-                                    className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/pdoc:opacity-100 transition-all"
+                                    className="shrink-0 h-6 w-6 rounded flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/pdoc:opacity-100 transition-all"
                                   >
                                     <Trash className="h-3 w-3" />
                                   </button>
@@ -3251,7 +3251,7 @@ export function WorkspacePage() {
                               ))}
                             </div>
                           )}
-                          <label className="flex items-center gap-2 cursor-pointer text-slate-500 dark:text-[#888] hover:text-brand transition-colors">
+                          <label className="flex items-center gap-2 cursor-pointer text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors">
                             <input type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={e => { handleInfoPageDocFiles(Array.from(e.target.files || []), idx); e.target.value = ""; }} className="hidden" />
                             <Paperclip className="h-3 w-3" />
                             <span className="text-[10px] font-bold uppercase tracking-wider">Attach files</span>
@@ -3266,14 +3266,14 @@ export function WorkspacePage() {
               {/* Documents section inside edit dialog */}
               <div className="mt-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Documents</span>
-                  <div className="h-px flex-1 bg-slate-100 dark:bg-[#1a1a1a]" />
+                  <div className="h-px flex-1 bg-slate-100 dark:bg-secondary" />
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Documents</span>
+                  <div className="h-px flex-1 bg-slate-100 dark:bg-secondary" />
                 </div>
                 {trip.documents && trip.documents.length > 0 && (
                   <div className="space-y-1.5 mb-3">
                     {trip.documents.map(doc => (
-                      <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1a1a1a] hover:border-brand/30 transition-colors">
+                      <div key={doc.id} className="group/doc flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border hover:border-brand/30 transition-colors">
                         <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
                         <div className="min-w-0 flex-1">
                           {renamingDocId === doc.id ? (
@@ -3293,8 +3293,8 @@ export function WorkspacePage() {
                             >{doc.name}</span>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-500 dark:text-[#888] font-medium shrink-0">{formatFileSize(doc.size)}</span>
-                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-[#666] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
+                        <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-medium shrink-0">{formatFileSize(doc.size)}</span>
+                        <button type="button" onClick={() => handleRemoveTripDoc(doc.id)} className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover/doc:opacity-100 transition-all">
                           <Trash className="h-3 w-3" />
                         </button>
                       </div>
@@ -3305,15 +3305,15 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => tripDocInputRef2.current?.click()}
-                  className="w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
+                  className="w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-border hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
                 >
-                  <Upload className="h-5 w-5 text-slate-400 dark:text-[#666]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">Drop files here or click to upload</span>
+                  <Upload className="h-5 w-5 text-slate-400 dark:text-muted-foreground" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">Drop files here or click to upload</span>
                 </button>
               </div>
             </div>
-            <DialogFooter className="px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-[#1f1f1f] flex items-center justify-between shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
+            <DialogFooter className="px-5 sm:px-6 py-4 border-t border-slate-200 dark:border-border flex items-center justify-between shrink-0">
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>

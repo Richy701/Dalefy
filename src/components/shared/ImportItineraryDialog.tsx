@@ -1121,18 +1121,18 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
   const isTruncated = item.body.length > 120 || item.body.split("\n").length > 2;
 
   return (
-    <div className="group/info bg-white dark:bg-[#111111]">
+    <div className="group/info bg-white dark:bg-card">
       {/* Header row - always visible, click to expand */}
       <button
         type="button"
         onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-[#0f0f0f] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors"
       >
-        <CaretRight className={`h-3 w-3 text-slate-500 dark:text-[#888] shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
+        <CaretRight className={`h-3 w-3 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
         <span className="text-[13px] font-semibold text-slate-900 dark:text-white flex-1 truncate">
           {item.title || "Untitled"}
         </span>
-        <span className="text-[10px] text-slate-500 dark:text-[#888] shrink-0 tabular-nums">
+        <span className="text-[10px] text-slate-500 dark:text-muted-foreground shrink-0 tabular-nums">
           {item.body.split("\n").length} line{item.body.split("\n").length !== 1 ? "s" : ""}
         </span>
       </button>
@@ -1140,7 +1140,7 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
       {/* Collapsed preview - shows first 2 lines */}
       {!expanded && bodyPreview && (
         <div className="px-4 pb-3 pl-10">
-          <p className="text-xs text-slate-500 dark:text-[#777] leading-relaxed line-clamp-2">
+          <p className="text-xs text-slate-500 dark:text-muted-foreground leading-relaxed line-clamp-2">
             {bodyPreview}{isTruncated ? "..." : ""}
           </p>
         </div>
@@ -1175,14 +1175,14 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
             </>
           ) : (
             <>
-              <p className="text-[13px] text-slate-700 dark:text-[#bbb] leading-relaxed whitespace-pre-wrap">
+              <p className="text-[13px] text-slate-700 dark:text-foreground/80 leading-relaxed whitespace-pre-wrap">
                 {item.body}
               </p>
               <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
                 >
                   <PencilSimple className="h-3 w-3" />
                   Edit
@@ -1190,7 +1190,7 @@ function InfoReviewCard({ item, onChangeTitle, onChangeBody, onRemove }: {
                 <button
                   type="button"
                   onClick={onRemove}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-[#888] hover:text-red-400 transition-colors"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
                 >
                   <X className="h-3 w-3" />
                   Remove
@@ -1589,12 +1589,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] p-5 sm:p-6 md:p-10 shadow-2xl">
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-5 sm:p-6 md:p-10 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
           </DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-[#888] font-medium uppercase text-xs tracking-[0.2em]">
+          <DialogDescription className="text-slate-500 dark:text-muted-foreground font-medium uppercase text-xs tracking-[0.2em]">
             {step === "upload" && "PDF · Word · PowerPoint · Text · Images"}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
@@ -1620,14 +1620,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
               onDrop={handleDrop}
               onDragOver={e => e.preventDefault()}
-              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-[#0a0a0a] border-2 border-dashed border-slate-200 dark:border-[#1f1f1f] rounded-xl hover:border-brand/60 transition-colors group"
+              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-background border-2 border-dashed border-slate-200 dark:border-border rounded-xl hover:border-brand/60 transition-colors group"
             >
               <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center hover:bg-brand/25 transition-colors shadow-sm" aria-hidden="true">
                 <Upload className="h-6 w-6 text-brand" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Drop a file here or click to browse</p>
-                <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT · JPG · PNG</p>
+                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT · JPG · PNG</p>
               </div>
             </div>
             {createPortal(
@@ -1649,9 +1649,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             )}
 
             <div className="flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">OR PASTE TEXT</span>
-              <div className="h-px flex-1 bg-slate-200 dark:bg-[#1f1f1f]" />
+              <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">OR PASTE TEXT</span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
             </div>
 
             <div className="space-y-3">
@@ -1688,21 +1688,21 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">Extracting text, images &amp; attachments...</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Extracting text, images &amp; attachments...</p>
           </div>
         )}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
               Matching images {importProgress.done}/{importProgress.total}
             </p>
-            <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-[#1f1f1f] overflow-hidden">
+            <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-secondary overflow-hidden">
               <div className="h-full bg-brand transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-[#888]">This can take a minute for large itineraries.</p>
-            <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+            <p className="text-[11px] text-slate-500 dark:text-muted-foreground">This can take a minute for large itineraries.</p>
+            <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
               Close
             </Button>
           </div>
@@ -1713,14 +1713,14 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           <div className="flex flex-col min-h-0 flex-1">
           <div className="space-y-5 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
             {/* Trip summary */}
-            <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white dark:bg-[#111111]">
+            <div className="rounded-xl border border-slate-200 dark:border-border overflow-hidden bg-white dark:bg-card">
               {/* Teal accent strip + back */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-[#1a1a1a] bg-linear-to-r from-brand/6 to-transparent">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-border bg-linear-to-r from-brand/6 to-transparent">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
                 </div>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-500 dark:text-[#888] hover:text-brand transition-colors">
+                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors">
                   ← Back
                 </button>
               </div>
@@ -1739,7 +1739,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       {parsed.destination}
                     </span>
                   )}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
                     {(() => {
                       const fmt = (iso: string) => {
                         const d = new Date(iso + "T12:00:00");
@@ -1754,18 +1754,18 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     const e = new Date(parsed.end + "T00:00:00");
                     const nights = Math.round((e.getTime() - s.getTime()) / 86400000);
                     return nights > 0 ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
                         {nights} night{nights !== 1 ? "s" : ""}
                       </span>
                     ) : null;
                   })()}
                   {parsed.events.length > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
                       {parsed.events.length} event{parsed.events.length !== 1 ? "s" : ""}
                     </span>
                   )}
                   {parsed.paxCount > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-[11px] font-semibold text-slate-600 dark:text-[#aaa]">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
                       {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
                     </span>
                   )}
@@ -1773,12 +1773,12 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
                 {/* Travelers */}
                 {parsed.parsedTravelerNames.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-100 dark:border-[#1a1a1a]">
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-100 dark:border-border">
                     <div className="w-full pt-2" />
                     {parsed.parsedTravelerNames.map((name, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#0d0d0d] border border-slate-100 dark:border-[#1f1f1f] text-[11px] font-semibold text-slate-700 dark:text-[#ccc]"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-background border border-slate-100 dark:border-border text-[11px] font-semibold text-slate-700 dark:text-foreground/80"
                       >
                         <span className="h-5 w-5 rounded-md bg-brand/10 flex items-center justify-center text-brand text-[8px] font-black uppercase shrink-0">
                           {name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -1793,19 +1793,19 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
             {/* Information & Documents preview (editable) */}
               {editInfo.length > 0 && (
-                <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden">
-                  <div className="px-4 py-3 flex items-center gap-2.5 border-b border-slate-200 dark:border-[#1f1f1f]">
+                <div className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-2.5 border-b border-slate-200 dark:border-border">
                     <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
                       <FileText className="h-3.5 w-3.5 text-brand" />
                     </div>
                     <p className="text-xs font-bold text-slate-900 dark:text-white flex-1">
                       Information
                     </p>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] tabular-nums">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground tabular-nums">
                       {editInfo.length} item{editInfo.length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                  <div className="divide-y divide-slate-100 dark:divide-border">
                     {editInfo.map((item, i) => (
                       <InfoReviewCard
                         key={i}
@@ -1825,13 +1825,13 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 {parsed.events.map(ev => {
                   const Icon = EVENT_TYPE_ICONS[ev.type];
                   return (
-                    <div key={ev.id} className="flex items-start gap-3 p-3 bg-white dark:bg-[#0d0d0d] border border-slate-100 dark:border-[#1f1f1f] rounded-xl">
-                      <div className={`h-9 w-9 rounded-lg bg-slate-50 dark:bg-[#111] border border-slate-100 dark:border-[#1f1f1f] flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
+                    <div key={ev.id} className="flex items-start gap-3 p-3 bg-white dark:bg-background border border-slate-100 dark:border-border rounded-xl">
+                      <div className={`h-9 w-9 rounded-lg bg-slate-50 dark:bg-card border border-slate-100 dark:border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">{ev.title}</p>
-                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 wrap-break-word">
+                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-muted-foreground mt-1 wrap-break-word">
                           {(() => {
                             const d = new Date(ev.date + "T12:00:00");
                             return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -1843,7 +1843,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       <button
                         aria-label="Remove event"
                         onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)}
-                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-400 dark:text-[#888] hover:text-red-400 transition-colors shrink-0"
+                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-400 transition-colors shrink-0"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -1852,17 +1852,17 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl border border-dashed border-slate-200 dark:border-[#1f1f1f]">
+              <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-background rounded-xl border border-dashed border-slate-200 dark:border-border">
                 <WarningCircle className="h-5 w-5 text-amber-400" />
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888888]">No events detected</p>
-                <p className="text-[10px] text-slate-500 dark:text-[#888888] text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">No events detected</p>
+                <p className="text-[10px] text-slate-500 dark:text-muted-foreground text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
               </div>
             )}
 
             {/* Extracted media preview */}
             {parsed.extractedMedia.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
                   Extracted Media ({parsed.extractedMedia.length})
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
@@ -1871,7 +1871,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       <img
                         src={m.dataUrl}
                         alt={m.name}
-                        className="h-16 w-24 object-cover rounded-lg border border-slate-200 dark:border-[#1f1f1f]"
+                        className="h-16 w-24 object-cover rounded-lg border border-slate-200 dark:border-border"
                       />
                       <button
                         aria-label={`Remove ${m.name}`}
@@ -1887,20 +1887,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             )}
 
           </div>
-            <div className="shrink-0 bg-white dark:bg-[#111111] border-t border-slate-100 dark:border-[#1f1f1f] mt-2 pt-4 space-y-3">
+            <div className="shrink-0 bg-white dark:bg-card border-t border-slate-100 dark:border-border mt-2 pt-4 space-y-3">
               {isReimport && (
-                <div className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-[#0a0a0a] rounded-xl border border-slate-200 dark:border-[#1f1f1f]">
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-background rounded-xl border border-slate-200 dark:border-border">
                   <button
                     type="button"
                     onClick={() => { setImportMode("merge"); setConfirmReplace(false); }}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-muted-foreground border border-transparent"}`}
                   >
                     Add new items
                   </button>
                   <button
                     type="button"
                     onClick={() => setImportMode("replace")}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-[#aaa] border border-transparent"}`}
+                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-muted-foreground border border-transparent"}`}
                   >
                     Replace everything
                   </button>
@@ -1917,7 +1917,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 </div>
               )}
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
-                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-slate-500 dark:text-[#888]">Cancel</Button>
+                <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-slate-500 dark:text-muted-foreground">Cancel</Button>
                 <Button
                   onClick={handleImport}
                   className={`flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
@@ -1943,7 +1943,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-bold uppercase tracking-widest text-slate-900 dark:text-white">Trip Updated</p>
-              <p className="text-xs text-slate-500 dark:text-[#888]">
+              <p className="text-xs text-slate-500 dark:text-muted-foreground">
                 {importMode === "merge" ? "New items were added to the trip." : "Trip data was replaced."}
               </p>
             </div>

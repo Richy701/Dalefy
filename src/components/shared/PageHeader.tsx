@@ -17,7 +17,7 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
   const isDark = theme === "dark";
 
   return (
-    <header className="h-16 shrink-0 px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-40 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
+    <header className="h-16 shrink-0 px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-40 bg-slate-50/80 dark:bg-background/80 backdrop-blur-md">
       <div className="lg:hidden">
         <MobileSidebar />
       </div>
@@ -30,7 +30,7 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
         <button
           aria-label="Toggle theme"
           onClick={toggleTheme}
-          className="h-10 w-10 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center justify-center"
+          className="h-10 w-10 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center justify-center"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>

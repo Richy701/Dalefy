@@ -384,7 +384,7 @@ export function DashboardPage() {
 
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505] relative"
+      className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -392,7 +392,7 @@ export function DashboardPage() {
     >
       {/* ── Drag-to-import overlay ── */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-xl border-2 border-dashed border-brand bg-brand/4">
             <div className="h-16 w-16 rounded-xl bg-brand/15 flex items-center justify-center">
               <Upload className="h-7 w-7 text-brand" />
@@ -408,9 +408,9 @@ export function DashboardPage() {
       <PageHeader
         left={
           <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
-            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-[#111111] border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-card border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
@@ -426,11 +426,11 @@ export function DashboardPage() {
           <Compass className="h-5 w-5 text-brand shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
-            <p className="text-[11px] text-slate-500 dark:text-[#888] mt-0.5">Browse trips, explore features - sign up to create your own.</p>
+            <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">Browse trips, explore features - sign up to create your own.</p>
           </div>
           <button
             onClick={() => { setDemoBannerDismissed(true); sessionStorage.setItem("daf-demo-banner-dismissed", "1"); }}
-            className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors shrink-0"
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors shrink-0"
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />
@@ -443,12 +443,12 @@ export function DashboardPage() {
         {!tripsReady ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-4">
             <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">Loading trips</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Loading trips</p>
           </div>
         ) : trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
             <BrandIllustration src="/illustrations/illus-riding.svg" className="w-72 h-72 object-contain" draggable={false} />
-            <p className="text-sm font-medium text-slate-500 dark:text-[#888] text-center max-w-xs leading-relaxed">
+            <p className="text-sm font-medium text-slate-500 dark:text-muted-foreground text-center max-w-xs leading-relaxed">
               Plan your first adventure. Add it manually or import an itinerary.
             </p>
             <div className="flex items-center gap-3">
@@ -461,12 +461,12 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-[#aaa] px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
               Supports PDF · DOCX · PPTX · TXT
             </p>
           </div>
@@ -474,7 +474,7 @@ export function DashboardPage() {
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/10 via-brand/2 to-slate-50 dark:from-brand/10 dark:via-brand/2 dark:to-[#050505] border border-brand/8 dark:border-brand/6 shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
+          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/10 via-brand/2 to-slate-50 dark:from-brand/10 dark:via-brand/2 dark:to-background border border-brand/8 dark:border-brand/6 shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
             <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                 {greeting}, {firstName}
@@ -484,7 +484,7 @@ export function DashboardPage() {
                   onClick={() => handleOpenTrip(upcomingCards[0])}
                   className="group mt-5 block text-left"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-2">
                     Next Trip
                   </p>
                   <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
@@ -499,7 +499,7 @@ export function DashboardPage() {
                           <span className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-slate-900 dark:text-white tabular-nums">
                             <NumberFlow value={u.value} format={{ minimumIntegerDigits: 2 }} />
                           </span>
-                          <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mt-0.5">
+                          <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-0.5">
                             {u.label}
                           </span>
                         </div>
@@ -526,14 +526,14 @@ export function DashboardPage() {
                   <p className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-brand">
                     NOW
                   </p>
-                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-[#ccc] group-hover:text-brand transition-colors">
+                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/80 group-hover:text-brand transition-colors">
                     <MapPin className="h-3 w-3 text-brand" />
                     {upcomingCards[0].destination || upcomingCards[0].name}
                     <ArrowUpRight className="h-3 w-3" />
                   </p>
                 </button>
               ) : (
-                <p className="mt-4 text-sm sm:text-base font-black uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">
+                <p className="mt-4 text-sm sm:text-base font-black uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                   Where to next?
                 </p>
               )}
@@ -576,14 +576,14 @@ export function DashboardPage() {
 
           {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
-            <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
-                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Across all your trips</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Across all your trips</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 dark:bg-[#1a1a1a] border-t border-slate-100 dark:border-[#1a1a1a]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 dark:bg-secondary border-t border-slate-100 dark:border-border">
                 {nextEvents.map(({ event: ev, tripName, tripId }) => {
                   const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
                   return (
@@ -591,7 +591,7 @@ export function DashboardPage() {
                       key={ev.id}
                       type="button"
                       onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
-                      className="bg-white dark:bg-[#111111] px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
+                      className="bg-white dark:bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                     >
                       <div className="flex items-center gap-2 mb-2.5">
                         <div className={cn("h-5 w-5 rounded-md flex items-center justify-center shrink-0", cfg.bg)}>
@@ -603,13 +603,13 @@ export function DashboardPage() {
                         {ev.title}
                       </p>
                       {ev.location && (
-                        <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] truncate mt-1 flex items-center gap-1">
+                        <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground truncate mt-1 flex items-center gap-1">
                           <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-2.5 gap-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-[#888] truncate">{tripName}</p>
-                        {ev.time && <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] tabular-nums shrink-0">{ev.time}</span>}
+                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground truncate">{tripName}</p>
+                        {ev.time && <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
                       </div>
                     </button>
                   );
@@ -628,7 +628,7 @@ export function DashboardPage() {
               <section>
                 <div data-compact-section-head className="mb-4">
                   <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trips</h2>
-                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Your next departures</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">Your next departures</p>
                 </div>
 
                 {upcomingCards.length > 0 ? (
@@ -638,32 +638,32 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
                             <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                               {trip.name}
                             </p>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                               <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
-                              <span className="text-slate-400 dark:text-[#666]">·</span>
+                              <span className="text-slate-400 dark:text-muted-foreground">·</span>
                               <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
                               {trip.paxCount && (
                                 <>
-                                  <span className="text-slate-400 dark:text-[#666]">·</span>
+                                  <span className="text-slate-400 dark:text-muted-foreground">·</span>
                                   <span className="flex items-center gap-1 whitespace-nowrap"><Users className="h-2.5 w-2.5 shrink-0" />{trip.paxCount}</span>
                                 </>
                               )}
                             </div>
                           </div>
-                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
+                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
+                  <div className="bg-white dark:bg-card border-2 border-dashed border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
@@ -680,7 +680,7 @@ export function DashboardPage() {
                       <span className="text-brand uppercase">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
                       {" "}Trip
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">Key events on your itinerary</p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">Key events on your itinerary</p>
                   </div>
 
                   {spotlightPlaces.length > 0 ? (
@@ -716,7 +716,7 @@ export function DashboardPage() {
                                 </span>
                               )}
                               {ev.duration && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
                                   <Clock className="h-3 w-3" weight="regular" />
                                   {ev.duration}
                                 </span>
@@ -731,7 +731,7 @@ export function DashboardPage() {
                                 </span>
                               )}
                               {(ev.checkin || ev.checkout) && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
                                   {ev.checkin || "-"}
                                   <ArrowRight className="h-2.5 w-2.5" weight="bold" />
                                   {ev.checkout || "-"}
@@ -747,7 +747,7 @@ export function DashboardPage() {
                                 </span>
                               )}
                               {ev.endTime && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-[#888]">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
                                   <Clock className="h-3 w-3" weight="regular" />
                                   ends {ev.endTime}
                                 </span>
@@ -759,7 +759,7 @@ export function DashboardPage() {
                           <button
                             key={ev.id}
                             onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
+                            data-compact-place className="text-left bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
                             <div data-compact-place-img className="h-28 sm:h-auto sm:w-[160px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
@@ -782,7 +782,7 @@ export function DashboardPage() {
                                     {typeLabel}
                                   </div>
                                   {(hasRealTime || monthDayLabel) && (
-                                    <span className="sm:hidden text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider shrink-0">
+                                    <span className="sm:hidden text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider shrink-0">
                                       {timeParts ? timeParts.join(" ") : monthDayLabel}
                                     </span>
                                   )}
@@ -792,7 +792,7 @@ export function DashboardPage() {
                                 </p>
 
                                 {ev.location && (
-                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-[#888] min-w-0">
+                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-muted-foreground min-w-0">
                                     <MapPin className="h-3 w-3 shrink-0" weight="regular" />
                                     <span className="truncate">{ev.location}</span>
                                   </div>
@@ -822,9 +822,9 @@ export function DashboardPage() {
 
                             {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
-                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-[#1a1a1a]">
+                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-border">
                                 {weekdayLabel && (
-                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                                     {weekdayLabel}
                                   </span>
                                 )}
@@ -834,7 +834,7 @@ export function DashboardPage() {
                                       {timeParts[0]}
                                     </span>
                                     {timeParts[1] && (
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888]">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
                                         {timeParts[1]}
                                       </span>
                                     )}
@@ -842,7 +842,7 @@ export function DashboardPage() {
                                 ) : null}
                                 {monthDayLabel && (
                                   <span className={cn(
-                                    "text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]",
+                                    "text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground",
                                     timeParts ? "mt-1" : "mt-0.5",
                                   )}>
                                     {monthDayLabel}
@@ -857,7 +857,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-xl border border-dashed border-black/6 dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-card rounded-xl border border-dashed border-black/6 dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-muted-foreground cursor-pointer hover:border-brand/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
@@ -875,12 +875,12 @@ export function DashboardPage() {
 
               {/* Needs Attention */}
               {attentionItems.length > 0 && (
-                <div className="bg-white dark:bg-[#111111] border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+                <div className="bg-white dark:bg-card border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                   <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
                     <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
                     <div>
                       <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</p>
-                      <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
+                      <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
                     </div>
                   </div>
                   <div className="px-3 pb-4 space-y-1">
@@ -897,9 +897,9 @@ export function DashboardPage() {
                         )} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{item.tripName}</p>
-                          <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-0.5">{item.message}</p>
+                          <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{item.message}</p>
                         </div>
-                        <ArrowUpRight className="h-3 w-3 text-slate-500 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
+                        <ArrowUpRight className="h-3 w-3 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -907,10 +907,10 @@ export function DashboardPage() {
               )}
 
               {/* At a Glance - stats card */}
-              <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                 <div className="px-5 pt-5 pb-3">
                   <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
-                  <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Your travel snapshot</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Your travel snapshot</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 px-3 pb-2">
@@ -922,11 +922,11 @@ export function DashboardPage() {
                   ].map(({ icon: Icon, label, value }) => (
                     <div
                       key={label}
-                      className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/4 dark:hover:bg-brand/6 transition-colors"
+                      className="rounded-xl bg-slate-50 dark:bg-background px-3 py-3 group/stat hover:bg-brand/4 dark:hover:bg-brand/6 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">{label}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">{label}</span>
                       </div>
                       <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
                         <NumberFlow value={value} />
@@ -936,15 +936,15 @@ export function DashboardPage() {
                 </div>
 
                 <div className="px-5 pb-5 pt-2 space-y-2.5">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888] mb-1">Pipeline</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
                   {[
                     { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
                     { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-[#333]" },
                     { label: "Active", count: trips.filter(t => t.status === "In Progress" || (parseTripDate(t.start) <= new Date() && parseTripDate(t.end) >= new Date())).length, color: "bg-emerald-500" },
                   ].map(({ label, count, color }) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] w-[60px] shrink-0">{label}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] overflow-hidden">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground w-[60px] shrink-0">{label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-secondary overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all duration-700 ease-out", color)}
                           style={{ width: stats.pipeline.total > 0 ? `${Math.max(6, (count / stats.pipeline.total) * 100)}%` : "0%" }}
@@ -974,7 +974,7 @@ export function DashboardPage() {
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                     {/* Full-bleed hero */}
                     <div data-compact-spotlight-hero className="relative h-[200px]">
                       <img src={spotlightTrip.image} alt={spotlightTrip.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -1022,9 +1022,9 @@ export function DashboardPage() {
                         <div className="h-6 w-6 rounded-full bg-brand/15 text-brand flex items-center justify-center text-[10px] font-black">
                           {agent.split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase()}
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-700 dark:text-[#ccc]">{agent}</span>
+                        <span className="text-[11px] font-semibold text-slate-700 dark:text-foreground/80">{agent}</span>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                         {dateRange}
                       </span>
                     </div>
@@ -1037,11 +1037,11 @@ export function DashboardPage() {
                       ].map(({ icon: Icon, label, value }) => (
                         <div
                           key={label}
-                          className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent px-3 py-2.5"
+                          className="rounded-xl bg-slate-50 dark:bg-background border border-transparent dark:border-transparent px-3 py-2.5"
                         >
                           <div className="flex items-center gap-1.5 mb-1">
                             <Icon className="h-3 w-3 text-brand" weight="regular" />
-                            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888]">
+                            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                               {label}
                             </span>
                           </div>
@@ -1102,7 +1102,7 @@ export function DashboardPage() {
                 };
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
+                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
                     <div className="px-4 pt-4 pb-1 flex items-center justify-between">
                       <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
                       <button
@@ -1162,11 +1162,11 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-500" />
-                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
+                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
-<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
+<div className="flex gap-1 bg-white dark:bg-card p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -1181,7 +1181,7 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
                       <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/10" />
 
@@ -1222,9 +1222,9 @@ export function DashboardPage() {
                             <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                            <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
                                 <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
@@ -1235,20 +1235,20 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-xl border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-slate-200 dark:border-border flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
                   <div className="h-16 w-16 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-1">Plan your next adventure</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-1">Plan your next adventure</p>
                 </button>
               </div>
             ) : (
               <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
-                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
+                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No trips yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
@@ -1264,7 +1264,7 @@ export function DashboardPage() {
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      className="group bg-white dark:bg-card border border-black/6 dark:border-border shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
@@ -1283,7 +1283,7 @@ export function DashboardPage() {
                               ? "bg-brand/10 text-brand"
                               : trip.status === "Published"
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-[#888]"
+                              : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-muted-foreground"
                           }`}>
                             <span className={`h-1 w-1 rounded-full ${
                               isActive ? "bg-brand animate-pulse"
@@ -1294,7 +1294,7 @@ export function DashboardPage() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                           {trip.destination && (
                             <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5 text-brand" />{trip.destination}</span>
                           )}
@@ -1313,18 +1313,18 @@ export function DashboardPage() {
                         )}
                         <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-500 dark:text-[#888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors flex items-center justify-center cursor-pointer">
+                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center justify-center cursor-pointer">
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                            <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
                                 <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] group-hover:text-brand transition-colors" />
+                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors" />
                         </div>
                       </div>
                     </div>
@@ -1333,7 +1333,7 @@ export function DashboardPage() {
                 {filteredTrips.length > 0 && (
                   <button
                     onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                    className="group bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#222] rounded-xl flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
+                    className="group bg-white dark:bg-card border border-dashed border-slate-200 dark:border-border rounded-xl flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
                   >
                     <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
@@ -1356,17 +1356,17 @@ export function DashboardPage() {
                     <button
                       key={tpl.id}
                       onClick={() => handleCreateFromTemplate(tpl)}
-                      className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                      className="group bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                     >
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">{tpl.name}</p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                           {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
                           <span className="flex items-center gap-1"><Stack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
                         </div>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1381,15 +1381,15 @@ export function DashboardPage() {
       <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-[#111111] border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-card border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
             <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-1">Build your next adventure</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">Build your next adventure</p>
                 </div>
-                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1398,33 +1398,33 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/6 dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/6 dark:border-transparent bg-slate-50 dark:bg-background hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
               >
                 <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
                   <Upload className="h-4 w-4 text-brand" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white">Import from file instead</p>
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-0.5">PDF · DOCX · PPTX · TXT - we'll fill this in for you</p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">PDF · DOCX · PPTX · TXT - we'll fill this in for you</p>
                 </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-[#888] group-hover:text-brand transition-colors shrink-0" />
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
               </button>
 
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Itinerary Title</label>
+                  <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Itinerary Title</label>
                   <input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
-                    className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-xl font-black uppercase tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <span id="nt-type-label" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">Trip Type <span className="normal-case font-medium tracking-normal text-slate-400 dark:text-[#666]">(optional)</span></span>
+                  <span id="nt-type-label" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Trip Type <span className="normal-case font-medium tracking-normal text-slate-400 dark:text-muted-foreground">(optional)</span></span>
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/6 dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
+                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-background border-black/6 dark:border-transparent text-slate-500 dark:text-muted-foreground hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -1434,28 +1434,28 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label htmlFor="nt-destination" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
+                    <label htmlFor="nt-destination" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
                     <input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
-                      className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                      className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="nt-pax" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
+                    <label htmlFor="nt-pax" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
                     <input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
-                      className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                      className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                   </div>
                 </div>
 
                 {/* Group */}
                 <div className="space-y-2">
-                  <label htmlFor="nt-group" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
+                  <label htmlFor="nt-group" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
                   <input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
-                    className="w-full h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
                 </div>
 
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
                 <div className="space-y-3" id="nt-dates">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-brand">
@@ -1465,17 +1465,17 @@ export function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className={`rounded-xl border bg-slate-50 dark:bg-[#0a0a0a] w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-[#1f1f1f]"}`}>
+                  <div className={`rounded-xl border bg-slate-50 dark:bg-background w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-border"}`}>
                     <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={1} className="w-full" />
                   </div>
                   {newTripDateError
                     ? <p className="text-[11px] font-semibold text-red-500">{newTripDateError}</p>
-                    : <p className="text-[11px] text-slate-500 dark:text-[#888]">Pick the first and last day of the trip.</p>}
+                    : <p className="text-[11px] text-slate-500 dark:text-muted-foreground">Pick the first and last day of the trip.</p>}
                 </div>
 
                 {/* Budget + Currency */}
                 <div className="space-y-2">
-                  <label htmlFor="nt-budget" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (optional)</label>
+                  <label htmlFor="nt-budget" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (optional)</label>
                   <div className="flex gap-2">
                     <input
                       id="nt-budget"
@@ -1487,13 +1487,13 @@ export function DashboardPage() {
                       value={newTripData.budget}
                       onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
                       placeholder="45000"
-                      className="flex-1 h-10 px-4 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
+                      className="flex-1 h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
                     />
                     <select
                       aria-label="Currency"
                       value={newTripData.currency}
                       onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-10 w-28 px-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      className="h-10 w-28 px-3 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                     >
                       {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -1502,7 +1502,7 @@ export function DashboardPage() {
 
                 {/* Cover Image */}
                 <div className="space-y-3">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888] flex items-center gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2">
                     <ImageIcon className="h-3 w-3" /> Cover Image
                   </label>
                   {/* Preview */}
@@ -1515,14 +1515,14 @@ export function DashboardPage() {
                   {/* Search bar */}
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-[#888] pointer-events-none" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground pointer-events-none" />
                       <input
                         value={coverSearch}
                         onChange={e => setCoverSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
                         placeholder="Search photos, e.g. Maasai Mara"
                         aria-label="Search cover photos"
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200/80 dark:border-[#1f1f1f] rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                       />
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
@@ -1532,25 +1532,25 @@ export function DashboardPage() {
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200/80 dark:border-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
                     )}
                   </div>
-                  {coverNotice && <p className="text-[11px] text-slate-500 dark:text-[#888]">{coverNotice}</p>}
+                  {coverNotice && <p className="text-[11px] text-slate-500 dark:text-muted-foreground">{coverNotice}</p>}
                   {/* Thumbnail grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {isCoverSearching ? (
-                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-[#888]">
+                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-muted-foreground">
                         <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                         <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                       </div>
@@ -1577,7 +1577,7 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 transition-all">
+                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-background border border-transparent dark:border-transparent text-slate-500 dark:text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 transition-all">
                     Cancel
                   </button>
                   <button type="submit"

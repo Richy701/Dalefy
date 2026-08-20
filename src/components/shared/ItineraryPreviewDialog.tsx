@@ -54,7 +54,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
   const totalDocs = trip.events.reduce((n, ev) => n + (ev.documents?.length ?? 0), 0);
 
   return (
-    <div className={forPrint ? "bg-white" : "bg-slate-50 dark:bg-[#050505]"}>
+    <div className={forPrint ? "bg-white" : "bg-slate-50 dark:bg-background"}>
       {/* ── Hero ── */}
       <div className={cn("relative overflow-hidden shrink-0", forPrint ? "h-[160px]" : "h-[180px] sm:h-[280px] rounded-t-xl sm:rounded-t-xl")}>
         {trip.image ? (
@@ -100,7 +100,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
 
       {/* ── Metadata strip ── */}
       {hasMeta && (
-        <div className={cn("flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 sm:py-4 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-[#111111] dark:border-[#1f1f1f]")}>
+        <div className={cn("flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 sm:py-4 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-card dark:border-border")}>
           {trip.tripType && (
             <MetaChip icon={Tag} label="Type" value={trip.tripType} forPrint={forPrint} />
           )}
@@ -123,7 +123,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
 
       {/* ── Trip Info Sections ── */}
       {hasInfo && (
-        <div className={cn("px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-[#111111] dark:border-[#1f1f1f]")}>
+        <div className={cn("px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200", forPrint ? "bg-white" : "bg-white dark:bg-card dark:border-border")}>
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-3">
               <Info className="h-3.5 w-3.5 text-brand" />
@@ -131,9 +131,9 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
             </div>
             <div className={cn("grid gap-3", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
               {travelerInfo.map(item => (
-                <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-slate-50 border-slate-100" : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-100 dark:border-[#1a1a1a]")}>
+                <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-slate-50 border-slate-100" : "bg-slate-50 dark:bg-background border-slate-100 dark:border-border")}>
                   <p className={cn("text-xs font-bold uppercase tracking-tight mb-1", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{item.title}</p>
-                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#999]")}><Linkify text={item.body} /></p>
+                  <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-slate-600" : "text-slate-600 dark:text-muted-foreground")}><Linkify text={item.body} /></p>
                 </div>
               ))}
             </div>
@@ -147,17 +147,17 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
           {/* Event count */}
           <div className="flex items-center gap-2 mb-5 sm:mb-6">
             <Compass className="h-4 w-4 text-brand" />
-            <span className={cn("text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+            <span className={cn("text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
               {trip.events.length} event{trip.events.length !== 1 ? "s" : ""} · {grouped.length} day{grouped.length !== 1 ? "s" : ""}
               {totalDocs > 0 && <> · {totalDocs} document{totalDocs !== 1 ? "s" : ""}</>}
             </span>
           </div>
 
           {grouped.length === 0 ? (
-            <div className={cn("border border-dashed rounded-xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888]")}>
+            <div className={cn("border border-dashed rounded-xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-slate-200 text-slate-500" : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground")}>
               <Compass className="h-7 w-7 mb-3 opacity-40" />
               <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
-              <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>Add events in the workspace to see them here</p>
+              <p className={cn("text-[10px] mt-1", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>Add events in the workspace to see them here</p>
             </div>
           ) : (
             <div className="space-y-6 sm:space-y-8">
@@ -179,14 +179,14 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
                         <p className={cn("text-xs sm:text-sm font-bold uppercase tracking-tight", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>
                           Day {dayIdx + 1} · {d.toLocaleDateString("en-US", { weekday: "long" })}
                         </p>
-                        <p className={cn("text-[10px] sm:text-[11px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+                        <p className={cn("text-[10px] sm:text-[11px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
                           {events.length} event{events.length !== 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>
 
                     {/* Events */}
-                    <div className={cn("border rounded-xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] divide-slate-100 dark:divide-[#1a1a1a]")}>
+                    <div className={cn("border rounded-xl overflow-hidden divide-y", forPrint ? "bg-white border-slate-200 divide-slate-100" : "bg-white dark:bg-card border-slate-200 dark:border-border divide-slate-100 dark:divide-border")}>
                       {events.map(ev => (
                         <PreviewEventCard key={ev.id} ev={ev} forPrint={forPrint} tripTz={tripTz} />
                       ))}
@@ -198,8 +198,8 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
           )}
 
           {/* Footer */}
-          <div className={cn("mt-8 sm:mt-10 pt-5 sm:pt-6 border-t text-center", forPrint ? "border-slate-200" : "border-slate-200 dark:border-[#1f1f1f]")}>
-            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+          <div className={cn("mt-8 sm:mt-10 pt-5 sm:pt-6 border-t text-center", forPrint ? "border-slate-200" : "border-slate-200 dark:border-border")}>
+            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
               Powered by {brand.platformName}
             </p>
           </div>
@@ -222,7 +222,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-[#050505] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-0 gap-0 shadow-2xl"
+        className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-xl p-0 gap-0 shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -234,7 +234,7 @@ export function ItineraryPreviewDialog({ open, onOpenChange, trip }: ItineraryPr
           <button
             onClick={() => onOpenChange(false)}
             aria-label="Close preview"
-            className="pointer-events-auto h-9 w-9 rounded-xl bg-white/90 dark:bg-[#111]/90 backdrop-blur-md border border-slate-200 dark:border-[#2a2a2a] shadow-lg flex items-center justify-center text-slate-600 dark:text-[#aaa] hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="pointer-events-auto h-9 w-9 rounded-xl bg-white/90 dark:bg-card/90 backdrop-blur-md border border-slate-200 dark:border-border shadow-lg flex items-center justify-center text-slate-600 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -259,10 +259,10 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
 function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} weight="regular" />
+      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} weight="regular" />
       <div className="min-w-0">
-        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>{label}</p>
-        <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-[#ccc]")}>{value}</p>
+        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>{label}</p>
+        <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-foreground/80")}>{value}</p>
       </div>
     </div>
   );
@@ -277,22 +277,22 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
     <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4" style={forPrint ? { breakInside: "avoid", pageBreakInside: "avoid" } : undefined}>
       <div className="flex items-start gap-3 flex-1 min-w-0">
         {/* Icon */}
-        <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-[#1a1a1a]")}>
-          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")} weight="regular" />
+        <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-secondary")}>
+          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} weight="regular" />
         </div>
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>{typeLabel}</p>
+          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>{typeLabel}</p>
           <p className={cn("text-[13px] sm:text-sm font-bold leading-snug", forPrint ? "text-slate-900" : "text-slate-900 dark:text-white")}>{ev.title}</p>
 
           {/* Description */}
           {ev.description && (
-            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-slate-500 line-clamp-3" : "text-slate-600 dark:text-[#999] line-clamp-3")}>{ev.description}</p>
+            <p className={cn("mt-1 text-[11px] leading-relaxed", forPrint ? "text-slate-500 line-clamp-3" : "text-slate-600 dark:text-muted-foreground line-clamp-3")}>{ev.description}</p>
           )}
 
           {/* Time + location */}
-          <div className={cn("flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] flex-wrap", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+          <div className={cn("flex items-center gap-1.5 sm:gap-2 mt-1.5 text-[10px] sm:text-[11px] flex-wrap", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
             {ev.time && (
               <span className="flex items-center gap-1 font-semibold">
                 <Clock className="h-3 w-3" weight="regular" />
@@ -316,7 +316,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Type-specific details */}
           {ev.type === "flight" && (ev.airline || ev.flightNum || ev.terminal) && (
-            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#ccc]")}>
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-foreground/80")}>
               {(ev.airline || ev.flightNum) && (
                 <span>{[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}</span>
               )}
@@ -327,10 +327,10 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
           )}
 
           {ev.type === "hotel" && (ev.roomType || ev.checkin || ev.checkout) && (
-            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-[#ccc]")}>
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px] font-semibold", forPrint ? "text-slate-600" : "text-slate-600 dark:text-foreground/80")}>
               {ev.roomType && <span>{ev.roomType}</span>}
               {(ev.checkin || ev.checkout) && (
-                <span className={forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]"}>
+                <span className={forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground"}>
                   {ev.checkin || "-"} → {ev.checkout || "-"}
                 </span>
               )}
@@ -338,14 +338,14 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
           )}
 
           {(ev.type === "dining" || ev.type === "activity") && ev.supplier && (
-            <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+            <p className={cn("mt-1.5 text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
               {ev.supplier}
             </p>
           )}
 
           {/* Bottom row: conf number, price, status */}
           {(ev.confNumber || ev.price || ev.status) && (
-            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-[#888]")}>
+            <div className={cn("flex items-center gap-2 mt-2 flex-wrap text-[9px] sm:text-[10px]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>
               {ev.confNumber && (
                 <span className="font-semibold">Ref: {ev.confNumber}</span>
               )}
@@ -374,7 +374,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn("inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded border transition-colors", forPrint ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-50 dark:bg-[#0d0d0d] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#aaa] hover:text-brand hover:border-brand/30")}
+                  className={cn("inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded border transition-colors", forPrint ? "bg-slate-50 border-slate-200 text-slate-500" : "bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30")}
                 >
                   <Paperclip className="h-2.5 w-2.5 shrink-0" weight="regular" />
                   <span className={forPrint ? "" : "truncate max-w-[120px] sm:max-w-[160px]"}>{doc.name}</span>
@@ -385,7 +385,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
           {/* Notes */}
           {ev.notes && (
-            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-500 line-clamp-2" : "text-slate-500 dark:text-[#888] line-clamp-2")}>
+            <p className={cn("mt-2 text-[10px] sm:text-[11px] italic leading-relaxed", forPrint ? "text-slate-500 line-clamp-2" : "text-slate-500 dark:text-muted-foreground line-clamp-2")}>
               {ev.notes}
             </p>
           )}

@@ -39,8 +39,8 @@ const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Shield, a
 const ROLE_BADGE: Record<string, string> = {
   owner: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   admin: "bg-brand/10 text-brand border-brand/20",
-  agent: "bg-slate-900/6 dark:bg-white/8 text-slate-700 dark:text-[#ccc] border-slate-900/10 dark:border-white/10",
-  viewer: "bg-transparent text-slate-500 dark:text-[#888] border-slate-300 dark:border-[#2a2a2a]",
+  agent: "bg-slate-900/6 dark:bg-white/8 text-slate-700 dark:text-foreground/80 border-slate-900/10 dark:border-white/10",
+  viewer: "bg-transparent text-slate-500 dark:text-muted-foreground border-slate-300 dark:border-border",
 };
 
 function RoleBadge({ role }: { role: string }) {
@@ -191,19 +191,19 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   };
 
   const orgName = currentOrg?.name || "your team";
-  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]";
+  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <DialogContent
-        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-[#050505] p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:dark:border-[#1f1f1f]"
+        className="dialog-mobile-full flex flex-col border-0 bg-slate-100 dark:bg-background p-0 gap-0 overflow-hidden sm:w-[calc(100vw-2rem)] sm:max-w-xl sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200 sm:dark:border-border"
       >
         {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
           <DialogTitle className="text-[22px] leading-none font-black italic uppercase tracking-tight text-slate-900 dark:text-white">
             Invite to {orgName}
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500 dark:text-[#888]">
+          <DialogDescription className="text-xs text-slate-500 dark:text-muted-foreground">
             They get a one-click sign-in email from Dalefy. Invites expire after 7 days.
           </DialogDescription>
         </DialogHeader>
@@ -211,11 +211,11 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
         {/* Scrollable body */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {/* ── Invite form ── */}
-          <section className="px-5 sm:px-6 pt-5 pb-5 space-y-3 bg-white dark:bg-[#0a0a0a] border-b border-slate-200/80 dark:border-[#161616]">
+          <section className="px-5 sm:px-6 pt-5 pb-5 space-y-3 bg-white dark:bg-background border-b border-slate-200/80 dark:border-[#161616]">
             <Label htmlFor="invite-email" className={sectionLabel}>Email address</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Envelope className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-[#888]" />
+                <Envelope className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-muted-foreground" />
                 <Input
                   id="invite-email"
                   type="email"
@@ -224,7 +224,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   placeholder="colleague@company.com"
                   autoComplete="off"
                   onKeyDown={e => e.key === "Enter" && handleInvite()}
-                  className="h-10 pl-10 bg-slate-50 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
+                  className="h-10 pl-10 bg-slate-50 dark:bg-card border border-slate-200 dark:border-border focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/25 rounded-xl font-semibold text-slate-900 dark:text-white text-sm"
                 />
               </div>
               <Button
@@ -246,7 +246,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               <div
                 role="radiogroup"
                 aria-label="Role"
-                className="grid grid-cols-3 p-1 rounded-xl bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f]"
+                className="grid grid-cols-3 p-1 rounded-xl bg-slate-100 dark:bg-card border border-slate-200 dark:border-border"
               >
                 {(["viewer", "agent", "admin"] as const).map(r => {
                   const Icon = ROLE_ICON[r];
@@ -261,7 +261,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                       className={`flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
                         active
                           ? "bg-white dark:bg-[#1c1c1c] text-slate-900 dark:text-white shadow-sm"
-                          : "text-slate-500 dark:text-[#777] hover:text-slate-800 dark:hover:text-[#bbb]"
+                          : "text-slate-500 dark:text-muted-foreground hover:text-slate-800 dark:hover:text-foreground/80"
                       }`}
                     >
                       <Icon className={`h-3.5 w-3.5 ${active ? "text-brand" : ""}`} weight={active ? "fill" : "regular"} />
@@ -270,7 +270,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   );
                 })}
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-[#777] px-1">{ROLE_HINT[role]}</p>
+              <p className="text-[11px] text-slate-500 dark:text-muted-foreground px-1">{ROLE_HINT[role]}</p>
             </div>
 
             {/* Result card */}
@@ -288,7 +288,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                         ? `${lastInvite.resent ? "Sign-in email re-sent" : "Sign-in email sent"} to ${lastInvite.email}`
                         : `Invite created for ${lastInvite.email}`}
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-[#999] mt-0.5 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-muted-foreground mt-0.5 leading-relaxed">
                       {lastInvite.emailSent
                         ? <>Tell them to look for <strong className="font-semibold text-slate-800 dark:text-[#ddd]">"Sign in to Dalefy"</strong> (check spam). They'll join as {ROLE_LABEL[lastInvite.role] ?? lastInvite.role}. You can also share the link below.</>
                         : <>We couldn't send the email{lastInvite.emailError ? ` (${lastInvite.emailError})` : ""}. Share this link with them instead.</>}
@@ -300,9 +300,9 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                   className="w-full px-4 py-2.5 flex items-center gap-2 border-t border-black/6 dark:border-white/6 hover:bg-black/3 dark:hover:bg-white/3 transition-colors text-left"
                   onClick={() => handleCopy("last", lastInvite.link)}
                 >
-                  <Link className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-[#888]" />
-                  <span className="text-[10px] font-mono text-slate-500 dark:text-[#777] truncate flex-1">{lastInvite.link}</span>
-                  <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-slate-500 dark:text-[#888]"}`}>
+                  <Link className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-muted-foreground truncate flex-1">{lastInvite.link}</span>
+                  <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>
                     {copiedId === "last" ? "Copied" : "Copy link"}
                   </span>
                 </button>
@@ -315,17 +315,17 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
             <div className="flex items-center justify-between">
               <span className={sectionLabel}>Pending invites</span>
               {pendingInvites.length > 0 && (
-                <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-[#888]">{pendingInvites.length}</span>
+                <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-muted-foreground">{pendingInvites.length}</span>
               )}
             </div>
             {pendingLoading && pendingInvites.length === 0 && (
               <div className="space-y-2">
-                {[0, 1].map(i => <div key={i} className="h-[54px] rounded-xl bg-white dark:bg-[#0f0f0f] animate-pulse" />)}
+                {[0, 1].map(i => <div key={i} className="h-[54px] rounded-xl bg-white dark:bg-background animate-pulse" />)}
               </div>
             )}
             {pendingError && <p className="text-xs text-red-500">{pendingError}</p>}
             {!pendingLoading && !pendingError && pendingInvites.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-[#888]">Nobody's waiting to join. Invites you send will show up here.</p>
+              <p className="text-xs text-slate-500 dark:text-muted-foreground">Nobody's waiting to join. Invites you send will show up here.</p>
             )}
             {pendingInvites.map(invite => {
               const isCopied = copiedId === invite.id;
@@ -334,7 +334,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               const isBusy = busyId === invite.id;
               const confirming = confirmRevokeId === invite.id;
               return (
-                <div key={invite.id} className="flex items-center gap-3 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl pl-3 pr-2 py-2.5">
+                <div key={invite.id} className="flex items-center gap-3 bg-white dark:bg-background border border-slate-200 dark:border-border rounded-xl pl-3 pr-2 py-2.5">
                   <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${exp.expired ? "bg-amber-500/10 text-amber-500" : "bg-brand/10 text-brand"}`}>
                     {exp.expired ? <Clock className="h-4 w-4" weight="bold" /> : <Envelope className="h-4 w-4" weight="bold" />}
                   </div>
@@ -342,7 +342,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                     <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">{invite.email}</p>
                     <div className="flex items-center gap-1.5 mt-1 min-w-0">
                       <RoleBadge role={invite.role} />
-                      <span className={`text-[10px] truncate ${exp.expired ? "text-amber-500 font-semibold" : "text-slate-500 dark:text-[#888]"}`}>
+                      <span className={`text-[10px] truncate ${exp.expired ? "text-amber-500 font-semibold" : "text-slate-500 dark:text-muted-foreground"}`}>
                         {exp.text}{invite.inviterName ? ` · by ${invite.inviterName}` : ""}
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                       <button
                         type="button"
                         onClick={() => setConfirmRevokeId(null)}
-                        className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                        className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:bg-slate-100 dark:hover:bg-secondary"
                       >
                         Keep
                       </button>
@@ -387,12 +387,12 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
           <section className="px-5 sm:px-6 py-5 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className={sectionLabel}>Team</span>
-              <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-[#888]">{orgMembers.length}</span>
+              <span className="text-[10px] font-bold tabular-nums text-slate-500 dark:text-muted-foreground">{orgMembers.length}</span>
             </div>
             {orgMembers.length === 0 && (
-              <p className="text-xs text-slate-500 dark:text-[#888]">Just you so far.</p>
+              <p className="text-xs text-slate-500 dark:text-muted-foreground">Just you so far.</p>
             )}
-            <div className="rounded-xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] divide-y divide-slate-100 dark:divide-[#161616]">
+            <div className="rounded-xl bg-white dark:bg-background border border-slate-200 dark:border-border divide-y divide-slate-100 dark:divide-[#161616]">
               {orgMembers.map(m => {
                 const isYou = m.userId === user?.id;
                 return (
@@ -403,9 +403,9 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-bold text-slate-900 dark:text-white truncate leading-tight">
                         {m.profile?.name || "Team member"}
-                        {isYou && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 dark:text-[#888]">(you)</span>}
+                        {isYou && <span className="ml-1.5 text-[10px] font-semibold text-slate-500 dark:text-muted-foreground">(you)</span>}
                       </p>
-                      <p className="text-[10px] text-slate-500 dark:text-[#888] truncate mt-0.5">{m.profile?.email || "\u00a0"}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{m.profile?.email || "\u00a0"}</p>
                     </div>
                     <RoleBadge role={m.role} />
                   </div>
@@ -416,15 +416,15 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-5 sm:px-6 py-3 border-t border-slate-200/80 dark:border-[#161616] bg-slate-100 dark:bg-[#050505] flex items-center justify-between gap-3">
+        <div className="shrink-0 px-5 sm:px-6 py-3 border-t border-slate-200/80 dark:border-[#161616] bg-slate-100 dark:bg-background flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => { handleClose(); navigate("/settings"); }}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <GearSix className="h-3.5 w-3.5" /> Manage roles in Settings
           </button>
-          <Button variant="ghost" onClick={handleClose} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+          <Button variant="ghost" onClick={handleClose} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
             Done
           </Button>
         </div>
@@ -446,7 +446,7 @@ function IconButton({ children, onClick, label, disabled, danger }: {
       className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 ${
         danger
           ? "text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-          : "text-slate-500 dark:text-[#888] hover:bg-slate-100 dark:hover:bg-[#1a1a1a] hover:text-slate-900 dark:hover:text-white"
+          : "text-slate-500 dark:text-muted-foreground hover:bg-slate-100 dark:hover:bg-secondary hover:text-slate-900 dark:hover:text-white"
       }`}
     >
       {children}

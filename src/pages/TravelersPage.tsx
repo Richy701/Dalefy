@@ -50,13 +50,13 @@ const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: st
   Signed: { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: FileText, bar: "bg-emerald-500" },
   Pending: { color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", icon: FileDashed, bar: "bg-amber-500" },
   Expired: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },
-  "Not Required": { color: "text-slate-500 dark:text-[#888]", bg: "bg-slate-100 dark:bg-[#1a1a1a]", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
+  "Not Required": { color: "text-slate-500 dark:text-muted-foreground", bg: "bg-slate-100 dark:bg-secondary", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
   Active: { dot: "bg-brand", badge: "bg-brand/15 text-brand ring-1 ring-brand/30", label: "Active" },
   Away: { dot: "bg-brand/50", badge: "bg-brand/10 text-brand/70 ring-1 ring-brand/20", label: "Away" },
-  Offline: { dot: "bg-slate-400", badge: "bg-slate-200 dark:bg-[#222] text-slate-600 dark:text-[#888] ring-1 ring-slate-300 dark:ring-[#333]", label: "Offline" },
+  Offline: { dot: "bg-slate-400", badge: "bg-slate-200 dark:bg-[#222] text-slate-600 dark:text-muted-foreground ring-1 ring-slate-300 dark:ring-[#333]", label: "Offline" },
 };
 
 /** Page numbers with truncation: 1 … n-1 n n+1 … last (0-indexed input, 0-indexed output). */
@@ -77,7 +77,7 @@ function PageNumbers({ current, total, onSelect }: { current: number; total: num
     <>
       {pageWindow(current, total).map((pn, idx) =>
         pn === "gap" ? (
-          <span key={`gap-${idx}`} className="w-4 text-center text-[10px] font-black text-slate-400 dark:text-[#666]">…</span>
+          <span key={`gap-${idx}`} className="w-4 text-center text-[10px] font-black text-slate-400 dark:text-muted-foreground">…</span>
         ) : (
           <button
             key={pn}
@@ -87,7 +87,7 @@ function PageNumbers({ current, total, onSelect }: { current: number; total: num
             className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
               current === pn
                 ? "bg-brand text-black shadow-sm"
-                : "text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5"
+                : "text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5"
             }`}
           >
             {pn + 1}
@@ -659,13 +659,13 @@ export function TravelersPage() {
   }, [travelers, showToast]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-[#050505]">
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
       <PageHeader
         left={travelers.length > 0 ? (
           <div className="max-w-[140px] sm:max-w-md w-full relative group">
-            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-[#888888] group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search people, emails, documents" className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-[#111111] border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest" />
+            <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search people, emails, documents" className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-card border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest" />
           </div>
         ) : undefined}
         cta={!isViewer ? (
@@ -677,26 +677,26 @@ export function TravelersPage() {
 
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-200 dark:border-[#1a1a1a]">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-200 dark:border-border">
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl lg:text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
               <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-[#888888]">People & Documents</span>
-                <span className="text-slate-200 dark:text-[#666]">·</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-muted-foreground">People & Documents</span>
+                <span className="text-slate-200 dark:text-muted-foreground">·</span>
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                   {travelers.length} {travelers.length === 1 ? "Member" : "Members"}
                 </span>
                 {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 && (
-                  <><span className="text-slate-200 dark:text-[#666]">·</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
+                  <><span className="text-slate-200 dark:text-muted-foreground">·</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
                     {travelers.filter(t => t.status === "Active").length} on app
                   </span></>
                 )}
               </div>
             </div>
             <div className="shrink-0 overflow-x-auto scrollbar-hide">
-              <div className="inline-flex bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-slate-200 dark:border-[#1a1a1a] gap-0">
+              <div className="inline-flex bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-slate-200 dark:border-border gap-0">
                 {(["travelers", "hr", "app-users"] as const).map(t => {
                   const active = tab === t;
                   return (
@@ -706,7 +706,7 @@ export function TravelersPage() {
                       className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-all duration-300 ${
                         active
                           ? "bg-brand text-black shadow-md shadow-brand/20"
-                          : "text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-slate-300"
+                          : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300"
                       }`}
                     >
                       {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
@@ -733,7 +733,7 @@ export function TravelersPage() {
               <BrandIllustration src="/illustrations/illus-discussion.svg" className="w-72 h-72 object-contain mb-[-24px]" draggable={false} />
               <div className="text-center space-y-1.5">
                 <p className="text-base font-black uppercase tracking-widest text-slate-800 dark:text-white">No team members</p>
-                <p className="text-xs font-medium text-slate-500 dark:text-[#888]">Add your first traveler to get started</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Add your first traveler to get started</p>
               </div>
               {!isViewer && (
                 <button
@@ -754,7 +754,7 @@ export function TravelersPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <User className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
                   </div>
                 )}
                 {table.getRowModel().rows.map(row => {
@@ -763,24 +763,24 @@ export function TravelersPage() {
                   const signedCount = docs.filter(d => d.status === "Signed").length;
                   const statusCfg = STATUS_CONFIG[user.status] || STATUS_CONFIG["Offline"];
                   return (
-                    <div key={row.id} className="bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] p-4 shadow-sm dark:shadow-none">
+                    <div key={row.id} className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-4 shadow-sm dark:shadow-none">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{user.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-[#666] italic">No email</span>}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-muted-foreground italic">No email</span>}</div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
                           {statusCfg.label}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-[#1a1a1a]">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.role}</span>
-                        <span className="text-slate-200 dark:text-[#666]">·</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
-                        <span className="text-slate-200 dark:text-[#666]">·</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888] tabular-nums">{signedCount}/{docs.length} docs</span>
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-border">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">{user.role}</span>
+                        <span className="text-slate-200 dark:text-muted-foreground">·</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
+                        <span className="text-slate-200 dark:text-muted-foreground">·</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground tabular-nums">{signedCount}/{docs.length} docs</span>
                       </div>
                       {user.compliance.length > 0 && (
                         <div className="flex gap-1 mt-2.5 flex-wrap">
@@ -809,12 +809,12 @@ export function TravelersPage() {
               </div>
 
               {/* ── Desktop table layout (sm+) ── */}
-              <div className="hidden sm:block bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+              <div className="hidden sm:block bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   {table.getHeaderGroups().map(headerGroup => (
-                    <tr key={headerGroup.id} className="bg-slate-50/50 dark:bg-[#0a0a0a] border-b border-slate-200 dark:border-[#1f1f1f]">
+                    <tr key={headerGroup.id} className="bg-slate-50/50 dark:bg-background border-b border-slate-200 dark:border-border">
                       {headerGroup.headers.map(header => {
                         const isSorted = header.column.getIsSorted();
                         const canSort = header.column.getCanSort();
@@ -822,7 +822,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
+                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -844,7 +844,7 @@ export function TravelersPage() {
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                <tbody className="divide-y divide-slate-100 dark:divide-border">
                   {table.getRowModel().rows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-20 text-center">
@@ -852,8 +852,8 @@ export function TravelersPage() {
                           <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                             <User className="h-6 w-6 text-brand opacity-60" />
                           </div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No team members yet</p>
-                          <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Add your first traveler using the button above</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">Add your first traveler using the button above</p>
                         </div>
                       </td>
                     </tr>
@@ -864,27 +864,27 @@ export function TravelersPage() {
                     const signedCount = docs.filter(d => d.status === "Signed").length;
                     const statusCfg = STATUS_CONFIG[user.status] || STATUS_CONFIG["Offline"];
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group">
+                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-background/80 transition-colors group">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3.5">
                             <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
                             <div className="min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{user.name}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-[#666] italic">No email</span>}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{user.email || <span className="text-slate-400 dark:text-muted-foreground italic">No email</span>}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-5">
-                          <span className="text-xs font-semibold text-slate-600 dark:text-[#aaa]">{user.role}</span>
+                          <span className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">{user.role}</span>
                         </td>
                         <td className="px-6 py-5">
                           {user.assignedTrips.length > 0 ? (
                             <div className="flex flex-col gap-0.5">
                               <span className="text-sm font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">{user.assignedTrips.length}</span>
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
                             </div>
                           ) : (
-                            <span className="text-sm font-black tracking-tighter text-slate-500 dark:text-[#888] tabular-nums">0</span>
+                            <span className="text-sm font-black tracking-tighter text-slate-500 dark:text-muted-foreground tabular-nums">0</span>
                           )}
                         </td>
                         <td className="px-6 py-5">
@@ -908,7 +908,7 @@ export function TravelersPage() {
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-black tracking-tighter text-slate-500 dark:text-[#888888] tabular-nums">{signedCount}<span className="text-slate-400 dark:text-[#888]">/{docs.length}</span></span>
+                            <span className="text-xs font-black tracking-tighter text-slate-500 dark:text-muted-foreground tabular-nums">{signedCount}<span className="text-slate-400 dark:text-muted-foreground">/{docs.length}</span></span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
@@ -926,15 +926,15 @@ export function TravelersPage() {
 
               {/* Pagination - only shown when data > 10 */}
               {table.getPageCount() > 1 && (
-                <div className="px-6 py-4 border-t border-slate-100 dark:border-[#1a1a1a] flex items-center justify-between bg-slate-50/30 dark:bg-[#0a0a0a]">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-border flex items-center justify-between bg-slate-50/30 dark:bg-background">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {filtered.length} members
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Previous page"
                     >
                       <PgLeft className="h-4 w-4" />
@@ -943,7 +943,7 @@ export function TravelersPage() {
                     <button
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       aria-label="Next page"
                     >
                       <PgRight className="h-4 w-4" />
@@ -956,14 +956,14 @@ export function TravelersPage() {
               {/* Mobile pagination */}
               {table.getPageCount() > 1 && (
                 <div className="sm:hidden flex items-center justify-between mt-3 px-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
                     {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
-                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand bg-white dark:bg-card border border-slate-200 dark:border-border disabled:opacity-30 disabled:cursor-not-allowed"
                       aria-label="Previous page"
                     >
                       <PgLeft className="h-4 w-4" />
@@ -971,7 +971,7 @@ export function TravelersPage() {
                     <button
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
-                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand bg-white dark:bg-card border border-slate-200 dark:border-border disabled:opacity-30 disabled:cursor-not-allowed"
                       aria-label="Next page"
                     >
                       <PgRight className="h-4 w-4" />
@@ -993,16 +993,16 @@ export function TravelersPage() {
                   { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <ShieldWarning className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                   { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
+                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
                     <div className="p-5 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{card.label}</span>
-                        <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${card.accent} flex items-center justify-center`}>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
+                        <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-border bg-slate-50 dark:bg-background ${card.accent} flex items-center justify-center`}>
                           {card.icon}
                         </div>
                       </div>
                       <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-4">{card.sub}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-4">{card.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -1010,7 +1010,7 @@ export function TravelersPage() {
 
               {/* Upload button */}
               <div className="flex items-center justify-between">
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">All Documents</p>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">All Documents</p>
                 <button
                   onClick={() => setUploadOpen(true)}
                   className="flex items-center gap-2 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-brand/20"
@@ -1020,13 +1020,13 @@ export function TravelersPage() {
               </div>
 
               {filteredGroupedDocs.length === 0 ? (
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+                <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <FileText className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">No documents yet</p>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">Add team members to track compliance</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No documents yet</p>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">Add team members to track compliance</p>
                   </div>
                 </div>
               ) : (() => {
@@ -1050,20 +1050,20 @@ export function TravelersPage() {
                     const visibleDocs = isExpanded ? sortedDocs : sortedDocs.slice(0, MAX_VISIBLE);
                     const hiddenCount = sortedDocs.length - MAX_VISIBLE;
                     return (
-                      <div key={userId} className="bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-xl">
+                      <div key={userId} className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-xl">
                         {/* Person header */}
                         <div className="px-5 pt-5 pb-4 flex items-center gap-3">
                           <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{initials}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                               {allGood ? "All signed" : `${signed} of ${total} signed`}
                             </p>
                           </div>
                         </div>
 
                         {/* Document rows */}
-                        <div className="border-t border-slate-100 dark:border-[#1a1a1a]">
+                        <div className="border-t border-slate-100 dark:border-border">
                           {visibleDocs.map(doc => {
                             const cfg = DOC_STATUS_CONFIG[doc.status];
                             const Icon = cfg.icon;
@@ -1072,20 +1072,20 @@ export function TravelersPage() {
                             return (
                               <div
                                 key={`${userId}-${doc.name}`}
-                                className="flex items-center px-5 py-3 gap-3 border-b border-slate-50 dark:border-[#151515] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-[#0a0a0a] transition-colors"
+                                className="flex items-center px-5 py-3 gap-3 border-b border-slate-50 dark:border-[#151515] last:border-b-0 group hover:bg-slate-50/50 dark:hover:bg-background transition-colors"
                               >
                                 <div className={`h-7 w-7 rounded-lg ${cfg.bg} ${cfg.color} flex items-center justify-center shrink-0`}>
                                   <Icon className="h-3.5 w-3.5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-[#aaa] truncate">{doc.name}</p>
-                                  <p className="text-[10px] font-bold text-slate-500 dark:text-[#888]">
+                                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-muted-foreground truncate">{doc.name}</p>
+                                  <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground">
                                     {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Not signed yet"}
                                   </p>
                                 </div>
                                 <Badge className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border-none uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
                                 {doc.status === "Signed" ? (
-                                  <button onClick={() => openDocSheet(userId, userName, doc)} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#777] hover:text-brand hover:border-brand/40 transition-all">
+                                  <button onClick={() => openDocSheet(userId, userName, doc)} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all">
                                     <Eye className="h-3 w-3" />
                                   </button>
                                 ) : (
@@ -1093,7 +1093,7 @@ export function TravelersPage() {
                                     <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 transition-opacity">
                                       Sign
                                     </button>
-                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#777] hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
+                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
                                       <PaperPlaneTilt className="h-3 w-3" />
                                     </button>
                                   </div>
@@ -1112,7 +1112,7 @@ export function TravelersPage() {
                               if (next.has(userId)) next.delete(userId); else next.add(userId);
                               return next;
                             })}
-                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-brand transition-colors border-t border-slate-100 dark:border-[#1a1a1a] cursor-pointer"
+                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors border-t border-slate-100 dark:border-border cursor-pointer"
                           >
                             <CaretDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                             {isExpanded ? "Show less" : `${hiddenCount} more`}
@@ -1126,14 +1126,14 @@ export function TravelersPage() {
                 {/* HR Pagination */}
                 {hrTotalPages > 1 && (
                   <div className="flex items-center justify-between mt-4">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
                       Page {safePage + 1} of {hrTotalPages} · {filteredGroupedDocs.length} people
                     </span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setHrPage(p => Math.max(0, p - 1))}
                         disabled={safePage === 0}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                         aria-label="Previous page"
                       >
                         <PgLeft className="h-4 w-4" />
@@ -1142,7 +1142,7 @@ export function TravelersPage() {
                       <button
                         onClick={() => setHrPage(p => Math.min(hrTotalPages - 1, p + 1))}
                         disabled={safePage >= hrTotalPages - 1}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                         aria-label="Next page"
                       >
                         <PgRight className="h-4 w-4" />
@@ -1165,11 +1165,11 @@ export function TravelersPage() {
                   { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
                   { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDots className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] overflow-hidden shadow-xl">
+                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xl">
                     <div className="p-5 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{card.label}</span>
-                        <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] ${card.accent} flex items-center justify-center`}>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
+                        <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-border bg-slate-50 dark:bg-background ${card.accent} flex items-center justify-center`}>
                           {card.icon}
                         </div>
                       </div>
@@ -1182,7 +1182,7 @@ export function TravelersPage() {
               {/* Toolbar: sort, filter, actions */}
               {groupedAppUsers.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mr-auto">
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mr-auto">
                     {filteredAppUsers.length} User{filteredAppUsers.length === 1 ? "" : "s"}
                     {appUserTripFilter !== "all" && <span className="text-brand ml-1">· Filtered</span>}
                   </p>
@@ -1193,13 +1193,13 @@ export function TravelersPage() {
                       onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); setShowActionsMenu(false); }}
                       aria-haspopup="menu"
                       aria-expanded={showSortMenu}
-                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
+                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors"
                     >
                       <ArrowsDownUp className="h-3.5 w-3.5" />
                       {appUserSort === "name" ? "Name" : appUserSort === "trips" ? "Trips" : "Recent"}
                     </button>
                     {showSortMenu && (
-                      <div role="menu" aria-label="Sort app users" className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                      <div role="menu" aria-label="Sort app users" className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden">
                         {([["recent", "Most Recent"], ["name", "Name A-Z"], ["trips", "Most Trips"]] as const).map(([key, label]) => (
                           <button
                             key={key}
@@ -1208,7 +1208,7 @@ export function TravelersPage() {
                             className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
                               appUserSort === key
                                 ? "text-brand bg-brand/5"
-                                : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                                : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
                             }`}
                           >
                             {label}
@@ -1228,20 +1228,20 @@ export function TravelersPage() {
                       className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
                         appUserTripFilter !== "all"
                           ? "bg-brand/10 border-brand/30 text-brand"
-                          : "bg-white dark:bg-[#111111] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30"
+                          : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30"
                       }`}
                     >
                       <FunnelSimple className="h-3.5 w-3.5" />
                       {appUserTripFilter !== "all" ? "Filtered" : "Trip"}
                     </button>
                     {showFilterMenu && (
-                      <div role="menu" aria-label="Filter by trip" className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
+                      <div role="menu" aria-label="Filter by trip" className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
                         <button
                           onClick={() => { setAppUserTripFilter("all"); setShowFilterMenu(false); }}
                           className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
                             appUserTripFilter === "all"
                               ? "text-brand bg-brand/5"
-                              : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                              : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
                           }`}
                         >
                           All Trips
@@ -1253,7 +1253,7 @@ export function TravelersPage() {
                             className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider truncate transition-colors ${
                               appUserTripFilter === t.id
                                 ? "text-brand bg-brand/5"
-                                : "text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a]"
+                                : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
                             }`}
                           >
                             {t.name}
@@ -1270,25 +1270,25 @@ export function TravelersPage() {
                       aria-haspopup="menu"
                       aria-expanded={showActionsMenu}
                       aria-label="More actions"
-                      className="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-brand hover:border-brand/30 transition-colors"
+                      className="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors"
                     >
                       <DotsThree className="h-4 w-4" weight="bold" />
                     </button>
                     {showActionsMenu && (
-                      <div role="menu" aria-label="More actions" className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-xl z-20 overflow-hidden">
+                      <div role="menu" aria-label="More actions" className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden">
                         <button
                           onClick={() => { setShowActionsMenu(false); exportAppUsersCSV(); }}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center gap-2"
+                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center gap-2"
                         >
                           <DownloadSimple className="h-3.5 w-3.5" /> Export CSV
                         </button>
                         <button
                           onClick={() => { setShowActionsMenu(false); setBulkAction(!bulkAction); setSelectedUsers(new Set()); }}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-[#999] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors flex items-center gap-2"
+                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center gap-2"
                         >
                           <CheckSquare className="h-3.5 w-3.5" /> {bulkAction ? "Exit Select Mode" : "Select Mode"}
                         </button>
-                        <div className="border-t border-slate-100 dark:border-[#1a1a1a]" />
+                        <div className="border-t border-slate-100 dark:border-border" />
                         <button
                           onClick={() => { setShowActionsMenu(false); handleClearAppUsers(); }}
                           disabled={clearing}
@@ -1329,7 +1329,7 @@ export function TravelersPage() {
                   )}
                   <button
                     onClick={() => { setBulkAction(false); setSelectedUsers(new Set()); }}
-                    className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
+                    className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
@@ -1337,14 +1337,14 @@ export function TravelersPage() {
               )}
 
               {/* Users list */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden shadow-2xl">
+              <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
                 {/* Header - hidden on mobile */}
-                <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-[#1f1f1f] bg-slate-50/50 dark:bg-[#0a0a0a] items-center">
+                <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-border bg-slate-50/50 dark:bg-background items-center">
                   {bulkAction && <div className="w-10" />}
                   <div className="w-14" />
-                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Name</div>
-                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888]">Trips Joined</div>
-                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888888] text-right">Last Active</div>
+                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Name</div>
+                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Trips Joined</div>
+                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground text-right">Last Active</div>
                 </div>
 
                 {appUsersLoading ? (
@@ -1353,7 +1353,7 @@ export function TravelersPage() {
                   </div>
                 ) : appUsersError ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-[#ccc]">{appUsersError}</p>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-foreground/80">{appUsersError}</p>
                     <button
                       type="button"
                       onClick={() => setAppUsersReload(k => k + 1)}
@@ -1367,10 +1367,10 @@ export function TravelersPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
                       {search || appUserTripFilter !== "all" ? "No matching users" : "No app users yet"}
                     </p>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
                       {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
                     {appUserTripFilter !== "all" && (
@@ -1380,7 +1380,7 @@ export function TravelersPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-[#1a1a1a]">
+                  <div className="divide-y divide-slate-100 dark:divide-border">
                     {paginatedAppUsers.map((appUser) => {
                       const initials = appUser.name
                         ? appUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
@@ -1394,14 +1394,14 @@ export function TravelersPage() {
                           <div className="sm:hidden">
                             <button
                               onClick={() => bulkAction ? toggleSelectUser(appUser.deviceId) : setDetailPanelUser(appUser.deviceId)}
-                              className="w-full text-left p-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors"
+                              className="w-full text-left p-4 hover:bg-slate-50/80 dark:hover:bg-background/80 transition-colors"
                             >
                               <div className="flex items-center gap-3">
                                 {bulkAction && (
                                   <div className="shrink-0">
                                     {selectedUsers.has(appUser.deviceId)
                                       ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
-                                      : <Square className="h-5 w-5 text-slate-500 dark:text-[#888]" />}
+                                      : <Square className="h-5 w-5 text-slate-500 dark:text-muted-foreground" />}
                                   </div>
                                 )}
                                 <div className="shrink-0">
@@ -1412,10 +1412,10 @@ export function TravelersPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
-                                  {appUser.email && <div className="text-[10px] text-slate-500 dark:text-[#888] truncate">{appUser.email}</div>}
-                                  <div className="text-[11px] text-slate-500 dark:text-[#888888] mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                  {appUser.email && <div className="text-[10px] text-slate-500 dark:text-muted-foreground truncate">{appUser.email}</div>}
+                                  <div className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
-                                {!bulkAction && <PgRight className="h-4 w-4 text-slate-500 dark:text-[#888] shrink-0" />}
+                                {!bulkAction && <PgRight className="h-4 w-4 text-slate-500 dark:text-muted-foreground shrink-0" />}
                               </div>
                             </button>
                           </div>
@@ -1423,13 +1423,13 @@ export function TravelersPage() {
                           {/* ── Desktop row ── */}
                           <button
                             onClick={() => bulkAction ? toggleSelectUser(appUser.deviceId) : setDetailPanelUser(detailPanelUser === appUser.deviceId ? null : appUser.deviceId)}
-                            className="hidden sm:flex w-full items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-[#0a0a0a]/80 transition-colors group text-left"
+                            className="hidden sm:flex w-full items-center px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-background/80 transition-colors group text-left"
                           >
                             {bulkAction && (
                               <div className="w-10 shrink-0">
                                 {selectedUsers.has(appUser.deviceId)
                                   ? <CheckSquare className="h-5 w-5 text-brand" weight="fill" />
-                                  : <Square className="h-5 w-5 text-slate-400 dark:text-[#888] group-hover:text-slate-400 dark:group-hover:text-[#666] transition-colors" />}
+                                  : <Square className="h-5 w-5 text-slate-400 dark:text-muted-foreground group-hover:text-slate-400 dark:group-hover:text-muted-foreground transition-colors" />}
                               </div>
                             )}
                             <div className="w-14 shrink-0">
@@ -1440,7 +1440,7 @@ export function TravelersPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
-                              <div className="text-[11px] text-slate-500 dark:text-[#888888] truncate mt-0.5 flex items-center gap-1">
+                              <div className="text-[11px] text-slate-500 dark:text-muted-foreground truncate mt-0.5 flex items-center gap-1">
                                 {appUser.email ? (
                                   <><Envelope className="h-3 w-3" /> {appUser.email}</>
                                 ) : (
@@ -1457,15 +1457,15 @@ export function TravelersPage() {
                                   </span>
                                 ))}
                                 {appUser.trips.length > 3 && (
-                                  <span className="text-[10px] font-bold text-slate-500 dark:text-[#888] px-1.5 py-1">+{appUser.trips.length - 3}</span>
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground px-1.5 py-1">+{appUser.trips.length - 3}</span>
                                 )}
                               </div>
                             </div>
                             <div className="w-40 flex items-center justify-end gap-2">
-                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                                 {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
-                              {!bulkAction && <PgRight className={`h-4 w-4 text-slate-500 dark:text-[#888] transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
+                              {!bulkAction && <PgRight className={`h-4 w-4 text-slate-500 dark:text-muted-foreground transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
                             </div>
                           </button>
                         </div>
@@ -1478,14 +1478,14 @@ export function TravelersPage() {
               {/* Pagination */}
               {appUserTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-[#888]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                     {safeAppUserPage * APP_USERS_PER_PAGE + 1}-{Math.min((safeAppUserPage + 1) * APP_USERS_PER_PAGE, filteredAppUsers.length)} of {filteredAppUsers.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setAppUserPage(p => Math.max(0, p - 1))}
                       disabled={safeAppUserPage <= 0}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       <PgLeft className="h-4 w-4" />
                     </button>
@@ -1493,7 +1493,7 @@ export function TravelersPage() {
                     <button
                       onClick={() => setAppUserPage(p => Math.min(appUserTotalPages - 1, p + 1))}
                       disabled={safeAppUserPage >= appUserTotalPages - 1}
-                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-brand/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       <PgRight className="h-4 w-4" />
                     </button>
@@ -1520,16 +1520,16 @@ export function TravelersPage() {
                   aria-label={`${panelUser.name || "App user"} details`}
                   tabIndex={-1}
                   ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
-                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-[#0a0a0a] sm:border-l border-slate-200 dark:border-[#1f1f1f] shadow-2xl overflow-y-auto animate-slide-in-right focus:outline-none"
+                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-background sm:border-l border-slate-200 dark:border-border shadow-2xl overflow-y-auto animate-slide-in-right focus:outline-none"
                   onClick={e => e.stopPropagation()}
                 >
                   {/* Panel header */}
-                  <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-[#1f1f1f]">
+                  <div className="sticky top-0 z-10 bg-white/80 dark:bg-background/80 backdrop-blur-xl border-b border-slate-200 dark:border-border">
                     <div className="flex items-center justify-between p-5">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">User Details</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">User Details</p>
                       <button
                         onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}
-                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors"
+                        className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -1567,7 +1567,7 @@ export function TravelersPage() {
                             <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{panelUser.name || "Unknown"}</p>
                             <button
                               onClick={() => { setRenamingUser(panelUser.deviceId); setRenameValue(panelUser.name); }}
-                              className="h-6 w-6 rounded-md bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors shrink-0"
+                              className="h-6 w-6 rounded-md bg-slate-100 dark:bg-secondary flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0"
                               title="Rename user"
                             >
                               <Pencil className="h-3 w-3" />
@@ -1575,12 +1575,12 @@ export function TravelersPage() {
                           </div>
                         )}
                         {panelUser.email && (
-                          <p className="text-[11px] font-bold text-slate-500 dark:text-[#888] mt-1.5 flex items-center gap-1.5 truncate">
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground mt-1.5 flex items-center gap-1.5 truncate">
                             <Envelope className="h-3 w-3 shrink-0" />
                             {panelUser.email}
                           </p>
                         )}
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] mt-1 flex items-center gap-1 font-mono">
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground mt-1 flex items-center gap-1 font-mono">
                           <Fingerprint className="h-3 w-3" />
                           {panelUser.deviceId}
                         </p>
@@ -1589,12 +1589,12 @@ export function TravelersPage() {
 
                     {/* Quick stats */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Trips</p>
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border">
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Trips</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1">{panelUser.trips.length}</p>
                       </div>
-                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a]">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">Role</p>
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border">
+                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Role</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1 capitalize">
                           {panelUser.trips.some(t => t.role === "leader") ? "Leader" : "Traveler"}
                         </p>
@@ -1603,17 +1603,17 @@ export function TravelersPage() {
 
                     {/* Trip memberships */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Trip Memberships</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Trip Memberships</p>
                       <div className="space-y-2.5">
                         {[...panelUser.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
-                          <div key={t.id} className="rounded-xl bg-slate-50 dark:bg-[#111111] border border-slate-100 dark:border-[#1a1a1a] overflow-hidden">
+                          <div key={t.id} className="rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border overflow-hidden">
                             <div className="flex items-center gap-3 px-4 py-3">
                               <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
                                 <MapPin className="h-4 w-4 text-brand" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</p>
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mt-0.5">
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mt-0.5">
                                   Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                                 </p>
                               </div>
@@ -1623,7 +1623,7 @@ export function TravelersPage() {
                                   className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-1.5 ${
                                     t.role === "leader"
                                       ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
-                                      : "bg-white dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
+                                      : "bg-white dark:bg-secondary text-slate-500 dark:text-muted-foreground ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
                                   }`}
                                 >
                                   <ShieldCheck className="h-3 w-3" />
@@ -1632,7 +1632,7 @@ export function TravelersPage() {
                                 <button
                                   onClick={() => handleRemoveFromTrip(panelUser.deviceId, t.id, t.name)}
                                   disabled={removingFromTrip === `${panelUser.deviceId}_${t.id}`}
-                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   title={`Remove from ${t.name}`}
                                 >
                                   {removingFromTrip === `${panelUser.deviceId}_${t.id}` ? (
@@ -1650,9 +1650,9 @@ export function TravelersPage() {
 
                     {/* Activity timeline */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Activity Timeline</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Activity Timeline</p>
                       <div className="relative pl-5">
-                        <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-[#1f1f1f]" />
+                        <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-secondary" />
                         {[...panelUser.trips]
                           .sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime())
                           .map((t, i) => (
@@ -1661,7 +1661,7 @@ export function TravelersPage() {
                               {i === 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                             </div>
                             <div className="ml-1">
-                              <p className="text-[10px] font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider">
+                              <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
                                 {new Date(t.joinedAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })}
                               </p>
                               <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
@@ -1676,7 +1676,7 @@ export function TravelersPage() {
 
                     {/* Push notification */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Push Notification</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Push Notification</p>
                       <div className="space-y-2">
                         <Input
                           value={pushMessage}
@@ -1735,8 +1735,8 @@ export function TravelersPage() {
                     </div>
 
                     {/* Danger zone */}
-                    <div className="pt-4 border-t border-slate-100 dark:border-[#1a1a1a]">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mb-3">Danger Zone</p>
+                    <div className="pt-4 border-t border-slate-100 dark:border-border">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Danger Zone</p>
                       <button
                         onClick={() => handleDeleteAppUser(panelUser.deviceId, panelUser.name)}
                         disabled={deletingUser === panelUser.deviceId}
@@ -1762,7 +1762,7 @@ export function TravelersPage() {
       <Drawer.Root open={inviteOpen} onOpenChange={setInviteOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-[#111111] border-t border-slate-200 dark:border-[#1f1f1f] max-h-[90vh] focus:outline-none">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-card border-t border-slate-200 dark:border-border max-h-[90vh] focus:outline-none">
             {/* Drag handle */}
             <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
 
@@ -1770,9 +1770,9 @@ export function TravelersPage() {
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888] mt-1">New team member</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">New team member</p>
                 </div>
-                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1780,7 +1780,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                     <User className="h-3 w-3" /> Full Name
                   </Label>
                   <Input
@@ -1794,7 +1794,7 @@ export function TravelersPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                     <Envelope className="h-3 w-3" /> Email Address
                   </Label>
                   <Input
@@ -1809,7 +1809,7 @@ export function TravelersPage() {
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
                     <Briefcase className="h-3 w-3" /> Role
                   </Label>
                   <Input
@@ -1831,7 +1831,7 @@ export function TravelersPage() {
                   <button
                     type="button"
                     onClick={() => setInviteOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-[#2a2a2a] transition-all"
+                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-border transition-all"
                   >
                     Cancel
                   </button>
@@ -1845,18 +1845,18 @@ export function TravelersPage() {
               </form>
 
               {/* Existing team preview */}
-              <div className="mt-10 pt-8 border-t border-slate-100 dark:border-[#1a1a1a]">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-500 dark:text-[#888] mb-4">Current Team · {travelers.length} members</p>
+              <div className="mt-10 pt-8 border-t border-slate-100 dark:border-border">
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground mb-4">Current Team · {travelers.length} members</p>
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
-                    <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border">
                       <div className="h-5 w-5 rounded-md bg-brand text-black flex items-center justify-center font-black text-[9px]">{u.initials}</div>
-                      <span className="text-xs font-bold text-slate-500 dark:text-[#888] truncate max-w-[100px]">{u.name}</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-muted-foreground truncate max-w-[100px]">{u.name}</span>
                       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${u.status === "Active" ? "bg-emerald-400" : u.status === "Away" ? "bg-amber-400" : "bg-slate-300 dark:bg-slate-500"}`} />
                     </div>
                   ))}
                   {travelers.length > 8 && (
-                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a] text-[11px] font-bold text-slate-500 dark:text-[#888]">
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
                       +{travelers.length - 8} more
                     </div>
                   )}
@@ -1873,15 +1873,15 @@ export function TravelersPage() {
       <Drawer.Root open={uploadOpen} onOpenChange={setUploadOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#111111] rounded-t-xl border-t border-slate-200 dark:border-[#1f1f1f] max-h-[85vh] overflow-y-auto">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card rounded-t-xl border-t border-slate-200 dark:border-border max-h-[85vh] overflow-y-auto">
             <div className="mx-auto w-12 h-1.5 bg-slate-200 dark:bg-[#333] rounded-full mt-3 mb-2" />
             <div className="px-6 sm:px-8 pb-8">
               <p className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
-              <p className="text-xs font-bold text-slate-500 dark:text-[#888] uppercase tracking-wider mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
 
               {/* Document name */}
               <div className="space-y-2 mb-5">
-                <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Document Name</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Document Name</Label>
                 <Input
                   value={uploadDocName}
                   onChange={e => setUploadDocName(e.target.value)}
@@ -1893,7 +1893,7 @@ export function TravelersPage() {
               {/* Assign to travelers */}
               <div className="space-y-2 mb-6">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Assign To</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Assign To</Label>
                   <button
                     onClick={() => setUploadAssignees(prev => prev.length === travelers.length ? [] : travelers.map(t => t.id))}
                     className="text-[10px] font-bold text-brand uppercase tracking-wider hover:opacity-70 transition-opacity"
@@ -1911,10 +1911,10 @@ export function TravelersPage() {
                         className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
                           selected
                             ? "bg-brand/10 border-brand/30 text-brand"
-                            : "bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:border-brand/20"
+                            : "bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-brand/20"
                         }`}
                       >
-                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-slate-200 dark:bg-[#1f1f1f] text-slate-500 dark:text-[#888]"}`}>
+                        <div className={`h-5 w-5 rounded-md flex items-center justify-center font-black text-[9px] ${selected ? "bg-brand text-black" : "bg-slate-200 dark:bg-secondary text-slate-500 dark:text-muted-foreground"}`}>
                           {selected ? <Check className="h-3 w-3" /> : t.initials}
                         </div>
                         {t.name.split(" ")[0]}
@@ -1926,7 +1926,7 @@ export function TravelersPage() {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadAssignees([]); }} className="flex-1 h-10 rounded-xl border border-slate-200 dark:border-[#1f1f1f] text-xs font-black uppercase tracking-wider text-slate-500 dark:text-[#888] hover:bg-slate-50 dark:hover:bg-[#0a0a0a] transition-colors">
+                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadAssignees([]); }} className="flex-1 h-10 rounded-xl border border-slate-200 dark:border-border text-xs font-black uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background transition-colors">
                   Cancel
                 </button>
                 <button

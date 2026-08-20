@@ -226,28 +226,28 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl p-0 gap-0 shadow-2xl"
+        className="max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-0 gap-0 shadow-2xl"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         {/* Header (pinned) */}
-        <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
+        <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-200 dark:border-border shrink-0">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Send Itinerary Email
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-slate-500 dark:text-[#888] mt-1">
+          <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
             Pick travelers and a template. Sending opens your email app with everything filled in.
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-[#1f1f1f] flex-1 min-h-0 overflow-y-auto lg:overflow-hidden *:lg:overflow-y-auto">
+        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-border flex-1 min-h-0 overflow-y-auto lg:overflow-hidden *:lg:overflow-y-auto">
           {/* Left: Compose */}
           <div className="flex-1 p-5 sm:p-8 space-y-5 min-w-0">
             {/* To */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888]">To</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">To</label>
                 {travelers.length > 0 && (
                   <button
                     onClick={selectAll}
@@ -258,9 +258,9 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                   </button>
                 )}
               </div>
-              <div className="flex flex-wrap gap-1.5 p-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] items-center">
+              <div className="flex flex-wrap gap-1.5 p-3 min-h-[44px] rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background items-center">
                 {travelers.length === 0 ? (
-                  <span className="text-xs text-slate-500 dark:text-[#888]">No travelers assigned to this trip</span>
+                  <span className="text-xs text-slate-500 dark:text-muted-foreground">No travelers assigned to this trip</span>
                 ) : travelers.map(t => {
                   const selected = selectedIds.has(t.id);
                   return (
@@ -272,13 +272,13 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                         "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer border",
                         selected
                           ? "border-transparent shadow-sm"
-                          : "bg-white dark:bg-[#161616] text-slate-600 dark:text-[#999] border-slate-200 dark:border-[#222] hover:border-slate-300 dark:hover:border-[#333]"
+                          : "bg-white dark:bg-[#161616] text-slate-600 dark:text-muted-foreground border-slate-200 dark:border-border hover:border-slate-300 dark:hover:border-[#333]"
                       )}
                       style={selected ? { background: accentColor, color: accentFg } : undefined}
                     >
                       <span className={cn(
                         "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0",
-                        selected ? "bg-white/20" : "bg-slate-100 dark:bg-[#222] text-slate-500 dark:text-[#777]"
+                        selected ? "bg-white/20" : "bg-slate-100 dark:bg-[#222] text-slate-500 dark:text-muted-foreground"
                       )}>
                         {selected ? <Check className="h-3 w-3" /> : t.initials}
                       </span>
@@ -288,7 +288,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 })}
               </div>
               {selectedIds.size > 0 && (
-                <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1.5">
+                <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1.5">
                   {selectedIds.size} of {travelers.length} selected
                 </p>
               )}
@@ -296,15 +296,15 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Template Selector */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] mb-2 block">Template</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground mb-2 block">Template</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-[#ccc] cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
+                  <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-foreground/80 cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
                     {template.label}
-                    <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-[#888]" />
+                    <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[200px] rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-xl">
+                <DropdownMenuContent className="min-w-[200px] rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-xl">
                   {EMAIL_TEMPLATES.map(t => (
                     <DropdownMenuItem
                       key={t.id}
@@ -324,26 +324,26 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Subject */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] mb-2 block">Subject</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground mb-2 block">Subject</label>
               <input
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#666] outline-none focus-visible:ring-2 focus-visible:ring-brand/30 transition-shadow"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-brand/30 transition-shadow"
                 placeholder="Email subject..."
               />
             </div>
 
             {/* Message Body */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] mb-2 block">Message</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground mb-2 block">Message</label>
               <Textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
                 rows={8}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#1f1f1f] bg-slate-50 dark:bg-[#0a0a0a] text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#666] resize-none outline-none focus-visible:ring-2 focus-visible:ring-brand/30 transition-shadow"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-muted-foreground resize-none outline-none focus-visible:ring-2 focus-visible:ring-brand/30 transition-shadow"
                 placeholder="Write your message here..."
               />
-              <p className="text-[10px] text-slate-500 dark:text-[#888] mt-1.5">
+              <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-1.5">
                 Variables: {"{{tripName}}"}, {"{{dates}}"}, {"{{destination}}"}, {"{{brandName}}"}
               </p>
             </div>
@@ -357,13 +357,13 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               <EnvelopeSimple className="h-4 w-4" weight="bold" />
               Send via Email Client
             </Button>
-            <p className="text-[10px] text-slate-500 dark:text-[#888] -mt-1">
+            <p className="text-[10px] text-slate-500 dark:text-muted-foreground -mt-1">
               Opens your email app with recipients{selectedEmails.length > 1 ? " (BCC)" : ""}, subject and text filled in. The designed version is copied to your clipboard, paste it into the body to send the branded email.
             </p>
 
             {/* Secondary: Copy buttons for manual compose */}
             <details className="group">
-              <summary className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] cursor-pointer hover:text-slate-600 dark:hover:text-[#999] transition-colors list-none flex items-center gap-1.5">
+              <summary className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground cursor-pointer hover:text-slate-600 dark:hover:text-muted-foreground transition-colors list-none flex items-center gap-1.5">
                 <CaretDown className="h-3 w-3 -rotate-90 group-open:rotate-0 transition-transform" />
                 Or copy manually
               </summary>
@@ -371,7 +371,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copyEmails}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-border gap-2 transition-all duration-150"
                 >
                   {copiedEmail ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Users className="h-3.5 w-3.5" />}
                   {copiedEmail ? "Copied!" : "1. Copy Emails"}
@@ -379,7 +379,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copySubject}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-border gap-2 transition-all duration-150"
                 >
                   {copiedSubject ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <FileText className="h-3.5 w-3.5" />}
                   {copiedSubject ? "Copied!" : "2. Copy Subject"}
@@ -387,7 +387,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copyContent}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-[#1f1f1f] gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-slate-200 dark:border-border gap-2 transition-all duration-150"
                 >
                   {copiedContent ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   {copiedContent ? "Copied!" : "3. Copy Content"}
@@ -397,15 +397,15 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
           </div>
 
           {/* Right: Live Preview */}
-          <div className="flex-1 p-5 sm:p-8 bg-slate-50 dark:bg-[#0a0a0a] min-w-0 overflow-hidden">
+          <div className="flex-1 p-5 sm:p-8 bg-slate-50 dark:bg-background min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-4 gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888] shrink-0">Preview</span>
-              <span className="text-[10px] font-medium text-slate-500 dark:text-[#888] truncate max-w-[240px]">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground shrink-0">Preview</span>
+              <span className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground truncate max-w-[240px]">
                 {resolvedSubject}
               </span>
             </div>
 
-            <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white shadow-sm">
+            <div className="rounded-xl border border-slate-200 dark:border-border overflow-hidden bg-white shadow-sm">
               {/* Email Header */}
               <div className="text-center py-5 px-6 border-b border-slate-100">
                 {brand.logoUrl ? (

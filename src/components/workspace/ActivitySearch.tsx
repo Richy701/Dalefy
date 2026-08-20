@@ -43,15 +43,15 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-background border border-slate-200 dark:border-border text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand transition-colors";
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f1f1f]">
+    <div className="border-b border-slate-200 dark:border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Activity Search</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Location</label>
+            <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">Location</label>
             <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Dubai" autoComplete="off" className={inputCls} />
           </div>
           <button
@@ -78,7 +78,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all ${
                 selected === a.name
                   ? "border-brand bg-brand/10 dark:bg-brand/10"
-                  : "border-slate-200 dark:border-[#252525] hover:border-brand/50 bg-white dark:bg-[#0d0d0d]"
+                  : "border-slate-200 dark:border-border hover:border-brand/50 bg-white dark:bg-background"
               }`}
             >
               {a.image ? (
@@ -97,7 +97,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
                     </span>
                   )}
                   {a.reviews > 0 && <span className="text-[10px] text-slate-500 dark:text-slate-500">({a.reviews.toLocaleString()})</span>}
-                  {a.type && <span className="text-[10px] text-slate-500 dark:text-[#888888]">{a.type}</span>}
+                  {a.type && <span className="text-[10px] text-slate-500 dark:text-muted-foreground">{a.type}</span>}
                 </div>
               </div>
               <div className="text-right shrink-0">

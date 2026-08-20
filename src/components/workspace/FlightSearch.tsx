@@ -77,21 +77,21 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
   };
 
   const inputCls =
-    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-[#252525] text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
+    "w-full h-11 sm:h-9 px-3 rounded-lg bg-white dark:bg-background border border-slate-200 dark:border-border text-base sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
 
   const tabCls = (active: boolean) =>
     `px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
       active
         ? "bg-brand/15 text-brand"
-        : "text-slate-500 dark:text-[#888] hover:text-slate-600 dark:hover:text-[#999]"
+        : "text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground"
     }`;
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f1f1f]">
+    <div className="border-b border-slate-200 dark:border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand">Flight Search</p>
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0a0a] rounded-lg p-0.5">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-background rounded-lg p-0.5">
             <button type="button" onClick={() => setMode("number")} className={tabCls(mode === "number")}>
               <Hash className="h-2.5 w-2.5" />
               Number
@@ -106,17 +106,17 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         {mode === "number" ? (
           <div className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[120px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Flight Number</label>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">Flight Number</label>
               <input value={flightNum} onChange={e => setFlightNum(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="EK 2" autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="flex-1 min-w-[140px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Date</label>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-[#888]"}`}>
+                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-muted-foreground"}`}>
                     {date ? format(parse(date, "yyyy-MM-dd", new Date()), "d MMM yyyy") : "Select date"}
                   </span>
-                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
+                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-muted-foreground shrink-0" />
                 </PopoverTrigger>
                 <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                   <Calendar mode="single" selected={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setDate(format(d, "yyyy-MM-dd"))} />
@@ -131,21 +131,21 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         ) : (
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
             <div className="sm:flex-1 sm:min-w-[70px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">From</label>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">From</label>
               <input value={from} onChange={e => setFrom(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="LHR" maxLength={4} autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="sm:flex-1 sm:min-w-[70px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">To</label>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">To</label>
               <input value={to} onChange={e => setTo(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="DXB" maxLength={4} autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="col-span-2 sm:flex-1 sm:min-w-[140px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-[#888888] block mb-1">Date</label>
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
-                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-[#888]"}`}>
+                  <span className={`truncate ${date ? "" : "text-slate-500 dark:text-muted-foreground"}`}>
                     {date ? format(parse(date, "yyyy-MM-dd", new Date()), "d MMM yyyy") : "Select date"}
                   </span>
-                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-[#888] shrink-0" />
+                  <CalendarIcon className="h-4 w-4 sm:h-3.5 sm:w-3.5 text-slate-500 dark:text-muted-foreground shrink-0" />
                 </PopoverTrigger>
                 <PopoverContent align="start" className="p-0 w-auto max-w-[calc(100vw-1rem)]">
                   <Calendar mode="single" selected={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined} onSelect={d => d && setDate(format(d, "yyyy-MM-dd"))} />
@@ -172,7 +172,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl border text-left transition-all ${
                 selected === f.flightNum
                   ? "border-brand bg-brand/10 dark:bg-brand/10"
-                  : "border-slate-200 dark:border-[#252525] hover:border-brand/50 bg-white dark:bg-[#0d0d0d]"
+                  : "border-slate-200 dark:border-border hover:border-brand/50 bg-white dark:bg-background"
               }`}
             >
               {f.logo ? (
@@ -185,13 +185,13 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
                   <span>{f.fromCode}</span>
                   <ArrowRight className="h-2.5 w-2.5 text-slate-500 dark:text-slate-500 shrink-0" />
                   <span>{f.toCode}</span>
-                  <span className="text-slate-400 dark:text-[#888]">·</span>
-                  <span className="font-medium text-slate-500 dark:text-[#888] text-[10px]">{f.flightNum}</span>
+                  <span className="text-slate-400 dark:text-muted-foreground">·</span>
+                  <span className="font-medium text-slate-500 dark:text-muted-foreground text-[10px]">{f.flightNum}</span>
                   {f.stops > 0 && (
                     <span className="text-[10px] font-medium text-slate-500 dark:text-slate-500">{f.stops} stop{f.stops > 1 ? "s" : ""}</span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-[#888888] mt-0.5">
+                <p className="text-[10px] text-slate-500 dark:text-muted-foreground mt-0.5">
                   {f.departTime}{f.arriveTime ? ` \u2192 ${f.arriveTime}` : ""}{f.durationMins > 0 ? ` \u00b7 ${fmtDuration(f.durationMins)}` : ""}{f.status ? ` \u00b7 ${f.status}` : ""}{f.terminal ? ` \u00b7 T${f.terminal}` : ""}
                 </p>
               </div>

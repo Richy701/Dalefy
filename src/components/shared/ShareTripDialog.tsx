@@ -69,7 +69,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-0 bg-slate-100 dark:bg-[#050505] p-0 overflow-y-auto w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl border border-slate-200 dark:border-[#1f1f1f]"
+        className="border-0 bg-slate-100 dark:bg-background p-0 overflow-y-auto w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl border border-slate-200 dark:border-border"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
@@ -79,10 +79,10 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
         {/* Header with close */}
         <div className="flex items-center justify-between px-5 pt-5 pb-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">Share Trip</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Share Trip</p>
           <button
             onClick={() => onOpenChange(false)}
-            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-[#1a1a1a] flex items-center justify-center text-slate-500 dark:text-[#888] active:scale-95 transition-transform"
+            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-secondary flex items-center justify-center text-slate-500 dark:text-muted-foreground active:scale-95 transition-transform"
           >
             <X className="h-4 w-4" />
           </button>
@@ -94,7 +94,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
               <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-white">This trip is still a draft</p>
-                <p className="text-[11px] text-slate-600 dark:text-[#aaa] mt-0.5">Travelers can't open the link or PIN until it's published.</p>
+                <p className="text-[11px] text-slate-600 dark:text-muted-foreground mt-0.5">Travelers can't open the link or PIN until it's published.</p>
                 {onPublish && (
                   <button
                     type="button"
@@ -109,7 +109,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
             </div>
           )}
           {/* Boarding pass ticket */}
-          <div className="relative bg-white dark:bg-[#0f0f0f] rounded-xl overflow-hidden border border-slate-200 dark:border-[#1f1f1f] shadow-lg">
+          <div className="relative bg-white dark:bg-background rounded-xl overflow-hidden border border-slate-200 dark:border-border shadow-lg">
             {/* Top accent bar */}
             <div
               className="px-4 py-3 flex items-center justify-center gap-2 border-b"
@@ -139,7 +139,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
             {/* Top: trip info + compact QR */}
             <div className="px-4 pt-4 pb-4 min-w-0 flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                   Itinerary
                 </p>
                 <h3 className="mt-1 text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-2">
@@ -148,21 +148,21 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 {trip?.destination && (
                   <div className="mt-2 flex items-center gap-1.5 min-w-0">
                     <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: accentColor }} weight="bold" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:text-[#cccccc] truncate">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:text-foreground/80 truncate">
                       {trip.destination}
                     </span>
                   </div>
                 )}
                 {trip && (
                   <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-[#888]" weight="bold" />
-                    <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-[#888888] tracking-wide truncate">
+                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" weight="bold" />
+                    <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-muted-foreground tracking-wide truncate">
                       {formatRange(trip.start, trip.end)}
                     </span>
                   </div>
                 )}
                 <div className="mt-3 flex items-center gap-2">
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     Gate
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider truncate max-w-[120px]">
@@ -193,14 +193,14 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
             {/* Perforation with side notches */}
             <div className="relative h-6">
-              <div className="absolute left-3 right-3 top-1/2 border-t-[1.5px] border-dashed border-slate-300 dark:border-[#2a2a2a]" />
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-[#050505]" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-[#050505]" />
+              <div className="absolute left-3 right-3 top-1/2 border-t-[1.5px] border-dashed border-slate-300 dark:border-border" />
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-background" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-background" />
             </div>
 
             {/* Stub: OTP-style PIN */}
             <div className="px-4 pt-4 pb-6 flex flex-col items-center gap-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-[#888]">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
                 Trip PIN
               </p>
               <button
@@ -229,7 +229,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                   );
                 })}
               </button>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#888888]">
+              <div className="flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground">
                 {copiedKey === "pin" ? (
                   <>
                     <Check className="h-2.5 w-2.5" style={{ color: accentColor }} weight="bold" />
@@ -290,12 +290,12 @@ interface LinkRowProps {
 
 function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
   return (
-    <div className="flex items-center gap-2 bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-[#1f1f1f] rounded-xl px-3 py-2.5">
-      <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] flex items-center justify-center shrink-0">
-        <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />
+    <div className="flex items-center gap-2 bg-white dark:bg-background border border-slate-200 dark:border-border rounded-xl px-3 py-2.5">
+      <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
+        <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
           {label}
         </p>
         <p className="text-[11px] font-mono text-slate-900 dark:text-white truncate">
@@ -310,7 +310,7 @@ function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
       >
         {copied
           ? <Check className="h-3.5 w-3.5 text-brand" />
-          : <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-[#888888]" />}
+          : <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />}
       </Button>
     </div>
   );

@@ -51,10 +51,10 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[calc(100vw-2rem)] max-w-[400px] sm:max-w-[480px] sm:w-[480px] p-0 bg-white dark:bg-[#080808] border-l border-slate-200 dark:border-[#1a1a1a] shadow-2xl" showCloseButton>
+      <SheetContent side="right" className="w-[calc(100vw-2rem)] max-w-[400px] sm:max-w-[480px] sm:w-[480px] p-0 bg-white dark:bg-[#080808] border-l border-slate-200 dark:border-border shadow-2xl" showCloseButton>
         <div className="flex flex-col h-full">
           {/* Refined Header */}
-          <div className="p-10 pb-8 bg-slate-50/50 dark:bg-[#0c0c0c] border-b border-slate-200 dark:border-[#1a1a1a]">
+          <div className="p-10 pb-8 bg-slate-50/50 dark:bg-[#0c0c0c] border-b border-slate-200 dark:border-border">
             <div className="flex items-center gap-4 mb-6">
               <div className={`h-14 w-14 rounded-xl ${statusCfg.bg} ${statusCfg.color} flex items-center justify-center shadow-inner`}>
                 <StatusIcon className="h-7 w-7" />
@@ -68,15 +68,15 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 </h2>
               </div>
             </div>
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white dark:bg-[#050505] border border-slate-200 dark:border-[#1a1a1a]">
+            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-white dark:bg-background border border-slate-200 dark:border-border">
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500 mb-0.5">For</span>
                 <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">{travelerName}</span>
               </div>
-              <div className="h-8 w-px bg-slate-100 dark:bg-[#1a1a1a]" />
+              <div className="h-8 w-px bg-slate-100 dark:bg-secondary" />
               <div className="flex flex-col text-right">
                 <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500 mb-0.5">Reference</span>
-                <span className="text-xs font-mono font-bold text-slate-500 dark:text-[#888]">{reference}</span>
+                <span className="text-xs font-mono font-bold text-slate-500 dark:text-muted-foreground">{reference}</span>
               </div>
             </div>
           </div>
@@ -88,7 +88,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 <div className="space-y-10">
                   <div className="relative">
                     <div className="absolute -left-4 top-0 bottom-0 w-1 bg-brand/20 rounded-full" />
-                    <p className="text-sm text-slate-500 dark:text-[#888] leading-relaxed font-medium pl-2">
+                    <p className="text-sm text-slate-500 dark:text-muted-foreground leading-relaxed font-medium pl-2">
                       {content.preamble}
                     </p>
                   </div>
@@ -96,13 +96,13 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   <div className="space-y-8">
                     {content.sections.map((section, i) => (
                       <div key={i} className="relative pl-8 group">
-                        <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-slate-100 dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] flex items-center justify-center text-xs font-black text-brand group-hover:bg-brand group-hover:text-black transition-[background-color,color] duration-150">
+                        <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-slate-100 dark:bg-card border border-slate-200 dark:border-border flex items-center justify-center text-xs font-black text-brand group-hover:bg-brand group-hover:text-black transition-[background-color,color] duration-150">
                           {i + 1}
                         </div>
                         <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-2 pt-1">
                           {section.heading.split(". ")[1] || section.heading}
                         </h4>
-                        <p className="text-[12px] text-slate-600 dark:text-[#777] leading-relaxed">
+                        <p className="text-[12px] text-slate-600 dark:text-muted-foreground leading-relaxed">
                           {section.body}
                         </p>
                       </div>
@@ -112,7 +112,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Info className="h-10 w-10 text-slate-200 dark:text-[#1a1a1a] mb-4" />
-                  <p className="text-xs text-slate-500 dark:text-[#888] font-bold uppercase tracking-widest">No content available</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground font-bold uppercase tracking-widest">No content available</p>
                 </div>
               )}
 
@@ -123,7 +123,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-brand">Signed & Verified</p>
-                    <p className="text-xs text-slate-500 dark:text-[#888888] mt-1 font-bold uppercase tracking-tighter">
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 font-bold uppercase tracking-tighter">
                       Signed on {new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
                     </p>
                   </div>
@@ -134,12 +134,12 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
 
           {/* Action Footer */}
           {!isSigned && (
-            <div className="p-10 border-t border-slate-200 dark:border-[#1a1a1a] bg-slate-50/50 dark:bg-[#0c0c0c]">
+            <div className="p-10 border-t border-slate-200 dark:border-border bg-slate-50/50 dark:bg-[#0c0c0c]">
               <div className="flex items-center gap-3 mb-6">
                 <div className="h-5 w-5 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                   <Info className="h-3 w-3 text-amber-500" />
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888888] leading-tight">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground leading-tight">
                   Confirm that {travelerName} has read and accepted the terms above. This records the signature in your team's compliance list.
                 </p>
               </div>

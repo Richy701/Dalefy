@@ -39,7 +39,7 @@ function ErrorBanner({ message }: { message: string }) {
 function InputField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2.5">
-      <Label className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-[#888]">
+      <Label className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
         {label}
       </Label>
       {children}
@@ -50,15 +50,15 @@ function InputField({ label, children }: { label: string; children: React.ReactN
 function OrDivider() {
   return (
     <div className="flex items-center gap-4 my-7">
-      <div className="flex-1 h-px bg-slate-200 dark:bg-[#1f1f1f]" />
-      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#888]">or</span>
-      <div className="flex-1 h-px bg-slate-200 dark:bg-[#1f1f1f]" />
+      <div className="flex-1 h-px bg-slate-200 dark:bg-secondary" />
+      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-muted-foreground">or</span>
+      <div className="flex-1 h-px bg-slate-200 dark:bg-secondary" />
     </div>
   );
 }
 
 const inputClass =
-  "h-10 bg-slate-50 dark:bg-[#0a0a0a] border-slate-200 dark:border-[#1f1f1f] rounded-xl text-base text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
+  "h-10 bg-slate-50 dark:bg-background border-slate-200 dark:border-border rounded-xl text-base text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
 
 // ── Animated hero background ────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ function HeroBackground() {
         </motion.div>
 
         <motion.p
-          className="text-base lg:text-lg text-slate-600 dark:text-[#aaa] leading-relaxed max-w-lg mt-6"
+          className="text-base lg:text-lg text-slate-600 dark:text-muted-foreground leading-relaxed max-w-lg mt-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
@@ -107,9 +107,9 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
         >
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/4 border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/4 border border-slate-200/50 dark:border-border backdrop-blur-sm">
             <LockKey className="h-3.5 w-3.5 text-brand" weight="bold" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">Internal · access by invitation</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground">Internal · access by invitation</span>
           </div>
         </motion.div>
       </div>
@@ -198,7 +198,7 @@ export function LoginPage() {
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh bg-slate-50 dark:bg-[#050505] relative overflow-hidden">
+    <div className="min-h-dvh bg-slate-50 dark:bg-background relative overflow-hidden">
       <div className="hidden lg:block">
         <HeroBackground />
       </div>
@@ -207,7 +207,7 @@ export function LoginPage() {
 
       <div className="relative z-20 min-h-dvh flex items-center justify-center lg:justify-end p-6 sm:p-10 lg:pr-16 xl:pr-24">
         <motion.div
-          className="relative w-full max-w-[480px] lg:bg-white/70 lg:dark:bg-[#0a0a0a]/80 lg:backdrop-blur-2xl lg:border lg:border-slate-200/50 lg:dark:border-[#1f1f1f] lg:rounded-xl lg:shadow-2xl lg:shadow-black/5 lg:dark:shadow-black/40 lg:p-10 xl:lg:p-12"
+          className="relative w-full max-w-[480px] lg:bg-white/70 lg:dark:bg-background/80 lg:backdrop-blur-2xl lg:border lg:border-slate-200/50 lg:dark:border-border lg:rounded-xl lg:shadow-2xl lg:shadow-black/5 lg:dark:shadow-black/40 lg:p-10 xl:lg:p-12"
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
@@ -223,7 +223,7 @@ export function LoginPage() {
             <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-1.5">
               {BRAND.nameUpper}
             </h1>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
               {BRAND.tagline}
             </p>
           </div>
@@ -244,7 +244,7 @@ export function LoginPage() {
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   Welcome back
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                <p className="text-sm text-slate-500 dark:text-foreground/80">
                   Sign in to your account
                 </p>
               </div>
@@ -256,7 +256,7 @@ export function LoginPage() {
                 onClick={handleGoogle}
                 disabled={loading || googleLoading}
                 variant="outline"
-                className="w-full h-10 rounded-xl border-slate-200 dark:border-[#1f1f1f] bg-white dark:bg-[#0a0a0a] hover:bg-slate-50 dark:hover:bg-[#111] text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
+                className="w-full h-10 rounded-xl border-slate-200 dark:border-border bg-white dark:bg-background hover:bg-slate-50 dark:hover:bg-card text-slate-800 dark:text-[#ddd] text-sm font-bold gap-3 transition-colors"
               >
                 {googleLoading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <><GoogleIcon /> Continue with Google</>}
               </Button>
@@ -294,7 +294,7 @@ export function LoginPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       aria-pressed={showPassword}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors"
                     >
                       {showPassword ? <EyeSlash className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                     </button>
@@ -319,7 +319,7 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
+              <p className="text-center text-xs font-medium text-slate-500 dark:text-muted-foreground mt-8">
                 Access is by invitation. Ask your team admin for an invite if you don't have one.
               </p>
             </>
@@ -332,7 +332,7 @@ export function LoginPage() {
                 <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                   Welcome
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                <p className="text-sm text-slate-500 dark:text-foreground/80">
                   Enter your name to get started
                 </p>
               </div>
@@ -372,7 +372,7 @@ export function LoginPage() {
           )}
 
           {!realAuth && (
-            <p className="text-center text-xs font-medium text-slate-500 dark:text-[#777] mt-8">
+            <p className="text-center text-xs font-medium text-slate-500 dark:text-muted-foreground mt-8">
               Your profile is stored on this device only
             </p>
           )}
@@ -386,14 +386,14 @@ export function LoginPage() {
               tabIndex={-1}
               ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
               onKeyDown={e => { if (e.key === "Escape") { setShowForgot(false); setForgotSent(false); } }}
-              className="absolute inset-0 bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-sm lg:rounded-xl flex items-center justify-center p-6 z-30 focus:outline-none"
+              className="absolute inset-0 bg-white/95 dark:bg-background/95 backdrop-blur-sm lg:rounded-xl flex items-center justify-center p-6 z-30 focus:outline-none"
             >
               <div className="w-full max-w-sm space-y-6">
                 <div className="text-center">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white mb-2">
                     Reset Password
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-[#bbb]">
+                  <p className="text-sm text-slate-500 dark:text-foreground/80">
                     {forgotSent
                       ? "Check your inbox for a reset link"
                       : "Enter your email and we'll send a reset link"}
@@ -405,7 +405,7 @@ export function LoginPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mx-auto">
                       <ArrowRight className="h-6 w-6 text-brand" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-600 dark:text-[#aaa]">
+                    <p className="text-sm font-semibold text-slate-600 dark:text-muted-foreground">
                       Reset link sent to <strong className="text-slate-900 dark:text-white">{forgotEmail}</strong>
                     </p>
                     <Button
@@ -440,7 +440,7 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowForgot(false)}
-                      className="w-full text-center text-sm font-bold text-slate-500 dark:text-[#888] hover:text-brand cursor-pointer"
+                      className="w-full text-center text-sm font-bold text-slate-500 dark:text-muted-foreground hover:text-brand cursor-pointer"
                     >
                       Back to Sign In
                     </button>

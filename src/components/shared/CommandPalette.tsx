@@ -61,24 +61,24 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
 
       {/* Palette */}
       <Command
-        className="relative w-full max-w-xl rounded-xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-[#2a2a2a] bg-white dark:bg-[#111111] animate-scale-in"
+        className="relative w-full max-w-xl rounded-xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/50 border border-slate-200 dark:border-border bg-white dark:bg-card animate-scale-in"
         loop
       >
         {/* Search bar */}
-        <div className="flex items-center gap-3 px-5 border-b border-slate-100 dark:border-[#1f1f1f]">
-          <MagnifyingGlass className="h-4 w-4 text-slate-500 dark:text-[#888] shrink-0" />
+        <div className="flex items-center gap-3 px-5 border-b border-slate-100 dark:border-border">
+          <MagnifyingGlass className="h-4 w-4 text-slate-500 dark:text-muted-foreground shrink-0" />
           <Command.Input
             autoFocus
             placeholder="Type a command or search..."
-            className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-[#666]"
+            className="flex-1 bg-transparent py-5 text-sm font-bold tracking-wide text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-muted-foreground"
           />
-          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-[#888] bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded-md px-1.5 py-0.5">
+          <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border rounded-md px-1.5 py-0.5">
             ESC
           </kbd>
         </div>
 
         <Command.List className="max-h-[360px] overflow-y-auto p-2 scrollbar-hide">
-          <Command.Empty className="py-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-[#888]">
+          <Command.Empty className="py-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
             Nothing matches. Try a page, an action or a trip name.
           </Command.Empty>
 
@@ -99,13 +99,13 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                 key={path}
                 value={label}
                 onSelect={() => run(() => navigate(path))}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
               >
                 <div className="h-8 w-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 {label}
-                <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#888] ml-auto" />
+                <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground ml-auto" />
               </Command.Item>
             ))}
           </Command.Group>
@@ -119,7 +119,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
               <Command.Item
                 value="new trip create"
                 onSelect={() => run(() => { navigate("/dashboard"); onNewTrip(); })}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
               >
                 <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">
                   <AirplaneTilt className="h-3.5 w-3.5" />
@@ -130,9 +130,9 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
             <Command.Item
               value="toggle theme dark light mode"
               onSelect={() => run(toggleTheme)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
             >
-              <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground flex items-center justify-center shrink-0">
                 {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               </div>
               Toggle {theme === "dark" ? "Light" : "Dark"} Mode
@@ -141,7 +141,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
               <Command.Item
                 value="invite team member"
                 onSelect={() => run(onInvite)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
               >
                 <div className="h-8 w-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center shrink-0">
                   <UserPlus className="h-3.5 w-3.5" />
@@ -153,9 +153,9 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
               <Command.Item
                 value="manage team members roles"
                 onSelect={() => run(() => navigate("/settings"))}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
               >
-                <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] text-slate-500 dark:text-[#888] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground flex items-center justify-center shrink-0">
                   <Shield className="h-3.5 w-3.5" />
                 </div>
                 Manage Team
@@ -174,7 +174,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                   key={trip.id}
                   value={`trip ${trip.name} ${trip.destination ?? ""}`}
                   onSelect={() => run(() => navigate(`/trip/${trip.id}`))}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-[#1a1a1a]"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-900 dark:text-white font-bold text-sm tracking-wide transition-colors data-[selected=true]:bg-slate-100 dark:data-[selected=true]:bg-[#1a1a1a] hover:bg-slate-100 dark:hover:bg-secondary"
                 >
                   <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0">
                     <img src={trip.image} alt={trip.name} className="h-full w-full object-cover" />
@@ -182,12 +182,12 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
                   <div className="flex-1 min-w-0">
                     <p className="truncate">{trip.name}</p>
                     {trip.destination && (
-                      <p className="text-[11px] font-bold text-slate-500 dark:text-[#777] flex items-center gap-1 truncate">
+                      <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground flex items-center gap-1 truncate">
                         <MapPin className="h-2.5 w-2.5" />{trip.destination}
                       </p>
                     )}
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-[#888] shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground shrink-0" />
                 </Command.Item>
               ))}
             </Command.Group>
@@ -195,14 +195,14 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
         </Command.List>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-100 dark:border-[#1f1f1f] flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#888]">
+        <div className="px-4 py-3 border-t border-slate-100 dark:border-border flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground">
             <CmdIcon className="h-3 w-3" />
             <span className="text-[10px] font-bold uppercase tracking-wider">K</span>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-[#888]">
-            <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
-            <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#2a2a2a] rounded px-1 py-0.5 font-mono">↵</kbd> select</span>
+          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
+            <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border rounded px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
+            <span className="flex items-center gap-1"><kbd className="bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border rounded px-1 py-0.5 font-mono">↵</kbd> select</span>
           </div>
         </div>
       </Command>

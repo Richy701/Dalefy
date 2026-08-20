@@ -662,7 +662,7 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Controls bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-[#1f1f1f] shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-border shrink-0">
         <div className="flex items-center gap-2">
           <DeviceMobileCamera className="h-4 w-4 text-brand" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Mobile Preview</span>
@@ -670,13 +670,13 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setPreviewTheme(previewTheme === "dark" ? "light" : "dark")}
-            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
+            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
           >
             {previewTheme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
           </button>
           <button
             onClick={onClose}
-            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-200 dark:border-[#252525] flex items-center justify-center text-slate-500 dark:text-[#888] hover:text-brand transition-colors"
+            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
           >
             <X size={12} />
           </button>
