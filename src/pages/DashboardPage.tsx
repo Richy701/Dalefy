@@ -6,7 +6,7 @@ import {
   DotsThreeVertical, GridFour, List, ArrowSquareOut, Users,
   MapPin, CurrencyDollar, Briefcase, Bed, ForkKnife, Compass, Globe,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
-  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning
+  Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown
 } from "@phosphor-icons/react";
 import { STORAGE } from "@/config/storageKeys";
 import { EVENT_ICONS } from "@/config/eventStyles";
@@ -17,6 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer } from "vaul";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Image as ImageIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
@@ -410,7 +413,7 @@ export function DashboardPage() {
           <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
             <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-card border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-card border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
@@ -1397,12 +1400,12 @@ export function DashboardPage() {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-card border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
-            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
+            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-secondary mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
                   <Drawer.Title className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">Build your next adventure</p>
+                  <p className="text-[13px] text-slate-500 dark:text-muted-foreground mt-1">Only the title, client and dates are required.</p>
                 </div>
                 <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
@@ -1419,8 +1422,8 @@ export function DashboardPage() {
                   <Upload className="h-4 w-4 text-brand" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white">Import from file instead</p>
-                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">PDF · DOCX · PPTX · TXT - we'll fill this in for you</p>
+                  <p className="text-[13px] font-semibold text-slate-700 dark:text-white">Import from a file instead</p>
+                  <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">PDF, Word, PowerPoint or text, and we'll fill this in for you</p>
                 </div>
                 <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
               </button>
@@ -1428,18 +1431,18 @@ export function DashboardPage() {
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <label htmlFor="nt-title" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Itinerary Title</label>
-                  <input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
-                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-xl font-bold tracking-tight focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:normal-case placeholder:font-bold placeholder:text-base placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                  <Label htmlFor="nt-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Itinerary title</Label>
+                  <Input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
+                    className="w-full text-lg font-semibold tracking-tight" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <span id="nt-type-label" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">Trip Type <span className="normal-case font-medium tracking-normal text-slate-400 dark:text-muted-foreground">(optional)</span></span>
+                  <span id="nt-type-label" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Trip type</span>
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-background border-black/6 dark:border-transparent text-slate-500 dark:text-muted-foreground hover:border-brand/40"}`}>
+                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border ${newTripData.tripType === t ? "bg-brand text-primary-foreground border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-background border-black/6 dark:border-transparent text-slate-500 dark:text-muted-foreground hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -1449,28 +1452,28 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label htmlFor="nt-destination" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</label>
-                    <input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
-                      className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    <Label htmlFor="nt-destination" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</Label>
+                    <Input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
+                      className="w-full" />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="nt-pax" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> No. of Travelers</label>
-                    <input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
-                      className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                    <Label htmlFor="nt-pax" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Travelers</Label>
+                    <Input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
+                      className="w-full" />
                   </div>
                 </div>
 
                 {/* Group */}
                 <div className="space-y-2">
-                  <label htmlFor="nt-group" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / Client</label>
-                  <input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
-                    className="w-full h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors" />
+                  <Label htmlFor="nt-group" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / client</Label>
+                  <Input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
+                    className="w-full" />
                 </div>
 
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
                 <div className="space-y-3" id="nt-dates">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel Dates</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-brand">
@@ -1488,11 +1491,25 @@ export function DashboardPage() {
                     : <p className="text-[11px] text-slate-500 dark:text-muted-foreground">Pick the first and last day of the trip.</p>}
                 </div>
 
-                {/* Budget + Currency */}
+                {/* ── Optional extras ── */}
+                <Collapsible className="rounded-xl border border-slate-200/80 dark:border-border overflow-hidden">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors group/nt">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Budget &amp; cover image</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                        {[newTripData.budget, newTripData.image?.startsWith("http") ? "img" : ""].filter(Boolean).length
+                          ? `${[newTripData.budget, newTripData.image?.startsWith("http") ? "img" : ""].filter(Boolean).length} set`
+                          : "Optional"}
+                      </span>
+                      <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground transition-transform group-data-[panel-open]/nt:rotate-180" />
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4 pt-1 space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="nt-budget" className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total Budget (optional)</label>
+                  <Label htmlFor="nt-budget" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total budget</Label>
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       id="nt-budget"
                       name="budget"
                       type="text"
@@ -1502,13 +1519,13 @@ export function DashboardPage() {
                       value={newTripData.budget}
                       onChange={e => setNewTripData({ ...newTripData, budget: e.target.value.replace(/[^0-9]/g, "") })}
                       placeholder="45000"
-                      className="flex-1 h-10 px-4 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-sm font-bold focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 placeholder:text-slate-400 dark:placeholder:text-[#555] transition-colors"
+                      className="flex-1"
                     />
                     <select
                       aria-label="Currency"
                       value={newTripData.currency}
                       onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-10 w-28 px-3 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-slate-900 dark:text-white text-[11px] font-black uppercase tracking-wider focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      className="h-9 w-24 px-3 bg-transparent border border-input rounded-md text-foreground text-[13px] font-medium shadow-xs focus:outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 dark:bg-input/30"
                     >
                       {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -1517,9 +1534,9 @@ export function DashboardPage() {
 
                 {/* Cover Image */}
                 <div className="space-y-3">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground flex items-center gap-2">
-                    <ImageIcon className="h-3 w-3" /> Cover Image
-                  </label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2">
+                    <ImageIcon className="h-3 w-3" /> Cover image
+                  </Label>
                   {/* Preview */}
                   {newTripData.image?.startsWith("http") && (
                     <div className="h-28 rounded-xl overflow-hidden relative">
@@ -1531,17 +1548,17 @@ export function DashboardPage() {
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground pointer-events-none" />
-                      <input
+                      <Input
                         value={coverSearch}
                         onChange={e => setCoverSearch(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); runCoverSearch(coverSearch); } }}
                         placeholder="Search photos, e.g. Maasai Mara"
                         aria-label="Search cover photos"
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-background border border-slate-200/80 dark:border-border rounded-xl text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                        className="w-full pl-9"
                       />
                     </div>
                     <button type="button" onClick={() => runCoverSearch(coverSearch)} aria-label="Search cover photos" disabled={isCoverSearching}
-                      className="h-10 px-4 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
+                      className="h-9 px-4 rounded-lg bg-brand text-primary-foreground text-[13px] font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0 disabled:opacity-60">
                       {isCoverSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {coverResults.length > 0 && (
@@ -1588,6 +1605,10 @@ export function DashboardPage() {
                     )}
                   </div>
                 </div>
+
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
