@@ -12,7 +12,6 @@ import { logger } from "@/lib/logger";
 import { updateBranding, uploadLogo } from "@/services/firebaseBranding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BRAND } from "@/config/brand";
@@ -143,9 +142,6 @@ export function SettingsPage() {
   const [agencyCodeEdit, setAgencyCodeEdit] = useState(currentOrg?.agencyCode ?? "");
   const [savingAgencyCode, setSavingAgencyCode] = useState(false);
   const canSetupOrg = realAuth && !currentOrg && tablesReady;
-  // Every Organisation section is permission-gated, so the tab itself has to
-  // disappear when none of them would render, rather than showing an empty panel.
-  const hasOrgSettings = canSetupOrg || showBrandingSection || !!(realAuth && currentOrg);
   const [inviteOpen, setInviteOpen] = useState(false);
 
   // Sync form state when orgBranding loads asynchronously
@@ -300,7 +296,7 @@ export function SettingsPage() {
               Settings
             </h1>
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground hidden md:inline">
-              Account, organisation and app preferences
+              Preferences & Data
             </span>
           </div>
         }
@@ -308,15 +304,6 @@ export function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 lg:px-8 py-6 pb-24">
-          <Tabs defaultValue="account">
-            <TabsList className="mb-2">
-              <TabsTrigger value="account" className="text-[13px] font-medium">Account</TabsTrigger>
-              {hasOrgSettings && <TabsTrigger value="organisation" className="text-[13px] font-medium">Organisation</TabsTrigger>}
-              <TabsTrigger value="preferences" className="text-[13px] font-medium">Preferences</TabsTrigger>
-              <TabsTrigger value="data" className="text-[13px] font-medium">Data</TabsTrigger>
-            </TabsList>
-
-          <TabsContent value="account" className="mt-0">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -381,10 +368,6 @@ export function SettingsPage() {
             </Section>
           )}
 
-          </TabsContent>
-
-          {hasOrgSettings && (
-          <TabsContent value="organisation" className="mt-0">
           {/* ── Set up Agency (real auth, no org yet) ── */}
           {canSetupOrg && (
             <Section
@@ -588,10 +571,6 @@ export function SettingsPage() {
             </Section>
           )}
 
-          </TabsContent>
-          )}
-
-          <TabsContent value="preferences" className="mt-0">
           {/* ── Appearance ── */}
           <Section
             icon={Palette}
@@ -642,42 +621,6 @@ export function SettingsPage() {
             />
           </Section>
 
-          {/* ── Shortcuts ── */}
-          <Section
-            id="keyboard-shortcuts"
-            icon={Keyboard}
-            title="Shortcuts"
-            description="Keyboard shortcuts work anywhere in the app. Press ⌘K to open the command palette."
-          >
-            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden">
-              {SHORTCUTS.map((s, i) => (
-                <div
-                  key={s.label}
-                  className={`flex items-center justify-between px-4 py-3 ${
-                    i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
-                  }`}
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700 dark:text-foreground/80">
-                    {s.label}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {s.keys.map((k, j) => (
-                      <kbd
-                        key={j}
-                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-bold text-slate-600 dark:text-muted-foreground flex items-center justify-center"
-                      >
-                        {k}
-                      </kbd>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          </TabsContent>
-
-          <TabsContent value="data" className="mt-0">
           {/* ── Data ── */}
           <Section
             icon={Database}
@@ -717,9 +660,38 @@ export function SettingsPage() {
             />
           </Section>
 
-          </TabsContent>
-
-          </Tabs>
+          {/* ── Shortcuts ── */}
+          <Section
+            id="keyboard-shortcuts"
+            icon={Keyboard}
+            title="Shortcuts"
+            description="Keyboard shortcuts work anywhere in the app. Press ⌘K to open the command palette."
+          >
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden">
+              {SHORTCUTS.map((s, i) => (
+                <div
+                  key={s.label}
+                  className={`flex items-center justify-between px-4 py-3 ${
+                    i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
+                  }`}
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700 dark:text-foreground/80">
+                    {s.label}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {s.keys.map((k, j) => (
+                      <kbd
+                        key={j}
+                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-bold text-slate-600 dark:text-muted-foreground flex items-center justify-center"
+                      >
+                        {k}
+                      </kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
 
           {/* ── Footer ── */}
           <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">
