@@ -353,7 +353,7 @@ export function SettingsPage() {
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="New password"
                       title="At least 6 characters"
-                      className="h-9 w-40 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                      className="w-40"
                     />
                     <Button
                       onClick={handleChangePassword}
