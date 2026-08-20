@@ -1,6 +1,7 @@
-import { validateFlightNum, validateDate, requireRapidApi, scoreAeroFlight } from "./_validate.js";
-import { airportTz } from "./_airportTz.js";
+import { validateFlightNum, validateDate, requireRapidApi } from "./_validate.js";
 import { rateLimit } from "./_rateLimit.js";
+import { lookupFlightNumber } from "./_flightsCore.js";
+import { errorToHttp } from "./_httpError.js";
 
 export default async function handler(req: any, res: any) {
   if (!rateLimit(req, res, { bucket: "flight-number", limit: 40, windowMs: 60_000 })) return;
@@ -13,92 +14,12 @@ export default async function handler(req: any, res: any) {
   const key = requireRapidApi(res);
   if (!key) return;
 
-  const url = `https://aerodatabox.p.rapidapi.com/flights/number/${number}/${date}`;
-
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const resp = await fetch(url, {
-      headers: {
-        "x-rapidapi-key": key,
-        "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const data = await resp.json();
-
-    const filtered = (Array.isArray(data) ? data : [])
-      .filter((f: any) => f.codeshareStatus !== "IsCodeshared");
-
-    // Prefer non-arrived flights when duplicates exist (daily flights return yesterday + today)
-    const hasActive = filtered.some((f: any) => {
-      const s = (f.status ?? "").toLowerCase();
-      return !s.includes("arrived") && !s.includes("landed");
-    });
-    const raw = (hasActive
-      ? filtered.filter((f: any) => {
-          const s = (f.status ?? "").toLowerCase();
-          return !s.includes("arrived") && !s.includes("landed");
-        })
-      : filtered
-    )
-      .sort((a: any, b: any) => scoreAeroFlight(b) - scoreAeroFlight(a))
-      .slice(0, 8);
-
-    const flights = raw.map((f: any) => {
-      const dep = f.departure ?? {};
-      const arr = f.arrival ?? {};
-      const depTime = dep.scheduledTime?.local ?? "";
-      const arrTime = arr.scheduledTime?.local ?? "";
-      const depUtc = dep.scheduledTime?.utc ?? "";
-      const arrUtc = arr.scheduledTime?.utc ?? "";
-      const depMins = timeToMins(depUtc);
-      const arrMins = timeToMins(arrUtc);
-      const duration = arrMins >= depMins ? arrMins - depMins : arrMins + 1440 - depMins;
-
-      const depLoc = dep.airport?.location;
-      const arrLoc = arr.airport?.location;
-      return {
-        airline: f.airline?.name ?? "",
-        flightNum: f.number ?? "",
-        from: dep.airport?.name ?? "",
-        fromCode: dep.airport?.iata ?? "",
-        to: arr.airport?.name ?? "",
-        toCode: arr.airport?.iata ?? "",
-        departTime: formatTime(depTime),
-        arriveTime: formatTime(arrTime),
-        durationMins: duration,
-        price: 0,
-        stops: 0,
-        logo: "",
-        status: f.status ?? "",
-        terminal: dep.terminal ?? "",
-        arrTerminal: arr.terminal ?? "",
-        gate: dep.gate ?? "",
-        arrGate: arr.gate ?? "",
-        baggageBelt: arr.baggageBelt ?? "",
-        aircraft: f.aircraft?.model ?? "",
-        depTz: airportTz(dep.airport?.iata ?? "") ?? "",
-        arrTz: airportTz(arr.airport?.iata ?? "") ?? "",
-        depCoords: depLoc ? [depLoc.lat, depLoc.lon] : undefined,
-        arrCoords: arrLoc ? [arrLoc.lat, arrLoc.lon] : undefined,
-      };
-    });
-
-    res.json({ flights });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch from AeroDataBox" });
+    const payload = await lookupFlightNumber(number, date, key);
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120");
+    res.json(payload);
+  } catch (e) {
+    const { status, error } = errorToHttp(e, "Failed to fetch from AeroDataBox");
+    res.status(status).json({ error });
   }
-}
-
-function formatTime(t: string): string {
-  const match = t.match(/(\d{2}:\d{2})/);
-  return match ? match[1] : t;
-}
-
-function timeToMins(t: string): number {
-  const match = t.match(/(\d{2}):(\d{2})/);
-  if (!match) return 0;
-  return parseInt(match[1]) * 60 + parseInt(match[2]);
 }

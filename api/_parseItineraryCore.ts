@@ -146,8 +146,10 @@ const AssistSchema = z.object({
 
 /** Error with an HTTP status the route handlers can send straight to the client. */
 export class ParseHttpError extends Error {
-  constructor(public status: number, message: string) {
+  status: number;
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
   }
 }
 

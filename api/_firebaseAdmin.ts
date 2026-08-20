@@ -10,6 +10,16 @@ const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databas
 
 let cachedToken: { idToken: string; expiresAt: number } | null = null;
 
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /** Sign in via Firebase Auth REST API and get an ID token */
 async function getAuthToken(): Promise<string> {
   // Reuse token if still valid (with 5 min buffer)
@@ -23,7 +33,7 @@ async function getAuthToken(): Promise<string> {
     throw new Error("Missing CRON_EMAIL, CRON_PASSWORD, or VITE_FIREBASE_API_KEY");
   }
 
-  const resp = await fetch(
+  const resp = await fetchWithTimeout(
     `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
     {
       method: "POST",
@@ -67,7 +77,7 @@ export async function listCollection(collectionName: string): Promise<FirestoreD
 
   do {
     const url = `${BASE}/${collectionName}?pageSize=300${pageToken ? `&pageToken=${pageToken}` : ""}`;
-    const resp = await fetch(url, { headers: authHeaders(token) });
+    const resp = await fetchWithTimeout(url, { headers: authHeaders(token) });
     if (!resp.ok) throw new Error(`Firestore list ${collectionName}: ${resp.status}`);
     const data = await resp.json();
     if (data.documents) docs.push(...data.documents);
@@ -80,7 +90,7 @@ export async function listCollection(collectionName: string): Promise<FirestoreD
 /** Get a single document, or null if it does not exist / is not readable */
 export async function getDocument(collectionName: string, id: string): Promise<FirestoreDoc | null> {
   const token = await getAuthToken();
-  const resp = await fetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { headers: authHeaders(token) });
+  const resp = await fetchWithTimeout(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { headers: authHeaders(token) });
   if (resp.status === 404 || resp.status === 403) return null;
   if (!resp.ok) throw new Error(`Firestore get ${collectionName}/${id}: ${resp.status}`);
   return (await resp.json()) as FirestoreDoc;
@@ -96,7 +106,7 @@ export async function updateDocument(
   const token = await getAuthToken();
   const mask = fieldPaths.map(f => `updateMask.fieldPaths=${f}`).join("&");
   const url = `${BASE}/${collectionName}/${docId}?${mask}`;
-  const resp = await fetch(url, {
+  const resp = await fetchWithTimeout(url, {
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ fields }),

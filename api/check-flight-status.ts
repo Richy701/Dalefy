@@ -7,7 +7,7 @@ import { isCronRequest } from "./_cronAuth.js";
  * Cron job: checks AeroDataBox for status updates on today's flights,
  * updates Firestore trip events, and sends push notifications to travelers.
  *
- * Runs every 30 minutes via Vercel Cron.
+ * Runs daily at 06:00 UTC via Vercel Cron (see vercel.json).
  */
 export default async function handler(req: any, res: any) {
   // Verify cron secret to prevent unauthorized calls
