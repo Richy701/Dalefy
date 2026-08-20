@@ -274,7 +274,6 @@ function useMergedTrips(
     } catch { /* use React state fallback */ }
 
     const localMap = new Map(localSrc.map(t => [t.id, t]));
-    const cloudIds = new Set(cloudTrips.map(t => t.id));
 
     // Merge cloud trips with local media/metadata
     const merged = cloudTrips.map(t => {

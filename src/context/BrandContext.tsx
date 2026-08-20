@@ -1,8 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { BRAND, resolvedBrand, type BrandOverrides } from "@/config/brand";
+import { resolvedBrand, type BrandOverrides } from "@/config/brand";
 import { useOrg } from "@/context/OrgContext";
 import { useAuth } from "@/context/AuthContext";
-import { isFirebaseConfigured } from "@/services/firebase";
 import { fetchBranding, type OrgBranding } from "@/services/firebaseBranding";
 import { logger } from "@/lib/logger";
 

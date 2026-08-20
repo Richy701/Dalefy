@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Link, Check, FileText, Paperclip, Tag, Phone, Envelope, Buildings, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus,
+  CaretLeft, Sun, Moon, MapTrifold as MapIcon, SpinnerGap, Plus, AirplaneTilt, Bed, Compass, ForkKnife, Car, Camera, CalendarDots, Users, MapPin, ArrowsClockwise, MagicWand, MagnifyingGlass, X, Upload, CaretRight, Video, Image as ImageIcon2, Trash, Pencil, PaperPlaneTilt, ShareNetwork, Check, FileText, Paperclip, Tag, Phone, Envelope, CaretDown, Eye, EyeSlash, EnvelopeOpen, DotsThreeVertical, DotsSixVertical, ListChecks, DeviceMobileCamera, Train, Bus, Boat, Anchor, UserPlus,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MobilePreview } from "@/components/workspace/MobilePreview";
@@ -37,7 +37,6 @@ import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MOCK_USERS } from "@/data/mock-users";
-import { EventCard } from "@/components/workspace/EventCard";
 import { SortableEventCard } from "@/components/workspace/SortableEventCard";
 import { DaySection } from "@/components/workspace/DaySection";
 import { DockBar } from "@/components/workspace/DockBar";
@@ -53,12 +52,11 @@ import { HotelSearch } from "@/components/workspace/HotelSearch";
 import { ActivitySearch } from "@/components/workspace/ActivitySearch";
 import { DiningSearch } from "@/components/workspace/DiningSearch";
 import { LocationAutocomplete } from "@/components/shared/LocationAutocomplete";
-import { searchImages, searchImagesProgressive } from "@/services/imageSearch";
+import { searchImages } from "@/services/imageSearch";
 import { lookupFlight } from "@/services/serpapi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
-import { buildImageQuery, buildImageQueryCandidates } from "@/services/imageQuery";
 import { notifyTripUpdate } from "@/services/pushNotify";
 import { upsertTrip } from "@/services/firebaseTrips";
 import { isFirebaseConfigured, firebaseStorage, firebaseAuth } from "@/services/firebase";
@@ -70,9 +68,8 @@ import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
 import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { usePresence } from "@/hooks/usePresence";
-import { BRAND } from "@/config/brand";
 import { STORAGE } from "@/config/storageKeys";
-import { IMAGE_BANK, COVER_IMAGES, KEYWORD_MAP, getEventImageCategory, generateEventImage } from "@/data/images";
+import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
 // html2canvas and jsPDF are lazy-loaded in handleExportPdf to avoid ~100KB on the critical path
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +186,7 @@ export function WorkspacePage() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { addNotification } = useNotifications();
-  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer } = usePermissions();
+  const { canDeleteTrip, isOrgMember, isViewer } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { brand } = useBrand();
   const { others: presenceUsers, updateActivity } = usePresence(tripId);
@@ -391,12 +388,12 @@ export function WorkspacePage() {
   const [editInfoData, setEditInfoData] = useState<NonNullable<Trip["info"]>>([]);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
   const [tripDocDragOver, setTripDocDragOver] = useState(false);
-  const [tripDocUploading, setTripDocUploading] = useState(false);
+  const [, setTripDocUploading] = useState(false);
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const tripDocInputRef = useRef<HTMLInputElement>(null);
   const tripDocInputRef2 = useRef<HTMLInputElement>(null);
-  const [pdfMapUrl, setPdfMapUrl] = useState<string | null>(null);
+  const [, setPdfMapUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -742,7 +739,6 @@ export function WorkspacePage() {
 
   const handleDeleteEvent = (eventId: string) => {
     if (demoGate()) return;
-    const removed = trip.events.find(ev => ev.id === eventId);
     deleteEvent(trip.id, eventId);
     toast.success("Event deleted");
   };
@@ -758,17 +754,6 @@ export function WorkspacePage() {
       reader.onload = (ev) => resolve(ev.target?.result as string);
       reader.readAsDataURL(file);
     });
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingEvent) return;
-    const path = `trips/${tripId}/events/${editingEvent.id}/cover-${Date.now()}.${file.name.split(".").pop()}`;
-    try {
-      const url = await uploadToStorage(file, path);
-      setImageIsAuto(false);
-      setEditingEvent(prev => prev ? { ...prev, image: url } : null);
-    } catch { toast.error("Image upload failed"); }
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

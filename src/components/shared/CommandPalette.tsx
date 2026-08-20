@@ -24,7 +24,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   const { theme, toggleTheme } = useTheme();
   const { trips } = useTrips();
   const { canInviteMembers, isOrgMember } = usePermissions();
-  const { currentOrg } = useOrg();
+  const { currentOrg: _currentOrg } = useOrg();
 
   useHotkeys(
     "meta+k,ctrl+k",

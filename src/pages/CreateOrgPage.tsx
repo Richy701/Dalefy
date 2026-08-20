@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import {
-  SpinnerGap, ArrowRight, Buildings, Upload, X, Palette, PaintBrush, Check,
+  SpinnerGap, ArrowRight, Upload, X, Palette, Check,
   Globe, MapPin, Calendar, AirplaneTilt,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -121,7 +121,7 @@ export function CreateOrgPage() {
 
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null);
   const [brandLogo, setBrandLogo] = useState("");
-  const [brandColor, setBrandColor] = useState(BRAND.accentColor);
+  const [brandColor, setBrandColor] = useState<string>(BRAND.accentColor);
   const [brandCompanyName, setBrandCompanyName] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingBrand, setSavingBrand] = useState(false);

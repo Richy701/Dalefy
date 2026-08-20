@@ -4,7 +4,6 @@ import { notifyLocalStorage } from "@/hooks/useLocalStorage";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
 import {
-  deriveAttendeesString,
   matchOrCreateTravelers,
   extractNamesFromAttendeesString,
 } from "@/lib/travelerSync";

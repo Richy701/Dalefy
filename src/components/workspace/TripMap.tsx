@@ -111,7 +111,6 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   const rafRef = useRef<number>(0);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   const { resolvedAccent } = usePreferences();
   const ACCENT = resolvedAccent;

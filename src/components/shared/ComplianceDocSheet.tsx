@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { FileText, FileDashed, FileX, SpinnerGap, CheckCircle, SealCheck, ArrowRight, Info } from "@phosphor-icons/react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { FileText, FileDashed, FileX, SpinnerGap, SealCheck, ArrowRight, Info } from "@phosphor-icons/react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  CalendarDots, MapPin, Users, AirplaneTilt, Bed, Compass, ForkKnife,
-  Clock, X, CurrencyDollar, Briefcase, Hash, ArrowRight, User,
-  Tag, FileText, Paperclip, Info,
+  CalendarDots, MapPin, Users, Compass,
+  Clock, X, CurrencyDollar, User,
+  Tag, Paperclip, Info,
 } from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -12,7 +12,7 @@ import { sortEvents } from "@/lib/sortEvents";
 import { cn } from "@/lib/utils";
 import { parseTripDate } from "@/lib/dates";
 import type { Trip, TravelEvent } from "@/types";
-import { EVENT_ICONS, EVENT_STYLES as EVENT_COLORS } from "@/config/eventStyles";
+import { EVENT_ICONS } from "@/config/eventStyles";
 import { Linkify } from "@/lib/linkify";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
 
@@ -23,7 +23,7 @@ interface ItineraryPreviewContentProps {
   staticMapUrl?: string | null;
 }
 
-export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl }: ItineraryPreviewContentProps) {
+export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPreviewContentProps) {
   const { brand } = useBrand();
   const grouped = useMemo(() => {
     const sorted = sortEvents(trip.events);

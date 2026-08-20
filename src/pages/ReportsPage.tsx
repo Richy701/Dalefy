@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { parseTripDate } from "@/lib/dates";
-import { AirplaneTilt, Bed, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download, TrendUp, MapPin, Lightning } from "@phosphor-icons/react";
+import { AirplaneTilt, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download } from "@phosphor-icons/react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";

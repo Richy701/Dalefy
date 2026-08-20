@@ -99,7 +99,7 @@ export async function searchHotels(
   q: string,
   check_in: string,
   check_out: string,
-  adults = 2
+  _adults = 2
 ): Promise<HotelResult[]> {
   // Booking.com API rejects past dates - use future stand-in dates for the search
   // while preserving the original dates for the event

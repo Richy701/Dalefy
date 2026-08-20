@@ -8,8 +8,6 @@ import {
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import type { Trip, TravelEvent, TripOrganizer, TripInfo } from "@/types";
 
-const MONO = "Menlo, Monaco, 'Courier New', monospace";
-
 const dark = {
   bg: "#09090b", card: "#141418", elevated: "#1c1c22",
   border: "rgba(255,255,255,0.10)",

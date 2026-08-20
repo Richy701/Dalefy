@@ -77,7 +77,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const [compactMode, setCompactMode] = useLocalStorage(STORAGE.COMPACT, false);
   const [toastsEnabled, setToastsEnabled] = useLocalStorage(STORAGE.TOASTS, true);
   const [soundEnabled, setSoundEnabled] = useLocalStorage(STORAGE.SOUND, false);
-  const [accentColor, setAccentColor] = useLocalStorage(STORAGE.ACCENT, BRAND.accentColor);
+  // BRAND.accentColor is a literal type, so the generic has to be widened or
+  // every later comparison against MONO_ACCENT is inferred as impossible.
+  const [accentColor, setAccentColor] = useLocalStorage<string>(STORAGE.ACCENT, BRAND.accentColor);
   const { brand } = useBrand();
   const { theme } = useTheme();
 

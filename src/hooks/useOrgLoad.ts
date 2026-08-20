@@ -64,7 +64,11 @@ export function useOrgLoad() {
 
         if (membershipsSnap.empty) { clear(); return; }
 
-        const memberships = membershipsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Spreading DocumentData loses its fields, so name the shape we read.
+        const memberships = membershipsSnap.docs.map(d => ({
+          id: d.id,
+          ...(d.data() as { organization_id: string; role: string }),
+        }));
 
         // Get preferred org from profile
         const profileSnap = await getDoc(doc(db, "profiles", user!.id));

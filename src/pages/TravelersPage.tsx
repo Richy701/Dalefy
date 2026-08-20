@@ -46,7 +46,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 }
 
 // One palette per status, shared meaning with ComplianceDocSheet: done / waiting / problem
-const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileCheck; bar: string }> = {
+const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: string; icon: typeof FileText; bar: string }> = {
   Signed: { color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", icon: FileText, bar: "bg-emerald-500" },
   Pending: { color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", icon: FileDashed, bar: "bg-amber-500" },
   Expired: { color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10", icon: FileX, bar: "bg-red-500" },

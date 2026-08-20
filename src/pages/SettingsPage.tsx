@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   User as UserIcon, Palette, Bell, Database, Keyboard,
-  Sun, Moon, Download, Trash, Lock, Buildings, Upload, Users, SpinnerGap,
+  Sun, Moon, Download, Trash, Lock, Buildings, Users, SpinnerGap,
 } from "@phosphor-icons/react";
 import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
-import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, collection, query, where, getDocs } from "firebase/firestore";
 import { changePassword } from "@/services/firebaseAuth";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
@@ -121,7 +121,7 @@ export function SettingsPage() {
   } = usePreferences();
   const { currentOrg, orgRole, tablesReady, isLoading: orgLoading, createOrg } = useOrg();
   const { brand, orgBranding, refreshBranding } = useBrand();
-  const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
+  const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [resetOpen, setResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);

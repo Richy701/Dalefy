@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Plus, MagnifyingGlass, AirplaneTilt, Calendar as LucideCalendar, Trash, ArrowUpRight,
-  DotsThreeVertical, GridFour, List, ArrowSquareOut, Users,
-  MapPin, CurrencyDollar, Briefcase, Bed, ForkKnife, Compass, Globe,
+  DotsThreeVertical, GridFour, List, Users,
+  MapPin, CurrencyDollar, Briefcase, Bed, Compass, Globe,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
   Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown
 } from "@phosphor-icons/react";
@@ -12,8 +12,6 @@ import { STORAGE } from "@/config/storageKeys";
 import { EVENT_ICONS } from "@/config/eventStyles";
 import NumberFlow from "@number-flow/react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer } from "vaul";
 import { Calendar } from "@/components/ui/calendar";
@@ -131,11 +129,11 @@ function buttonA11y(label: string, onActivate: () => void) {
 
 export function DashboardPage() {
   const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
-  const { theme } = useTheme();
+  useTheme();
   const { user } = useAuth();
-  const { showToast, addNotification } = useNotifications();
+  const { addNotification } = useNotifications();
   usePreferences();
-  const { canDeleteTrip, canEditTrips, isOrgMember, isViewer, canInviteMembers } = usePermissions();
+  const { canDeleteTrip, isOrgMember, isViewer, canInviteMembers } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
   const stats = useTripStats(trips);
@@ -972,7 +970,6 @@ export function DashboardPage() {
               {/* Spotlight trip - brand cinema card */}
               {spotlightTrip && (() => {
                 const days   = tripDuration(spotlightTrip.start, spotlightTrip.end);
-                const nights = Math.max(1, days - 1);
                 const agent  = spotlightTrip.attendees.split(",")[0]?.trim() || "Agent";
                 const pax    = spotlightTrip.paxCount || "-";
                 const dateRange = (() => {

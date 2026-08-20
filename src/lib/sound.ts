@@ -3,13 +3,20 @@ let ctx: AudioContext | null = null;
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!ctx) {
-    const w = window as unknown as Window & { webkitAudioContext?: typeof AudioContext };
+    // AudioContext is declared as a global, not as a property of the Window
+    // interface, so the intersection has to name both spellings itself.
+    const w = window as unknown as {
+      AudioContext?: typeof AudioContext;
+      webkitAudioContext?: typeof AudioContext;
+    };
     const AC = w.AudioContext ?? w.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
   }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
+  // Held in a local so narrowing survives; `ctx` is module-level state.
+  const active = ctx;
+  if (active.state === "suspended") active.resume().catch(() => {});
+  return active;
 }
 
 export function playChime(kind: "success" | "error" = "success") {

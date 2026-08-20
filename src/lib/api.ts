@@ -2,8 +2,10 @@ import { isFirebaseConfigured, firebaseAuth } from "@/services/firebase";
 
 /** Error thrown by apiFetch. `status` is the HTTP status, or 0 for network/timeout failures. */
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  status: number;
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
     this.name = "ApiError";
   }
 }
