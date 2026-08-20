@@ -303,7 +303,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-24">
+        <div className="px-4 lg:px-8 py-6 pb-12">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -321,7 +321,7 @@ export function SettingsPage() {
                 <p className="text-[11px] text-slate-500 dark:text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-brand mt-1">
+                <p className="text-[13px] font-medium text-brand mt-1">
                   {user?.role ?? ""}
                 </p>
               </div>
@@ -420,7 +420,7 @@ export function SettingsPage() {
                         {(brandName || BRAND.name).charAt(0)}
                       </div>
                     )}
-                    <label className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em] text-brand hover:opacity-80 transition-opacity">
+                    <label className="cursor-pointer text-[13px] font-medium text-brand hover:opacity-80 transition-opacity">
                       {uploadingLogo ? "Uploading..." : "Upload"}
                       <input
                         type="file"
@@ -432,7 +432,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
+                        className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -468,7 +468,7 @@ export function SettingsPage() {
                             navigator.clipboard.writeText(agencyCodeEdit);
                             toast.success("Copied! Share this with your travelers.");
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand/10 text-[11px] font-semibold uppercase tracking-[0.1em] text-brand hover:bg-brand/20 transition-colors"
+                          className="h-10 px-4 rounded-xl bg-brand/10 text-[13px] font-medium text-brand hover:bg-brand/20 transition-colors"
                         >
                           Copy
                         </button>
@@ -501,7 +501,7 @@ export function SettingsPage() {
                               setSavingAgencyCode(false);
                             }
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand text-[11px] font-semibold uppercase tracking-[0.1em] text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="h-10 px-4 rounded-xl bg-brand text-[13px] font-medium text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {savingAgencyCode ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </button>
@@ -675,7 +675,7 @@ export function SettingsPage() {
                     i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
                   }`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700 dark:text-foreground/80">
+                  <span className="text-[13px] font-medium text-slate-700 dark:text-foreground/80">
                     {s.label}
                   </span>
                   <div className="flex items-center gap-1">
@@ -694,7 +694,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">
+          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
