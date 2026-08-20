@@ -11,6 +11,7 @@ import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
 import { updateBranding, uploadLogo } from "@/services/firebaseBranding";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BRAND } from "@/config/brand";
@@ -65,7 +66,7 @@ function Row({
   return (
     <div className="flex items-center justify-between gap-4 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-900 dark:text-white">
           {label}
         </p>
         {value && (
@@ -86,7 +87,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
       aria-pressed={checked}
       role="switch"
       className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        checked ? "bg-brand" : "bg-slate-300 dark:bg-[#2a2a2a]"
+        checked ? "bg-brand" : "bg-slate-300 dark:bg-secondary"
       }`}
     >
       <span
@@ -294,7 +295,7 @@ export function SettingsPage() {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
               Settings
             </h1>
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground hidden md:inline">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground hidden md:inline">
               Preferences & Data
             </span>
           </div>
@@ -310,7 +311,7 @@ export function SettingsPage() {
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
             <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-5 flex items-center gap-4">
-              <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-black border border-brand/20 shrink-0">
+              <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-bold border border-brand/20 shrink-0">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
@@ -320,11 +321,11 @@ export function SettingsPage() {
                 <p className="text-[11px] text-slate-500 dark:text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-brand mt-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-brand mt-1">
                   {user?.role ?? ""}
                 </p>
               </div>
-              <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                 {user?.status ?? "Active"}
               </div>
@@ -343,7 +344,7 @@ export function SettingsPage() {
                 value={newPassword.length > 0 && newPassword.length < 6 ? "At least 6 characters" : "Update your sign-in password"}
                 action={
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       id="settings-new-password"
                       type="password"
                       aria-label="New password"
@@ -357,7 +358,7 @@ export function SettingsPage() {
                     <Button
                       onClick={handleChangePassword}
                       disabled={changingPassword || newPassword.length < 6}
-                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-3 disabled:opacity-40"
+                      className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-3 disabled:opacity-40"
                     >
                       {changingPassword ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Update"}
                     </Button>
@@ -375,18 +376,18 @@ export function SettingsPage() {
               description="Create your agency to unlock white-label branding on shared trips and PDFs."
             >
               <div className="flex items-center gap-3">
-                <input
+                <Input
                   type="text"
                   aria-label="Agency name"
                   value={newOrgName}
                   onChange={e => setNewOrgName(e.target.value)}
                   placeholder="Agency name"
-                  className="h-9 flex-1 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="flex-1"
                 />
                 <Button
                   onClick={handleCreateOrg}
                   disabled={creatingOrg || !newOrgName.trim()}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-4 disabled:opacity-40"
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-4 disabled:opacity-40"
                 >
                   {creatingOrg ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Create Agency"}
                 </Button>
@@ -415,11 +416,11 @@ export function SettingsPage() {
                     {brandLogo ? (
                       <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-slate-200 dark:border-border bg-white dark:bg-background p-0.5" />
                     ) : (
-                      <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-black text-white" style={{ background: brandColor }}>
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-bold text-white" style={{ background: brandColor }}>
                         {(brandName || BRAND.name).charAt(0)}
                       </div>
                     )}
-                    <label className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-brand hover:opacity-80 transition-opacity">
+                    <label className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.1em] text-brand hover:opacity-80 transition-opacity">
                       {uploadingLogo ? "Uploading..." : "Upload"}
                       <input
                         type="file"
@@ -431,7 +432,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
+                        className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -443,7 +444,7 @@ export function SettingsPage() {
               <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
-                    <label htmlFor="settings-agency-code" className="block text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white mb-0.5">
+                    <label htmlFor="settings-agency-code" className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-900 dark:text-white mb-0.5">
                       Agency Code
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
@@ -452,14 +453,14 @@ export function SettingsPage() {
                   </div>
                   <div className="flex flex-col sm:items-end gap-2 shrink-0">
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
                         id="settings-agency-code"
                         type="text"
                         value={agencyCodeEdit}
                         onChange={e => setAgencyCodeEdit(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                         placeholder={brandName ? brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) : "your-agency-code"}
                         maxLength={40}
-                        className="h-10 w-full sm:w-52 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-sm text-slate-900 dark:text-white font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                        className="w-full sm:w-52"
                       />
                       {agencyCodeEdit && agencyCodeEdit === currentOrg?.agencyCode ? (
                         <button
@@ -467,7 +468,7 @@ export function SettingsPage() {
                             navigator.clipboard.writeText(agencyCodeEdit);
                             toast.success("Copied! Share this with your travelers.");
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand/10 text-[10px] font-black uppercase tracking-wider text-brand hover:bg-brand/20 transition-colors"
+                          className="h-10 px-4 rounded-xl bg-brand/10 text-[11px] font-semibold uppercase tracking-[0.1em] text-brand hover:bg-brand/20 transition-colors"
                         >
                           Copy
                         </button>
@@ -500,7 +501,7 @@ export function SettingsPage() {
                               setSavingAgencyCode(false);
                             }
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand text-[10px] font-black uppercase tracking-wider text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="h-10 px-4 rounded-xl bg-brand text-[11px] font-semibold uppercase tracking-[0.1em] text-black hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {savingAgencyCode ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </button>
@@ -519,27 +520,27 @@ export function SettingsPage() {
                 label="Company Name"
                 value="Replaces platform name on shared pages"
                 action={
-                  <input
+                  <Input
                     type="text"
                     value={brandName}
                     onChange={e => setBrandName(e.target.value)}
                     placeholder={BRAND.name}
-                    className="h-9 w-48 rounded-xl bg-slate-50 dark:bg-background border border-slate-200 dark:border-border px-3 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    className="w-48"
                   />
                 }
               />
               {/* Preview + Save */}
               <div className="pt-3 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Preview</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Preview</p>
                 <div className="flex items-center gap-2.5">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
                   ) : (
-                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-black text-white" style={{ background: resolvedAccent }}>
+                    <div className="h-6 w-6 rounded flex items-center justify-center text-[9px] font-bold text-white" style={{ background: resolvedAccent }}>
                       {(brandName || BRAND.name).charAt(0)}
                     </div>
                   )}
-                  <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
+                  <span className="text-xs font-bold uppercase tracking-tight text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
                   <span className="text-[9px] text-slate-400 dark:text-muted-foreground">·</span>
                   <span className="text-[9px] font-bold text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
@@ -547,7 +548,7 @@ export function SettingsPage() {
                   <Button
                     onClick={handleSaveBranding}
                     disabled={savingBrand}
-                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-5 disabled:opacity-40"
+                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-5 disabled:opacity-40"
                   >
                     {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                   </Button>
@@ -582,7 +583,7 @@ export function SettingsPage() {
               action={
                 <button
                   onClick={toggleTheme}
-                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-[#2a2a2a] border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
+                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
@@ -632,7 +633,7 @@ export function SettingsPage() {
               action={
                 <Button
                   onClick={exportTrips}
-                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-black font-black uppercase tracking-wider text-[10px] px-3 gap-1.5"
+                  className="h-9 rounded-xl bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[10px] px-3 gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
@@ -650,7 +651,7 @@ export function SettingsPage() {
                 <Button
                   onClick={() => { if (!demoGate()) setResetOpen(true); }}
                   variant="ghost"
-                  className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-black uppercase tracking-wider text-[10px] px-3 gap-1.5"
+                  className="h-9 rounded-xl text-red-500 hover:text-red-400 hover:bg-red-500/10 font-semibold text-[10px] px-3 gap-1.5"
                 >
                   <Trash className="h-3.5 w-3.5" />
                   Reset
@@ -674,14 +675,14 @@ export function SettingsPage() {
                     i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
                   }`}
                 >
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-[#bbbbbb]">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700 dark:text-foreground/80">
                     {s.label}
                   </span>
                   <div className="flex items-center gap-1">
                     {s.keys.map((k, j) => (
                       <kbd
                         key={j}
-                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black text-slate-600 dark:text-muted-foreground flex items-center justify-center"
+                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-bold text-slate-600 dark:text-muted-foreground flex items-center justify-center"
                       >
                         {k}
                       </kbd>
@@ -693,7 +694,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
+          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
