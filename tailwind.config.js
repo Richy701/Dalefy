@@ -131,6 +131,9 @@ export default {
         sidebar: {
           DEFAULT: "hsl(var(--sidebar) / <alpha-value>)",
           foreground: "hsl(var(--sidebar-foreground) / <alpha-value>)",
+          // Secondary sidebar text. A real token rather than an opacity on
+          // the foreground, which could not pass AA in light mode.
+          "muted-foreground": "hsl(var(--sidebar-muted-foreground) / <alpha-value>)",
           accent: {
             DEFAULT: "hsl(var(--sidebar-accent))",
             foreground: "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",

@@ -40,7 +40,7 @@ export function NavMain() {
                 `}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className={`text-[11px] uppercase tracking-widest ${active ? "font-black" : "font-semibold"}`}>{label}</span>
+                <span className={`text-[11px] uppercase tracking-[0.14em] ${active ? "font-bold" : "font-semibold"}`}>{label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           );

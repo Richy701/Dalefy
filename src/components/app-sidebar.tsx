@@ -64,7 +64,7 @@ function SidebarExtras() {
       {/* ── Next Trip ── */}
       {upcomingTrip && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/50 px-2">
+          <SidebarGroupLabel className="text-[9px] font-bold uppercase tracking-[0.18em] text-sidebar-muted-foreground px-2">
             Next Trip
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -81,14 +81,14 @@ function SidebarExtras() {
                   />
                   <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
-                    <p className="text-[10px] font-black uppercase tracking-tight text-white truncate leading-none">
+                    <p className="text-[10px] font-bold uppercase tracking-tight text-white truncate leading-none">
                       {upcomingTrip.name}
                     </p>
                     <p className="text-[9px] font-bold text-white/50 truncate mt-0.5">
                       {upcomingTrip.destination}
                     </p>
                   </div>
-                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] font-black uppercase tracking-[0.2em] text-white">
+                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-bold uppercase tracking-[0.2em] text-white">
                     {daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `${daysUntil}d`}
                   </div>
                 </div>
@@ -101,7 +101,7 @@ function SidebarExtras() {
       {/* ── Recent Trips ── */}
       {recentTrips.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[9px] font-black uppercase tracking-[0.45em] text-sidebar-foreground/50 px-2">
+          <SidebarGroupLabel className="text-[9px] font-bold uppercase tracking-[0.18em] text-sidebar-muted-foreground px-2">
             Recent
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -125,8 +125,8 @@ function SidebarExtras() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold text-sidebar-foreground/65 truncate group-hover:text-brand transition-colors leading-none">{trip.name}</p>
-                      <p className="text-[8px] text-sidebar-foreground/35 truncate mt-0.5 leading-none">{trip.destination || trip.status}</p>
+                      <p className="text-[10px] font-semibold text-sidebar-foreground truncate group-hover:text-brand transition-colors leading-none">{trip.name}</p>
+                      <p className="text-[10px] text-sidebar-muted-foreground truncate mt-0.5 leading-none">{trip.destination || trip.status}</p>
                     </div>
                   </button>
                 );
@@ -202,14 +202,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap block truncate">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground whitespace-nowrap block truncate">
                     {currentOrg?.name ?? brand.name}
                   </span>
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 whitespace-nowrap block">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-muted-foreground whitespace-nowrap block">
                     {orgs.length} organizations
                   </span>
                 </div>
-                <CaretUpDown className="h-3.5 w-3.5 text-sidebar-foreground/40 shrink-0" />
+                <CaretUpDown className="h-3.5 w-3.5 text-sidebar-muted-foreground shrink-0" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
               {orgs.map(o => (
@@ -246,11 +246,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
               )}
               <div className="min-w-0">
-                <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground whitespace-nowrap block">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground whitespace-nowrap block">
                   {brand.name}
                 </span>
                 {currentOrg && currentOrg.name.toLowerCase() !== brand.name.toLowerCase() && (
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40 whitespace-nowrap block">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-muted-foreground whitespace-nowrap block">
                     {currentOrg.name}
                   </span>
                 )}

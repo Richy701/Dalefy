@@ -40,7 +40,7 @@ export function NavUser() {
               aria-label={`${displayName}, open settings`}
               title={collapsed ? `${displayName} · Settings` : undefined}
             >
-              <div className="h-8 w-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-[10px] font-black shrink-0 border border-brand/20">
+              <div className="h-8 w-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-[10px] font-bold shrink-0 border border-brand/20">
                 {initials}
               </div>
               {!collapsed && (

@@ -58,11 +58,14 @@
     --sand: 35.2 86.7% 32.4%; /* #9A5F0B */
     --sand-foreground: 0 0% 100%;
     /* Sidebar (light) */
-    --sidebar: 220 16% 96%;
-    --sidebar-foreground: 220 13% 22%;
+    /* Chrome sits just below the page so content surfaces read as raised.
+       Same 240-ish cool neutral as the rest of the ramp. */
+    --sidebar: 240 17.1% 92%; /* #E7E7EE */
+    --sidebar-foreground: 225 12.5% 18.8%; /* #2A2D36 — 11.2:1 */
+    --sidebar-muted-foreground: 225 8.5% 36.9%; /* #565A66 — 5.6:1 */
     --sidebar-accent: 171 85% 43% / 0.08;
-    --sidebar-accent-foreground: 220 13% 22%;
-    --sidebar-border: 220 13% 88%;
+    --sidebar-accent-foreground: 225 12.5% 18.8%;
+    --sidebar-border: 240 14.3% 86.3%; /* #D7D7E1 */
     --sidebar-ring: 171 85% 43%;
   }
 
@@ -93,11 +96,12 @@
     --sand: 35.5 79.1% 56.9%; /* #E8A13A — 8.10:1 on card */
     --sand-foreground: 36 62.5% 6.3%; /* #1A1206 */
     /* Sidebar (dark) */
-    --sidebar: 0 0% 3%; /* #080808 */
-    --sidebar-foreground: 0 0% 75%;
+    --sidebar: 220 13% 4.5%; /* #0A0B0D — just below the #0E0E10 page */
+    --sidebar-foreground: 226.7 8.6% 79.4%; /* #C6C8CF — 11.8:1 */
+    --sidebar-muted-foreground: 229.1 5.1% 57.8%; /* #8E9099 — 6.2:1 */
     --sidebar-accent: 171 85% 43% / 0.08;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 10%; /* #1a1a1a */
+    --sidebar-border: 231.4 9.9% 13.9%; /* #202127 */
     --sidebar-ring: 171 85% 43%;
   }
 }
