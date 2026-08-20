@@ -897,7 +897,7 @@ export function DashboardPage() {
                       >
                         <span className={cn(
                           "h-1.5 w-1.5 rounded-full shrink-0",
-                          item.severity === "warn" ? "bg-amber-500" : "bg-slate-400 dark:bg-[#555]"
+                          item.severity === "warn" ? "bg-amber-500" : "bg-slate-400 dark:bg-muted-foreground/60"
                         )} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{item.tripName}</p>
@@ -913,8 +913,12 @@ export function DashboardPage() {
               {/* At a Glance - stats card */}
               <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                 <div className="px-5 pt-5 pb-3">
-                  <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Your travel snapshot</p>
+                  <p className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
+                    {stats.pipeline.total === 0
+                      ? "No trips yet"
+                      : `Across ${stats.pipeline.total} trip${stats.pipeline.total === 1 ? "" : "s"}`}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 px-3 pb-2">
@@ -930,9 +934,9 @@ export function DashboardPage() {
                     >
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">{label}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground">{label}</span>
                       </div>
-                      <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums">
+                      <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">
                         <NumberFlow value={value} />
                       </p>
                     </div>
@@ -940,21 +944,23 @@ export function DashboardPage() {
                 </div>
 
                 <div className="px-5 pb-5 pt-2 space-y-2.5">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
                   {[
                     { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
-                    { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-[#333]" },
+                    { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-muted-foreground/40" },
                     { label: "Active", count: trips.filter(t => t.status === "In Progress" || (parseTripDate(t.start) <= new Date() && parseTripDate(t.end) >= new Date())).length, color: "bg-emerald-500" },
                   ].map(({ label, count, color }) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground w-[60px] shrink-0">{label}</span>
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground w-[60px] shrink-0">{label}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-secondary overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all duration-700 ease-out", color)}
-                          style={{ width: stats.pipeline.total > 0 ? `${Math.max(6, (count / stats.pipeline.total) * 100)}%` : "0%" }}
+                          // A zero count must render nothing; the 6% floor only keeps
+                          // a non-zero sliver visible.
+                          style={{ width: count > 0 && stats.pipeline.total > 0 ? `${Math.max(6, (count / stats.pipeline.total) * 100)}%` : "0%" }}
                         />
                       </div>
-                      <span className="text-[10px] font-black text-slate-900 dark:text-white w-5 text-right tabular-nums">{count}</span>
+                      <span className="text-[11px] font-semibold text-slate-900 dark:text-white w-5 text-right tabular-nums">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -973,7 +979,7 @@ export function DashboardPage() {
                   return `${s.toLocaleDateString("en-US", opts)} - ${e.toLocaleDateString("en-US", opts)}`;
                 })();
                 const statusStyle =
-                  spotlightTrip.status === "Published"  ? "bg-brand text-[#050505]"
+                  spotlightTrip.status === "Published"  ? "bg-brand text-primary-foreground"
                   : spotlightTrip.status === "In Progress" ? "bg-white/15 text-white backdrop-blur border border-brand/40"
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
@@ -987,8 +993,8 @@ export function DashboardPage() {
 
                       {/* Status + eyebrow */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                        <span className="text-[9px] font-bold tracking-[0.22em] text-brand uppercase">
-                          Dalefy · Spotlight
+                        <span className="text-[10px] font-semibold tracking-[0.14em] text-brand uppercase">
+                          Spotlight
                         </span>
                         <span className={cn(
                           "px-2.5 py-1 rounded-lg text-[9px] font-bold tracking-[0.12em] uppercase inline-flex items-center gap-1",
@@ -1012,7 +1018,7 @@ export function DashboardPage() {
                         {spotlightTrip.destination ? (
                           <div className="flex items-center gap-1.5 mt-2">
                             <MapPin className="h-3 w-3 text-brand" strokeWidth={2.2} />
-                            <span className="text-[11px] font-bold tracking-wide text-white/90 uppercase">
+                            <span className="text-[12px] font-medium text-white/90">
                               {spotlightTrip.destination}
                             </span>
                           </div>
@@ -1023,12 +1029,12 @@ export function DashboardPage() {
                     {/* Agent + date range */}
                     <div className="flex items-center justify-between px-5 pt-4">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-brand/15 text-brand flex items-center justify-center text-[10px] font-black">
+                        <div className="h-6 w-6 rounded-full bg-brand/15 text-brand flex items-center justify-center text-[10px] font-semibold">
                           {agent.split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase()}
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-700 dark:text-foreground/80">{agent}</span>
+                        <span className="text-[12px] font-medium text-slate-700 dark:text-foreground/80">{agent}</span>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                      <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground tabular-nums">
                         {dateRange}
                       </span>
                     </div>
@@ -1045,11 +1051,11 @@ export function DashboardPage() {
                         >
                           <div className="flex items-center gap-1.5 mb-1">
                             <Icon className="h-3 w-3 text-brand" weight="regular" />
-                            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground">
                               {label}
                             </span>
                           </div>
-                          <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                          <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">
                             {value}
                           </p>
                         </div>
@@ -1060,9 +1066,9 @@ export function DashboardPage() {
                     <div className="px-4 pb-4">
                       <button
                         onClick={() => handleOpenTrip(spotlightTrip)}
-                        className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-[#050505] font-bold text-xs uppercase tracking-[0.12em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
+                        className="w-full h-10 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
                       >
-                        Open Itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
+                        Open itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
                       </button>
                     </div>
                   </div>
