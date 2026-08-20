@@ -298,11 +298,9 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             <div>
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground mb-2 block">Template</label>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-foreground/80 cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
+                <DropdownMenuTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-foreground/80 cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
                     {template.label}
                     <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
-                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="min-w-[200px] rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-xl">
                   {EMAIL_TEMPLATES.map(t => (

@@ -259,7 +259,7 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
 function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; forPrint?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} weight="regular" />
+      <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} />
       <div className="min-w-0">
         <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")}>{label}</p>
         <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-slate-700" : "text-slate-700 dark:text-foreground/80")}>{value}</p>
@@ -278,7 +278,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
       <div className="flex items-start gap-3 flex-1 min-w-0">
         {/* Icon */}
         <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center shrink-0", forPrint ? "bg-slate-100" : "bg-slate-100 dark:bg-secondary")}>
-          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} weight="regular" />
+          <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", forPrint ? "text-slate-500" : "text-slate-500 dark:text-muted-foreground")} />
         </div>
 
         {/* Details */}

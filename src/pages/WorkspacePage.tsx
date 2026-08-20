@@ -1149,8 +1149,7 @@ export function WorkspacePage() {
           <div className="hidden sm:flex items-center -space-x-2 mr-2">
             {presenceUsers.slice(0, 5).map((p) => (
               <Tooltip key={p.userId}>
-                <TooltipTrigger asChild>
-                  <div className="relative">
+                <TooltipTrigger render={<div className="relative" />}>
                     {p.avatar ? (
                       <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full border-2 border-white dark:border-card object-cover" />
                     ) : (
@@ -1159,7 +1158,6 @@ export function WorkspacePage() {
                       </div>
                     )}
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-card" />
-                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
                   <span className="font-bold">{p.name || "Team member"}</span>
@@ -2309,7 +2307,7 @@ export function WorkspacePage() {
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
                                 <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
-                                <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
+                                <Input value={((editingEvent as unknown as Record<string, string | undefined>)[f.key] ?? "") || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
@@ -2328,7 +2326,7 @@ export function WorkspacePage() {
                         ) : (
                           <>
                             {[{ key: "checkin", label: "Check-in" }, { key: "checkout", label: "Check-out" }].map(f => {
-                              const val = (editingEvent as Record<string, string>)[f.key] || "";
+                              const val = ((editingEvent as unknown as Record<string, string | undefined>)[f.key] ?? "") || "";
                               const parsed = val ? (() => { try { return parseISO(val); } catch { return null; } })() : null;
                               const isValid = parsed && !isNaN(parsed.getTime());
                               return (

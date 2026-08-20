@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Terminal, Door, Info, FileText, Paperclip } from "@phosphor-icons/react";
+import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Door, Info, FileText, Paperclip } from "@phosphor-icons/react";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";

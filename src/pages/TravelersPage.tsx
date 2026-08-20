@@ -568,12 +568,6 @@ export function TravelersPage() {
     },
   });
 
-  const filteredAllDocs = useMemo(() => allDocs.filter(d => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return d.userName.toLowerCase().includes(q) || d.doc.name.toLowerCase().includes(q);
-  }), [allDocs, search]);
-
   const filteredGroupedDocs = useMemo(() => {
     if (!search) return groupedDocs;
     const q = search.toLowerCase();

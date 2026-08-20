@@ -36,12 +36,6 @@ import type { TripMedia } from "@/types";
 type FilteredItem = TripMedia & { tripId: string; tripName: string; tripImage: string };
 type MediaFilter = "all" | "image" | "video";
 
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
