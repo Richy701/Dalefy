@@ -45,7 +45,7 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
       id={id}
       className={cn(
         "bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden scroll-mt-20 break-inside-avoid mb-5",
-        wide && "lg:col-span-2",
+        wide && "lg:[column-span:all]",
       )}
     >
       <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -311,7 +311,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5">
+        <div className="px-4 lg:px-8 py-6 pb-12 lg:columns-2 lg:gap-x-5">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -704,7 +704,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="lg:col-span-2 border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
+          <div className="lg:[column-span:all] border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
