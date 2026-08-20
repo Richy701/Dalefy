@@ -67,7 +67,7 @@ export default async function handler(req: any, res: any) {
     const places = data.places ?? [];
 
     const photoUrl = (photoName: string) =>
-      `/api/image-proxy?url=${encodeURIComponent(`https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=600&key=${key}`)}`;
+      `/api/image-proxy?photo=${encodeURIComponent(photoName)}`;
 
     if (type === "activities") {
       const activities = places.map((a: any) => ({

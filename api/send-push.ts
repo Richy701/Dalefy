@@ -1,5 +1,6 @@
 import { listCollection, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
+import { rateLimit } from "./_rateLimit.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -10,6 +11,8 @@ export default async function handler(req: any, res: any) {
   const token = auth.replace("Bearer ", "");
   const payload = await verifyFirebaseToken(token);
   if (!payload) return res.status(401).json({ error: "Unauthorized" });
+
+  if (!rateLimit(req, res, { bucket: "send-push", limit: 30, windowMs: 60_000 })) return;
 
   const { deviceId, title, body } = req.body ?? {};
   if (!deviceId || !title || !body) {

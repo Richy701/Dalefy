@@ -1,6 +1,7 @@
 import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
+import { isCronRequest } from "./_cronAuth.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on today's flights,
@@ -10,8 +11,7 @@ import { airportTz } from "./_airportTz.js";
  */
 export default async function handler(req: any, res: any) {
   // Verify cron secret to prevent unauthorized calls
-  const authHeader = req.headers["authorization"];
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronRequest(req)) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -252,19 +252,41 @@ function detectChanges(stored: any, live: LiveFlightData): string[] {
 // ── Push notifications ─────────────────────────────────────────────────────
 
 async function sendFlightNotifications(updates: FlightUpdate[]) {
-  // Get push tokens from Firestore
-  let tokens: string[] = [];
+  // Resolve push tokens per trip: trip_members maps trip_id → device_id,
+  // push_tokens maps device_id → token. Only that trip's members get notified.
+  let memberDocs: FirestoreDoc[] = [];
+  let tokenDocs: FirestoreDoc[] = [];
   try {
-    const tokenDocs = await listCollection("push_tokens");
-    tokens = tokenDocs
-      .map(d => decodeValue(d.fields?.token))
-      .filter((t): t is string => !!t);
+    [memberDocs, tokenDocs] = await Promise.all([
+      listCollection("trip_members"),
+      listCollection("push_tokens"),
+    ]);
   } catch {
     return;
   }
-  if (tokens.length === 0) return;
+
+  const tokenByDevice = new Map<string, string>();
+  for (const d of tokenDocs) {
+    const deviceId = decodeValue(d.fields?.device_id);
+    const token = decodeValue(d.fields?.token);
+    if (deviceId && token) tokenByDevice.set(deviceId, token);
+  }
+
+  const tokensByTrip = new Map<string, string[]>();
+  for (const m of memberDocs) {
+    const tripId = decodeValue(m.fields?.trip_id);
+    const deviceId = decodeValue(m.fields?.device_id);
+    const token = deviceId ? tokenByDevice.get(deviceId) : undefined;
+    if (!tripId || !token) continue;
+    const list = tokensByTrip.get(tripId) ?? [];
+    if (!list.includes(token)) list.push(token);
+    tokensByTrip.set(tripId, list);
+  }
 
   for (const update of updates) {
+    const tokens = tokensByTrip.get(update.tripId) ?? [];
+    if (tokens.length === 0) continue;
+
     const title = `Flight ${update.flightNum} Update`;
     const body = update.changes.join(" · ");
 

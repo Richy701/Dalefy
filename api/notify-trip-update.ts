@@ -9,8 +9,9 @@
  * Body: { tripId, tripName, changes: string[] }
  */
 
-import { listCollection, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { listCollection, getDocument, decodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
+import { rateLimit } from "./_rateLimit.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -24,12 +25,28 @@ export default async function handler(req: any, res: any) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  if (!rateLimit(req, res, { bucket: "notify-trip-update", limit: 30, windowMs: 60_000 })) return;
+
   const { tripId, tripName, changes, excludeDeviceId } = req.body ?? {};
   if (!tripId || !tripName || !Array.isArray(changes) || !changes.length) {
     return res.status(400).json({ error: "tripId, tripName, and changes[] required" });
   }
 
   try {
+    // Caller must own the trip or belong to the trip's organization —
+    // otherwise any signed-in user could push messages to any trip's members.
+    const trip = await getDocument("trips", String(tripId)).catch(() => null);
+    if (!trip) return res.status(404).json({ error: "Trip not found" });
+    const tripFields = trip.fields ?? {};
+    const ownerId = decodeValue(tripFields.user_id);
+    const orgId = decodeValue(tripFields.organization_id);
+    let allowed = !!payload.sub && payload.sub === ownerId;
+    if (!allowed && orgId && payload.sub) {
+      const member = await getDocument("org_members", `${payload.sub}_${orgId}`).catch(() => null);
+      allowed = !!member;
+    }
+    if (!allowed) return res.status(403).json({ error: "Not authorized for this trip" });
+
     // 1. Get all trip members for this trip
     const allMembers = await listCollection("trip_members");
     const memberDeviceIds = new Set<string>();

@@ -6,6 +6,9 @@ export default async function handler(req: any, res: any) {
   const { q, proximity } = req.query as Record<string, string>;
 
   if (!q) return res.status(400).json({ error: "Missing param: q" });
+  if (proximity && !/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/.test(proximity)) {
+    return res.status(400).json({ error: "Invalid proximity — expected lng,lat" });
+  }
 
   const token = process.env.MAPBOX_TOKEN;
   if (!token) return res.status(500).json({ error: "MAPBOX_TOKEN not configured" });
@@ -13,7 +16,7 @@ export default async function handler(req: any, res: any) {
   try {
     const encoded = encodeURIComponent(q);
     let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&limit=1`;
-    if (proximity) url += `&proximity=${proximity}`;
+    if (proximity) url += `&proximity=${encodeURIComponent(proximity)}`;
     const resp = await fetch(url);
     if (!resp.ok) return res.status(resp.status).json({ error: "Mapbox error" });
 

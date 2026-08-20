@@ -1,10 +1,12 @@
 import { verifyFirebaseToken } from "./_verifyToken.js";
+import { isCronRequest } from "./_cronAuth.js";
+import { rateLimit } from "./_rateLimit.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const auth = req.headers["authorization"] ?? "";
-  const cronOk = auth === `Bearer ${process.env.CRON_SECRET}`;
+  const cronOk = isCronRequest(req);
 
   if (!cronOk) {
     const token = auth.replace("Bearer ", "");
@@ -12,6 +14,7 @@ export default async function handler(req: any, res: any) {
     if (!payload) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+    if (!rateLimit(req, res, { bucket: "push", limit: 20, windowMs: 60_000 })) return;
   }
 
   const { tokens, title, body, data } = req.body ?? {};
