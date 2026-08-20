@@ -26,7 +26,8 @@ import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
-import { isFirebaseConfigured, firebaseAuth } from "@/services/firebase";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { apiFetch, ApiError, getIdToken } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useDemo } from "@/hooks/useDemo";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -1686,18 +1687,17 @@ export function TravelersPage() {
                               e.preventDefault();
                               setSendingPush(true);
                               try {
-                                const idToken = await firebaseAuth().currentUser?.getIdToken();
+                                const idToken = await getIdToken();
                                 if (!idToken) throw new Error("Not authenticated");
-                                const resp = await fetch("/api/send-push", {
+                                const data = await apiFetch<{ sent?: boolean; reason?: string }>("/api/send-push", {
                                   method: "POST",
-                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-                                  body: JSON.stringify({ deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() }),
+                                  auth: idToken,
+                                  body: { deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() },
                                 });
-                                const data = await resp.json();
                                 if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
                                 else showToast(data.reason || "No push token found for this user");
-                              } catch {
-                                showToast("Failed to send notification");
+                              } catch (err) {
+                                showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
                               }
                               setSendingPush(false);
                               setPushMessage("");
@@ -1710,18 +1710,17 @@ export function TravelersPage() {
                             if (!pushMessage.trim()) return;
                             setSendingPush(true);
                             try {
-                              const idToken = await firebaseAuth().currentUser?.getIdToken();
+                              const idToken = await getIdToken();
                               if (!idToken) throw new Error("Not authenticated");
-                              const resp = await fetch("/api/send-push", {
+                              const data = await apiFetch<{ sent?: boolean; reason?: string }>("/api/send-push", {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-                                body: JSON.stringify({ deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() }),
+                                auth: idToken,
+                                body: { deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() },
                               });
-                              const data = await resp.json();
                               if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
                               else showToast(data.reason || "No push token found for this user");
-                            } catch {
-                              showToast("Failed to send notification");
+                            } catch (err) {
+                              showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
                             }
                             setSendingPush(false);
                             setPushMessage("");

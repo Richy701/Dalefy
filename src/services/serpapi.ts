@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/api";
+
 export interface FlightResult {
   airline: string;
   flightNum: string;
@@ -43,9 +45,7 @@ export async function searchFlights(
   adults = 1
 ): Promise<FlightResult[]> {
   const params = new URLSearchParams({ from, to, date, adults: String(adults) });
-  const res = await fetch(`/api/flights?${params}`);
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flights?${params}`);
   return data.flights ?? [];
 }
 
@@ -54,9 +54,7 @@ export async function lookupFlight(
   date: string
 ): Promise<FlightResult[]> {
   const params = new URLSearchParams({ number: flightNum.replace(/\s+/g, ""), date });
-  const res = await fetch(`/api/flight-number?${params}`);
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await apiFetch<{ flights?: FlightResult[] }>(`/api/flight-number?${params}`);
   return data.flights ?? [];
 }
 
@@ -85,9 +83,7 @@ export async function searchActivities(
   q: string
 ): Promise<ActivityResult[]> {
   const params = new URLSearchParams({ type: "activities", q });
-  const res = await fetch(`/api/places?${params}`);
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await apiFetch<{ activities?: ActivityResult[] }>(`/api/places?${params}`);
   return data.activities ?? [];
 }
 
@@ -95,9 +91,7 @@ export async function searchDining(
   q: string
 ): Promise<DiningResult[]> {
   const params = new URLSearchParams({ type: "dining", q });
-  const res = await fetch(`/api/places?${params}`);
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await apiFetch<{ restaurants?: DiningResult[] }>(`/api/places?${params}`);
   return data.restaurants ?? [];
 }
 
@@ -123,8 +117,6 @@ export async function searchHotels(
     apiCheckOut = futureOut.toISOString().slice(0, 10);
   }
   const params = new URLSearchParams({ type: "hotels", q, check_in: apiCheckIn, check_out: apiCheckOut });
-  const res = await fetch(`/api/places?${params}`);
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await apiFetch<{ hotels?: HotelResult[] }>(`/api/places?${params}`);
   return data.hotels ?? [];
 }

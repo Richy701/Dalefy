@@ -1,3 +1,4 @@
+import { apiFetch, ApiError } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 export type ImageSource = "google" | "unsplash" | "pexels" | "local" | null;
@@ -17,18 +18,17 @@ export async function searchImages(query: string, page = 1, perPage = 9, preferr
       per_page: String(perPage),
     });
     if (preferredSource) params.set("source", preferredSource);
-    const res = await fetch(`/api/images?${params}`);
-    if (!res.ok) {
-      logger.warn("ImageSearch", `${res.status} ${res.statusText}`);
-      return { urls: [], source: null };
-    }
-    const data = await res.json();
+    const data = await apiFetch<{ urls?: string[]; source?: ImageSource }>(`/api/images?${params}`);
     return {
       urls: data.urls ?? [],
       source: data.source as ImageSource,
     };
   } catch (e) {
-    logger.warn("ImageSearch", "fetch failed:", e);
+    if (e instanceof ApiError && e.status !== 0) {
+      logger.warn("ImageSearch", `${e.status} ${e.message}`);
+    } else {
+      logger.warn("ImageSearch", "fetch failed:", e);
+    }
     return { urls: [], source: null };
   }
 }

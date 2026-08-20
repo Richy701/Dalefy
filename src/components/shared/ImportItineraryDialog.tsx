@@ -1353,12 +1353,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     }
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch { /* quota */ }
 
-    // Enrich flight events with live data (times, terminals, airline)
+    // Enrich flight events with live data (times, terminals, airline). Throttle to 3 concurrent.
     const FLIGHT_NUM_RE = /\b([A-Z]{2})\s*(\d{2,4})\b/;
-    for (const ev of events) {
-      if (ev.type !== "flight") continue;
+    const enrichFlight = async (ev: TravelEvent): Promise<void> => {
       const match = ev.title.match(FLIGHT_NUM_RE) || ev.flightNum?.match(FLIGHT_NUM_RE);
-      if (!match) continue;
+      if (!match) return;
       const num = `${match[1]}${match[2]}`;
       try {
         const results = await lookupFlight(num, ev.date);
@@ -1380,17 +1379,20 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           logger.log("Import", "enriched flight:", num, "→", f.departTime, f.terminal);
         }
       } catch { /* flight lookup failed, keep parsed data */ }
+    };
+    const flightEvents = events.filter(ev => ev.type === "flight");
+    for (let i = 0; i < flightEvents.length; i += CONCURRENCY) {
+      await Promise.all(flightEvents.slice(i, i + CONCURRENCY).map(enrichFlight));
     }
 
-    // Enrich hotel events with Google Places data (correct name, address, image)
+    // Enrich hotel events with Google Places data (correct name, address, image). Throttle to 3 concurrent.
     const destination = parsed.destination || "";
-    for (const ev of events) {
-      if (ev.type !== "hotel") continue;
+    const enrichHotel = async (ev: TravelEvent): Promise<void> => {
       const hotelQuery = ev.title + (destination ? ` hotel ${destination}` : " hotel");
       try {
         const params = new URLSearchParams({ type: "hotels", q: hotelQuery, check_in: parsed.start || "2026-01-01", check_out: parsed.end || "2026-01-02" });
         const resp = await fetch("/api/places?" + params);
-        if (!resp.ok) continue;
+        if (!resp.ok) return;
         const data = await resp.json();
         const match = (data.hotels ?? [])[0];
         if (match && match.name) {
@@ -1400,6 +1402,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           logger.log("Import", "enriched hotel:", hotelQuery, "→", match.name);
         }
       } catch { /* hotel lookup failed, keep parsed data */ }
+    };
+    const hotelEvents = events.filter(ev => ev.type === "hotel");
+    for (let i = 0; i < hotelEvents.length; i += CONCURRENCY) {
+      await Promise.all(hotelEvents.slice(i, i + CONCURRENCY).map(enrichHotel));
     }
 
     // Geocode event locations and store coords (biased toward trip destination)

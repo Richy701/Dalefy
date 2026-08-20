@@ -1,5 +1,6 @@
 import { LOCATION_COORDS } from "@/data/coordinates";
 import { STORAGE } from "@/config/storageKeys";
+import { apiFetch } from "@/lib/api";
 
 const CACHE_KEY = STORAGE.GEOCODE_CACHE;
 
@@ -43,9 +44,7 @@ export async function geocode(location: string, proximity?: Coord): Promise<Coor
       const q = encodeURIComponent(key);
       let url = `/api/geocode?q=${q}`;
       if (proximity) url += `&proximity=${proximity[1]},${proximity[0]}`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const data = await res.json();
+      const data = await apiFetch<{ coord?: Coord }>(url);
       if (!data.coord) return null;
       const coord: Coord = data.coord;
       memCache[cacheKey] = coord;

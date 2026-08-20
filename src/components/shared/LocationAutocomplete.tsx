@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { MapPin, SpinnerGap } from "@phosphor-icons/react";
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
-
 interface Suggestion {
   place_name: string;
   text: string;
@@ -35,21 +33,18 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
 
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.trim().length < 3) { setSuggestions([]); setStatus("idle"); return; }
-    if (!MAPBOX_TOKEN) { setStatus("error"); return; }
     const reqId = ++requestRef.current;
     setStatus("loading");
     setOpen(true);
     try {
-      const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=5&types=place,locality,neighborhood,address,poi`
-      );
+      const res = await fetch(`/api/geocode?mode=suggest&q=${encodeURIComponent(query)}`);
       if (reqId !== requestRef.current) return; // stale
       if (!res.ok) throw new Error(String(res.status));
       const json = await res.json();
-      const list: Suggestion[] = json.features?.map((f: { place_name: string; text: string; center: [number, number] }) => ({
-        place_name: f.place_name,
-        text: f.text,
-        center: f.center,
+      const list: Suggestion[] = json.suggestions?.map((s: { name: string; center: [number, number] }) => ({
+        place_name: s.name,
+        text: s.name.split(",")[0].trim() || s.name,
+        center: s.center,
       })) ?? [];
       setSuggestions(list);
       setActiveIndex(-1);

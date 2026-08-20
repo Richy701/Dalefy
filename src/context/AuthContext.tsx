@@ -3,6 +3,7 @@ import type { User } from "@/types";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { initialsFrom } from "@/lib/names";
 import { STORAGE } from "@/config/storageKeys";
+import { apiFetch } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 /** Wrapper around setUser that logs every state change */
@@ -56,9 +57,8 @@ async function completeInviteLink(): Promise<boolean> {
   let email = getPendingInviteEmail() ?? "";
   if (token && /^[0-9a-f-]{36}$/i.test(token)) {
     try {
-      const r = await fetch(`/api/invite-preview?token=${encodeURIComponent(token)}`);
-      const data = await r.json().catch(() => ({}));
-      if (r.ok && typeof data.email === "string") email = data.email;
+      const data = await apiFetch<{ email?: unknown }>(`/api/invite-preview?token=${encodeURIComponent(token)}`);
+      if (typeof data.email === "string") email = data.email;
     } catch { /* fall back to stored email */ }
   }
   if (!email) {

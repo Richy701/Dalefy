@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useOrg } from "@/context/OrgContext";
 import { acceptInvite, getInvitePreview } from "@/services/invites";
+import { apiFetch, ApiError } from "@/lib/api";
 import { setPendingInvite, clearPendingInvite } from "@/lib/pendingInvite";
 import { Logo } from "@/components/shared/Logo";
 
@@ -59,11 +60,9 @@ export function AcceptInvitePage() {
     let cancelled = false;
 
     if (!isAuthenticated) {
-      fetch(`/api/invite-preview?token=${encodeURIComponent(token)}`)
-        .then(async r => {
-          const data = await r.json().catch(() => ({}));
+      apiFetch<Preview & { status?: string }>(`/api/invite-preview?token=${encodeURIComponent(token)}`)
+        .then(data => {
           if (cancelled) return;
-          if (!r.ok) { fail(data.error || "Invite not found"); return; }
           if (data.status !== "pending") {
             fail(data.status === "expired" ? "This invitation has expired. Ask your team to send a new one." : "This invite has already been used or was revoked.");
             return;
@@ -72,7 +71,14 @@ export function AcceptInvitePage() {
           setPendingInvite(token, data.email);
           setStatus("preview");
         })
-        .catch(() => { if (!cancelled) fail("Couldn't load this invite. Check your connection and try again."); });
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          if (err instanceof ApiError && err.status !== 0) {
+            fail(/^Request failed \(\d+\)$/.test(err.message) ? "Invite not found" : err.message);
+          } else {
+            fail("Couldn't load this invite. Check your connection and try again.");
+          }
+        });
       return () => { cancelled = true; };
     }
 

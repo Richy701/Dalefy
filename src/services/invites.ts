@@ -1,6 +1,7 @@
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { firebaseDb, firebaseAuth } from "./firebase";
 import { sendInviteSignInLink } from "./firebaseAuth";
+import { apiFetch, ApiError, getIdToken } from "@/lib/api";
 import type { OrgRole } from "@/types";
 
 export interface OrgInvite {
@@ -31,23 +32,15 @@ export interface SendInviteResult {
 }
 
 async function postInvite(body: Record<string, unknown>): Promise<SendInviteResult> {
-  const idToken = await firebaseAuth().currentUser?.getIdToken().catch(() => null);
+  const idToken = await getIdToken();
   if (!idToken) return { ok: false, error: "Not authenticated" };
 
-  let res: Response;
   try {
-    res = await fetch("/api/send-invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify(body),
-    });
-  } catch {
+    return await apiFetch<SendInviteResult>("/api/send-invite", { method: "POST", body, auth: idToken });
+  } catch (e) {
+    if (e instanceof ApiError && e.status !== 0) return { ok: false, error: e.message };
     return { ok: false, error: "Network error, please try again" };
   }
-
-  const data = await res.json().catch(() => ({})) as SendInviteResult;
-  if (!res.ok) return { ok: false, error: data.error || `Request failed (${res.status})` };
-  return data;
 }
 
 /** Where the Firebase sign-in link lands: the app root with the invite token as a query param.

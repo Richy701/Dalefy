@@ -9,6 +9,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { resolveCoords } from "@/data/coordinates";
+import { geocode } from "@/services/geocode";
 import { sortEvents } from "@/lib/sortEvents";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
@@ -25,30 +26,32 @@ interface Destination {
   types: { flights: number; hotels: number; activities: number; dining: number; transfers: number };
 }
 
-// Cache geocoded coordinates in memory so we don't re-fetch on every render
 type GeoHit = { center: [number, number] | null; country: string | null };
-const geocodeCache: Record<string, GeoHit> = {};
+
+// The geocode service caches coordinates (memory + localStorage), but the country
+// still needs its own in-memory cache so we don't re-hit the suggest endpoint.
+const countryCache: Record<string, string | null> = {};
+
+async function lookupCountry(name: string): Promise<string | null> {
+  if (name in countryCache) return countryCache[name];
+  try {
+    const res = await fetch(`/api/geocode?mode=suggest&q=${encodeURIComponent(name)}`);
+    if (!res.ok) { countryCache[name] = null; return null; }
+    const json = await res.json();
+    // Suggestion names are full place names ("Nairobi, Nairobi County, Kenya");
+    // the last comma segment is the country. A country result is just "Kenya".
+    const full: string | undefined = json.suggestions?.[0]?.name;
+    countryCache[name] = full ? (full.split(",").pop()?.trim() || null) : null;
+  } catch {
+    countryCache[name] = null;
+  }
+  return countryCache[name];
+}
 
 async function geocodeDestination(name: string): Promise<GeoHit> {
-  if (name in geocodeCache) return geocodeCache[name];
-  if (!MAPBOX_TOKEN) { geocodeCache[name] = { center: null, country: null }; return geocodeCache[name]; }
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json?access_token=${MAPBOX_TOKEN}&limit=1&types=country,region,place,locality,poi`
-    );
-    const json = await res.json();
-    const feature = json.features?.[0];
-    const center = (feature?.center as [number, number] | undefined) ?? null;
-    // A country result has no country in context; it IS the country.
-    const country: string | null = feature?.place_type?.includes("country")
-      ? feature.text
-      : (feature?.context?.find((c: { id: string }) => c.id.startsWith("country"))?.text ?? null);
-    geocodeCache[name] = { center, country };
-    return geocodeCache[name];
-  } catch {
-    geocodeCache[name] = { center: null, country: null };
-    return geocodeCache[name];
-  }
+  const [coord, country] = await Promise.all([geocode(name), lookupCountry(name)]);
+  // geocode returns [lat, lng]; Mapbox markers want [lng, lat]
+  return { center: coord ? [coord[1], coord[0]] : null, country };
 }
 
 export function DestinationsPage() {
