@@ -311,7 +311,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5 items-start">
+        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -679,13 +679,11 @@ export function SettingsPage() {
             title="Shortcuts"
             description="Keyboard shortcuts work anywhere in the app. Press ⌘K to open the command palette."
           >
-            <div className="overflow-hidden">
-              {SHORTCUTS.map((s, i) => (
+            <div className="px-5 py-3 grid sm:grid-cols-2 gap-x-6">
+              {SHORTCUTS.map((s) => (
                 <div
                   key={s.label}
-                  className={`flex items-center justify-between px-4 py-3 ${
-                    i !== SHORTCUTS.length - 1 ? "border-b border-slate-100 dark:border-border" : ""
-                  }`}
+                  className="flex items-center justify-between gap-3 py-2"
                 >
                   <span className="text-[13px] font-medium text-slate-700 dark:text-foreground/80">
                     {s.label}
