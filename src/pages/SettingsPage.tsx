@@ -303,7 +303,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-24 max-w-5xl">
+        <div className="px-4 lg:px-8 py-6 pb-24">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
