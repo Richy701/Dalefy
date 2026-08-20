@@ -45,7 +45,7 @@ import { BrandIllustration } from "@/components/shared/BrandIllustration";
 
 const EVENT_COLORS = {
   activity: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.activity },
-  hotel:    { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.hotel },
+  hotel:    { bg: "bg-sand/10", text: "text-sand", Icon: EVENT_ICONS.hotel },
   dining:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.dining },
   flight:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.flight },
   transfer: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.transfer },
