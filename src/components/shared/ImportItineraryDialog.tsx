@@ -1,11 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, SpinnerGap, CheckCircle, WarningCircle, CaretRight, CaretDown, X, AirplaneTilt, Bed, Compass, ForkKnife, PencilSimple } from "@phosphor-icons/react";
+import { Upload, FileText, CheckCircle, WarningCircle, CaretRight, X, AirplaneTilt, Bed, Compass, ForkKnife, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useTrips } from "@/context/TripsContext";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Trip, TravelEvent, User } from "@/types";
@@ -1216,6 +1226,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const [rawText, setRawText] = useState("");
   const [editInfo, setEditInfo] = useState<ParsedInfo[]>([]);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  // Unchecked events are skipped by the import but stay in the list, so a
+  // mis-parse can be excluded without losing the chance to change your mind.
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingHeader, setEditingHeader] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { trips, addTrip, updateTrip } = useTrips();
   const { showToast, addNotification } = useNotifications();
@@ -1238,6 +1253,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setParsed(null);
     setRawText("");
     setEditInfo([]);
+    setExcludedIds(new Set());
+    setEditingEventId(null);
+    setEditingHeader(false);
     setImportMode("merge");
   };
 
@@ -1300,12 +1318,42 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   };
 
   const [importError, setImportError] = useState<string | null>(null);
-  const [confirmReplace, setConfirmReplace] = useState(false);
 
+  const includedEvents = (parsed?.events ?? []).filter(e => !excludedIds.has(e.id));
+
+  const toggleExcluded = (id: string) => setExcludedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const patchEvent = (id: string, patch: Partial<ParsedEvent>) =>
+    setParsed(p => p ? { ...p, events: p.events.map(e => e.id === id ? { ...e, ...patch } : e) } : null);
+
+  /** Events grouped by calendar day, in date order. Undated events land last. */
+  const eventsByDay = (() => {
+    const groups = new Map<string, ParsedEvent[]>();
+    for (const ev of parsed?.events ?? []) {
+      const key = ev.date || "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(ev);
+    }
+    return [...groups.entries()].sort(([a], [b]) => {
+      if (!a) return 1;
+      if (!b) return -1;
+      return a.localeCompare(b);
+    });
+  })();
+
+  const dayLabel = (iso: string) => {
+    if (!iso) return "No date";
+    const d = new Date(iso + "T12:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  // The replace path is confirmed by AlertDialog before this runs.
   const handleImport = async () => {
     if (!parsed) return;
-    if (isReimport && importMode === "replace" && !confirmReplace) { setConfirmReplace(true); return; }
-    setConfirmReplace(false);
     setImportError(null);
     try {
       await runImport();
@@ -1319,7 +1367,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const runImport = async () => {
     if (!parsed) return;
     setStep("importing");
-    setImportProgress({ done: 0, total: parsed.events.length });
+    setImportProgress({ done: 0, total: includedEvents.length });
     const DEFAULT_COVER = "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop";
     let coverImage = DEFAULT_COVER;
     if (parsed.destination) {
@@ -1343,7 +1391,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
       if (url) { cache[cacheKey] = url; }
       return url;
     };
-    const events: TravelEvent[] = [...parsed.events] as TravelEvent[];
+    const events: TravelEvent[] = [...includedEvents] as TravelEvent[];
     const CONCURRENCY = 3;
     for (let i = 0; i < events.length; i += CONCURRENCY) {
       const slice = events.slice(i, i + CONCURRENCY);
@@ -1589,7 +1637,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-5 sm:p-6 md:p-10 shadow-2xl">
+      <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-5 sm:p-6 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
           <DialogTitle className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
@@ -1598,7 +1646,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "upload" && "PDF · Word · PowerPoint · Text · Images"}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
-              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - review before importing`}
+              {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
               {parserUsed && (
                 <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
                   {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
@@ -1687,20 +1735,21 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         {/* ── STEP 2: EXTRACTING ── */}
         {step === "extracting" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
+            <Spinner className="size-10 text-brand" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Extracting text, images &amp; attachments...</p>
           </div>
         )}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <SpinnerGap className="h-10 w-10 text-brand animate-spin" />
+            <Spinner className="size-10 text-brand" />
             <p className="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
               Matching images {importProgress.done}/{importProgress.total}
             </p>
-            <div className="w-64 h-1.5 rounded-full bg-slate-200 dark:bg-secondary overflow-hidden">
-              <div className="h-full bg-brand transition-all duration-300" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
-            </div>
+            <Progress
+              value={importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}
+              className="w-64"
+            />
             <p className="text-[11px] text-slate-500 dark:text-muted-foreground">This can take a minute for large itineraries.</p>
             <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
               Close
@@ -1726,50 +1775,82 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
 
               <div className="p-4 sm:p-5 space-y-4">
-                {/* Trip name */}
-                <h3 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
-                  {parsed.name}
-                </h3>
+                {/* Trip name, destination and dates — all correctable here */}
+                {editingHeader ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="import-trip-name" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Trip name</Label>
+                      <Input
+                        id="import-trip-name"
+                        value={parsed.name}
+                        onChange={e => setParsed(p => p ? { ...p, name: e.target.value } : null)}
+                        className="w-full font-bold"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="import-trip-dest" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Destination</Label>
+                      <Input
+                        id="import-trip-dest"
+                        value={parsed.destination}
+                        onChange={e => setParsed(p => p ? { ...p, destination: e.target.value } : null)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="import-trip-start" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Start</Label>
+                        <Input id="import-trip-start" type="date" value={parsed.start} onChange={e => setParsed(p => p ? { ...p, start: e.target.value } : null)} className="w-full" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="import-trip-end" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">End</Label>
+                        <Input id="import-trip-end" type="date" value={parsed.end} onChange={e => setParsed(p => p ? { ...p, end: e.target.value } : null)} className="w-full" />
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setEditingHeader(false)} className="uppercase tracking-wider text-[10px] font-bold">Done</Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-base sm:text-lg font-extrabold uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+                        {parsed.name}
+                      </h3>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Edit trip name, destination and dates"
+                        onClick={() => setEditingHeader(true)}
+                        className="shrink-0 text-slate-500 dark:text-muted-foreground hover:text-brand"
+                      >
+                        <PencilSimple className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
 
-                {/* Metadata chips */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {parsed.destination && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 text-[11px] font-bold text-brand">
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                      {parsed.destination}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
-                    {(() => {
-                      const fmt = (iso: string) => {
-                        const d = new Date(iso + "T12:00:00");
-                        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                      };
-                      const endYear = new Date(parsed.end + "T12:00:00").getFullYear();
-                      return `${fmt(parsed.start)} – ${fmt(parsed.end)}, ${endYear}`;
-                    })()}
-                  </span>
-                  {(() => {
-                    const s = new Date(parsed.start + "T00:00:00");
-                    const e = new Date(parsed.end + "T00:00:00");
-                    const nights = Math.round((e.getTime() - s.getTime()) / 86400000);
-                    return nights > 0 ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
-                        {nights} night{nights !== 1 ? "s" : ""}
-                      </span>
-                    ) : null;
-                  })()}
-                  {parsed.events.length > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
-                      {parsed.events.length} event{parsed.events.length !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {parsed.paxCount > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary text-[11px] font-semibold text-slate-600 dark:text-muted-foreground">
-                      {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {parsed.destination && (
+                        <Badge className="gap-1.5 bg-brand/10 text-brand border-transparent hover:bg-brand/10">
+                          <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                          {parsed.destination}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary">
+                        {(() => {
+                          const fmt = (iso: string) => {
+                            const d = new Date(iso + "T12:00:00");
+                            return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                          };
+                          const endYear = new Date(parsed.end + "T12:00:00").getFullYear();
+                          return `${fmt(parsed.start)} – ${fmt(parsed.end)}, ${endYear}`;
+                        })()}
+                      </Badge>
+                      {parsed.paxCount > 0 && (
+                        <Badge variant="secondary">
+                          {parsed.paxCount} traveler{parsed.paxCount !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Travelers */}
                 {parsed.parsedTravelerNames.length > 0 && (
@@ -1819,44 +1900,140 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 </div>
               )}
 
-            {/* Events list */}
+            {/* Events, grouped by day. Unchecked rows are skipped, not deleted. */}
             {parsed.events.length > 0 ? (
-              <div className="space-y-2 max-h-[260px] sm:max-h-[280px] overflow-y-auto pr-1 -mx-1 px-1">
-                {parsed.events.map(ev => {
-                  const Icon = EVENT_TYPE_ICONS[ev.type];
-                  return (
-                    <div key={ev.id} className="flex items-start gap-3 p-3 bg-white dark:bg-background border border-slate-100 dark:border-border rounded-xl">
-                      <div className={`h-9 w-9 rounded-lg bg-slate-50 dark:bg-card border border-slate-100 dark:border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">{ev.title}</p>
-                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-muted-foreground mt-1 wrap-break-word">
-                          {(() => {
-                            const d = new Date(ev.date + "T12:00:00");
-                            return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-                          })()}
-                          {ev.time ? ` · ${ev.time}` : ""}
-                          {ev.location ? ` · ${ev.location}` : ""}
-                        </p>
-                      </div>
-                      <button
-                        aria-label="Remove event"
-                        onClick={() => setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null)}
-                        className="-m-1 p-1 h-9 w-9 flex items-center justify-center text-slate-400 dark:text-muted-foreground hover:text-red-400 transition-colors shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
+                    {includedEvents.length} of {parsed.events.length} selected
+                  </p>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => setExcludedIds(prev =>
+                      prev.size > 0 ? new Set() : new Set(parsed.events.map(e => e.id))
+                    )}
+                    className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground hover:text-brand"
+                  >
+                    {excludedIds.size > 0 ? "Select all" : "Select none"}
+                  </Button>
+                </div>
+
+                {eventsByDay.map(([date, dayEvents]) => (
+                  <div key={date || "undated"} className="space-y-1.5">
+                    <div className="flex items-center gap-2 px-0.5">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">
+                        {dayLabel(date)}
+                      </p>
+                      <div className="h-px flex-1 bg-slate-200 dark:bg-border" />
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground tabular-nums">
+                        {dayEvents.length}
+                      </span>
                     </div>
-                  );
-                })}
+
+                    {dayEvents.map(ev => {
+                      const Icon = EVENT_TYPE_ICONS[ev.type];
+                      const excluded = excludedIds.has(ev.id);
+                      const editing = editingEventId === ev.id;
+                      return (
+                        <div
+                          key={ev.id}
+                          className={`rounded-xl border transition-colors ${
+                            editing
+                              ? "border-brand/40 bg-white dark:bg-card"
+                              : "border-slate-100 dark:border-border bg-white dark:bg-background"
+                          } ${excluded && !editing ? "opacity-45" : ""}`}
+                        >
+                          <div className="flex items-start gap-3 p-3">
+                            <Checkbox
+                              checked={!excluded}
+                              onCheckedChange={() => toggleExcluded(ev.id)}
+                              aria-label={`Include ${ev.title}`}
+                              className="mt-0.5 shrink-0"
+                            />
+                            <div className={`h-9 w-9 rounded-lg bg-slate-50 dark:bg-card border border-slate-100 dark:border-border flex items-center justify-center shrink-0 ${EVENT_TYPE_COLORS[ev.type]}`}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditingEventId(editing ? null : ev.id)}
+                              aria-expanded={editing}
+                              className="flex-1 min-w-0 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-md"
+                            >
+                              <p className={`text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug ${excluded ? "line-through" : ""}`}>
+                                {ev.title}
+                              </p>
+                              <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-muted-foreground mt-1 wrap-break-word">
+                                {ev.time || "No time"}
+                                {ev.location ? ` · ${ev.location}` : ""}
+                              </p>
+                            </button>
+                            <div className="flex items-center shrink-0">
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label={editing ? `Stop editing ${ev.title}` : `Edit ${ev.title}`}
+                                onClick={() => setEditingEventId(editing ? null : ev.id)}
+                                className={editing ? "text-brand" : "text-slate-400 dark:text-muted-foreground hover:text-brand"}
+                              >
+                                <PencilSimple className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label={`Remove ${ev.title}`}
+                                onClick={() => {
+                                  setParsed(p => p ? { ...p, events: p.events.filter(e => e.id !== ev.id) } : null);
+                                  if (editingEventId === ev.id) setEditingEventId(null);
+                                }}
+                                className="text-slate-400 dark:text-muted-foreground hover:text-red-400"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {editing && (
+                            <div className="border-t border-slate-100 dark:border-border p-3 space-y-3">
+                              <div className="space-y-1.5">
+                                <Label htmlFor={`ev-title-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Title</Label>
+                                <Input id={`ev-title-${ev.id}`} value={ev.title} onChange={e => patchEvent(ev.id, { title: e.target.value })} className="w-full font-bold" autoFocus />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`ev-date-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Date</Label>
+                                  <Input id={`ev-date-${ev.id}`} type="date" value={ev.date} onChange={e => patchEvent(ev.id, { date: e.target.value })} className="w-full" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`ev-time-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Time</Label>
+                                  <Input id={`ev-time-${ev.id}`} value={ev.time} onChange={e => patchEvent(ev.id, { time: e.target.value })} placeholder="e.g. 10:30 AM" className="w-full" />
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor={`ev-loc-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Location</Label>
+                                <Input id={`ev-loc-${ev.id}`} value={ev.location} onChange={e => patchEvent(ev.id, { location: e.target.value })} className="w-full" />
+                              </div>
+                              <Button size="sm" variant="outline" onClick={() => setEditingEventId(null)} className="uppercase tracking-wider text-[10px] font-bold">Done</Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 gap-2 bg-slate-50 dark:bg-background rounded-xl border border-dashed border-slate-200 dark:border-border">
-                <WarningCircle className="h-5 w-5 text-amber-400" />
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">No events detected</p>
-                <p className="text-[10px] text-slate-500 dark:text-muted-foreground text-center max-w-[240px]">The parser couldn't find recognisable events. The trip will be created as a blank draft.</p>
-              </div>
+              <Empty className="border border-dashed border-slate-200 dark:border-border rounded-xl bg-slate-50 dark:bg-background py-8">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <WarningCircle className="h-5 w-5 text-amber-400" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">No events detected</EmptyTitle>
+                  <EmptyDescription className="text-[10px] max-w-[240px]">
+                    The parser couldn't find recognisable events. The trip will be created as a blank draft.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
 
             {/* Extracted media preview */}
@@ -1889,47 +2066,60 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
           </div>
             <div className="shrink-0 bg-white dark:bg-card border-t border-slate-100 dark:border-border mt-2 pt-4 space-y-3">
               {isReimport && (
-                <div className="flex items-center gap-2 p-2.5 bg-slate-50 dark:bg-background rounded-xl border border-slate-200 dark:border-border">
-                  <button
-                    type="button"
-                    onClick={() => { setImportMode("merge"); setConfirmReplace(false); }}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "merge" ? "bg-brand/15 text-brand border border-brand/30" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-muted-foreground border border-transparent"}`}
-                  >
-                    Add new items
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setImportMode("replace")}
-                    className={`flex-1 text-[10px] font-bold uppercase tracking-wider py-2 rounded-lg transition-all ${importMode === "replace" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-muted-foreground border border-transparent"}`}
-                  >
-                    Replace everything
-                  </button>
-                </div>
+                <Tabs value={importMode} onValueChange={v => setImportMode(v as "merge" | "replace")}>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="merge" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Add new items</TabsTrigger>
+                    <TabsTrigger value="replace" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Replace everything</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               )}
               {importError && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-600 dark:text-red-400">
                   Import didn't finish: {importError}. Nothing was changed. You can try again.
                 </div>
               )}
-              {confirmReplace && isReimport && importMode === "replace" && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-700 dark:text-red-300">
-                  This replaces every event, traveler and document on the existing trip with the {parsed.events.length} parsed events. You can undo once right after, but not later. Press the button again to confirm.
-                </div>
-              )}
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1 rounded-xl h-10 font-bold text-slate-500 dark:text-muted-foreground">Cancel</Button>
-                <Button
-                  onClick={handleImport}
-                  className={`flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 ${isReimport && importMode === "replace" ? "bg-red-500 shadow-red-500/20" : "bg-brand shadow-brand/20"}`}
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  {isReimport
-                    ? importMode === "merge"
-                      ? `Merge ${parsed.events.length} Events`
-                      : confirmReplace ? "Yes, replace everything" : `Replace with ${parsed.events.length} Events`
-                    : `Import ${parsed.events.length} Events`}
-                  {parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
-                </Button>
+                {isReimport && importMode === "replace" ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      disabled={parsed.events.length > 0 && includedEvents.length === 0}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl h-10 font-bold uppercase tracking-wider bg-red-500 text-white shadow-lg shadow-red-500/20 hover:opacity-90 transition-opacity disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Replace with {includedEvents.length} Events
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Replace everything on this trip?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Every event, traveler and document currently on the trip is removed and replaced with the {includedEvents.length} selected event{includedEvents.length !== 1 ? "s" : ""}. You can undo this once, straight afterwards, but not later.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep existing trip</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleImport}
+                          className="bg-red-500 text-white hover:bg-red-500/90"
+                        >
+                          Replace everything
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <Button
+                    onClick={handleImport}
+                    disabled={parsed.events.length > 0 && includedEvents.length === 0}
+                    className="flex-1 rounded-xl h-10 font-bold hover:opacity-90 text-black shadow-lg uppercase tracking-wider gap-2 bg-brand shadow-brand/20"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    {parsed.events.length === 0
+                      ? "Create Blank Trip"
+                      : `${isReimport ? "Merge" : "Import"} ${includedEvents.length} Event${includedEvents.length !== 1 ? "s" : ""}`}
+                    {parsed.events.length > 0 && parsed.extractedMedia.length > 0 ? ` + ${parsed.extractedMedia.length} Media` : ""}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
