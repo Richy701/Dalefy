@@ -40,7 +40,7 @@ function Section({ icon: Icon, title, description, children, id }: SectionProps)
   return (
     <section
       id={id}
-      className="border-t border-slate-200 dark:border-border first:border-t-0 first:pt-0 py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,280px)_1fr] gap-6 lg:gap-12 scroll-mt-20"
+      className="border-t border-slate-200 dark:border-border first:border-t-0 first:pt-0 py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,260px)_minmax(0,680px)] gap-6 lg:gap-12 scroll-mt-20"
     >
       <div className="space-y-2">
         <div className="flex items-center gap-2.5">
@@ -444,7 +444,7 @@ export function SettingsPage() {
               <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
-                    <label htmlFor="settings-agency-code" className="block text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-900 dark:text-white mb-0.5">
+                    <label htmlFor="settings-agency-code" className="block text-[13px] font-medium text-slate-900 dark:text-white mb-0.5">
                       Agency Code
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
@@ -531,8 +531,9 @@ export function SettingsPage() {
               />
               {/* Preview + Save */}
               <div className="pt-3 space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Preview</p>
-                <div className="flex items-center gap-2.5">
+                <p className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground">Preview</p>
+                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
                   ) : (
@@ -544,7 +545,7 @@ export function SettingsPage() {
                   <span className="text-[9px] text-slate-400 dark:text-muted-foreground">·</span>
                   <span className="text-[9px] font-bold text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
-                <div className="flex justify-end">
+                <div className="shrink-0">
                   <Button
                     onClick={handleSaveBranding}
                     disabled={savingBrand}
@@ -552,6 +553,7 @@ export function SettingsPage() {
                   >
                     {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                   </Button>
+                </div>
                 </div>
               </div>
               </>}

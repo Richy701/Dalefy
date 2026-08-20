@@ -193,7 +193,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!!actionLoading}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${config.color} bg-slate-50 dark:bg-card border border-slate-200 dark:border-border hover:border-brand/30 transition-colors cursor-pointer disabled:opacity-50`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[13px] font-mediumwider ${config.color} bg-slate-50 dark:bg-card border border-slate-200 dark:border-border hover:border-brand/30 transition-colors cursor-pointer disabled:opacity-50`}
                   >
                     {busy ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <RoleIcon className="h-3 w-3" />}
                     {config.label}
@@ -209,7 +209,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                           <DropdownMenuItem
                             key={r}
                             onClick={() => setPending({ kind: "role", userId: member.userId, role: r })}
-                            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer"
+                            className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer"
                           >
                             <Icon className={`h-3.5 w-3.5 ${rc.color}`} />
                             Make {rc.label}
@@ -220,7 +220,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     {canManageRow && isOwner && (
                       <DropdownMenuItem
                         onClick={() => setPending({ kind: "transfer", userId: member.userId })}
-                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-amber-500"
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer text-amber-500"
                       >
                         <ArrowsLeftRight className="h-3.5 w-3.5" /> Transfer ownership
                       </DropdownMenuItem>
@@ -228,7 +228,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     {canManageRow && (
                       <DropdownMenuItem
                         onClick={() => setPending({ kind: "remove", userId: member.userId })}
-                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500"
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer text-red-500 focus:text-red-500"
                       >
                         <UserMinus className="h-3.5 w-3.5" /> Remove from team
                       </DropdownMenuItem>
@@ -236,7 +236,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                     {canLeave && (
                       <DropdownMenuItem
                         onClick={() => setPending({ kind: "leave", userId: member.userId })}
-                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500"
+                        className="flex items-center gap-2 text-xs font-bold  rounded-lg cursor-pointer text-red-500 focus:text-red-500"
                       >
                         <SignOut className="h-3.5 w-3.5" /> Leave team
                       </DropdownMenuItem>
@@ -245,7 +245,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                 </DropdownMenu>
               ) : (
                 <span
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider ${config.color}`}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-mediumwider ${config.color}`}
                   title={isSelf && isTargetOwner ? "Transfer ownership to someone else before leaving" : config.blurb}
                 >
                   <RoleIcon className="h-3 w-3" />
@@ -280,7 +280,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
           className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-border rounded-xl text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-colors"
         >
           <UserPlus className="h-4 w-4" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Invite member</span>
+          <span className="text-[13px] font-medium">Invite member</span>
         </button>
       )}
     </div>
@@ -324,10 +324,10 @@ function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
     <div className={`px-3 py-3 border-t flex flex-col sm:flex-row sm:items-center gap-2 ${tones.wrap}`}>
       <p className={`text-xs font-semibold flex-1 ${tones.text}`}>{text}</p>
       <div className="flex gap-2 shrink-0">
-        <Button onClick={onConfirm} disabled={busy} className={`h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider px-4 ${tones.btn}`}>
+        <Button onClick={onConfirm} disabled={busy} className={`h-8 rounded-lg text-[13px] font-mediumwider px-4 ${tones.btn}`}>
           {busy ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : label}
         </Button>
-        <Button variant="ghost" onClick={onCancel} disabled={busy} className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+        <Button variant="ghost" onClick={onCancel} disabled={busy} className="h-8 rounded-lg text-[13px] font-mediumwider">
           Cancel
         </Button>
       </div>
