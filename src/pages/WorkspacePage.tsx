@@ -1527,7 +1527,7 @@ export function WorkspacePage() {
                             </div>
                             {/* Name + meta */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-brand mb-1">Organizer</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground mb-1">Organizer</p>
                               <p className="text-base font-extrabold text-slate-900 dark:text-white truncate">{trip.organizer.name}</p>
                               {(trip.organizer.role || trip.organizer.company) && (
                                 <p className="text-xs text-slate-500 dark:text-muted-foreground font-medium truncate mt-0.5">
@@ -1569,7 +1569,7 @@ export function WorkspacePage() {
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-3.5 w-3.5 text-brand" />
-                              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Information & Documents</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
@@ -2051,21 +2051,21 @@ export function WorkspacePage() {
             {/* Header */}
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-200 dark:border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
               <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {editingEvent?.title ? "Edit Travel Event" : "Add Event to Itinerary"}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Fill in the travel details for this event.</p>
+                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Anything left blank can be filled in later.</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                 {(["Proposed", "Confirmed", "Cancelled"] as const).map(s => (
                   <button key={s} type="button"
                     onClick={() => setEditingEvent(prev => prev ? { ...prev, status: s } : null)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
                       editingEvent?.status === s
                         ? s === "Confirmed" ? "bg-emerald-400 text-black shadow-lg shadow-emerald-400/20"
                           : s === "Cancelled" ? "bg-red-500 text-white shadow-lg shadow-red-500/20"
                           : "bg-brand text-black shadow-lg shadow-brand/20"
-                        : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
+                        : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-secondary"
                     }`}
                   >
                     {s}
@@ -2090,7 +2090,7 @@ export function WorkspacePage() {
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
                       className={`flex flex-col items-center justify-center py-2.5 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"}`}>
                       <cat.icon className="h-5 w-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">{cat.label}</span>
+                      <span className="text-[11px] font-semibold">{cat.label}</span>
                     </button>
                   ))}
                 </div>
@@ -2133,14 +2133,14 @@ export function WorkspacePage() {
                 <div className="p-4 sm:p-7 space-y-5">
                   {/* Title - large underline style */}
                   <div className="space-y-1">
-                    <Label htmlFor="event-title" className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">Event Title</Label>
+                    <Label htmlFor="event-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Event Title</Label>
                     <Input
                       id="event-title"
                       value={editingEvent?.title || ""}
                       onChange={e => { setEditingEvent(prev => prev ? { ...prev, title: e.target.value } : null); if (eventErrors.title) setEventErrors(prev => ({ ...prev, title: undefined })); }}
                       placeholder="What's happening? e.g. Transfer to hotel"
                       aria-invalid={!!eventErrors.title}
-                      className="w-full text-xl font-extrabold tracking-tight"
+                      className="w-full text-lg font-semibold tracking-tight"
                     />
                     {eventErrors.title && <p className="text-[11px] font-semibold text-red-500">{eventErrors.title}</p>}
                   </div>
@@ -2148,7 +2148,7 @@ export function WorkspacePage() {
                   {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Date</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Date</label>
                       <Popover>
                         <PopoverTrigger className={cn(
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border hover:border-brand/50 transition-colors text-left",
@@ -2171,7 +2171,7 @@ export function WorkspacePage() {
                       {eventErrors.date && <p className="text-[11px] font-semibold text-red-500">{eventErrors.date}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</Label>
+                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</Label>
                       <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-slate-50 dark:bg-background text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-slate-200 dark:border-border"}`} />
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>
@@ -2186,7 +2186,7 @@ export function WorkspacePage() {
                     >
                       <div className={cn(
                         "h-5 w-9 rounded-full relative transition-colors duration-200",
-                        editingEvent.isOvernight ? "bg-brand" : "bg-slate-200 dark:bg-[#252525]"
+                        editingEvent.isOvernight ? "bg-brand" : "bg-slate-200 dark:bg-secondary"
                       )}>
                         <div className={cn(
                           "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200",
@@ -2201,7 +2201,7 @@ export function WorkspacePage() {
                   {/* Transfer type selector */}
                   {editingEvent?.type === "transfer" && (
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Transport Type</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Transport Type</label>
                       <div className="flex gap-2">
                         {([
                           { value: "car", label: "Car", Icon: Car },
@@ -2234,7 +2234,7 @@ export function WorkspacePage() {
                   {editingEvent?.type === "hotel" && !editingEvent?.isOvernight && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Check-out Time</Label>
+                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Check-out Time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
@@ -2244,11 +2244,11 @@ export function WorkspacePage() {
                   {(editingEvent?.type === "activity" || editingEvent?.type === "dining" || editingEvent?.type === "transfer") && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">End Time</Label>
+                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">End Time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="14:00" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Duration</Label>
+                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Duration</Label>
                         <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
@@ -2256,7 +2256,7 @@ export function WorkspacePage() {
 
                   {/* Location - with Mapbox autocomplete */}
                   <div className="space-y-1.5">
-                    <label htmlFor="event-location" className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Location / Address</label>
+                    <label htmlFor="event-location" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Location / Address</label>
                     <LocationAutocomplete
                       id="event-location"
                       ariaLabel="Location"
@@ -2270,18 +2270,18 @@ export function WorkspacePage() {
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Supplier / Provider</Label>
+                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Supplier / Provider</Label>
                       <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Confirmation #</Label>
+                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Confirmation #</Label>
                       <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Price (Optional)</Label>
+                    <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Price (Optional)</Label>
                     <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
@@ -2289,11 +2289,11 @@ export function WorkspacePage() {
                   {(editingEvent?.type === "flight" || editingEvent?.type === "hotel") && (
                     <div className="space-y-4 pt-1">
                       <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-slate-200 dark:bg-[#252525]" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
+                        <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">
                           {editingEvent.type === "flight" ? "Flight Details" : "Hotel Details"}
                         </span>
-                        <div className="h-px flex-1 bg-slate-200 dark:bg-[#252525]" />
+                        <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {editingEvent.type === "flight" ? (
@@ -2304,20 +2304,20 @@ export function WorkspacePage() {
                               { key: "gate", label: "Gate" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
-                                <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
+                                <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
                                 <Input value={(editingEvent as Record<string, string>)[f.key] || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Arrival Time</Label>
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Arrival Time</Label>
                               <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Duration</Label>
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Duration</Label>
                               <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="col-span-2 space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Seat / Ticket Details</Label>
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Seat / Ticket Details</Label>
                               <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
@@ -2329,7 +2329,7 @@ export function WorkspacePage() {
                               const isValid = parsed && !isNaN(parsed.getTime());
                               return (
                                 <div key={f.key} className="space-y-1.5">
-                                  <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</label>
+                                  <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{f.label}</label>
                                   <Popover>
                                     <PopoverTrigger className={cn(
                                       "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm bg-slate-50 dark:bg-background border border-slate-200 dark:border-border hover:border-brand/50 transition-colors text-left",
@@ -2353,7 +2353,7 @@ export function WorkspacePage() {
                               );
                             })}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Room Type</Label>
+                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Room Type</Label>
                               <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
@@ -2498,7 +2498,7 @@ export function WorkspacePage() {
                 {/* Media Upload */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Photos & Videos</label>
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
                       className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Upload className="h-3 w-3" /> Upload
@@ -2539,7 +2539,7 @@ export function WorkspacePage() {
                 {/* Documents / Vouchers */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Documents / Vouchers</label>
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Documents / Vouchers</label>
                     <button type="button" onClick={() => documentInputRef.current?.click()}
                       className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Paperclip className="h-3 w-3" /> Attach
@@ -2589,7 +2589,7 @@ export function WorkspacePage() {
                 {/* People Assignment */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">People</label>
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">People</label>
                     <div className="flex items-center gap-1 bg-slate-100 dark:bg-secondary rounded-lg p-0.5">
                       <button
                         type="button"
@@ -2674,13 +2674,13 @@ export function WorkspacePage() {
 
                 {/* Description (visible to travelers) */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Description (Visible to Travelers)</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Description (Visible to Travelers)</Label>
                   <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
 
                 {/* Notes */}
                 <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-border bg-white dark:bg-card space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Agent Notes (Internal)</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Agent Notes (Internal)</Label>
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
                 </div>{/* end scrollable area */}
@@ -2740,7 +2740,7 @@ export function WorkspacePage() {
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon2 className="h-3.5 w-3.5 text-brand" />
-                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Cover Image</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Cover Image</label>
                 </div>
                 {editingTrip.image && (
                   <div className="h-36 rounded-xl overflow-hidden relative">
@@ -2816,26 +2816,26 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Details</h4>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Trip Details</h4>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Trip Name</Label>
+                    <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Trip Name</Label>
                     <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Destination</Label>
+                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Destination</Label>
                       <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Attendees</Label>
+                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Attendees</Label>
                       <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-slate-50 dark:bg-background border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Start Date</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Start Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                           <span className={editingTrip.start ? "" : "text-slate-500 dark:text-muted-foreground"}>
@@ -2849,7 +2849,7 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">End Date</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">End Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-slate-50 dark:bg-background border border-slate-200 dark:border-border text-slate-900 dark:text-white rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                           <span className={editingTrip.end ? "" : "text-slate-500 dark:text-muted-foreground"}>
@@ -2863,7 +2863,7 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Currency</label>
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Currency</label>
                       <select
                         value={editingTrip.currency ?? "USD"}
                         onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
@@ -2899,7 +2899,7 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Organizer / Agent</h4>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Organizer / Agent</h4>
                 </div>
                 <div className="flex gap-5">
                   {/* Avatar preview */}
@@ -2925,7 +2925,7 @@ export function WorkspacePage() {
                       { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
                     ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string; span?: number }[]).map(f => (
                       <div key={f.key} className={`space-y-1 ${f.span === 2 ? "col-span-2" : ""}`}>
-                        <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
+                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
                         <Input
                           value={editingTrip.organizer?.[f.key] ?? ""}
                           onChange={e => setEditingTrip(prev => ({ ...prev, organizer: { ...(prev.organizer ?? { name: "" }), [f.key]: e.target.value } }))}
@@ -2943,7 +2943,7 @@ export function WorkspacePage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-brand" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Information & Documents</h4>
+                    <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Information & Documents</h4>
                     {(editingTrip.info?.length ?? 0) > 0 && (
                       <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{editingTrip.info!.length}</span>
                     )}
@@ -3041,7 +3041,7 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-slate-200 dark:border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Status</h4>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Status</h4>
                 </div>
                 <div className="flex gap-2">
                   {(["Draft", "In Progress", "Published"] as const).map(s => (
@@ -3049,9 +3049,9 @@ export function WorkspacePage() {
                       className={`flex-1 h-11 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
                         editingTrip.status === s
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                            : s === "In Progress" ? "bg-brand text-black shadow-lg shadow-brand/20"
+                            : s === "In Progress" ? "bg-brand text-primary-foreground shadow-lg shadow-brand/20"
                             : "bg-slate-800 dark:bg-white text-white dark:text-black shadow-lg"
-                          : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-[#2a2a2a]"
+                          : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-secondary"
                       }`}>
                       {s}
                     </button>
@@ -3091,7 +3091,7 @@ export function WorkspacePage() {
                 { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
               ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string }[]).map(f => (
                 <div key={f.key} className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">{f.label}</Label>
                   <Input
                     value={editOrgData[f.key] ?? ""}
                     onChange={e => setEditOrgData(prev => ({ ...prev, [f.key]: e.target.value }))}
