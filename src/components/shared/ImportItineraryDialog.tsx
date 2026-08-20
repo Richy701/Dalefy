@@ -1231,6 +1231,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingHeader, setEditingHeader] = useState(false);
+  const [uploadTab, setUploadTab] = useState<"file" | "paste">("file");
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { trips, addTrip, updateTrip } = useTrips();
   const { showToast, addNotification } = useNotifications();
@@ -1256,6 +1258,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setExcludedIds(new Set());
     setEditingEventId(null);
     setEditingHeader(false);
+    setUploadTab("file");
+    setDragging(false);
     setImportMode("merge");
   };
 
@@ -1643,7 +1647,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-muted-foreground font-medium uppercase text-xs tracking-[0.2em]">
-            {step === "upload" && "PDF · Word · PowerPoint · Text · Images"}
+            {step === "upload" && (isReimport ? "Add to or replace this trip" : "Turn a document into a trip")}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
               {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
@@ -1659,25 +1663,76 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
         {/* ── STEP 1: UPLOAD ── */}
         {step === "upload" && (
-          <div className="space-y-6">
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Upload an itinerary file"
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
-              onDrop={handleDrop}
-              onDragOver={e => e.preventDefault()}
-              className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-4 p-6 sm:p-10 bg-slate-50 dark:bg-background border-2 border-dashed border-slate-200 dark:border-border rounded-xl hover:border-brand/60 transition-colors group"
-            >
-              <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center hover:bg-brand/25 transition-colors shadow-sm" aria-hidden="true">
-                <Upload className="h-6 w-6 text-brand" />
+          <div className="space-y-4">
+            {/* Two equal paths rather than one buried under a divider — halves
+                the height of this step and stops the paste box being an
+                afterthought. */}
+            <Tabs value={uploadTab} onValueChange={v => setUploadTab(v as "file" | "paste")}>
+              <TabsList className="w-full">
+                <TabsTrigger value="file" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Upload a file</TabsTrigger>
+                <TabsTrigger value="paste" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Paste text</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {uploadTab === "file" ? (
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Upload an itinerary file"
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+                onDrop={e => { setDragging(false); handleDrop(e); }}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                className={`cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex flex-col items-center justify-center gap-3 p-6 border-2 border-dashed rounded-xl transition-colors ${
+                  dragging
+                    ? "border-brand bg-brand/5"
+                    : "border-slate-200 dark:border-border bg-slate-50 dark:bg-background hover:border-brand/60"
+                }`}
+              >
+                <div className="h-10 w-10 rounded-xl bg-brand/10 flex items-center justify-center" aria-hidden="true">
+                  <Upload className="h-5 w-5 text-brand" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    {dragging ? "Drop to import" : "Drop a file here or click to browse"}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-1">
+                    PDF, Word, PowerPoint, text or an image, up to 20MB
+                  </p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Drop a file here or click to browse</p>
-                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 uppercase tracking-widest">PDF · DOCX · PPTX · TXT · JPG · PNG</p>
+            ) : (
+              <div className="space-y-3">
+                <Label htmlFor="import-paste" className="sr-only">Paste itinerary text</Label>
+                <Textarea
+                  id="import-paste"
+                  placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
+                  className="w-full min-h-[160px] resize-none"
+                  onChange={e => setRawText(e.target.value)}
+                  value={rawText}
+                  autoFocus
+                />
+                <Button
+                  onClick={async () => {
+                    if (!rawText.trim()) return;
+                    setError("");
+                    setStep("extracting");
+                    try {
+                      await processText(rawText);
+                    } catch (e: any) {
+                      setError(e.message ?? "Could not parse this text.");
+                      setStep("upload");
+                    }
+                  }}
+                  disabled={!rawText.trim()}
+                  className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
+                >
+                  Parse Text <CaretRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
-            </div>
+            )}
+
             {createPortal(
               <input
                 ref={fileInputRef}
@@ -1696,39 +1751,9 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               </div>
             )}
 
-            <div className="flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">OR PASTE TEXT</span>
-              <div className="h-px flex-1 bg-slate-200 dark:bg-secondary" />
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="import-paste" className="sr-only">Paste itinerary text</Label>
-              <Textarea
-                id="import-paste"
-                placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
-                className="w-full min-h-[140px] resize-none"
-                onChange={e => setRawText(e.target.value)}
-                value={rawText}
-              />
-              <Button
-                onClick={async () => {
-                  if (!rawText.trim()) return;
-                  setError("");
-                  setStep("extracting");
-                  try {
-                    await processText(rawText);
-                  } catch (e: any) {
-                    setError(e.message ?? "Could not parse this text.");
-                    setStep("upload");
-                  }
-                }}
-                disabled={!rawText.trim()}
-                className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20 uppercase tracking-wider"
-              >
-                Parse Text <CaretRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+            <p className="text-[11px] text-slate-500 dark:text-muted-foreground text-center">
+              Everything is parsed into a draft you review before anything is saved.
+            </p>
           </div>
         )}
 

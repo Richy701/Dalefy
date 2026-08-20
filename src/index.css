@@ -31,7 +31,7 @@
      doing all the work. Every value below is contrast-verified against
      its foreground (WCAG AA 4.5:1 minimum for body text). */
   :root {
-    --background: 240 14.3% 97.3%; /* #F7F7F9 page */
+    --background: 240 16.1% 93.9%; /* #EDEDF2 page — deep enough that white cards lift */
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%; /* #FFFFFF */
     --card-foreground: 0 0% 3.9%;
@@ -39,16 +39,16 @@
     --popover-foreground: 0 0% 3.9%;
     --primary: 171 85% 43%; /* Cyber Teal #0bd2b5 */
     --primary-foreground: 0 0% 0%;
-    --secondary: 240 12% 95.1%; /* #F1F1F4 raised */
+    --secondary: 240 22.2% 96.5%; /* #F4F4F8 inset, sits on a white card */
     --secondary-foreground: 0 0% 9%;
-    --muted: 240 12% 95.1%;
-    --muted-foreground: 219 9.3% 42%; /* #616875 — 5.6:1 on card, 4.97:1 on raised */
-    --accent: 240 12% 95.1%;
+    --muted: 240 22.2% 96.5%;
+    --muted-foreground: 219 9.3% 42%; /* #616875 — 5.6:1 card, 5.1:1 inset, 4.8:1 page */
+    --accent: 240 22.2% 96.5%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 10.2% 90.4%; /* #E4E4E9 */
-    --input: 240 10.2% 90.4%;
+    --border: 240 15.8% 88.8%; /* #DEDEE7 */
+    --input: 240 15.8% 88.8%;
     --ring: 171 85% 43%;
     --radius: 0.625rem;
     /* Third elevation tier, for surfaces raised above a card */
