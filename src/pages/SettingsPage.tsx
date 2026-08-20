@@ -10,6 +10,7 @@ import { changePassword } from "@/services/firebaseAuth";
 import { STORAGE } from "@/config/storageKeys";
 import { logger } from "@/lib/logger";
 import { updateBranding, uploadLogo } from "@/services/firebaseBranding";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ColorPicker } from "@/components/ui/color-picker";
@@ -34,28 +35,35 @@ interface SectionProps {
   description: string;
   children: React.ReactNode;
   id?: string;
+  /** Span both columns; for sections with long content like Team or White-Label. */
+  wide?: boolean;
 }
 
-function Section({ icon: Icon, title, description, children, id }: SectionProps) {
+function Section({ icon: Icon, title, description, children, id, wide }: SectionProps) {
   return (
     <section
       id={id}
-      className="border-t border-slate-200 dark:border-border first:border-t-0 first:pt-0 py-8 grid grid-cols-1 lg:grid-cols-[minmax(0,260px)_minmax(0,680px)] gap-6 lg:gap-12 scroll-mt-20"
+      className={cn(
+        "bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden scroll-mt-20 break-inside-avoid mb-5",
+        wide && "lg:col-span-2",
+      )}
     >
-      <div className="space-y-2">
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
-            <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
-          </div>
-          <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">
+      <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+        <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 text-slate-500 dark:text-muted-foreground" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white leading-none">
             {title}
           </h2>
+          <p className="text-[13px] text-slate-500 dark:text-muted-foreground leading-snug mt-1.5">
+            {description}
+          </p>
         </div>
-        <p className="text-[13px] text-slate-500 dark:text-muted-foreground leading-relaxed max-w-[300px]">
-          {description}
-        </p>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border">
+        {children}
+      </div>
     </section>
   );
 }
@@ -64,7 +72,7 @@ function Row({
   label, value, action,
 }: { label: string; value?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
+    <div className="flex items-center justify-between gap-4 px-5 py-3.5">
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-medium text-slate-900 dark:text-white">
           {label}
@@ -303,14 +311,14 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-12">
+        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5 items-start">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
             title="Profile"
             description="Your account details. Shown on the sidebar and in shared trip links."
           >
-            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-5 flex items-center gap-4">
+            <div className="px-5 py-4 flex items-center gap-4">
               <div className="h-14 w-14 rounded-xl bg-brand/15 text-brand flex items-center justify-center text-lg font-bold border border-brand/20 shrink-0">
                 {initials}
               </div>
@@ -399,6 +407,7 @@ export function SettingsPage() {
           {showBrandingSection && (
             <Section
               icon={Buildings}
+              wide
               title="White-Label"
               description="How clients see your agency on shared trips and PDFs."
             >
@@ -441,7 +450,7 @@ export function SettingsPage() {
                 }
               />
               {/* Agency Code */}
-              <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-3">
+              <div className="px-5 py-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
                     <label htmlFor="settings-agency-code" className="block text-[13px] font-medium text-slate-900 dark:text-white mb-0.5">
@@ -530,7 +539,7 @@ export function SettingsPage() {
                 }
               />
               {/* Preview + Save */}
-              <div className="pt-3 space-y-3">
+              <div className="px-5 py-4 space-y-3">
                 <p className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground">Preview</p>
                 <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -564,6 +573,7 @@ export function SettingsPage() {
           {realAuth && currentOrg && (
             <Section
               icon={Users}
+              wide
               title="Team"
               description={canManageOrg
                 ? "Manage members, roles, and access to your organization."
@@ -669,7 +679,7 @@ export function SettingsPage() {
             title="Shortcuts"
             description="Keyboard shortcuts work anywhere in the app. Press ⌘K to open the command palette."
           >
-            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden">
+            <div className="overflow-hidden">
               {SHORTCUTS.map((s, i) => (
                 <div
                   key={s.label}
@@ -696,7 +706,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
+          <div className="lg:col-span-2 border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
