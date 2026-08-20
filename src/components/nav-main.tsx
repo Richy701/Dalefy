@@ -32,15 +32,17 @@ export function NavMain() {
                 onClick={() => navigate(path)}
                 isActive={active}
                 className={`
-                  relative rounded-xl h-10 gap-3
+                  relative rounded-lg h-9 gap-3
+                  before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2
+                  before:h-4 before:w-[3px] before:rounded-r-full before:transition-all
                   ${active
-                    ? "bg-brand/10! text-brand! hover:bg-brand/15!"
-                    : "text-sidebar-foreground/75! hover:text-brand! hover:bg-brand/5!"
+                    ? "bg-brand/10! text-brand! hover:bg-brand/15! before:bg-brand"
+                    : "text-sidebar-foreground! hover:text-brand! hover:bg-brand/5! before:bg-transparent"
                   }
                 `}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className={`text-[11px] uppercase tracking-[0.14em] ${active ? "font-bold" : "font-semibold"}`}>{label}</span>
+                <Icon className="h-[18px] w-[18px] shrink-0" weight={active ? "fill" : "regular"} />
+                <span className={`text-[13px] tracking-normal ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           );

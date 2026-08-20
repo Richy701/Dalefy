@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SignOut, Gear } from "@phosphor-icons/react";
+import { SignOut } from "@phosphor-icons/react";
 import { BRAND } from "@/config/brand";
 import {
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -45,11 +44,11 @@ export function NavUser() {
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[11px] font-bold text-sidebar-foreground truncate leading-none">{displayName}</p>
+                  <p className="text-[13px] font-semibold text-sidebar-foreground truncate leading-tight">{displayName}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-[10px] text-sidebar-foreground/70 leading-none truncate uppercase tracking-wider">{displayRole}</p>
+                    <p className="text-[11px] text-sidebar-muted-foreground leading-tight truncate">{displayRole}</p>
                     {orgRole && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] leading-none px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 shrink-0">
                         {orgRole}
                       </span>
                     )}
