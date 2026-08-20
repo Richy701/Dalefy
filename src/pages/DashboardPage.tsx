@@ -702,7 +702,11 @@ export function DashboardPage() {
                           ? eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()
                           : null;
                         const rawTime = ev.time?.trim();
-                        const hasRealTime = rawTime && rawTime !== "00:00" && rawTime !== "0:00";
+                        // Midnight is a parser placeholder rather than a real start time.
+                        // Events are stored 12-hour, so "12:00 AM" is the form that actually
+                        // occurs; the 24-hour spellings are kept for older/imported data.
+                        const isMidnight = !!rawTime && /^(0?0:00(:00)?|12:00\s*am)$/i.test(rawTime);
+                        const hasRealTime = !!rawTime && !isMidnight;
                         const timeParts = hasRealTime ? rawTime.split(/\s+/) : null;
 
                         // Type-specific detail row
@@ -822,7 +826,7 @@ export function DashboardPage() {
 
                             {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
-                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 min-w-[96px] border-l border-slate-100 dark:border-border">
+                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-slate-100 dark:border-border">
                                 {weekdayLabel && (
                                   <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                                     {weekdayLabel}

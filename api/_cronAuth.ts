@@ -5,7 +5,7 @@ import { timingSafeEqual } from "node:crypto";
  * matches it exactly. Guarding on the env var matters: without it, an unset
  * CRON_SECRET would make `Bearer undefined` a valid credential.
  */
-export function isCronRequest(req: any): boolean {
+export function isCronRequest(req: { headers?: Record<string, string | string[] | undefined> }): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
   const auth = String(req.headers?.["authorization"] ?? "");

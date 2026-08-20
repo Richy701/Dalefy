@@ -27,6 +27,11 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+/** The subsets of each image provider's response this module reads. */
+interface SerpApiResponse { images_results?: { original?: string }[] }
+interface UnsplashResponse { results?: { urls?: { regular?: string } }[] }
+interface PexelsResponse { photos?: { src?: { landscape?: string; large?: string } }[] }
+
 export async function searchImages(
   { q, page, perPage, source }: ImageSearchParams,
   keys: ImageKeys,
@@ -38,11 +43,11 @@ export async function searchImages(
       const params = new URLSearchParams({ engine: "google_images", q, num: perPage, ijn: String(Math.floor(start / 100)), api_key: keys.serpapi });
       const resp = await fetchWithTimeout(`https://serpapi.com/search.json?${params}`);
       if (resp.ok) {
-        const data: any = await resp.json();
-        const urls = (data.images_results ?? []).slice(0, parseInt(perPage)).map((i: any) => i.original).filter(Boolean);
+        const data = await resp.json() as SerpApiResponse;
+        const urls = (data.images_results ?? []).slice(0, parseInt(perPage)).map(i => i.original).filter((u): u is string => !!u);
         if (urls.length) return { urls, source: "google" };
       }
-    } catch {}
+    } catch { /* fall through to the next provider */ }
     return null;
   };
 
@@ -52,11 +57,11 @@ export async function searchImages(
       const params = new URLSearchParams({ query: q, per_page: perPage, page, orientation: "landscape", client_id: keys.unsplash });
       const resp = await fetchWithTimeout(`https://api.unsplash.com/search/photos?${params}`);
       if (resp.ok) {
-        const data: any = await resp.json();
-        const urls = (data.results ?? []).map((r: any) => r.urls?.regular).filter(Boolean);
+        const data = await resp.json() as UnsplashResponse;
+        const urls = (data.results ?? []).map(r => r.urls?.regular).filter((u): u is string => !!u);
         if (urls.length) return { urls, source: "unsplash" };
       }
-    } catch {}
+    } catch { /* fall through to the next provider */ }
     return null;
   };
 
@@ -66,11 +71,11 @@ export async function searchImages(
       const params = new URLSearchParams({ query: q, per_page: perPage, page, orientation: "landscape" });
       const resp = await fetchWithTimeout(`https://api.pexels.com/v1/search?${params}`, { headers: { Authorization: keys.pexels } });
       if (resp.ok) {
-        const data: any = await resp.json();
-        const urls = (data.photos ?? []).map((p: any) => p.src?.landscape || p.src?.large).filter(Boolean);
+        const data = await resp.json() as PexelsResponse;
+        const urls = (data.photos ?? []).map(p => p.src?.landscape || p.src?.large).filter((u): u is string => !!u);
         if (urls.length) return { urls, source: "pexels" };
       }
-    } catch {}
+    } catch { /* fall through to the next provider */ }
     return null;
   };
 

@@ -7,7 +7,16 @@ import { HttpError } from "./_httpError.js";
 
 export const PROXIMITY_RE = /^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/;
 
-async function mapboxFetch(url: string): Promise<any> {
+/** The subset of the Mapbox Geocoding v5 response this module reads. */
+interface MapboxFeature {
+  center?: [number, number];
+  place_name?: string;
+}
+interface MapboxResponse {
+  features?: MapboxFeature[];
+}
+
+async function mapboxFetch(url: string): Promise<MapboxResponse> {
   let resp: Response;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -19,7 +28,7 @@ async function mapboxFetch(url: string): Promise<any> {
     clearTimeout(timeout);
   }
   if (!resp.ok) throw new HttpError(resp.status, "Mapbox error");
-  return resp.json();
+  return await resp.json() as MapboxResponse;
 }
 
 export async function geocode(
@@ -48,8 +57,9 @@ export async function suggest(
   if (proximity) url += `&proximity=${encodeURIComponent(proximity)}`;
   const data = await mapboxFetch(url);
   const suggestions = (data?.features ?? [])
-    .filter((f: any) => Array.isArray(f?.center) && f.center.length === 2)
-    .map((f: any) => ({
+    .filter((f): f is MapboxFeature & { center: [number, number] } =>
+      Array.isArray(f?.center) && f.center.length === 2)
+    .map((f) => ({
       name: f.place_name ?? "",
       // [lng, lat]
       center: [f.center[0], f.center[1]] as [number, number],

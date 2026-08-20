@@ -7,6 +7,28 @@ import { scoreAeroFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
 import { HttpError } from "./_httpError.js";
 
+/** The subset of the AeroDataBox response this module reads. */
+interface AeroMovement {
+  airport?: { iata?: string; name?: string; location?: { lat: number; lon: number } };
+  scheduledTime?: { local?: string; utc?: string };
+  actualTime?: { local?: string; utc?: string };
+  terminal?: string;
+  gate?: string;
+  baggageBelt?: string;
+}
+interface AeroFlight {
+  number?: string;
+  status?: string;
+  isCargo?: boolean;
+  codeshareStatus?: string;
+  airline?: { name?: string };
+  aircraft?: { model?: string };
+  movement?: AeroMovement;
+  departure?: AeroMovement;
+  arrival?: AeroMovement;
+}
+interface AeroDeparturesResponse { departures?: AeroFlight[] }
+
 function aeroHeaders(key: string): Record<string, string> {
   return {
     "x-rapidapi-key": key,
@@ -38,18 +60,18 @@ export async function searchFlights(from: string, to: string, date: string, key:
     ]);
     clearTimeout(timeout);
 
-    const d1: any = r1.ok ? await r1.json() : {};
-    const d2: any = r2.ok ? await r2.json() : {};
+    const d1 = (r1.ok ? await r1.json() : {}) as AeroDeparturesResponse;
+    const d2 = (r2.ok ? await r2.json() : {}) as AeroDeparturesResponse;
 
     const allDepartures = [...(d1.departures ?? []), ...(d2.departures ?? [])];
 
     // Filter to flights heading to the destination, skip codeshares
     const toUpper = to.toUpperCase();
     const matched = allDepartures
-      .filter((f: any) => f.movement?.airport?.iata?.toUpperCase() === toUpper && f.codeshareStatus !== "IsCodeshared" && !f.isCargo)
+      .filter((f: AeroFlight) => f.movement?.airport?.iata?.toUpperCase() === toUpper && f.codeshareStatus !== "IsCodeshared" && !f.isCargo)
       .slice(0, 8);
 
-    const flights = matched.map((f: any) => {
+    const flights = matched.map((f: AeroFlight) => {
       const mov = f.movement ?? {};
       const depTime = mov.scheduledTime?.local ?? "";
       return {
@@ -87,27 +109,27 @@ export async function lookupFlightNumber(number: string, date: string, key: stri
     const timeout = setTimeout(() => controller.abort(), 8000);
     const resp = await fetch(url, { headers: aeroHeaders(key), signal: controller.signal });
     clearTimeout(timeout);
-    const data: any = await resp.json();
+    const data = await resp.json() as AeroFlight[] | unknown;
 
-    const filtered = (Array.isArray(data) ? data : [])
-      .filter((f: any) => f.codeshareStatus !== "IsCodeshared");
+    const filtered = (Array.isArray(data) ? data as AeroFlight[] : [])
+      .filter((f: AeroFlight) => f.codeshareStatus !== "IsCodeshared");
 
     // Prefer non-arrived flights when duplicates exist (daily flights return yesterday + today)
-    const hasActive = filtered.some((f: any) => {
+    const hasActive = filtered.some((f: AeroFlight) => {
       const s = (f.status ?? "").toLowerCase();
       return !s.includes("arrived") && !s.includes("landed");
     });
     const raw = (hasActive
-      ? filtered.filter((f: any) => {
+      ? filtered.filter((f: AeroFlight) => {
           const s = (f.status ?? "").toLowerCase();
           return !s.includes("arrived") && !s.includes("landed");
         })
       : filtered
     )
-      .sort((a: any, b: any) => scoreAeroFlight(b) - scoreAeroFlight(a))
+      .sort((a: AeroFlight, b: AeroFlight) => scoreAeroFlight(b) - scoreAeroFlight(a))
       .slice(0, 8);
 
-    const flights = raw.map((f: any) => {
+    const flights = raw.map((f: AeroFlight) => {
       const dep = f.departure ?? {};
       const arr = f.arrival ?? {};
       const depTime = dep.scheduledTime?.local ?? "";

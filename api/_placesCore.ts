@@ -28,20 +28,36 @@ const ADVANCED_FIELDS: Record<string, string> = {
 
 const BASIC_FIELDS = "places.displayName,places.formattedAddress,places.primaryType";
 
+/** The subset of the Google Places searchText response this module reads. */
+interface GooglePlace {
+  displayName?: { text?: string };
+  rating?: number;
+  userRatingCount?: number;
+  formattedAddress?: string;
+  primaryType?: string;
+  priceLevel?: string;
+  currentOpeningHours?: { openNow?: boolean };
+  photos?: { name?: string }[];
+}
+interface PlacesResponse {
+  places?: GooglePlace[];
+  error?: { message?: string };
+}
+
 export async function searchPlaces(
   type: string,
   q: string,
   check_in: string | undefined,
   check_out: string | undefined,
   key: string,
-): Promise<Record<string, any[]>> {
+): Promise<Record<string, unknown[]>> {
   const queryMap: Record<string, string> = {
     activities: `things to do in ${q}`,
     dining: `restaurants in ${q}`,
     hotels: `hotels in ${q}`,
   };
 
-  const searchText = async (fields: string) => {
+  const searchText = async (fields: string): Promise<PlacesResponse> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     try {
@@ -55,14 +71,14 @@ export async function searchPlaces(
         body: JSON.stringify({ textQuery: queryMap[type], maxResultCount: 8 }),
         signal: controller.signal,
       });
-      return resp.json();
+      return await resp.json() as PlacesResponse;
     } finally {
       clearTimeout(timeout);
     }
   };
 
   try {
-    let data: any = await searchText(ADVANCED_FIELDS[type]);
+    let data = await searchText(ADVANCED_FIELDS[type]);
     if (data.error) data = await searchText(BASIC_FIELDS);
     if (data.error) return { [type === "dining" ? "restaurants" : type]: [] };
 
@@ -72,7 +88,7 @@ export async function searchPlaces(
       `/api/image-proxy?photo=${encodeURIComponent(photoName)}`;
 
     if (type === "activities") {
-      const activities = places.map((a: any) => ({
+      const activities = places.map((a) => ({
         name: a.displayName?.text ?? "",
         rating: a.rating ?? 0,
         reviews: a.userRatingCount ?? 0,
@@ -85,13 +101,13 @@ export async function searchPlaces(
     }
 
     if (type === "dining") {
-      const restaurants = places.map((r: any) => ({
+      const restaurants = places.map((r) => ({
         name: r.displayName?.text ?? "",
         rating: r.rating ?? 0,
         reviews: r.userRatingCount ?? 0,
         image: r.photos?.[0]?.name ? photoUrl(r.photos[0].name) : "",
         address: r.formattedAddress ?? "",
-        priceTag: PRICE_MAP[r.priceLevel] ?? "",
+        priceTag: PRICE_MAP[r.priceLevel ?? ""] ?? "",
         cuisines: r.primaryType ? [(r.primaryType as string).replace(/_/g, " ")] : [],
         openStatus: r.currentOpeningHours?.openNow ? "Open" : "",
       }));
@@ -99,7 +115,7 @@ export async function searchPlaces(
     }
 
     // hotels
-    const hotels = places.map((h: any) => ({
+    const hotels = places.map((h) => ({
       name: h.displayName?.text ?? "",
       rating: h.rating ?? 0,
       reviews: h.userRatingCount ?? 0,
@@ -107,7 +123,7 @@ export async function searchPlaces(
       checkin: check_in,
       checkout: check_out,
       amenities: [] as string[],
-      stars: STAR_MAP[h.priceLevel] ?? "",
+      stars: STAR_MAP[h.priceLevel ?? ""] ?? "",
       address: h.formattedAddress ?? "",
     }));
     return { hotels };
