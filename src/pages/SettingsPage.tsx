@@ -541,7 +541,9 @@ export function SettingsPage() {
               {/* Preview + Save */}
               <div className="px-5 py-4 space-y-3">
                 <p className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground">Preview</p>
-                <div className="flex items-center justify-between gap-4">
+                {/* A sample of the shared-page header, so the row reads as the
+                    thing being previewed rather than a label stranded from Save. */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-background px-4 py-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
@@ -554,15 +556,15 @@ export function SettingsPage() {
                   <span className="text-[11px] text-slate-400 dark:text-muted-foreground">·</span>
                   <span className="text-[11px] text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
-                <div className="shrink-0">
+                </div>
+                <div className="flex justify-end">
                   <Button
                     onClick={handleSaveBranding}
                     disabled={savingBrand}
-                    className="h-8 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-5 disabled:opacity-40"
+                    className="h-9 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] px-5 disabled:opacity-40"
                   >
-                    {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                    {savingBrand ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Save changes"}
                   </Button>
-                </div>
                 </div>
               </div>
               </>}
