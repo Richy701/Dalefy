@@ -2130,7 +2130,10 @@ export function WorkspacePage() {
                   />
                 )}
 
-                <div className="p-4 sm:p-6 space-y-5">
+                <div className="px-4 sm:px-6 pt-4 pb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Essentials</span>
+                </div>
+                <div className="px-4 sm:px-6 pb-5 pt-1 space-y-5">
                   {/* Title - large underline style */}
                   <div className="space-y-1">
                     <Label htmlFor="event-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Event Title</Label>
