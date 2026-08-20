@@ -44,8 +44,8 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
     <section
       id={id}
       className={cn(
-        "bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden scroll-mt-20 break-inside-avoid mb-5",
-        wide && "lg:[column-span:all]",
+        "bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden scroll-mt-20 mb-5 flex flex-col",
+        wide && "lg:col-span-2",
       )}
     >
       <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -61,7 +61,7 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
           </p>
         </div>
       </div>
-      <div className="divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border">
+      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border [&>*]:flex-1 [&>*]:min-h-0">
         {children}
       </div>
     </section>
@@ -311,7 +311,7 @@ export function SettingsPage() {
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 lg:px-8 py-6 pb-12 lg:columns-2 lg:gap-x-5">
+        <div className="px-4 lg:px-8 py-6 pb-12 grid grid-cols-1 lg:grid-cols-2 lg:gap-x-5">
           {/* ── Profile ── */}
           <Section
             icon={UserIcon}
@@ -441,7 +441,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 text-[13px] font-medium text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -477,7 +477,7 @@ export function SettingsPage() {
                             navigator.clipboard.writeText(agencyCodeEdit);
                             toast.success("Copied! Share this with your travelers.");
                           }}
-                          className="h-10 px-4 rounded-xl bg-brand/10 text-[13px] font-medium text-brand hover:bg-brand/20 transition-colors"
+                          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-10 px-4 rounded-xl bg-brand/10 text-[13px] font-medium text-brand hover:bg-brand/20 transition-colors"
                         >
                           Copy
                         </button>
@@ -595,7 +595,7 @@ export function SettingsPage() {
               action={
                 <button
                   onClick={toggleTheme}
-                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
@@ -704,7 +704,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="lg:[column-span:all] border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
+          <div className="lg:col-span-2 border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>
