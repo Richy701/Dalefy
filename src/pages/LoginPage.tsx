@@ -27,7 +27,7 @@ const GoogleIcon = () => (
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
+    <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/6 dark:bg-red-500/8 border border-red-500/15 dark:border-red-500/10">
       <div className="h-9 w-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
         <X className="h-4 w-4 text-red-500" weight="bold" />
       </div>
@@ -107,7 +107,7 @@ function HeroBackground() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
         >
-          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/[0.04] border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/4 border border-slate-200/50 dark:border-[#1f1f1f] backdrop-blur-sm">
             <LockKey className="h-3.5 w-3.5 text-brand" weight="bold" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-[#999]">Internal · access by invitation</span>
           </div>

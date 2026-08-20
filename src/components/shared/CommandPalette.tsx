@@ -52,7 +52,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
   const recentTrips = [...trips].sort((a, b) => (b.start ?? "").localeCompare(a.start ?? "")).slice(0, 4);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh] px-4" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div className="fixed inset-0 z-100 flex items-start justify-center pt-[12vh] px-4" role="dialog" aria-modal="true" aria-label="Command palette">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/40 dark:bg-black/70 backdrop-blur-sm animate-fade-in"
@@ -85,7 +85,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {/* Navigate */}
           <Command.Group
             heading="Navigate"
-            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
+            className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:font-black **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-[0.35em] **:[[cmdk-group-heading]]:text-slate-500 dark:**:[[cmdk-group-heading]]:text-[#666]"
           >
             {[
               { label: "Dashboard", icon: SquaresFour, path: "/dashboard" },
@@ -113,7 +113,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {/* Actions */}
           <Command.Group
             heading="Actions"
-            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
+            className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:font-black **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-[0.35em] **:[[cmdk-group-heading]]:text-slate-500 dark:**:[[cmdk-group-heading]]:text-[#666]"
           >
             {onNewTrip && (
               <Command.Item
@@ -167,7 +167,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
           {recentTrips.length > 0 && (
             <Command.Group
               heading="Recent Trips"
-              className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.35em] [&_[cmdk-group-heading]]:text-slate-500 dark:[&_[cmdk-group-heading]]:text-[#666]"
+              className="**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:pb-1.5 **:[[cmdk-group-heading]]:pt-3 **:[[cmdk-group-heading]]:text-[10px] **:[[cmdk-group-heading]]:font-black **:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-[0.35em] **:[[cmdk-group-heading]]:text-slate-500 dark:**:[[cmdk-group-heading]]:text-[#666]"
             >
               {recentTrips.map((trip) => (
                 <Command.Item

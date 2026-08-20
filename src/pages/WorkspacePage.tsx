@@ -1378,7 +1378,7 @@ export function WorkspacePage() {
                       updateActivity(date);
                       document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
-                    className={`w-full text-left px-2.5 py-2 rounded-xl group relative transition-all duration-200 ${isActive ? "bg-brand/10 ring-1 ring-brand/25" : "hover:bg-slate-100 dark:hover:bg-white/[0.03]"}`}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl group relative transition-all duration-200 ${isActive ? "bg-brand/10 ring-1 ring-brand/25" : "hover:bg-slate-100 dark:hover:bg-white/3"}`}
                   >
                     <div className="flex items-center gap-2.5 relative z-10 leading-none">
                       <div className="relative shrink-0">
@@ -1424,8 +1424,8 @@ export function WorkspacePage() {
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
               <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
               {/* Multi-layer gradient for depth */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
+              <div className="absolute inset-0 bg-linear-to-r from-black/30 to-transparent" />
 
               {/* Top row: status + event count pill */}
               <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
@@ -2410,7 +2410,7 @@ export function WorkspacePage() {
                   {editingEvent?.image ? (
                     <>
                       <img src={editingEvent.image} alt={editingEvent.title ? `Selected image for ${editingEvent.title}` : "Selected event image"} className="w-full h-full object-cover transition-all duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
                       <div className="absolute bottom-2 sm:bottom-3 left-3 right-3">
                         {editingEvent.title && <p className="text-white font-extrabold uppercase text-xs sm:text-base leading-tight drop-shadow-lg line-clamp-1 sm:line-clamp-2">{editingEvent.title}</p>}
                       </div>
@@ -2665,7 +2665,7 @@ export function WorkspacePage() {
                     type="button"
                     onClick={handleAiAssist}
                     disabled={aiAssistLoading || (!editingEvent?.title && !editingEvent?.location)}
-                    className="w-full h-9 rounded-lg bg-gradient-to-r from-brand/10 to-purple-500/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:from-brand/20 hover:to-purple-500/20 hover:border-brand/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full h-9 rounded-lg bg-linear-to-r from-brand/10 to-purple-500/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:from-brand/20 hover:to-purple-500/20 hover:border-brand/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {aiAssistLoading ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <MagicWand className="h-3.5 w-3.5" />}
                     {aiAssistLoading ? "Generating..." : "AI Assist - Generate Description & Notes"}
@@ -2745,7 +2745,7 @@ export function WorkspacePage() {
                 {editingTrip.image && (
                   <div className="h-36 rounded-xl overflow-hidden relative">
                     <img src={editingTrip.image} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
                   </div>
                 )}
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
@@ -2804,7 +2804,7 @@ export function WorkspacePage() {
                       <button key={url} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, image: url }))}
                         className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                         <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
                         <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
                       </button>
                     ))

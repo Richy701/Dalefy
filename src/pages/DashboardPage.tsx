@@ -393,7 +393,7 @@ export function DashboardPage() {
       {/* ── Drag-to-import overlay ── */}
       {isDragging && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-xl border-2 border-dashed border-brand bg-brand/[0.04]">
+          <div className="flex flex-col items-center gap-5 px-20 py-14 rounded-xl border-2 border-dashed border-brand bg-brand/4">
             <div className="h-16 w-16 rounded-xl bg-brand/15 flex items-center justify-center">
               <Upload className="h-7 w-7 text-brand" />
             </div>
@@ -422,7 +422,7 @@ export function DashboardPage() {
 
       {/* ── Demo welcome banner ── */}
       {isDemo && !demoBannerDismissed && (
-        <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/[0.06] px-5 py-3.5">
+        <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/6 px-5 py-3.5">
           <Compass className="h-5 w-5 text-brand shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
@@ -474,7 +474,7 @@ export function DashboardPage() {
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
           {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand/10 via-brand/[0.02] to-slate-50 dark:from-brand/10 dark:via-brand/[0.02] dark:to-[#050505] border border-brand/[0.08] dark:border-brand/[0.06] shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
+          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/10 via-brand/2 to-slate-50 dark:from-brand/10 dark:via-brand/2 dark:to-[#050505] border border-brand/8 dark:border-brand/6 shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
             <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                 {greeting}, {firstName}
@@ -544,14 +544,14 @@ export function DashboardPage() {
                 type="button"
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
                 disabled={isViewer}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
               >
                 <Plus className="h-3 w-3" /> New Trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
               >
                 <Upload className="h-3 w-3" /> Import
               </button>
@@ -559,7 +559,7 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setInviteOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.06] dark:border-white/[0.08] text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
                 >
                   <Users className="h-3 w-3" /> Invite Team
                 </button>
@@ -576,7 +576,7 @@ export function DashboardPage() {
 
           {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
-            <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
@@ -591,7 +591,7 @@ export function DashboardPage() {
                       key={ev.id}
                       type="button"
                       onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
-                      className="bg-white dark:bg-[#111111] px-4 py-4 text-left hover:bg-brand/[0.03] dark:hover:bg-brand/[0.04] transition-colors group"
+                      className="bg-white dark:bg-[#111111] px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                     >
                       <div className="flex items-center gap-2 mb-2.5">
                         <div className={cn("h-5 w-5 rounded-md flex items-center justify-center shrink-0", cfg.bg)}>
@@ -638,7 +638,7 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/[0.06] transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
@@ -663,7 +663,7 @@ export function DashboardPage() {
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/[0.06] dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
+                  <div className="bg-white dark:bg-[#111111] border-2 border-dashed border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888888]">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
@@ -759,7 +759,7 @@ export function DashboardPage() {
                           <button
                             key={ev.id}
                             onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/[0.05] transition-[border-color,box-shadow] duration-200 group"
+                            data-compact-place className="text-left bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
                             <div data-compact-place-img className="h-28 sm:h-auto sm:w-[160px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
@@ -857,7 +857,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-[#111111] rounded-xl border border-dashed border-black/[0.06] dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
+                      className="mt-4 bg-white dark:bg-[#111111] rounded-xl border border-dashed border-black/6 dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-[#888888] cursor-pointer hover:border-brand/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
@@ -889,7 +889,7 @@ export function DashboardPage() {
                         key={item.tripId}
                         type="button"
                         onClick={() => navigate(`/trip/${item.tripId}`)}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/[0.04] transition-colors text-left group"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/4 transition-colors text-left group"
                       >
                         <span className={cn(
                           "h-1.5 w-1.5 rounded-full shrink-0",
@@ -907,7 +907,7 @@ export function DashboardPage() {
               )}
 
               {/* At a Glance - stats card */}
-              <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+              <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                 <div className="px-5 pt-5 pb-3">
                   <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
                   <p className="text-xs text-slate-500 dark:text-[#888888] mt-1">Your travel snapshot</p>
@@ -922,7 +922,7 @@ export function DashboardPage() {
                   ].map(({ icon: Icon, label, value }) => (
                     <div
                       key={label}
-                      className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/[0.04] dark:hover:bg-brand/[0.06] transition-colors"
+                      className="rounded-xl bg-slate-50 dark:bg-[#0a0a0a] px-3 py-3 group/stat hover:bg-brand/4 dark:hover:bg-brand/6 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
@@ -974,12 +974,12 @@ export function DashboardPage() {
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
                     {/* Full-bleed hero */}
                     <div data-compact-spotlight-hero className="relative h-[200px]">
                       <img src={spotlightTrip.image} alt={spotlightTrip.name} className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/90" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/40 to-black/90" />
+                      <div className="absolute inset-0 bg-linear-to-r from-black/20 to-transparent" />
 
                       {/* Status + eyebrow */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
@@ -1102,7 +1102,7 @@ export function DashboardPage() {
                 };
 
                 return (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
+                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
                     <div className="px-4 pt-4 pb-1 flex items-center justify-between">
                       <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
                       <button
@@ -1120,8 +1120,8 @@ export function DashboardPage() {
                         showOutsideDays
                         modifiers={modifiers}
                         modifiersClassNames={{
-                          tripDay: "!bg-brand/10 !text-brand !font-bold",
-                          activeDay: "!bg-brand !text-white !font-black",
+                          tripDay: "bg-brand/10! text-brand! font-bold!",
+                          activeDay: "bg-brand! text-white! font-black!",
                         }}
                         onDayClick={handleDayClick}
                         components={{
@@ -1162,9 +1162,9 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-500" />
-                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
+                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
-<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none">
+<div className="flex gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
                   <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
                   <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-[#050505] shadow-md" : "text-slate-500 dark:text-[#888888] hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
                 </div>
@@ -1181,9 +1181,9 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/[0.08] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[340px] cursor-pointer ring-1 ring-slate-200 dark:ring-[#1f1f1f] hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/10" />
 
                       {/* Top row: status + delete */}
                       <div className="relative z-10 flex items-center justify-between p-4">
@@ -1222,7 +1222,7 @@ export function DashboardPage() {
                             <DropdownMenuTrigger className="h-8 w-8 rounded-xl bg-black/60 backdrop-blur text-white/70 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
@@ -1235,8 +1235,8 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-xl border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
-                  <div className="h-16 w-16 rounded-xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#111111] dark:to-[#0a0a0a] rounded-xl border-2 border-dashed border-slate-200 dark:border-[#222] flex flex-col items-center justify-center py-12 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[340px]">
+                  <div className="h-16 w-16 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">New Trip</p>
                   <p className="text-[10px] font-medium text-slate-500 dark:text-[#888] mt-1">Plan your next adventure</p>
                 </button>
@@ -1244,7 +1244,7 @@ export function DashboardPage() {
             ) : (
               <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
-                  <div className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
+                  <div className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
@@ -1264,12 +1264,12 @@ export function DashboardPage() {
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-[#1f1f1f] shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
                         <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+                        <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10" />
                       </div>
 
                       {/* Content */}
@@ -1316,7 +1316,7 @@ export function DashboardPage() {
                             <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-500 dark:text-[#888] hover:text-brand hover:bg-slate-50 dark:hover:bg-[#050505] transition-colors flex items-center justify-center cursor-pointer">
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
+                            <DropdownMenuContent className="bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-[#ccc]"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
@@ -1335,7 +1335,7 @@ export function DashboardPage() {
                     onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
                     className="group bg-white dark:bg-[#111111] border border-dashed border-slate-200 dark:border-[#222] rounded-xl flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-[#888] hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
                   >
-                    <div className="h-9 w-9 rounded-xl bg-brand/[0.06] dark:bg-brand/[0.08] border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
+                    <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-[0.15em]">New Trip</span>
@@ -1356,7 +1356,7 @@ export function DashboardPage() {
                     <button
                       key={tpl.id}
                       onClick={() => handleCreateFromTemplate(tpl)}
-                      className="group bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                      className="group bg-white dark:bg-[#111111] border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                     >
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -1398,7 +1398,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/[0.06] dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/6 dark:border-transparent bg-slate-50 dark:bg-[#0a0a0a] hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
               >
                 <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
                   <Upload className="h-4 w-4 text-brand" />
@@ -1424,7 +1424,7 @@ export function DashboardPage() {
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/[0.06] dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
+                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all border ${newTripData.tripType === t ? "bg-brand text-black border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-[#0a0a0a] border-black/6 dark:border-transparent text-slate-500 dark:text-[#888] hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -1509,7 +1509,7 @@ export function DashboardPage() {
                   {newTripData.image?.startsWith("http") && (
                     <div className="h-28 rounded-xl overflow-hidden relative">
                       <img src={newTripData.image} alt="" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
                     </div>
                   )}
                   {/* Search bar */}
@@ -1566,7 +1566,7 @@ export function DashboardPage() {
                         <button key={url} type="button" onClick={() => setNewTripData({ ...newTripData, image: url })}
                           className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                           <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+                          <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
                           <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
                         </button>
                       ))
@@ -1577,11 +1577,11 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/[0.1] dark:hover:border-white/[0.1] transition-all">
+                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-transparent dark:border-transparent text-slate-500 dark:text-[#888] text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 transition-all">
                     Cancel
                   </button>
                   <button type="submit"
-                    className="flex-[2] h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
                     <Plus className="h-4 w-4" /> Create Itinerary
                   </button>
                 </div>

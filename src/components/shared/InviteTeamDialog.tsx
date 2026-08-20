@@ -39,7 +39,7 @@ const ROLE_ICON: Record<string, typeof Crown> = { owner: Crown, admin: Shield, a
 const ROLE_BADGE: Record<string, string> = {
   owner: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   admin: "bg-brand/10 text-brand border-brand/20",
-  agent: "bg-slate-900/[0.06] dark:bg-white/[0.08] text-slate-700 dark:text-[#ccc] border-slate-900/10 dark:border-white/10",
+  agent: "bg-slate-900/6 dark:bg-white/8 text-slate-700 dark:text-[#ccc] border-slate-900/10 dark:border-white/10",
   viewer: "bg-transparent text-slate-500 dark:text-[#888] border-slate-300 dark:border-[#2a2a2a]",
 };
 
@@ -275,7 +275,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
 
             {/* Result card */}
             {lastInvite && (
-              <div className={`rounded-xl overflow-hidden border ${lastInvite.emailSent ? "border-brand/30 bg-brand/[0.06]" : "border-amber-500/30 bg-amber-500/[0.06]"}`}>
+              <div className={`rounded-xl overflow-hidden border ${lastInvite.emailSent ? "border-brand/30 bg-brand/6" : "border-amber-500/30 bg-amber-500/6"}`}>
                 <div className="px-4 py-3.5 flex items-start gap-3">
                   {lastInvite.emailSent ? (
                     <CheckCircle className="h-5 w-5 text-brand shrink-0 mt-0.5" weight="fill" />
@@ -297,7 +297,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 </div>
                 <button
                   type="button"
-                  className="w-full px-4 py-2.5 flex items-center gap-2 border-t border-black/[0.06] dark:border-white/[0.06] hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-left"
+                  className="w-full px-4 py-2.5 flex items-center gap-2 border-t border-black/6 dark:border-white/6 hover:bg-black/3 dark:hover:bg-white/3 transition-colors text-left"
                   onClick={() => handleCopy("last", lastInvite.link)}
                 >
                   <Link className="h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-[#888]" />

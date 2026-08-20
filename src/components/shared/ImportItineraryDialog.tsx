@@ -1715,7 +1715,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {/* Trip summary */}
             <div className="rounded-xl border border-slate-200 dark:border-[#1f1f1f] overflow-hidden bg-white dark:bg-[#111111]">
               {/* Teal accent strip + back */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-[#1a1a1a] bg-gradient-to-r from-brand/[0.06] to-transparent">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-[#1a1a1a] bg-linear-to-r from-brand/6 to-transparent">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
@@ -1831,7 +1831,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] sm:text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">{ev.title}</p>
-                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 break-words">
+                        <p className="text-[11px] sm:text-[10px] text-slate-500 dark:text-[#888888] mt-1 wrap-break-word">
                           {(() => {
                             const d = new Date(ev.date + "T12:00:00");
                             return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });

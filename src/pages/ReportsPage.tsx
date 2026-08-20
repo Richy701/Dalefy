@@ -26,11 +26,11 @@ type Tab = "operations" | "compliance";
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
+    <div className="rounded-xl border border-black/6 dark:border-[#1a1a1a] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-[#888]">{label}</span>
-          <div className={`h-8 w-8 rounded-lg border border-black/[0.06] dark:border-[#1a1a1a] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
+          <div className={`h-8 w-8 rounded-lg border border-black/6 dark:border-[#1a1a1a] bg-slate-50 dark:bg-[#0a0a0a] ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
@@ -183,12 +183,12 @@ export function ReportsPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 flex flex-col min-h-full">
           {/* Title + tabs */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/[0.06] dark:border-[#1a1a1a]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/6 dark:border-[#1a1a1a]">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
               <h1 className="text-2xl lg:text-4xl font-black uppercase tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
-            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shrink-0">
+            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/6 dark:border-[#1f1f1f] shrink-0">
               {(["operations", "compliance"] as const).map(t => (
                 <button
                   key={t}
@@ -228,7 +228,7 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-8 animate-fade-in mt-8">
               {/* ── Hero Stats Strip ── */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
                   <div className="text-center lg:text-left shrink-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
@@ -261,13 +261,13 @@ export function ReportsPage() {
               </div>
 
               {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Status breakdown across all trips</p>
                 </div>
                 {pipelineData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-black/6 dark:border-[#1f1f1f]">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
@@ -323,7 +323,7 @@ export function ReportsPage() {
               {/* ── Team Overview + Trips by Month - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Team Overview */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="mb-5">
                     <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} members`; })()}</p>
@@ -331,7 +331,7 @@ export function ReportsPage() {
                   {(() => {
                     const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
                     if (allTravelers.length === 0) return (
-                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/6 dark:border-[#1f1f1f]">
                         <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                           <Users className="h-5 w-5 text-brand opacity-60" />
                         </div>
@@ -376,13 +376,13 @@ export function ReportsPage() {
                 </div>
 
                 {/* Trips by Month */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
                   <div className="mb-6">
                     <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888] mt-1">Departure schedule</p>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
-                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/[0.06] dark:border-[#1f1f1f]">
+                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/6 dark:border-[#1f1f1f]">
                       <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
@@ -407,7 +407,7 @@ export function ReportsPage() {
               {/* ── Top Airlines + Travelers per Trip - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Airlines */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <AirplaneTilt className="h-4 w-4" />
@@ -425,7 +425,7 @@ export function ReportsPage() {
                         return (
                           <div key={a.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a]">
                             <span className="text-lg font-black text-slate-200 dark:text-[#222] w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
-                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-black/[0.06] dark:border-[#2a2a2a]">
+                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-black/6 dark:border-[#2a2a2a]">
                               {logoUrl ? (
                                 <img src={logoUrl} alt={a.name} className="h-full w-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
                               ) : null}
@@ -455,7 +455,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Travelers per Trip */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Users className="h-4 w-4" />
@@ -534,7 +534,7 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance - full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Document Status</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Across all team members</p>
@@ -596,7 +596,7 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type - full width */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Signed / Pending / Expired per type</p>
@@ -627,7 +627,7 @@ export function ReportsPage() {
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-end gap-5 mt-6 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center justify-end gap-5 mt-6 pt-4 border-t border-black/6 dark:border-white/6">
                   {[{ l: "Signed", c: "#34d399" }, { l: "Pending", c: "#fbbf24" }, { l: "Expired", c: "#f87171" }].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ background: i.c }} />
@@ -640,7 +640,7 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action - side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileText className="h-4 w-4" />
@@ -670,7 +670,7 @@ export function ReportsPage() {
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
                       <Warning className="h-4 w-4" />
@@ -719,7 +719,7 @@ export function ReportsPage() {
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/[0.06] dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#111111] rounded-xl border border-black/6 dark:border-[#1a1a1a] shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="mb-6">
                   <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-[#888888] mt-1">Overview by traveler and document</p>
@@ -750,7 +750,7 @@ export function ReportsPage() {
                         });
                         const hasExpired = docNames.some(dn => t.compliance.find(d => d.name === dn)?.status === "Expired");
                         return (
-                          <tr key={t.id} className="border-t border-black/[0.04] dark:border-[#1a1a1a] hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
+                          <tr key={t.id} className="border-t border-black/4 dark:border-[#1a1a1a] hover:bg-slate-50/50 dark:hover:bg-[#050505]/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
@@ -782,7 +782,7 @@ export function ReportsPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center gap-6 mt-4 pt-4 border-t border-black/6 dark:border-white/6">
                   {[
                     { l: "Signed", icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> },
                     { l: "Pending", icon: <Clock className="h-3.5 w-3.5 text-amber-400" /> },

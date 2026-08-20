@@ -226,7 +226,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                   className="group relative rounded-xl overflow-hidden bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] shadow-sm hover:shadow-xl hover:border-brand/30 transition-all duration-300"
                 >
                   {/* Thumbnail */}
-                  <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
+                  <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
                     {item.type === "image" ? (
                       <img
                         src={item.url}

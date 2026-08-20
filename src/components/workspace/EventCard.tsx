@@ -195,7 +195,7 @@ function FlightCard({ event, onClick, onDuplicate, onDelete, assignedPeople, tri
       {...cardA11y(event.title, onClick)}
       className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand group relative bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl overflow-hidden hover:border-brand/30 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
     >
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
+      <div className="h-px w-full bg-linear-to-r from-transparent via-slate-200 dark:via-[#2a2a2a] to-transparent" />
       <div className="px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-4 sm:gap-6">
         {/* Departure time */}
         <div className="flex flex-col items-center shrink-0 w-12 sm:w-14 text-center">
@@ -270,7 +270,7 @@ function HotelCard({ event, onClick, onDuplicate, onDelete, assignedPeople, trip
         {event.image ? (
           <div className="w-full h-40 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 relative overflow-hidden sm:self-stretch">
             <img src={event.image} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-transparent to-black/10" />
+            <div className="absolute inset-0 bg-linear-to-b sm:bg-linear-to-r from-transparent to-black/10" />
           </div>
         ) : (
           <div className="w-full h-24 sm:w-36 lg:w-44 sm:min-h-[140px] sm:h-auto shrink-0 bg-brand/5 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-[#1a1a1a] sm:self-stretch">

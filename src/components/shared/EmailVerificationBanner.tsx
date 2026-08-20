@@ -41,7 +41,7 @@ export function EmailVerificationBanner() {
   };
 
   return (
-    <div role="status" aria-live="polite" className="bg-amber-50 dark:bg-amber-500/[0.06] border-b border-amber-200/60 dark:border-amber-500/15 px-4 py-2.5 flex items-center gap-3 flex-wrap">
+    <div role="status" aria-live="polite" className="bg-amber-50 dark:bg-amber-500/6 border-b border-amber-200/60 dark:border-amber-500/15 px-4 py-2.5 flex items-center gap-3 flex-wrap">
       <EnvelopeSimple className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0" weight="bold" />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-amber-800 dark:text-amber-300">

@@ -241,7 +241,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-[#1f1f1f] flex-1 min-h-0 overflow-y-auto lg:overflow-hidden [&>*]:lg:overflow-y-auto">
+        <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-[#1f1f1f] flex-1 min-h-0 overflow-y-auto lg:overflow-hidden *:lg:overflow-y-auto">
           {/* Left: Compose */}
           <div className="flex-1 p-5 sm:p-8 space-y-5 min-w-0">
             {/* To */}

@@ -41,7 +41,7 @@ function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; ac
 
   return (
     <div
-      className={`transition-colors ${hasDetail ? "cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02]" : ""}`}
+      className={`transition-colors ${hasDetail ? "cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/2" : ""}`}
       onClick={() => hasDetail && setOpen(!open)}
     >
       <div className="flex items-start gap-3 p-3 sm:p-4">
@@ -286,7 +286,7 @@ export function SharedTripPage() {
       {/* Hero */}
       <div className="relative h-[320px] sm:h-[400px] overflow-hidden">
         <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
           <div className="flex items-center gap-2 mb-2">
             {brand.logoUrl && (

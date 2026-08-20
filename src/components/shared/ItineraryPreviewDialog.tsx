@@ -60,9 +60,9 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose, staticMapUrl 
         {trip.image ? (
           <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-brand/30 via-[#111] to-[#050505]" />
+          <div className="absolute inset-0 bg-linear-to-br from-brand/30 via-[#111] to-[#050505]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
 
         {/* Close - hidden in print */}
         {!forPrint && onClose && (

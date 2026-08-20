@@ -1,23 +1,9 @@
-import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette";
-
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
   content: [
     "./index.html",
     "./src/**/*.{ts,tsx,js,jsx}",
-    "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
-  ],
-  safelist: [
-    // Tremor constructs these class names dynamically at runtime — Tailwind
-    // can't find them during its content scan so we safelist the colors we use.
-    ...["slate","teal","amber","sky","rose","emerald","red"].flatMap(c => [
-      `fill-${c}-500`, `dark:fill-${c}-500`,
-      `stroke-${c}-500`, `dark:stroke-${c}-500`,
-      `bg-${c}-500`, `dark:bg-${c}-500`,
-      `text-${c}-500`, `dark:text-${c}-500`,
-      `hover:bg-${c}-500`, `dark:hover:bg-${c}-500`,
-    ]),
   ],
   theme: {
     extend: {
@@ -154,17 +140,7 @@ export default {
       },
     },
   },
-  plugins: [
-    // Tremor needs fill-* and stroke-* utilities for SVG chart elements
-    function({ matchUtilities, theme }) {
-      matchUtilities(
-        { "fill": (value) => ({ fill: value }) },
-        { values: flattenColorPalette(theme("colors")), type: "color" }
-      );
-      matchUtilities(
-        { "stroke": (value) => ({ stroke: value }) },
-        { values: flattenColorPalette(theme("colors")), type: "color" }
-      );
-    },
-  ],
+  // fill-* and stroke-* color utilities that Tremor charts need are built into
+  // Tailwind v4, so the plugin that used to generate them is gone.
+  plugins: [],
 }

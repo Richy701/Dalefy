@@ -93,7 +93,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                   className={`w-full text-left px-3 py-2 rounded-lg transition-all ${
                     n.read
                       ? "hover:bg-slate-50 dark:hover:bg-[#0a0a0a] opacity-50"
-                      : "bg-brand/[0.03] dark:bg-brand/[0.04] hover:bg-brand/[0.06] dark:hover:bg-brand/[0.08]"
+                      : "bg-brand/3 dark:bg-brand/4 hover:bg-brand/6 dark:hover:bg-brand/8"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -137,7 +137,7 @@ export function NotificationPanel() {
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent className="w-[22rem] p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl" align="end">
+        <PopoverContent className="w-88 p-0 bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl" align="end">
           <NotificationList />
         </PopoverContent>
       </Popover>

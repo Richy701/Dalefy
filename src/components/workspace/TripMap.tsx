@@ -375,11 +375,11 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
   return (
     <div className="h-full w-full relative overflow-hidden">
       {/* Edge vignette */}
-      <div className="absolute inset-0 z-[500] pointer-events-none" style={{
+      <div className="absolute inset-0 z-500 pointer-events-none" style={{
         boxShadow: `inset 0 0 50px 15px ${isDark ? "#050505" : "#f8fafc"}`,
       }} />
       {isDark && (
-        <div className="absolute inset-0 z-[400] pointer-events-none" style={{
+        <div className="absolute inset-0 z-400 pointer-events-none" style={{
           background: `radial-gradient(ellipse at 50% 40%, ${ACCENT}06 0%, transparent 70%)`,
         }} />
       )}
@@ -524,7 +524,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
       </Map>
 
       {/* Route timeline strip */}
-      <div className="absolute bottom-0 left-0 right-0 z-[1000]">
+      <div className="absolute bottom-0 left-0 right-0 z-1000">
         <div className="mx-2 sm:mx-3 mb-2 sm:mb-3 rounded-xl sm:rounded-[1.25rem] border border-slate-200 dark:border-[#1f1f1f] bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl shadow-2xl">
           <div className="px-3 sm:px-4 py-2.5 sm:py-3">
             <div className="flex items-center justify-between mb-3">

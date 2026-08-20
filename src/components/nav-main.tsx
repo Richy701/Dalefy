@@ -34,13 +34,13 @@ export function NavMain() {
                 className={`
                   relative rounded-xl h-10 gap-3
                   ${active
-                    ? "!bg-brand/10 !text-brand hover:!bg-brand/15"
-                    : "!text-sidebar-foreground/75 hover:!text-brand hover:!bg-brand/5"
+                    ? "bg-brand/10! text-brand! hover:bg-brand/15!"
+                    : "text-sidebar-foreground/75! hover:text-brand! hover:bg-brand/5!"
                   }
                 `}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className={`text-[11px] uppercase tracking-[0.1em] ${active ? "font-black" : "font-semibold"}`}>{label}</span>
+                <span className={`text-[11px] uppercase tracking-widest ${active ? "font-black" : "font-semibold"}`}>{label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           );

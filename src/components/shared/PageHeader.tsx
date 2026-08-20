@@ -22,7 +22,7 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
         <MobileSidebar />
       </div>
       <SidebarTrigger className="hidden lg:flex" />
-      <Separator orientation="vertical" className="mx-1 !h-4 hidden lg:block" />
+      <Separator orientation="vertical" className="mx-1 h-4! hidden lg:block" />
       <div className="flex-1 min-w-0 flex items-center">
         {left}
       </div>

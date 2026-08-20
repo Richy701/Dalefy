@@ -780,10 +780,10 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
           </div>
 
           {/* Side buttons */}
-          <div className="absolute top-[18%] -left-[1px] w-[2px] h-[20px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[26%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[34%] -left-[1px] w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[28%] -right-[1px] w-[2px] h-[56px] rounded-l-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[18%] -left-px w-[2px] h-[20px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[26%] -left-px w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[34%] -left-px w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
+          <div className="absolute top-[28%] -right-px w-[2px] h-[56px] rounded-l-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
         </div>
       </div>
     </div>

@@ -316,7 +316,7 @@ export function DestinationsPage() {
         {/* ── Hero Banner ── */}
         <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
           {/* Banner - same style as dashboard */}
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-brand/15 via-brand/[0.03] to-slate-50 dark:from-brand/15 dark:via-brand/[0.03] dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
+          <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/15 via-brand/3 to-slate-50 dark:from-brand/15 dark:via-brand/3 dark:to-[#0a0a0a] border border-slate-200/50 dark:border-[#1f1f1f]">
             {/* Mobile: stacked layout / Desktop: side-by-side */}
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
               {/* Text content */}
@@ -448,7 +448,7 @@ export function DestinationsPage() {
           if (!pin) return null;
           return (
           <div
-            className="fixed z-[9999] pointer-events-none"
+            className="fixed z-9999 pointer-events-none"
             style={hoveredPin ? { left: mousePos.current.x + 16, top: mousePos.current.y - 16 } : { left: "50%", bottom: 24, transform: "translateX(-50%)" }}
           >
             <div className="bg-white dark:bg-[#111111] border border-slate-200 dark:border-[#1f1f1f] rounded-xl shadow-2xl min-w-[200px] overflow-hidden">
@@ -539,7 +539,7 @@ export function DestinationsPage() {
               >
                 <div className="absolute inset-0">
                   <img src={dest.image} alt={dest.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/5" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/5" />
                 </div>
                 <div className="relative z-10 flex items-start justify-between p-6">
                   <span className="rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>

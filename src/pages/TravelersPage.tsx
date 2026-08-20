@@ -1837,7 +1837,7 @@ export function TravelersPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-[2] h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
+                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
                   >
                     <UserPlus className="h-4 w-4" /> Add to Team
                   </button>
@@ -1932,7 +1932,7 @@ export function TravelersPage() {
                 <button
                   onClick={handleUploadDocument}
                   disabled={!uploadDocName.trim() || uploadAssignees.length === 0}
-                  className="flex-[2] h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" /> Assign Document
                 </button>

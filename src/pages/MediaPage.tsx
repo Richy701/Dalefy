@@ -466,8 +466,8 @@ export function MediaPage() {
             )}
 
             {/* Overlay gradients */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-r from-black/95 via-black/70 to-black/30" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
 
             <div className="relative px-4 sm:px-8 py-8 sm:py-10 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
               <div>
@@ -580,7 +580,7 @@ export function MediaPage() {
           className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 rounded-xl border transition-all ${
             isDragging
               ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
-              : "border-black/[0.06] dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none"
+              : "border-black/6 dark:border-[#1f1f1f] bg-white dark:bg-[#111111] shadow-sm dark:shadow-none"
           }`}
         >
           {/* Trip picker + upload button row */}
@@ -691,7 +691,7 @@ export function MediaPage() {
                 className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
                   activeTripFilter === "all"
                     ? "bg-brand text-black border-transparent"
-                    : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
+                    : "bg-white dark:bg-[#111111] border-black/6 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
                 }`}
               >
                 All · {allItems.length}
@@ -703,7 +703,7 @@ export function MediaPage() {
                   className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
                       ? "bg-brand text-black border-transparent"
-                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
+                      : "bg-white dark:bg-[#111111] border-black/6 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888888] hover:border-brand/40"
                   }`}
                 >
                   {t.name} · {t.media!.length}
@@ -717,7 +717,7 @@ export function MediaPage() {
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Type toggle */}
-            <div className="flex items-center gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/[0.06] dark:border-[#1f1f1f] shadow-sm dark:shadow-none">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#111111] p-1 rounded-xl border border-black/6 dark:border-[#1f1f1f] shadow-sm dark:shadow-none">
               {([
                 { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
                 { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
@@ -744,7 +744,7 @@ export function MediaPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all border ${
                 selectMode
                   ? "bg-brand text-black border-transparent"
-                  : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white shadow-sm dark:shadow-none"
+                  : "bg-white dark:bg-[#111111] border-black/6 dark:border-[#1f1f1f] text-slate-500 dark:text-[#888] hover:text-slate-700 dark:hover:text-white shadow-sm dark:shadow-none"
               }`}
             >
               <CheckSquare className="h-3.5 w-3.5" />
@@ -755,7 +755,7 @@ export function MediaPage() {
 
         {/* ── Selection toolbar ── */}
         {selectMode && filtered.length > 0 && (
-          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/[0.08]">
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/8">
             <button
               onClick={() => selected.size === filtered.length ? setSelected(new Set()) : selectAllFiltered()}
               className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:text-brand transition-colors"
@@ -775,7 +775,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDownload}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-[#111111] border border-black/[0.06] dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-[#111111] border border-black/6 dark:border-[#1f1f1f] text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -869,11 +869,11 @@ export function MediaPage() {
               className={`flex flex-col items-center justify-center py-24 sm:py-32 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
                 isDragging
                   ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
-                  : "border-black/[0.08] dark:border-[#222] bg-white/50 dark:bg-white/[0.02] hover:border-brand/30 hover:bg-brand/[0.02]"
+                  : "border-black/8 dark:border-[#222] bg-white/50 dark:bg-white/2 hover:border-brand/30 hover:bg-brand/2"
               }`}
             >
               <div className={`h-16 w-16 rounded-xl flex items-center justify-center mb-5 transition-colors ${
-                isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-[#1f1f1f]"
+                isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/4 border border-black/6 dark:border-[#1f1f1f]"
               }`}>
                 <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-400 dark:text-[#888]"}`} />
               </div>
@@ -896,7 +896,7 @@ export function MediaPage() {
                   className={`w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white ${
                     tripPickerOpen
                       ? "bg-white dark:bg-[#111111] border-brand/50 shadow-md"
-                      : "bg-white dark:bg-[#111111] border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/40 shadow-sm dark:shadow-none"
+                      : "bg-white dark:bg-[#111111] border-black/6 dark:border-[#1f1f1f] hover:border-brand/40 shadow-sm dark:shadow-none"
                   }`}
                 >
                   {selectedTrip ? (
@@ -988,11 +988,11 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
       className={`group relative rounded-xl overflow-hidden bg-white dark:bg-[#111111] border shadow-sm dark:shadow-none hover:shadow-xl transition-all duration-300 ${
         isSelected
           ? "border-brand ring-2 ring-brand/30"
-          : "border-black/[0.06] dark:border-[#1f1f1f] hover:border-brand/30"
+          : "border-black/6 dark:border-[#1f1f1f] hover:border-brand/30"
       }`}
       onClick={selectMode ? () => onToggleSelect?.(item.id) : undefined}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
+      <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-[#0a0a0a]">
         {item.type === "image" ? (
           <img
             src={item.url}

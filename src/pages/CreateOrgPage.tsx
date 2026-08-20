@@ -98,7 +98,7 @@ function BrandPanel() {
         <div className="space-y-4 w-full">
           {features.map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/[0.06] border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/6 border border-slate-200/50 dark:border-[#1f1f1f] flex items-center justify-center shrink-0">
                 <Icon className="h-4 w-4 text-brand" weight="regular" />
               </div>
               <span className="text-sm font-semibold text-slate-600 dark:text-[#bbb]">{label}</span>
@@ -254,7 +254,7 @@ export function CreateOrgPage() {
               </div>
 
               {error && (
-                <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/[0.06] dark:bg-red-500/[0.08] border border-red-500/15 dark:border-red-500/10">
+                <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/6 dark:bg-red-500/8 border border-red-500/15 dark:border-red-500/10">
                   <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex-1">{error}</p>
                 </div>
               )}
