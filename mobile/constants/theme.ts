@@ -1,6 +1,9 @@
-import { Platform } from "react-native";
+import { Platform, type ViewStyle } from "react-native";
 
 export const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 60;
+
+/** Standard bottom padding for scrollable screens (clears tab bar + breathing room) */
+export const SCROLL_BOTTOM_PAD = 100;
 
 export const darkColors = {
   bg: "#09090b",
@@ -17,6 +20,7 @@ export const darkColors = {
   textDim: "#4a4a4a",
 
   teal: "#0bd2b5",
+  tealText: "#0bd2b5",
   tealDim: "rgba(11,210,181,0.1)",
   tealMid: "rgba(11,210,181,0.25)",
   tealGlow: "rgba(11,210,181,0.15)",
@@ -24,11 +28,24 @@ export const darkColors = {
   toggleTrack: "#3F3F46",
 
   green: "#10b981",
+  greenText: "#10b981",
   greenDim: "rgba(16,185,129,0.12)",
+  greenMid: "rgba(16,185,129,0.25)",
   amber: "#f59e0b",
+  amberText: "#f59e0b",
   amberDim: "rgba(245,158,11,0.12)",
+  amberMid: "rgba(245,158,11,0.25)",
   red: "#ef4444",
+  redText: "#f87171",
   redDim: "rgba(239,68,68,0.12)",
+  redMid: "rgba(239,68,68,0.25)",
+
+  /** Text/icon color for content sitting on the accent (teal) fill */
+  onAccent: "#000000",
+
+  /** Over-photo glass pill surface + border */
+  glass: "rgba(9,9,11,0.65)",
+  glassBorder: "rgba(255,255,255,0.10)",
 
   flight: "#0bd2b5",
   hotel: "#a78bfa",
@@ -52,6 +69,7 @@ export const lightColors = {
   textDim: "#c5cad6",
 
   teal: "#0ab8a0",
+  tealText: "#0e7569",
   tealDim: "rgba(10,184,160,0.12)",
   tealMid: "rgba(10,184,160,0.28)",
   tealGlow: "rgba(10,184,160,0.18)",
@@ -59,11 +77,22 @@ export const lightColors = {
   toggleTrack: "#D1D5DB",
 
   green: "#10b981",
+  greenText: "#047857",
   greenDim: "rgba(16,185,129,0.12)",
+  greenMid: "rgba(16,185,129,0.25)",
   amber: "#f59e0b",
+  amberText: "#b45309",
   amberDim: "rgba(245,158,11,0.12)",
+  amberMid: "rgba(245,158,11,0.25)",
   red: "#ef4444",
+  redText: "#b91c1c",
   redDim: "rgba(239,68,68,0.12)",
+  redMid: "rgba(239,68,68,0.25)",
+
+  onAccent: "#000000",
+
+  glass: "rgba(255,255,255,0.72)",
+  glassBorder: "rgba(0,0,0,0.10)",
 
   flight: "#0ab8a0",
   hotel: "#8b5cf6",
@@ -71,9 +100,6 @@ export const lightColors = {
   dining: "#e11d48",
   transfer: "#3b82f6",
 };
-
-// Backward compat — screens not yet migrated to useTheme() will always get dark
-export const C = darkColors;
 
 export type ThemeColors = typeof darkColors;
 
@@ -88,6 +114,7 @@ export const F = {
 } as const;
 
 export const T = {
+  "2xs": 10,
   xs: 11,
   sm: 12,
   base: 15,
@@ -97,6 +124,7 @@ export const T = {
   "2xl": 23,
   "3xl": 27,
   "4xl": 32,
+  "5xl": 36,
 
   regular: "400" as const,
   medium: "500" as const,
@@ -117,13 +145,31 @@ export const R = {
 
 export const S = {
   "2xs": 4,
+  xs2: 6,
   xs: 8,
+  sm2: 10,
   sm: 12,
   md: 16,
   lg: 20,
   xl: 28,
   "2xl": 36,
 };
+
+/**
+ * Elevation recipes. Shadows are a light-mode affordance — a black shadow on
+ * #09090b is invisible, so dark mode returns {} and saves the render pass.
+ */
+export function shadow(level: "subtle" | "card" | "deep", isDark: boolean): ViewStyle {
+  if (isDark) return {};
+  switch (level) {
+    case "subtle":
+      return { shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 };
+    case "card":
+      return { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 };
+    case "deep":
+      return { shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 5 };
+  }
+}
 
 export function statusColor(status: string, C: ThemeColors = darkColors) {
   if (status === "Published") return C.green;
@@ -139,6 +185,36 @@ export function statusBg(status: string, C: ThemeColors = darkColors) {
 
 export function eventColor(type: string, C: ThemeColors = darkColors): string {
   return (C as any)[type] ?? C.teal;
+}
+
+export type StatusTone = {
+  /** Vivid color for icons/dots/fills */
+  color: string;
+  /** AA-compliant color for text */
+  text: string;
+  /** Soft background */
+  bg: string;
+  /** Border (0.25 alpha) */
+  border: string;
+};
+
+/**
+ * The single source of truth for status → color. Replaces the per-file maps
+ * that had drifted onto three different greens.
+ */
+export function statusTone(status: string, C: ThemeColors): StatusTone {
+  const s = status.toLowerCase().replace(/[\s_-]/g, "");
+  const green: StatusTone = { color: C.green, text: C.greenText, bg: C.greenDim, border: C.greenMid };
+  const amber: StatusTone = { color: C.amber, text: C.amberText, bg: C.amberDim, border: C.amberMid };
+  const red: StatusTone = { color: C.red, text: C.redText, bg: C.redDim, border: C.redMid };
+  const teal: StatusTone = { color: C.teal, text: C.tealText, bg: C.tealDim, border: C.tealMid };
+  const neutral: StatusTone = { color: C.textTertiary, text: C.textTertiary, bg: C.elevated, border: C.border };
+
+  if (["ontime", "landed", "arrived", "published", "signed", "confirmed", "complete", "completed", "done"].includes(s)) return green;
+  if (["delayed", "pending", "inreview", "expiring", "boarding"].includes(s)) return amber;
+  if (["cancelled", "canceled", "expired", "missed", "diverted"].includes(s)) return red;
+  if (["live", "active", "inprogress", "now"].includes(s)) return teal;
+  return neutral;
 }
 
 export const ACCENT_PALETTE = [
@@ -161,6 +237,13 @@ function hexToRgbTuple(hex: string): [number, number, number] {
   ];
 }
 
+/** Mix a hex color toward black by `amount` (0–1). Used to derive AA text colors from accents. */
+function darkenHex(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgbTuple(hex);
+  const d = (v: number) => Math.round(v * (1 - amount));
+  return `#${[d(r), d(g), d(b)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean): ThemeColors {
   const preset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
   const hex = isDark ? preset.dark : preset.light;
@@ -173,9 +256,12 @@ export function isValidHex(v: string | null | undefined): v is string {
 
 export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
   const [r, g, b] = hexToRgbTuple(hex);
+  const isLight = base.card === "#ffffff";
   return {
     ...base,
     teal: hex,
+    // On light backgrounds a raw accent rarely passes AA as text — derive a darker shade.
+    tealText: isLight ? darkenHex(hex, 0.38) : hex,
     tealDim: `rgba(${r},${g},${b},0.1)`,
     tealMid: `rgba(${r},${g},${b},0.25)`,
     tealGlow: `rgba(${r},${g},${b},0.15)`,

@@ -6,7 +6,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
-import * as Updates from "expo-updates";
 import * as SystemUI from "expo-system-ui";
 let NavigationBar: any = null;
 try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available */ }
@@ -14,7 +13,7 @@ try { NavigationBar = require("expo-navigation-bar"); } catch { /* not available
 // Read saved theme preference and set native root background BEFORE React mounts.
 // This prevents the flash when the user's saved theme differs from the system theme.
 const systemIsDark = Appearance.getColorScheme() === "dark";
-SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f7f8fb").catch(() => {});
+SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f5f6fa").catch(() => {});
 
 // Eagerly apply saved preference — runs async but resolves before splash hides
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,7 +25,7 @@ AsyncStorage.getItem("daf-prefs").then((raw) => {
       if (Platform.OS !== "android") {
         try { Appearance.setColorScheme(themeMode); } catch { /* older RN */ }
       }
-      SystemUI.setBackgroundColorAsync(themeMode === "dark" ? "#09090b" : "#f7f8fb").catch(() => {});
+      SystemUI.setBackgroundColorAsync(themeMode === "dark" ? "#09090b" : "#f5f6fa").catch(() => {});
     }
   } catch { /* ignore */ }
 }).catch(() => {});
@@ -91,7 +90,7 @@ try { Notifications = require("expo-notifications"); } catch { /* Expo Go */ }
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const Mapbox = require("@rnmapbox/maps").default;
   const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
   if (token) Mapbox.setAccessToken(token);
@@ -111,7 +110,7 @@ function AppStack() {
 
   // Sync native root background with theme (status bar area)
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(isDark ? "#09090b" : "#f7f8fb");
+    SystemUI.setBackgroundColorAsync(isDark ? "#09090b" : "#f5f6fa");
   }, [isDark]);
 
   // Android: sync nav bar color with theme

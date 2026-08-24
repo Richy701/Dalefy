@@ -1,8 +1,10 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { FileText, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, R, S } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
+import { Pill } from "@/components/ui/Pill";
+import { MicroLabel } from "@/components/ui/MicroLabel";
 
 interface InfoDocsRowProps {
   count: number;
@@ -15,6 +17,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
   return (
     <ScalePress
       style={s.row}
+      activeScale={0.98}
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
       accessibilityRole="button"
       accessibilityLabel={`Information and documents, ${count} items`}
@@ -23,12 +26,10 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
         <FileText size={15} color={C.teal} weight="regular" />
       </View>
       <View style={s.center}>
-        <Text style={s.label}>INFORMATION & DOCUMENTS</Text>
+        <MicroLabel color={C.textSecondary}>Information & documents</MicroLabel>
       </View>
-      <View style={s.countBadge}>
-        <Text style={s.countText}>{count}</Text>
-      </View>
-      <CaretRight size={14} color={C.textTertiary} weight="regular" />
+      <Pill size="sm" tone="custom" bg={C.tealDim} color={C.tealText} label={String(count)} />
+      <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
     </ScalePress>
   );
 }
@@ -55,23 +56,5 @@ function makeStyles(C: ThemeColors) {
       justifyContent: "center",
     },
     center: { flex: 1 },
-    label: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
-      color: C.textSecondary,
-      letterSpacing: 1,
-    },
-    countBadge: {
-      backgroundColor: C.tealDim,
-      borderRadius: R.sm,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-    },
-    countText: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
-      color: C.teal,
-      letterSpacing: 0.5,
-    },
   });
 }

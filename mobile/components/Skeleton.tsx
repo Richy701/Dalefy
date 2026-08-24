@@ -9,6 +9,7 @@ import Animated, {
   interpolate,
 } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
+import { R, S } from "@/constants/theme";
 
 interface SkeletonProps {
   width: number | `${number}%`;
@@ -17,7 +18,7 @@ interface SkeletonProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function Skeleton({ width, height, borderRadius = 8, style }: SkeletonProps) {
+export function Skeleton({ width, height, borderRadius = R.sm, style }: SkeletonProps) {
   const { C } = useTheme();
   const pulse = useSharedValue(0);
 
@@ -58,19 +59,19 @@ export function TripCardSkeleton() {
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
+        gap: S.sm2,
         backgroundColor: C.card,
-        borderRadius: 18,
-        padding: 10,
-        marginHorizontal: 14,
+        borderRadius: R.xl,
+        padding: S.sm2,
+        marginHorizontal: S.md,
       }}
     >
-      <Skeleton width={48} height={48} borderRadius={10} />
-      <View style={{ flex: 1, gap: 8 }}>
-        <Skeleton width="70%" height={14} borderRadius={6} />
-        <Skeleton width="50%" height={10} borderRadius={5} />
+      <Skeleton width={48} height={48} borderRadius={R.xl} />
+      <View style={{ flex: 1, gap: S.xs }}>
+        <Skeleton width="70%" height={14} borderRadius={R.sm} />
+        <Skeleton width="50%" height={10} borderRadius={R.sm} />
       </View>
-      <Skeleton width={38} height={32} borderRadius={8} />
+      <Skeleton width={38} height={32} borderRadius={R.sm} />
     </View>
   );
 }
@@ -83,20 +84,20 @@ export function SpotlightCardSkeleton() {
       style={{
         flexDirection: "row",
         backgroundColor: C.card,
-        borderRadius: 18,
+        borderRadius: R.xl,
         overflow: "hidden",
         minHeight: 110,
       }}
     >
       <Skeleton width={110} height={110} borderRadius={0} />
-      <View style={{ flex: 1, padding: 10, justifyContent: "space-between" }}>
-        <View style={{ gap: 8 }}>
-          <Skeleton width="80%" height={14} borderRadius={6} />
-          <Skeleton width="60%" height={10} borderRadius={5} />
+      <View style={{ flex: 1, padding: S.sm2, justifyContent: "space-between" }}>
+        <View style={{ gap: S.xs }}>
+          <Skeleton width="80%" height={14} borderRadius={R.sm} />
+          <Skeleton width="60%" height={10} borderRadius={R.sm} />
         </View>
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <Skeleton width={52} height={18} borderRadius={100} />
-          <Skeleton width={60} height={18} borderRadius={100} />
+        <View style={{ flexDirection: "row", gap: S["2xs"] }}>
+          <Skeleton width={52} height={18} borderRadius={R.full} />
+          <Skeleton width={60} height={18} borderRadius={R.full} />
         </View>
       </View>
     </View>
@@ -105,23 +106,22 @@ export function SpotlightCardSkeleton() {
 
 /** Skeleton layout matching a TripRow */
 export function TripRowSkeleton() {
-  const { C } = useTheme();
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
-        padding: 10,
+        gap: S.sm2,
+        padding: S.sm2,
       }}
     >
-      <Skeleton width={52} height={52} borderRadius={10} />
-      <View style={{ flex: 1, gap: 7 }}>
-        <Skeleton width={60} height={9} borderRadius={4} />
-        <Skeleton width="75%" height={14} borderRadius={6} />
-        <Skeleton width="50%" height={10} borderRadius={5} />
+      <Skeleton width={52} height={52} borderRadius={R.xl} />
+      <View style={{ flex: 1, gap: S.xs }}>
+        <Skeleton width={60} height={10} borderRadius={R.sm} />
+        <Skeleton width="75%" height={14} borderRadius={R.sm} />
+        <Skeleton width="50%" height={10} borderRadius={R.sm} />
       </View>
-      <Skeleton width={38} height={40} borderRadius={8} />
+      <Skeleton width={38} height={40} borderRadius={R.sm} />
     </View>
   );
 }

@@ -12,7 +12,9 @@ import { COMPLIANCE_DOC_CONTENT } from "@/shared/compliance-docs";
 import {
   FileText as FileCheckIcon, FileDashed, FileX, ShieldCheck, Info,
 } from "phosphor-react-native";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, SCROLL_BOTTOM_PAD, statusTone, type ThemeColors } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Pill } from "@/components/ui/Pill";
 
 export default function DocumentScreen() {
   const { C, isDark } = useTheme();
@@ -42,14 +44,19 @@ export default function DocumentScreen() {
   if (!doc || !content) {
     return (
       <SafeAreaView style={s.safe}>
-        <Text style={s.emptyText}>Document not found</Text>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <EmptyState
+            icon={<FileX size={28} color={C.teal} weight="light" />}
+            title="Document not found"
+            cta={{ label: "Go back", onPress: () => router.back() }}
+          />
+        </View>
       </SafeAreaView>
     );
   }
 
   const StatusIcon = isSigned ? FileCheckIcon : doc.status === "Expired" ? FileX : FileDashed;
-  const statusColor = isSigned ? C.green : doc.status === "Expired" ? C.red : C.amber;
-  const statusBg = isSigned ? C.greenDim : doc.status === "Expired" ? C.redDim : C.amberDim;
+  const tone = statusTone(doc.status, C);
 
   return (
     <SafeAreaView style={s.safe} edges={Platform.OS === "android" ? ["top"] : []}>
@@ -65,10 +72,13 @@ export default function DocumentScreen() {
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
         headerRight: () => (
-          <View style={[s.statusPill, { backgroundColor: statusBg }]}>
-            <StatusIcon size={12} color={statusColor} weight="regular" />
-            <Text style={[s.statusText, { color: statusColor }]}>{doc.status}</Text>
-          </View>
+          <Pill
+            tone="custom"
+            bg={tone.bg}
+            color={tone.text}
+            icon={<StatusIcon size={12} color={tone.color} weight="regular" />}
+            label={doc.status}
+          />
         ),
       }} />
 
@@ -92,7 +102,7 @@ export default function DocumentScreen() {
           <View key={i} style={s.section}>
             <View style={s.sectionNumberWrap}>
               <View style={[s.sectionNumber, { backgroundColor: C.elevated, borderColor: C.border }]}>
-                <Text style={[s.sectionNumberText, { color: C.teal }]}>{i + 1}</Text>
+                <Text style={[s.sectionNumberText, { color: C.tealText }]}>{i + 1}</Text>
               </View>
             </View>
             <View style={s.sectionBody}>
@@ -111,7 +121,7 @@ export default function DocumentScreen() {
               <ShieldCheck size={20} color={C.teal} weight="light" />
             </View>
             <View style={s.signedTextWrap}>
-              <Text style={[s.signedLabel, { color: C.teal }]}>Signed & Verified</Text>
+              <Text style={[s.signedLabel, { color: C.tealText }]}>Signed & verified</Text>
               <Text style={s.signedDate}>
                 {new Date(doc.date).toLocaleDateString("en-GB", {
                   day: "2-digit",
@@ -122,9 +132,6 @@ export default function DocumentScreen() {
             </View>
           </View>
         )}
-
-        {/* Spacer for sign button */}
-        {!isSigned && <View style={{ height: 100 }} />}
       </ScrollView>
 
       {/* Sign button (fixed at bottom) */}
@@ -132,7 +139,7 @@ export default function DocumentScreen() {
         <SafeAreaView edges={["bottom"]} style={s.footerSafe}>
           <View style={s.footer}>
             <View style={s.disclaimerRow}>
-              <Info size={12} color={C.textTertiary} weight="light" />
+              <Info size={12} color={C.textTertiary} weight="light" style={{ marginTop: 2 }} />
               <Text style={s.disclaimer}>
                 By signing, you confirm you have read and accept all terms above.
               </Text>
@@ -140,15 +147,18 @@ export default function DocumentScreen() {
             <Pressable
               style={({ pressed }) => [
                 s.signBtn,
-                { backgroundColor: C.teal, opacity: pressed || signing ? 0.8 : 1 },
+                { backgroundColor: signing ? C.elevated : C.teal, opacity: pressed && !signing ? 0.8 : 1 },
               ]}
               onPress={handleSign}
               disabled={signing}
+              accessibilityRole="button"
+              accessibilityLabel="Sign document"
+              accessibilityState={{ busy: signing, disabled: signing }}
             >
               {signing ? (
-                <ActivityIndicator size="small" color="#000" />
+                <ActivityIndicator size="small" color={C.textTertiary} />
               ) : (
-                <Text style={s.signBtnText}>Sign Document</Text>
+                <Text style={s.signBtnText}>Sign document</Text>
               )}
             </Pressable>
           </View>
@@ -161,26 +171,10 @@ export default function DocumentScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    emptyText: { color: C.textTertiary, textAlign: "center", marginTop: 60, fontSize: T.base },
-
-    statusPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: R.full,
-    },
-    statusText: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-    },
 
     // Body
     body: { flex: 1 },
-    bodyContent: { padding: S.lg, paddingBottom: 100 },
+    bodyContent: { padding: S.lg, paddingBottom: SCROLL_BOTTOM_PAD },
 
     docTitle: {
       fontSize: T["2xl"],
@@ -220,7 +214,7 @@ function makeStyles(C: ThemeColors) {
     sectionNumber: {
       width: 24,
       height: 24,
-      borderRadius: R.sm,
+      borderRadius: R.md,
       borderWidth: 1,
       alignItems: "center",
       justifyContent: "center",
@@ -236,7 +230,7 @@ function makeStyles(C: ThemeColors) {
       color: C.textPrimary,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginBottom: 6,
+      marginBottom: S.xs2,
     },
     sectionText: {
       fontSize: T.sm,
@@ -257,7 +251,7 @@ function makeStyles(C: ThemeColors) {
     signedIcon: {
       width: 40,
       height: 40,
-      borderRadius: R.lg,
+      borderRadius: R.md,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -286,8 +280,8 @@ function makeStyles(C: ThemeColors) {
     },
     disclaimerRow: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
+      alignItems: "flex-start",
+      gap: S.xs2,
       marginBottom: S.sm,
     },
     disclaimer: {
@@ -303,11 +297,9 @@ function makeStyles(C: ThemeColors) {
       justifyContent: "center",
     },
     signBtnText: {
-      fontSize: T.base,
+      fontSize: T.md,
       fontWeight: T.bold,
-      color: "#000",
-      textTransform: "uppercase",
-      letterSpacing: 1,
+      color: C.onAccent,
     },
   });
 }

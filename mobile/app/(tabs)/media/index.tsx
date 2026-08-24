@@ -1,3 +1,4 @@
+import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
@@ -10,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash,
-  VideoCamera, CaretRight, Aperture, User,
+  VideoCamera, CaretRight, User,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -18,14 +19,16 @@ import Animated, {
   interpolate, Extrapolation,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { ScalePress } from "@/components/ScalePress";
-import { FadeIn } from "@/components/FadeIn";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { DragHandle } from "@/components/ui/DragHandle";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, T, R, S, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
@@ -61,8 +64,6 @@ const GRID_GAP = 6;
 const GRID_COLS = 3;
 const GRID_ITEM_SIZE = (SCREEN_W - S.md * 2 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 const CONTENT_W = SCREEN_W - S.md * 2;
-const HERO_LARGE_W = Math.floor((CONTENT_W - GRID_GAP) * 0.64);
-const HERO_SMALL_W = CONTENT_W - HERO_LARGE_W - GRID_GAP;
 const HERO_ROW_H = Math.floor(GRID_ITEM_SIZE * 1.6);
 const COL2_WIDE = Math.floor((CONTENT_W - GRID_GAP) * 0.62);
 const COL2_NARROW = CONTENT_W - COL2_WIDE - GRID_GAP;
@@ -87,7 +88,7 @@ function buildGalleryRows(
     const remaining = media.length - maxVisible;
     if (visible.length === 0) continue;
 
-    const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
     rows.push({ type: "trip-header", key: `h-${trip.id}`, name: trip.destination || trip.name, dateRange, count: media.length });
 
     let cursor = 0;
@@ -202,7 +203,7 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} />
       </Pressable>
       <View style={{
@@ -212,15 +213,11 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
         paddingBottom: insets.bottom + S.md,
         maxHeight: "70%",
       }}>
-        <View style={{
-          alignSelf: "center", width: 40, height: 4,
-          borderRadius: 2, backgroundColor: C.border,
-          marginTop: S.sm, marginBottom: S.md,
-        }} />
+        <DragHandle />
         <Text style={{
           fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary,
           letterSpacing: -0.3, paddingHorizontal: S.md, marginBottom: S.sm,
-        }}>Upload to Trip</Text>
+        }}>Upload to trip</Text>
         <Text style={{
           fontSize: T.sm, color: C.textTertiary, paddingHorizontal: S.md,
           marginBottom: S.md, lineHeight: 18,
@@ -229,6 +226,8 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
           {trips.map(t => (
             <Pressable
               key={t.id}
+              accessibilityRole="button"
+              accessibilityLabel={t.name}
               style={({ pressed }) => ({
                 flexDirection: "row", alignItems: "center", gap: S.sm,
                 paddingHorizontal: S.md, paddingVertical: S.sm,
@@ -241,10 +240,7 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
               }} />
               <View style={{ flex: 1 }}>
                 {t.destination && (
-                  <Text style={{
-                    fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-                    letterSpacing: 1, textTransform: "uppercase", marginBottom: 2,
-                  }}>{t.destination}</Text>
+                  <MicroLabel color={C.tealText} style={{ marginBottom: 2 }}>{t.destination}</MicroLabel>
                 )}
                 <Text style={{
                   fontSize: T.base, fontWeight: T.bold, color: C.textPrimary,
@@ -432,7 +428,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
       {item.type === "image" ? (
         <ZoomableImage uri={item.url} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} />
       ) : (
-        <Pressable onPress={toggleChrome} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+        <Pressable onPress={toggleChrome} accessibilityRole="button" accessibilityLabel="Play video" style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Play size={28} color="#fff" weight="fill" />
         </Pressable>
       )}
@@ -475,6 +471,8 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
                 <Pressable
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }}
                   hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
                   style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
                 >
                   <X size={18} color="#fff" weight="bold" />
@@ -492,9 +490,11 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
                 <Pressable
                   onPress={() => onDelete(current)}
                   hitSlop={12}
-                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(239,68,68,0.2)", alignItems: "center", justifyContent: "center" }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete photo"
+                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.redDim, alignItems: "center", justifyContent: "center" }}
                 >
-                  <Trash size={16} color="#ef4444" weight="bold" />
+                  <Trash size={16} color={C.red} weight="bold" />
                 </Pressable>
               </View>
             </LinearGradient>
@@ -580,7 +580,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 
 // ── Media Grid Item ──────────────────────────────────────────────────────────
 
-const GridItem = React.memo(function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C, index = 0 }: {
+const GridItem = React.memo(function GridItem({ item, width, height, isLast, remaining, onPress, onDelete, C }: {
   item: TripMedia;
   width: number;
   height: number;
@@ -605,21 +605,23 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
         else if (e.nativeEvent.index === 2) onDelete();
       }}
     >
-    <ScalePress
-      activeScale={0.97}
+    <Pressable
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
-      style={{
+      accessibilityRole="button"
+      accessibilityLabel={item.name}
+      style={({ pressed }) => ({
         width,
         height,
         borderRadius: R.lg,
         overflow: "hidden",
         backgroundColor: C.card,
-      }}
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
       {item.type === "image" ? (
         <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} />
       ) : (
-        <View style={{ width: "100%", height: "100%", backgroundColor: `${C.teal}12`, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ width: "100%", height: "100%", backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center" }}>
           <View style={{
             width: isLarge ? 44 : 30, height: isLarge ? 44 : 30, borderRadius: R.full,
             backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center",
@@ -640,7 +642,7 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
         >
           {item.uploadedBy && (
             <Text style={{
-              fontSize: isLarge ? T.sm : 11, fontWeight: T.bold, color: "#fff",
+              fontSize: isLarge ? T.sm : T.xs, fontWeight: T.bold, color: "#fff",
               letterSpacing: 0.1, marginBottom: 1,
             }} numberOfLines={1}>
               {item.uploadedBy.split(" ")[0]}
@@ -650,7 +652,7 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
             {item.type === "video" && <VideoCamera size={isLarge ? 10 : 8} color="rgba(255,255,255,0.7)" weight="fill" />}
             {item.uploadedAt && (
               <Text style={{
-                fontSize: isLarge ? T.xs : 10, color: "rgba(255,255,255,0.55)", fontWeight: T.medium,
+                fontSize: isLarge ? T.xs : T["2xs"], color: "rgba(255,255,255,0.55)", fontWeight: T.medium,
               }} numberOfLines={1}>
                 {formatDateCompact(item.uploadedAt)}
               </Text>
@@ -661,7 +663,7 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
 
       {isLast && remaining > 0 && (
         <View style={{
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: "rgba(0,0,0,0.55)",
           alignItems: "center", justifyContent: "center",
         }}>
@@ -671,7 +673,7 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
           }}>+{remaining}</Text>
         </View>
       )}
-    </ScalePress>
+    </Pressable>
     </ContextMenu>
   );
 }, (prev, next) =>
@@ -686,10 +688,9 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MediaScreen() {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const { toast } = useToast();
   const { prefs } = usePreferences();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(C), [C]);
   const { trips, updateTrip, updateTripLocal, reload } = useTrips();
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -700,7 +701,7 @@ export default function MediaScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(-1);
 
-  const [uploading, setUploading] = useState(false);
+  const [, setUploading] = useState(false);
   /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
   const PENDING_KEY = "daf-pending-media";
   const [pendingMedia, setPendingMediaRaw] = useState<Record<string, TripMedia[]>>({});
@@ -785,8 +786,6 @@ export default function MediaScreen() {
     return map;
   }, [allItems]);
 
-  const photos = useMemo(() => allItems.filter(m => m.type === "image").length, [allItems]);
-  const videos = useMemo(() => allItems.filter(m => m.type === "video").length, [allItems]);
   const tripsWithMedia = useMemo(() => mergedTrips.filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
 
   // Auto-default the trip filter to the nearest active/upcoming trip so the
@@ -830,7 +829,7 @@ export default function MediaScreen() {
       Alert.alert("Can't delete", "You can only remove photos you uploaded.");
       return;
     }
-    Alert.alert("Delete?", `Remove "${item.name}"?`, [
+    Alert.alert("Delete photo?", `Remove "${item.name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
@@ -855,7 +854,7 @@ export default function MediaScreen() {
   const renderGalleryRow = useCallback(({ item: row }: { item: GalleryRow }) => {
     if (row.type === "trip-header") {
       return (
-        <View style={{ paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: 10 }}>
+        <View style={{ height: 60, paddingHorizontal: S.md, paddingBottom: S.sm2, justifyContent: "flex-end" }}>
           <Text style={{ fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={1}>{row.name}</Text>
           <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, marginTop: 4 }}>
             {row.dateRange}{"  ·  "}{row.count} photo{row.count !== 1 ? "s" : ""}
@@ -919,23 +918,21 @@ export default function MediaScreen() {
   }, [C, allItemsIndex, handleDelete]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
-    console.log("[Media] handleUploadToTrip called, tripId:", tripId);
     const trip = trips.find(t => t.id === tripId);
-    if (!trip) { console.warn("[Media] trip not found!"); return; }
+    if (!trip) return;
     setPickerOpen(false);
     pickMedia((rawItems) => {
       // Stamp uploader name onto each item
-      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveler", uploaderId: deviceId || "" }));
+      const items = rawItems.map(m => ({ ...m, uploadedBy: prefs.name || "Traveller", uploaderId: deviceId || "" }));
 
       // 1. Show immediately using component-local state (subscription can't touch this)
       setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
       setUploading(true);
-      console.log("[Media] picked", items.length, "items, uploading to trip:", tripId);
-      toast(`Uploading 0/${items.length}...`);
+      toast(`Uploading 0/${items.length}…`);
 
       // 2. Upload to cloud, then write directly to Firestore
       uploadTripMedia(items, tripId, (done, total) => {
-        toast(`Uploading ${done}/${total}...`);
+        toast(`Uploading ${done}/${total}…`);
       })
         .then(async (uploaded) => {
           // Fetch latest trip from Firestore to avoid overwriting media from other uploads
@@ -973,13 +970,13 @@ export default function MediaScreen() {
             console.warn("[Media] Firestore write failed:", err);
             // Keep pending items — they'll persist via AsyncStorage
             updateTripLocal(finalTrip);
-            toast("Photos saved — syncing shortly");
+            toast("Photos saved. Syncing shortly");
           }
         })
         .catch((err) => {
           console.warn("[Media] Upload failed:", err);
           const msg = err?.message ?? "";
-          toast(msg.includes("too large") ? msg : "Couldn't upload — try again later");
+          toast(msg.includes("too large") ? msg : "Couldn't upload. Try again later");
         })
         .finally(() => {
           setUploading(false);
@@ -1000,7 +997,7 @@ export default function MediaScreen() {
     if (Platform.OS === "ios") {
       const options = [...trips.map(t => t.destination || t.name), "Cancel"];
       ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex: options.length - 1, title: "Upload to Trip" },
+        { options, cancelButtonIndex: options.length - 1, title: "Upload to trip" },
         (idx) => { if (idx < trips.length) handleUploadToTrip(trips[idx].id); },
       );
     } else {
@@ -1012,7 +1009,7 @@ export default function MediaScreen() {
     const items: { id: string; label: string; type: "trip" | "media" }[] = [];
     const showTripChips = trips.length > 1 && tripsWithMedia.length > 0;
     if (showTripChips) {
-      items.push({ id: "all", label: "All Trips", type: "trip" });
+      items.push({ id: "all", label: "All trips", type: "trip" });
       for (const t of trips) {
         items.push({ id: t.id, label: t.destination || t.name, type: "trip" });
       }
@@ -1025,21 +1022,10 @@ export default function MediaScreen() {
     return items;
   }, [trips, tripsWithMedia]);
 
+  const { onScroll, barStyle } = useCollapsingHeader();
+
   const listHeader = useMemo(() => (
     <View>
-      {/* ── Header ── */}
-      <View style={[styles.headerRow, { paddingTop: Platform.OS === "ios" ? 56 : insets.top + S.xs }]}>
-        <Text style={styles.screenTitle}>Gallery</Text>
-        {trips.length > 0 && (
-          <Pressable
-            style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-          >
-            <Plus size={16} color="#000" weight="bold" />
-          </Pressable>
-        )}
-      </View>
-
       {/* ── Filter chips ── */}
       {tripsWithMedia.length > 0 && (
         <ScrollView
@@ -1055,17 +1041,21 @@ export default function MediaScreen() {
               : mediaFilter === (item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
 
             return (
-              <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: S.xs2 }}>
                 {showDivider && <View style={styles.chipDivider} />}
                 <Pressable
-                  style={[styles.chip, active && styles.chipActive]}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
+                  hitSlop={{ top: 12, bottom: 12 }}
                   onPress={() => {
                     Haptics.selectionAsync();
                     if (item.type === "trip") setTripFilter(item.id);
                     else setMediaFilter(item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
                   }}
                 >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
+                  <Pill label={item.label} tone={active ? "accent" : "neutral"} />
                 </Pressable>
               </View>
             );
@@ -1075,46 +1065,70 @@ export default function MediaScreen() {
 
       {/* ── Empty state (inline when no rows) ── */}
       {(tripsWithMedia.length === 0 || filteredTrips.length === 0) && (
-        <View style={[styles.emptyWrap, { paddingTop: SCREEN_W * 0.2 }]}>
+        <View style={[styles.emptyWrap, { paddingTop: S["2xl"] * 2 }]}>
           <Illustration name="wavy" width={260} height={170} />
-          <Text style={styles.emptyTitle}>
-            {tripsWithMedia.length === 0 ? "Your memories\nbegin here" : "No photos yet"}
-          </Text>
-          <Text style={styles.emptyText}>
-            {tripsWithMedia.length === 0
+          <EmptyState
+            compact
+            title={tripsWithMedia.length === 0 ? "Your memories\nbegin here" : "No photos yet"}
+            message={tripsWithMedia.length === 0
               ? "Upload photos and videos from your trips. They'll be organised by destination."
               : "Be the first to upload a memory from this trip."}
-          </Text>
+          />
           {trips.length > 0 && (
             <Pressable
               style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.85 : 1 }]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Upload photos"
             >
-              <Camera size={16} color="#000" weight="bold" />
-              <Text style={styles.uploadFabText}>Upload Photos</Text>
+              <Camera size={16} color={C.onAccent} weight="bold" />
+              <Text style={styles.uploadFabText}>Upload photos</Text>
             </Pressable>
           )}
         </View>
       )}
     </View>
-  ), [C, chipItems, filteredTrips.length, handleUploadNew, insets.top, mediaFilter, resolvedTripFilter, styles, trips.length, tripsWithMedia.length]);
+  ), [C, chipItems, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <FlatList
+      <Animated.FlatList
         data={galleryRows}
         renderItem={renderGalleryRow}
         keyExtractor={r => r.key}
         getItemLayout={getItemLayout}
-        ListHeaderComponent={listHeader}
+        ListHeaderComponent={
+          <View>
+            <ScreenTitle
+              color={C.tealText}
+              right={trips.length > 0 ? (
+                <Pressable
+                  style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Upload photos"
+                  hitSlop={5}
+                >
+                  <Plus size={16} color={C.onAccent} weight="bold" />
+                </Pressable>
+              ) : undefined}
+            >
+              Gallery
+            </ScreenTitle>
+            {listHeader}
+          </View>
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        contentInsetAdjustmentBehavior="never"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         initialNumToRender={5}
         maxToRenderPerBatch={4}
         windowSize={7}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       />
+
+      <CompactHeader title="Gallery" barStyle={barStyle} />
 
       <TripPickerSheet
         visible={pickerOpen}
@@ -1140,19 +1154,7 @@ export default function MediaScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    scroll: { paddingBottom: 100 },
-    headerRow: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, paddingBottom: 4,
-    },
-    screenTitle: {
-      fontSize: 22, fontWeight: T.extrabold,
-      color: C.teal,
-    },
-    headerSubtitle: {
-      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
-      marginTop: 2,
-    },
+    scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
     headerUploadBtn: {
       width: 34, height: 34, borderRadius: R.full,
       backgroundColor: C.teal,
@@ -1161,19 +1163,9 @@ function makeStyles(C: ThemeColors) {
 
     // ── Filters ──
     chipRow: {
-      paddingHorizontal: S.md, gap: 6,
+      paddingHorizontal: S.md, gap: S.xs2,
       paddingTop: S.sm, paddingBottom: S.md,
     },
-    chip: {
-      paddingHorizontal: 14, paddingVertical: 7,
-      borderRadius: R.full, backgroundColor: C.elevated,
-    },
-    chipActive: { backgroundColor: C.teal },
-    chipText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 0.3,
-    },
-    chipTextActive: { color: "#000" },
     chipDivider: {
       width: 1, height: 16,
       backgroundColor: C.border, marginHorizontal: 2,
@@ -1181,12 +1173,12 @@ function makeStyles(C: ThemeColors) {
 
     // ── Upload FAB ──
     uploadFab: {
-      flexDirection: "row", alignItems: "center", gap: 6,
+      flexDirection: "row", alignItems: "center", gap: S.xs2,
       backgroundColor: C.teal, borderRadius: R.full,
       paddingHorizontal: S.md, paddingVertical: 10,
     },
     uploadFabText: {
-      fontSize: T.sm, fontWeight: T.bold, color: "#000",
+      fontSize: T.sm, fontWeight: T.bold, color: C.onAccent,
       letterSpacing: 0.3,
     },
 
@@ -1194,41 +1186,6 @@ function makeStyles(C: ThemeColors) {
     emptyWrap: {
       alignItems: "center", justifyContent: "center",
       paddingHorizontal: S.xl, gap: S.sm,
-    },
-    emptyTitle: {
-      fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary,
-      letterSpacing: -0.3, textAlign: "center",
-    },
-    emptyText: {
-      fontSize: T.sm, color: C.textTertiary,
-      textAlign: "center", lineHeight: 22, maxWidth: 260,
-    },
-
-    // ── Gallery ──
-    galleryWrap: {
-      gap: S.xl,
-    },
-
-    // ── Trip Section ──
-    tripSection: {
-      paddingHorizontal: S.md,
-    },
-    tripHeader: {
-      marginBottom: 10,
-    },
-    tripName: {
-      fontSize: T["2xl"], fontWeight: "700", color: C.textPrimary,
-      letterSpacing: -0.3,
-    },
-    tripMeta: {
-      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
-      marginTop: 4,
-    },
-
-    // ── Photo Grid ──
-    gridWrap: {
-      flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP,
-      marginTop: GRID_GAP,
     },
   });
 }

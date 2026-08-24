@@ -1,9 +1,15 @@
 import React from "react";
 import { View } from "react-native";
+import type { ContextMenuProps } from "react-native-context-menu-view";
 
-// react-native-context-menu-view requires a dev client build — it crashes in
-// Expo Go because the native view isn't registered.  Until we switch to a dev
-// client, just render children directly so the rest of the app works fine.
-export default function ContextMenu({ children }: any) {
-  return <View>{children}</View>;
+// Native iOS/Android context menu (long-press). Falls back to rendering
+// children directly if the native view is unavailable (e.g. Expo Go).
+let NativeContextMenu: React.ComponentType<ContextMenuProps> | null = null;
+try {
+  NativeContextMenu = require("react-native-context-menu-view").default;
+} catch { /* native module not registered */ }
+
+export default function ContextMenu(props: ContextMenuProps) {
+  if (NativeContextMenu) return <NativeContextMenu {...props} />;
+  return <View>{props.children}</View>;
 }

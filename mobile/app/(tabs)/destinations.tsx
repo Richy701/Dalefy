@@ -1,25 +1,26 @@
 import {
-  View, Text, ScrollView, StyleSheet, Pressable, Platform, RefreshControl, Linking,
+  View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import {
   MapPin, Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  Clock, NavigationArrow, CalendarDots, Sun, CloudSun, Thermometer,
-  Suitcase, Calendar, Globe, CaretRight, Drop, Wind, CloudRain,
-  Crosshair,
+  Clock, Sun, CaretRight, Crosshair,
 } from "phosphor-react-native";
-import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
-import { Illustration } from "@/components/Illustration";
+import { type ThemeColors, T, R, S, shadow, eventColor, SCROLL_BOTTOM_PAD } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
+import { Avatar } from "@/components/ui/Avatar";
+import { ScreenTitle } from "@/components/ui/CollapsingHeader";
+import { FadeIn } from "@/components/FadeIn";
+import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
 
@@ -97,13 +98,6 @@ function formatCountdown(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `in ${h}h ${m}m` : `in ${h}h`;
-}
-
-function dayOfTrip(start: string): { day: number; total?: number; end?: string } {
-  const s = new Date(start + "T00:00:00");
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return { day: Math.floor((now.getTime() - s.getTime()) / 86400000) + 1 };
 }
 
 function tripDayInfo(trip: Trip): { day: number; total: number } {
@@ -233,7 +227,7 @@ function getNextEvent(events: TravelEvent[], tz?: string): { event: TravelEvent;
 
 export default function TodayScreen() {
   const { C, isDark } = useTheme();
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C), [C]);
   const { trips, reload } = useTrips();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -480,23 +474,15 @@ export default function TodayScreen() {
     });
   }, [eventCoords]);
 
-  const EVENT_COLORS_DARK: Record<string, string> = {
-    flight: "#0bd2b5", hotel: "#a78bfa", activity: "#f59e0b", dining: "#fb7185", transfer: "#60a5fa",
-  };
-  const EVENT_COLORS_LIGHT: Record<string, string> = {
-    flight: "#0ab8a0", hotel: "#8b5cf6", activity: "#d97706", dining: "#e11d48", transfer: "#3b82f6",
-  };
-  const EC = isDark ? EVENT_COLORS_DARK : EVENT_COLORS_LIGHT;
-
   const circleColorExpr: any = useMemo(() => [
     "match", ["get", "type"],
-    "flight", EC.flight,
-    "hotel", EC.hotel,
-    "activity", EC.activity,
-    "dining", EC.dining,
-    "transfer", EC.transfer,
+    "flight", C.flight,
+    "hotel", C.hotel,
+    "activity", C.activity,
+    "dining", C.dining,
+    "transfer", C.transfer,
     C.teal,
-  ], [EC, C.teal]);
+  ], [C]);
 
   const circleOpacityExpr: any = useMemo(() => [
     "case", ["get", "isPast"], 0.35, 1,
@@ -525,43 +511,30 @@ export default function TodayScreen() {
 
   // ── Traveler avatars ──
   const [showTravelerNames, setShowTravelerNames] = useState(false);
-  const AVATAR_COLORS = useMemo(() => [C.teal, "#a78bfa", "#f59e0b", "#fb7185", "#60a5fa", "#10b981"], [C.teal]);
+  const AVATAR_COLORS = useMemo(() => [C.teal, C.hotel, C.activity, C.dining, C.transfer, C.green], [C]);
 
   // No trips at all — empty state
   if (!displayTrip) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg }}>
-        <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-          {Platform.OS === "ios" ? (
-            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-          )}
-          <Text style={styles.screenTitle}>Today</Text>
-        </View>
         <ScrollView
-          contentContainerStyle={{ paddingTop: insets.top + 50, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+          contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
         >
+          <ScreenTitle>Today</ScreenTitle>
           <View style={styles.headerSection}>
             <Text style={[styles.dateLabel, { color: C.textTertiary }]}>{dateLabel}</Text>
           </View>
-          <View style={styles.emptyContent}>
-            <View style={{ paddingTop: 80, alignItems: "center", gap: S.sm }}>
-              <View style={[styles.emptyIconWrap, { backgroundColor: C.tealDim }]}>
-                <Compass size={32} color={C.teal} weight="regular" />
-              </View>
-              <Text style={styles.emptyTitle}>No trips yet</Text>
-              <Text style={[styles.emptyText, { textAlign: "center" }]}>
-                When you join a trip, your schedule{"\n"}and daily plans will appear here.
-              </Text>
-              <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate({ pathname: "/(tabs)", params: { join: "1" } }); }}
-                style={({ pressed }) => [styles.emptyCta, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Text style={styles.emptyCtaText}>Join a trip</Text>
-              </Pressable>
-            </View>
+          <View style={{ paddingTop: S["2xl"] }}>
+            <EmptyState
+              icon={<Compass size={32} color={C.teal} weight="regular" />}
+              title="No trips yet"
+              message={"When you join a trip, your schedule\nand daily plans will appear here."}
+              cta={{
+                label: "Join a trip",
+                onPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate({ pathname: "/(tabs)", params: { join: "1" } }); },
+              }}
+            />
           </View>
         </ScrollView>
       </View>
@@ -575,7 +548,7 @@ export default function TodayScreen() {
         <MapboxGL.MapView
           ref={mapViewRef}
           key={isDark ? "dark" : "light"}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           styleURL="mapbox://styles/mapbox/standard"
           projection="mercator"
           scrollEnabled={true}
@@ -645,7 +618,7 @@ export default function TodayScreen() {
                   textField: ["to-string", ["get", "index"]],
                   textFont: ["DIN Pro Bold"],
                   textSize: 11,
-                  textColor: isDark ? "#fff" : "#fff",
+                  textColor: "#fff",
                   textHaloColor: "rgba(0,0,0,0.3)",
                   textHaloWidth: 0.5,
                   textAllowOverlap: true,
@@ -666,14 +639,13 @@ export default function TodayScreen() {
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fitToMarkers(); }}
             style={({ pressed }) => ({
               width: 36, height: 36, borderRadius: 18,
-              backgroundColor: isDark ? "rgba(20,20,20,0.7)" : "rgba(255,255,255,0.85)",
+              backgroundColor: C.glass,
+              borderWidth: 1, borderColor: C.glassBorder,
               alignItems: "center" as const, justifyContent: "center" as const,
               marginRight: S.md, opacity: pressed ? 0.6 : 1,
-              ...Platform.select({
-                ios: { shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-                android: { elevation: 3 },
-              }),
+              ...shadow("deep", isDark),
             })}
+            accessibilityRole="button"
             accessibilityLabel="Recenter map on events"
             hitSlop={6}
           >
@@ -687,42 +659,35 @@ export default function TodayScreen() {
         ref={sheetRef}
         index={0}
         snapPoints={snapPoints}
-        backgroundStyle={{ backgroundColor: isDark ? "#141414" : C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
-        handleIndicatorStyle={{ backgroundColor: C.textDim, width: 36, height: 4 }}
+        backgroundStyle={{ backgroundColor: isDark ? C.card : C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }}
+        handleIndicatorStyle={{ backgroundColor: C.border, width: 36, height: 4 }}
         enableDynamicSizing={false}
         onChange={setSheetIndex}
       >
         <BottomSheetScrollView
           ref={scheduleScrollRef as any}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
         >
         {/* ── Zone 1: Compact Header ── */}
+        <FadeIn delay={0}>
         <View style={styles.headerSection}>
           {/* Row A: Trip name + badge */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${displayTrip.id}`); }}
               style={{ flex: 1 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open trip ${displayTrip.name}`}
             >
               <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={1}>{displayTrip.name}</Text>
             </Pressable>
             {isPreview && daysUntilNext > 0 ? (
-              <View style={[styles.dayBadge, { backgroundColor: C.tealDim }]}>
-                <Text style={[styles.dayBadgeText, { color: C.teal }]}>
-                  {daysUntilNext === 1 ? "Tomorrow" : `In ${daysUntilNext}d`}
-                </Text>
-              </View>
+              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={daysUntilNext === 1 ? "Tomorrow" : `In ${daysUntilNext}d`} />
             ) : isPreview && mostRecentTrip ? (
-              <View style={[styles.dayBadge, { backgroundColor: C.elevated }]}>
-                <Text style={[styles.dayBadgeText, { color: C.textTertiary }]}>Past</Text>
-              </View>
+              <Pill tone="custom" bg={C.elevated} color={C.textTertiary} label="Past" />
             ) : dayInfo ? (
-              <View style={[styles.dayBadge, { backgroundColor: C.tealDim }]}>
-                <Text style={[styles.dayBadgeText, { color: C.teal }]}>
-                  Day {dayInfo.day}/{dayInfo.total}
-                </Text>
-              </View>
+              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`Day ${dayInfo.day}/${dayInfo.total}`} />
             ) : null}
           </View>
 
@@ -755,7 +720,7 @@ export default function TodayScreen() {
           {isPreview && (() => {
             const s = tripStats(displayTrip);
             return (
-              <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textDim, marginTop: 4 }}>
+              <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary, marginTop: S["2xs"] }}>
                 {s.flights} flights · {s.hotels} hotels · {s.totalEvents} events · {s.totalDays} days
               </Text>
             );
@@ -765,56 +730,37 @@ export default function TodayScreen() {
           {(displayTrip.travelers?.length ?? 0) > 0 && (
             <Pressable
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowTravelerNames(v => !v); }}
-              style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}
+              style={{ flexDirection: "row", alignItems: "center", marginTop: S.xs }}
+              accessibilityRole="button"
+              accessibilityLabel={`${displayTrip.travelers!.length} ${displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}, show names`}
+              accessibilityState={{ expanded: showTravelerNames }}
             >
-              <View style={{ flexDirection: "row", marginRight: 8 }}>
+              <View style={{ flexDirection: "row", marginRight: S.xs }}>
                 {displayTrip.travelers!.slice(0, 6).map((t, i) => {
                   const col = AVATAR_COLORS[i % AVATAR_COLORS.length];
                   return (
-                    <View
-                      key={t.id}
-                      style={{
-                        width: 26, height: 26, borderRadius: 13,
-                        backgroundColor: `${col}18`,
-                        borderWidth: 2,
-                        borderColor: isDark ? "#141414" : C.bg,
-                        alignItems: "center", justifyContent: "center",
-                        marginLeft: i === 0 ? 0 : -8,
-                        zIndex: 10 - i,
-                      }}
-                    >
-                      <Text style={{ fontSize: 9, fontWeight: "800", color: col }}>{t.initials}</Text>
+                    <View key={t.id} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 10 - i }}>
+                      <Avatar size={26} initials={t.initials} color={col} ringColor={isDark ? C.card : C.bg} />
                     </View>
                   );
                 })}
                 {displayTrip.travelers!.length > 6 && (
-                  <View
-                    style={{
-                      width: 26, height: 26, borderRadius: 13,
-                      backgroundColor: C.elevated,
-                      borderWidth: 2,
-                      borderColor: isDark ? "#141414" : C.bg,
-                      alignItems: "center", justifyContent: "center",
-                      marginLeft: -8,
-                    }}
-                  >
-                    <Text style={{ fontSize: 9, fontWeight: "700", color: C.textTertiary }}>
-                      +{displayTrip.travelers!.length - 6}
-                    </Text>
+                  <View style={{ marginLeft: -8 }}>
+                    <Avatar size={26} initials={`+${displayTrip.travelers!.length - 6}`} color={C.textTertiary} ringColor={isDark ? C.card : C.bg} />
                   </View>
                 )}
               </View>
-              <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textDim }}>
-                {displayTrip.travelers!.length} {displayTrip.travelers!.length === 1 ? "traveler" : "travelers"}
+              <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary }}>
+                {displayTrip.travelers!.length} {displayTrip.travelers!.length === 1 ? "traveller" : "travellers"}
               </Text>
             </Pressable>
           )}
           {showTravelerNames && (displayTrip.travelers?.length ?? 0) > 0 && (
             <View style={{
-              marginTop: 6, paddingVertical: 8, paddingHorizontal: 12,
+              marginTop: S.xs2, paddingVertical: S.xs, paddingHorizontal: S.sm,
               backgroundColor: C.card, borderRadius: R.lg,
             }}>
-              {displayTrip.travelers!.map((t, i) => (
+              {displayTrip.travelers!.map((t) => (
                 <Text key={t.id} style={{
                   fontSize: T.sm, fontWeight: T.medium,
                   color: C.textSecondary, paddingVertical: 3,
@@ -825,53 +771,61 @@ export default function TodayScreen() {
             </View>
           )}
         </View>
+        </FadeIn>
 
         {/* Compact NEXT UP banner (active trip only) */}
         {!isPreview && next && (() => {
-          const nextEvColor = (EC as any)[next.event.type] ?? C.teal;
+          const nextEvColor = eventColor(next.event.type, C);
           return (
-            <Pressable
+            <FadeIn delay={60}>
+            <ScalePress
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } });
               }}
-              style={({ pressed }) => ({
-                flexDirection: "row" as const, alignItems: "center" as const,
+              accessibilityRole="button"
+              accessibilityLabel={`Next up: ${normaliseTitle(next.event.title, next.event.type, next.event.transferType)}, ${formatCountdown(next.minsUntil)}`}
+              style={{
+                flexDirection: "row", alignItems: "center",
                 marginHorizontal: S.md, marginTop: S.xs,
-                paddingVertical: 10, paddingHorizontal: S.md,
+                paddingVertical: S.sm2, paddingHorizontal: S.md,
                 borderRadius: R.lg, backgroundColor: C.card,
-                gap: S.xs, opacity: pressed ? 0.7 : 1,
-              })}
+                gap: S.xs,
+                ...shadow("card", isDark),
+              }}
             >
-              <View style={{ width: 3, height: 28, borderRadius: 1.5, backgroundColor: nextEvColor, marginRight: 4 }} />
-              <Text style={{ fontSize: 9, fontWeight: "800", color: C.teal, letterSpacing: 1, marginRight: 4 }}>NEXT</Text>
+              <View style={{ width: 3, height: 28, borderRadius: 1.5, backgroundColor: nextEvColor, marginRight: S["2xs"] }} />
+              <MicroLabel color={C.tealText} style={{ marginRight: S["2xs"] }}>NEXT</MicroLabel>
               <Text style={{ fontSize: T.sm, fontWeight: "700", color: C.textPrimary, flex: 1 }} numberOfLines={1}>
                 {normaliseTitle(next.event.title, next.event.type, next.event.transferType)}
               </Text>
-              <Text style={{ fontSize: T.xs, fontWeight: "800", color: C.teal }}>{formatCountdown(next.minsUntil)}</Text>
-            </Pressable>
+              <Text style={{ fontSize: T.xs, fontWeight: "800", color: C.tealText }}>{formatCountdown(next.minsUntil)}</Text>
+            </ScalePress>
+            </FadeIn>
           );
         })()}
 
         {/* ── Zone 2: Schedule ── */}
         {/* Section header */}
+        <FadeIn delay={120}>
         <View style={styles.timelineSection}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>
-              {isPreview ? "YOUR FIRST DAY" : "YOUR SCHEDULE"}
-            </Text>
+            <MicroLabel>
+              {isPreview ? "Your first day" : "Your schedule"}
+            </MicroLabel>
             {isPreview ? (
-              <Text style={[styles.sectionCount, { color: C.textDim }]}>
+              <Text style={[styles.sectionCount, { color: C.textTertiary }]}>
                 {new Date(displayTrip.start + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </Text>
             ) : (
-              <Text style={[styles.sectionCount, { color: C.textDim }]}>
+              <Text style={[styles.sectionCount, { color: C.textTertiary }]}>
                 {pastCount} of {displayEvents.length} done
               </Text>
             )}
           </View>
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginBottom: S.xs }} />
         </View>
+        </FadeIn>
 
         {displayEvents.length > 0 ? (
           <View style={{ paddingHorizontal: S.md }}>
@@ -885,7 +839,7 @@ export default function TodayScreen() {
               const showNowLine = !isPreview && isPast && nextEvMins > nowMins;
 
               const hasCoord = !!eventCoords[ev.id];
-              const evColor = (EC as any)[ev.type] ?? C.teal;
+              const evColor = eventColor(ev.type, C);
               const isHighlighted = highlightedEventId === ev.id;
 
               return (
@@ -893,29 +847,34 @@ export default function TodayScreen() {
                   key={ev.id}
                   onLayout={(e) => { eventRowYs.current[ev.id] = e.nativeEvent.layout.y; }}
                 >
-                  <Pressable
+                  <ScalePress
+                    activeScale={0.98}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: ev.id } });
                     }}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}, ${ev.time}`}
                   >
                     <View style={[
                       styles.eventRow,
                       isPast && { opacity: 0.45 },
-                      isHighlighted && { backgroundColor: `${C.teal}12`, borderRadius: R.lg, marginHorizontal: -4, paddingHorizontal: 4 },
+                      isHighlighted && { backgroundColor: C.tealDim, borderRadius: R.lg, marginHorizontal: -S["2xs"], paddingHorizontal: S["2xs"] },
                     ]}>
                       <Pressable
                         onPress={() => { if (hasCoord) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); flyToEvent(ev.id); } }}
                         disabled={!hasCoord}
-                        hitSlop={4}
+                        hitSlop={6}
+                        style={{ opacity: hasCoord ? 1 : 0.35 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Show event on map"
                       >
                         <View style={[
                           styles.eventIconWrap,
-                          { backgroundColor: hasCoord ? `${evColor}20` : `${C.teal}15` },
+                          { backgroundColor: hasCoord ? `${evColor}20` : C.tealGlow },
                         ]}>
                           {hasCoord ? (
-                            <Text style={{ fontSize: 12, fontWeight: "800", color: evColor }}>{i + 1}</Text>
+                            <Text style={{ fontSize: T.sm, fontWeight: "800", color: evColor }}>{i + 1}</Text>
                           ) : (
                             <Icon size={16} color={C.teal} weight="regular" />
                           )}
@@ -936,12 +895,12 @@ export default function TodayScreen() {
                       </View>
                       <Text style={[styles.eventTime, { color: C.textTertiary }]}>{ev.time}</Text>
                     </View>
-                  </Pressable>
+                  </ScalePress>
                   {showNowLine && (
                     <View style={styles.nowLineWrap}>
                       <View style={[styles.nowDot, { backgroundColor: C.teal }]} />
                       <View style={[styles.nowLine, { backgroundColor: C.teal }]} />
-                      <Text style={[styles.nowLabel, { color: C.teal }]}>NOW</Text>
+                      <Text style={[styles.nowLabel, { color: C.tealText }]}>NOW</Text>
                     </View>
                   )}
                   {i < displayEvents.length - 1 && !showNowLine && (
@@ -956,18 +915,17 @@ export default function TodayScreen() {
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${displayTrip.id}`); }}
                 style={({ pressed }) => [styles.seeAllBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
               >
-                <Text style={[styles.seeAllBtnText, { color: C.teal }]}>See full itinerary</Text>
-                <CaretRight size={14} color={C.teal} weight="bold" />
+                <Text style={[styles.seeAllBtnText, { color: C.tealText }]}>See full itinerary</Text>
+                <CaretRight size={14} color={C.tealText} weight="regular" style={{ alignSelf: "center" }} />
               </Pressable>
             </View>
           </View>
         ) : (
-          <View style={styles.noEventsWrap}>
-            <Sun size={32} color={C.textDim} weight="regular" />
-            <Text style={[styles.noEventsText, { color: C.textTertiary }]}>
-              {isPreview ? "No events on your first day yet" : "No events scheduled for today"}
-            </Text>
-          </View>
+          <EmptyState
+            compact
+            icon={<Sun size={28} color={C.teal} weight="regular" />}
+            title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
+          />
         )}
 
         </BottomSheetScrollView>
@@ -976,22 +934,12 @@ export default function TodayScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    stickyHeader: {
-      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-      overflow: "hidden",
-    },
     screenTitle: {
       fontSize: 22, fontWeight: "800",
       color: C.textPrimary, paddingHorizontal: S.md,
-      paddingVertical: 10,
-    },
-
-    // Map
-    mapWrap: {
-      height: 140, overflow: "hidden",
-      backgroundColor: C.card,
+      paddingVertical: S.sm2,
     },
 
     // Header
@@ -1000,36 +948,15 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     dateLabel: { fontSize: T.base, fontWeight: "600", letterSpacing: 0.2 },
     tripName: { fontSize: T.xl, fontWeight: "800", letterSpacing: -0.3 },
-    destination: { fontSize: T.sm, fontWeight: "600" },
-    dayBadge: {
-      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 3,
-    },
-    dayBadgeText: { fontSize: T.xs, fontWeight: "700" },
-
-    // Next up
-    nextCard: {
-      flexDirection: "row", alignItems: "center",
-      marginHorizontal: S.md, marginTop: S.sm,
-      padding: S.md, borderRadius: R.xl, gap: S.sm,
-    },
-    nextLeft: { flex: 1 },
-    nextLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1, marginBottom: 4 },
-    nextTitle: { fontSize: T.base, fontWeight: "700" },
-    nextLocation: { fontSize: T.xs, fontWeight: "500", marginTop: 2 },
-    nextCountdown: {
-      borderRadius: R.full, paddingHorizontal: 12, paddingVertical: 6,
-    },
-    nextCountdownText: { fontSize: T.xs, fontWeight: "800", color: "#000" },
 
     // Timeline
     timelineSection: {
       paddingHorizontal: S.md, paddingTop: S.md,
     },
-    sectionLabel: { fontSize: T.xs, fontWeight: "700", letterSpacing: 1 },
     sectionCount: { fontSize: T.xs, fontWeight: "600" },
     eventRow: {
       flexDirection: "row", alignItems: "center",
-      paddingVertical: 10, gap: S.sm,
+      paddingVertical: S.sm2, gap: S.sm,
     },
     eventIconWrap: {
       width: 32, height: 32, borderRadius: 16,
@@ -1041,113 +968,23 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
     nowLineWrap: {
       flexDirection: "row", alignItems: "center",
-      marginVertical: 6,
+      marginVertical: S.xs2,
     },
     nowDot: {
       width: 8, height: 8, borderRadius: 4,
     },
     nowLine: {
-      flex: 1, height: 1.5, marginLeft: 4,
+      flex: 1, height: 1.5, marginLeft: S["2xs"],
     },
     nowLabel: {
-      fontSize: 9, fontWeight: "800", letterSpacing: 1, marginLeft: 6,
-    },
-
-    // No events
-    noEventsWrap: {
-      alignItems: "center", paddingTop: 60, gap: S.sm,
-    },
-    noEventsText: { fontSize: T.sm, fontWeight: "500" },
-
-    // Active stats strip
-    activeStatsStrip: {
-      flexDirection: "row", alignItems: "center",
-      gap: 5, marginTop: 6,
-    },
-    activeStatsText: { fontSize: T.xs, fontWeight: "600", color: C.textTertiary },
-    activeStatsDot: {
-      width: 3, height: 3, borderRadius: 1.5,
-      backgroundColor: C.textTertiary, opacity: 0.4,
-    },
-
-    // Upcoming headline
-    upcomingHeadline: {
-      fontSize: T["2xl"], fontWeight: "800", letterSpacing: -0.3,
-      marginBottom: S.md,
+      fontSize: T["2xs"], fontWeight: "800", letterSpacing: 1, marginLeft: S.xs2,
     },
 
     // See all button
     seeAllBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 4, paddingVertical: 12, borderRadius: R.xl,
+      gap: S["2xs"], paddingVertical: S.sm, borderRadius: R.xl,
     },
     seeAllBtnText: { fontSize: T.sm, fontWeight: "700" },
-
-    // Empty state
-    emptyContent: {
-      paddingHorizontal: S.md, paddingTop: S.sm,
-    },
-    emptyIconWrap: {
-      width: 64, height: 64, borderRadius: 32,
-      alignItems: "center", justifyContent: "center",
-      marginBottom: S.xs,
-    },
-    emptyTitle: { fontSize: T.xl, fontWeight: "800", color: C.textPrimary, letterSpacing: -0.3 },
-    emptyText: { fontSize: T.sm, color: C.textTertiary, lineHeight: 20, marginTop: 4 },
-    emptyCta: {
-      marginTop: S.md,
-      paddingHorizontal: S.xl, paddingVertical: 12,
-      borderRadius: R.full,
-    },
-    emptyCtaText: { fontSize: T.base, fontWeight: "700", color: "#000" },
-
-    // Hero trip card
-    heroCard: {
-      height: 200, borderRadius: R["2xl"], overflow: "hidden",
-      justifyContent: "flex-end",
-    },
-    heroContent: {
-      padding: S.md, gap: 3,
-    },
-    heroBadge: {
-      alignSelf: "flex-start",
-      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 3,
-      marginBottom: 4,
-    },
-    heroBadgeText: { fontSize: T.xs, fontWeight: "800", color: "#000" },
-    heroName: { fontSize: T.xl, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
-    heroDest: { fontSize: T.sm, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
-    heroMeta: { fontSize: T.sm, fontWeight: "600", color: "rgba(255,255,255,0.9)" },
-    heroMetaSub: { fontSize: T.xs, fontWeight: "600", color: "rgba(255,255,255,0.65)" },
-
-    previewLabel: { fontSize: T.xs, fontWeight: "700", letterSpacing: 1 },
-    previewDate: { fontSize: T.xs, fontWeight: "600" },
-    previewCard: {
-      borderRadius: R.xl, overflow: "hidden",
-      paddingHorizontal: S.md,
-    },
-    previewRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm, paddingVertical: 12,
-    },
-    previewIcon: {
-      width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
-    },
-    previewTitle: { fontSize: T.base, fontWeight: "600" },
-    previewTime: { fontSize: T.xs, fontWeight: "600" },
-    previewLocation: { fontSize: T.xs, fontWeight: "500" },
-    previewDivider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
-
-    infoRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      marginTop: S.md, padding: S.md, borderRadius: R.xl,
-    },
-
-    statsFooter: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 5, marginTop: S.xl, paddingBottom: S.md,
-    },
-    statsFooterText: { fontSize: T.xs, fontWeight: "600", color: C.textDim },
-    statsFooterDot: { fontSize: T.xs, color: C.textDim, opacity: 0.5 },
-
   });
 }

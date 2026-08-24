@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (Platform.OS !== "android") {
-      Appearance.setColorScheme(mode === "system" ? null : mode);
+      Appearance.setColorScheme(mode === "system" ? "unspecified" : mode);
     }
   }, [mode]);
 
@@ -59,7 +59,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = useCallback((m: ThemeMode) => {
     if (Platform.OS !== "android") {
-      Appearance.setColorScheme(m === "system" ? null : m);
+      Appearance.setColorScheme(m === "system" ? "unspecified" : m);
     }
     const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
     SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f7f8fb");

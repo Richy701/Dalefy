@@ -1,18 +1,27 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
-index 9eae718..40cc151 100644
+index 24d4571..d18fa96 100644
 --- a/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/WidgetLiveActivity.swift
-@@ -3,10 +3,10 @@ import WidgetKit
+@@ -3,17 +3,17 @@ import WidgetKit
  import ExpoModulesCore
  import ActivityKit
  
 -struct LiveActivityAttributes: ActivityAttributes {
 +public struct LiveActivityAttributes: ActivityAttributes {
+   // The deep link URL passed to start(). Stored in the static attributes so it is
+   // scoped to this activity and survives content updates, unlike ContentState.
+-  var url: String?
++  public var url: String?
+ 
    public struct ContentState: Codable, Hashable {
 -    var name: String
 -    var props: String
 +    public var name: String
 +    public var props: String
    }
- }
  
+-  init(url: String? = nil) {
++  public init(url: String? = nil) {
+     self.url = url
+   }
+ }

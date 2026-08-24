@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { Text, View, StyleSheet, Platform } from "react-native";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
-  runOnJS, Easing,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "./ThemeContext";
 import { CheckCircle, XCircle } from "phosphor-react-native";
-import { T, R, S } from "@/constants/theme";
+import { T } from "@/constants/theme";
 
 type ToastType = "success" | "error";
 
@@ -76,10 +76,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <BlurView
             intensity={80}
             tint={isDark ? "dark" : "light"}
-            style={[StyleSheet.absoluteFillObject, { borderRadius: 50 }]}
+            style={[StyleSheet.absoluteFill, { borderRadius: 50 }]}
           />
         ) : (
-          <View style={[StyleSheet.absoluteFillObject, { borderRadius: 50, backgroundColor: isDark ? "rgba(30,30,30,0.95)" : "rgba(250,250,250,0.95)" }]} />
+          <View style={[StyleSheet.absoluteFill, { borderRadius: 50, backgroundColor: isDark ? "rgba(30,30,30,0.95)" : "rgba(250,250,250,0.95)" }]} />
         )}
         {type === "error" ? (
           <XCircle size={14} color="#ff453a" weight="regular" style={{ marginRight: 6 }} />

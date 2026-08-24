@@ -20,7 +20,7 @@ const TABS: {
 // iOS: use NativeTabs for liquid glass + SF Symbols
 function IOSTabLayout() {
   const { NativeTabs } = require("expo-router/unstable-native-tabs");
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
 
   const sfIcons: Record<string, string> = {
     index: "house",
@@ -39,13 +39,14 @@ function IOSTabLayout() {
 
   return (
     <NativeTabs
+      minimizeBehavior="onScrollDown"
       tintColor={C.teal}
       iconColor={{
-        default: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)",
+        default: C.textTertiary,
         selected: C.teal,
       }}
       labelStyle={{
-        default: { color: isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)", fontWeight: "500" },
+        default: { color: C.textTertiary, fontWeight: "500" },
         selected: { color: C.teal, fontWeight: "700" },
       }}
       sceneContainerStyle={{ backgroundColor: C.bg }}
@@ -78,9 +79,9 @@ function HapticTabButton(props: any) {
 }
 
 function AndroidTabLayout() {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const insets = require("react-native-safe-area-context").useSafeAreaInsets();
-  const inactiveColor = isDark ? "rgba(170,170,180,0.6)" : "rgba(80,80,90,0.6)";
+  const inactiveColor = C.textTertiary;
   return (
     <Tabs
       screenOptions={{

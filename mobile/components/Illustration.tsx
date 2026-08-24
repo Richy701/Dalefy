@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { SvgXml } from "react-native-svg";
 import { useTheme } from "@/context/ThemeContext";
+import { darkColors } from "@/constants/theme";
 import {
   ILLUS_RIDING,
   ILLUS_SITTING,
@@ -11,7 +12,7 @@ import {
 
 export type IllustrationName = "riding" | "sitting" | "together" | "movement" | "wavy";
 
-const DEFAULT_ACCENT = "#0bd2b5";
+const DEFAULT_ACCENT = darkColors.teal;
 
 const MAP: Record<IllustrationName, string> = {
   riding:   ILLUS_RIDING,

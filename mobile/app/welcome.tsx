@@ -9,14 +9,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
 import { ArrowRight, CaretLeft, Camera, User, Buildings, Check, X } from "phosphor-react-native";
-import Animated, {
-  FadeIn, FadeInUp, FadeInDown,
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useBrand } from "@/context/BrandContext";
@@ -29,10 +26,10 @@ import { Illustration } from "@/components/Illustration";
 
 type Step = "welcome" | "agency" | "profile";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const { width: SCREEN_W } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const { brand, refreshBranding } = useBrand();
   const { prefs, setPref } = usePreferences();
   const router = useRouter();
@@ -58,10 +55,10 @@ export default function WelcomeScreen() {
   const [name, setName] = useState(prefs.name);
   const [avatar, setAvatar] = useState(prefs.avatar || "");
   const uploadedUrlRef = useRef<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [, setUploading] = useState(false);
   const agencyRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C), [C]);
 
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0;
@@ -167,7 +164,7 @@ export default function WelcomeScreen() {
         },
       );
     } else {
-      Alert.alert("Profile Photo", "", [
+      Alert.alert("Profile photo", undefined, [
         { text: "Take Photo", onPress: () => pick("camera") },
         { text: "Choose from Library", onPress: () => pick("library") },
         { text: "Cancel", style: "cancel" },
@@ -203,7 +200,7 @@ export default function WelcomeScreen() {
         <LinearGradient
           colors={[`${C.teal}12`, "transparent"]}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         <SafeAreaView style={{ flex: 1 }}>
@@ -221,27 +218,27 @@ export default function WelcomeScreen() {
             {/* Bottom — big type + CTA */}
             <View style={styles.welcomeBottom}>
               <Animated.Text
-                entering={FadeInUp.duration(500).delay(400)}
+                entering={FadeInUp.duration(300).delay(250)}
                 style={styles.heroTitle}
               >
                 Your trips,{"\n"}organised
               </Animated.Text>
               <Animated.Text
-                entering={FadeInUp.duration(500).delay(550)}
+                entering={FadeInUp.duration(300).delay(300)}
                 style={styles.heroSub}
               >
                 Flights, hotels, activities — everything in one place.
               </Animated.Text>
 
-              <Animated.View entering={FadeInUp.duration(400).delay(700)} style={styles.ctaWrap}>
+              <Animated.View entering={FadeInUp.duration(300).delay(350)}>
                 <Pressable
                   onPress={goToAgency}
                   accessibilityRole="button"
                   accessibilityLabel="Get started"
                   style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
                 >
-                  <Text style={styles.ctaText}>Get Started</Text>
-                  <ArrowRight size={16} color="#000" weight="bold" />
+                  <Text style={styles.ctaText}>Get started</Text>
+                  <ArrowRight size={16} color={C.onAccent} weight="bold" />
                 </Pressable>
               </Animated.View>
             </View>
@@ -260,7 +257,7 @@ export default function WelcomeScreen() {
         <LinearGradient
           colors={[`${C.teal}08`, "transparent"]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         <SafeAreaView style={{ flex: 1 }}>
           <KeyboardAvoidingView
@@ -299,14 +296,14 @@ export default function WelcomeScreen() {
 
               {/* Input */}
               <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
-                <View style={[styles.inputRow, agencyError ? { borderColor: "#ef4444" } : agencySuccess ? { borderColor: C.teal } : undefined]}>
+                <View style={[styles.inputRow, agencyError ? { borderColor: C.red } : agencySuccess ? { borderColor: C.teal } : undefined]}>
                   <Buildings size={18} color={C.textTertiary} weight="light" />
                   <TextInput
                     ref={agencyRef}
                     value={agencyCode}
                     onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); setAgencySuccess(false); }}
                     placeholder="e.g. dalefy"
-                    placeholderTextColor={C.textDim}
+                    placeholderTextColor={C.textTertiary}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="go"
@@ -317,22 +314,18 @@ export default function WelcomeScreen() {
                   {agencyLoading && <ActivityIndicator size="small" color={C.teal} />}
                   {agencySuccess && (
                     <View style={[styles.checkBadge, { backgroundColor: C.teal }]}>
-                      <Check size={12} color="#000" weight="bold" />
+                      <Check size={12} color={C.onAccent} weight="bold" />
                     </View>
                   )}
                 </View>
                 {agencyError ? (
                   <Text style={styles.errorText}>{agencyError}</Text>
-                ) : (
-                  <Text style={styles.helperText}>
-                    Your travel agent should have given you a short code.
-                  </Text>
-                )}
+                ) : null}
               </Animated.View>
             </ScrollView>
 
             {/* Footer */}
-            <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.footer}>
+            <Animated.View entering={FadeInUp.duration(300).delay(350)} style={styles.footer}>
               <Pressable
                 onPress={validateAgency}
                 disabled={agencyLoading || !agencyCode.trim()}
@@ -344,17 +337,17 @@ export default function WelcomeScreen() {
                 ]}
               >
                 <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
-                  {agencyLoading ? "Connecting..." : "Connect"}
+                  {agencyLoading ? "Connecting…" : "Connect"}
                 </Text>
                 {!agencyLoading && (
                   <ArrowRight
                     size={16}
-                    color={agencyCode.trim() ? "#000" : C.textTertiary}
+                    color={agencyCode.trim() ? C.onAccent : C.textTertiary}
                     weight="bold"
                   />
                 )}
               </Pressable>
-              <Pressable onPress={skipAgency} style={styles.skipBtn}>
+              <Pressable onPress={skipAgency} accessibilityRole="button" accessibilityLabel="Skip agency code" style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}>
                 <Text style={styles.skipText}>I don't have a code</Text>
               </Pressable>
             </Animated.View>
@@ -372,7 +365,7 @@ export default function WelcomeScreen() {
       <LinearGradient
         colors={[`${C.teal}08`, "transparent"]}
         start={{ x: 1, y: 0 }} end={{ x: 0, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
@@ -450,16 +443,16 @@ export default function WelcomeScreen() {
                   {avatar ? (
                     <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
                   ) : (
-                    <User size={36} color={C.textDim} weight="thin" />
+                    <User size={36} color={C.textTertiary} weight="thin" />
                   )}
                 </View>
                 <View style={[styles.cameraBadge, { backgroundColor: C.teal }]}>
-                  <Camera size={11} color="#000" weight="bold" />
+                  <Camera size={11} color={C.onAccent} weight="bold" />
                 </View>
               </Pressable>
               {!avatar && (
-                <Pressable onPress={pickAvatar} style={{ marginTop: 8 }}>
-                  <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.teal }}>Add photo</Text>
+                <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel="Add profile photo" style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
+                  <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.tealText }}>Add photo</Text>
                 </Pressable>
               )}
             </Animated.View>
@@ -482,7 +475,7 @@ export default function WelcomeScreen() {
             </Animated.Text>
 
             {/* Name input */}
-            <Animated.View entering={FadeInUp.duration(400).delay(400)} style={styles.inputWrap}>
+            <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
               <View style={styles.inputRow}>
                 <User size={18} color={C.textTertiary} weight="light" />
                 <TextInput
@@ -490,7 +483,7 @@ export default function WelcomeScreen() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Your name"
-                  placeholderTextColor={C.textDim}
+                  placeholderTextColor={C.textTertiary}
                   autoCapitalize="words"
                   autoCorrect={false}
                   textContentType="name"
@@ -504,7 +497,7 @@ export default function WelcomeScreen() {
           </ScrollView>
 
           {/* CTA */}
-          <Animated.View entering={FadeInUp.duration(400).delay(500)} style={styles.footer}>
+          <Animated.View entering={FadeInUp.duration(300).delay(350)} style={styles.footer}>
             <Pressable
               onPress={submit}
               disabled={!canSubmit}
@@ -517,10 +510,10 @@ export default function WelcomeScreen() {
               ]}
             >
               <Text style={[styles.ctaText, !canSubmit && { color: C.textTertiary }]}>
-                {isEdit ? "Save" : "Let's Go"}
+                {isEdit ? "Save" : "Let's go"}
               </Text>
               {!isEdit && (
-                <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
+                <ArrowRight size={16} color={canSubmit ? C.onAccent : C.textTertiary} weight="bold" />
               )}
             </Pressable>
           </Animated.View>
@@ -530,7 +523,7 @@ export default function WelcomeScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
 
@@ -547,9 +540,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingHorizontal: S.xl, paddingBottom: S.md,
     },
     heroTitle: {
-      fontSize: 42, fontWeight: "800",
+      fontSize: 42, fontFamily: F.extrabold,
       color: C.textPrimary,
-      letterSpacing: -1, lineHeight: 46,
+      letterSpacing: 0, lineHeight: 46,
       marginBottom: S.sm,
     },
     heroSub: {
@@ -570,7 +563,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Step screens ──
     stepScroll: {
-      paddingHorizontal: S.xl, paddingTop: S.sm, flexGrow: 1,
+      paddingHorizontal: S.lg, paddingTop: S.lg, flexGrow: 1,
     },
     progressRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.xl,
@@ -587,9 +580,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       letterSpacing: 0.5,
     },
     stepTitle: {
-      fontSize: 36, fontWeight: "800",
+      fontSize: 36, fontFamily: F.extrabold,
       color: C.textPrimary,
-      letterSpacing: -0.8, lineHeight: 40,
+      letterSpacing: 0, lineHeight: 40,
       marginBottom: S.sm,
     },
     stepSub: {
@@ -600,25 +593,25 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Brand badge ──
     brandBadge: {
-      flexDirection: "row", alignItems: "center", gap: 8,
+      flexDirection: "row", alignItems: "center", gap: S.xs,
       alignSelf: "flex-start",
       backgroundColor: C.tealDim,
       borderRadius: R.full,
-      paddingHorizontal: S.sm, paddingVertical: 6,
+      paddingHorizontal: S.sm, paddingVertical: S.xs2,
       marginBottom: S.lg,
     },
     brandBadgeIcon: {
-      width: 22, height: 22, borderRadius: 6,
-      backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+      width: 22, height: 22, borderRadius: R.sm,
+      backgroundColor: C.borderLight,
       alignItems: "center", justifyContent: "center",
     },
     brandBadgeText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+      fontSize: T.xs, fontWeight: T.bold, color: C.tealText,
       letterSpacing: 1, textTransform: "uppercase",
     },
 
     // ── Input ──
-    inputWrap: { marginBottom: S.lg },
+    inputWrap: { marginBottom: S.md },
     inputRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
       height: 56,
@@ -647,7 +640,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     avatarCircle: {
       width: 88, height: 88, borderRadius: 44,
-      backgroundColor: isDark ? C.elevated : "#f0f1f5",
+      backgroundColor: C.elevated,
       alignItems: "center", justifyContent: "center",
       overflow: "hidden",
     },
@@ -663,24 +656,18 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Error / helper ──
     errorText: {
-      fontSize: T.xs, color: "#ef4444",
+      fontSize: T.xs, color: C.redText,
       fontWeight: T.medium, marginTop: S.xs,
-      paddingHorizontal: S.xs,
-    },
-    helperText: {
-      fontSize: T.xs, color: C.textTertiary,
-      fontWeight: T.regular, marginTop: S.xs,
       paddingHorizontal: S.xs,
     },
 
     // ── Footer / CTA ──
     footer: {
-      paddingHorizontal: S.xl,
+      paddingHorizontal: S.lg,
       paddingTop: S.sm, paddingBottom: S.md,
     },
-    ctaWrap: {},
     cta: {
-      height: 54, borderRadius: R.full,
+      height: 52, borderRadius: R.xl,
       backgroundColor: C.teal,
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: S.xs,
@@ -689,8 +676,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       backgroundColor: C.elevated,
     },
     ctaText: {
-      fontSize: T.base, fontWeight: T.bold, color: "#000",
-      letterSpacing: 0.2,
+      fontSize: T.md, fontWeight: T.bold, color: C.onAccent,
     },
     skipBtn: {
       alignItems: "center",

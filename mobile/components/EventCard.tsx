@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Alert, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -8,22 +8,10 @@ import {
   Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   MapPin, ArrowRight, Hash, FileText,
 } from "phosphor-react-native";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, T, R, S, F, statusTone } from "@/constants/theme";
+import { ScalePress } from "@/components/ScalePress";
+import { Pill } from "@/components/ui/Pill";
 import type { TravelEvent, EventDocument } from "@/shared/types";
-
-function formatDate(d: string): string {
-  // Handle both "2026-07-15" and "2026-07-15T10:00:00" formats
-  const raw = d.includes("T") ? d : d + "T12:00:00";
-  const date = new Date(raw);
-  if (isNaN(date.getTime())) return d; // fallback to raw string
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
-
-function nextDay(d: string): string {
-  const date = new Date(d + "T12:00:00");
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().split("T")[0];
-}
 
 function formatTimeTo24h(t: string): string {
   const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -72,23 +60,13 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
   return title;
 }
 
-const MONO = Platform.OS === "ios" ? "Menlo" : "monospace";
-
-function statusPill(status: string, C: ThemeColors) {
+function statusLabel(status: string): string {
   const s = status.toLowerCase();
-  let color: string, bg: string, border: string, label: string;
-  if (s.includes("confirm") || s === "expected") {
-    color = C.teal; bg = C.tealDim; border = C.tealMid; label = "Confirmed";
-  } else if (s.includes("pend") || s.includes("hold")) {
-    color = C.amber; bg = C.amberDim; border = "rgba(245,158,11,0.25)"; label = "Pending";
-  } else if (s.includes("cancel")) {
-    color = C.red; bg = C.redDim; border = "rgba(239,68,68,0.25)"; label = "Cancelled";
-  } else if (s.includes("done") || s.includes("complet")) {
-    color = C.textDim; bg = C.elevated; border = C.border; label = "Done";
-  } else {
-    color = C.textTertiary; bg = C.elevated; border = C.border; label = status;
-  }
-  return { color, bg, border, label };
+  if (s.includes("confirm") || s === "expected") return "Confirmed";
+  if (s.includes("pend") || s.includes("hold")) return "Pending";
+  if (s.includes("cancel")) return "Cancelled";
+  if (s.includes("done") || s.includes("complet")) return "Done";
+  return status;
 }
 
 // ── Flight Card ──────────────────────────────────────────────────────────────
@@ -98,17 +76,6 @@ function parseFlightCities(title: string): { from: string; to: string } {
   const arrowMatch = title.match(/^(.+?)\s*[→➜>]\s*(.+)$/);
   if (arrowMatch) return { from: arrowMatch[1].trim(), to: arrowMatch[2].trim() };
   return { from: title, to: "" };
-}
-
-function flightStatusInfo(status: string | undefined, duration: string | undefined, C: ThemeColors) {
-  if (!status) return { label: duration ?? null, color: C.textTertiary, isStatus: false };
-  const s = status.toLowerCase();
-  if (s.includes("cancel")) return { label: "CANCELLED", color: "#ef4444", isStatus: true };
-  if (s.includes("delay")) return { label: "DELAYED", color: "#f59e0b", isStatus: true };
-  if (s.includes("arriv") || s.includes("landed")) return { label: "ARRIVED", color: "#22c55e", isStatus: true };
-  if (s.includes("board")) return { label: "BOARDING", color: C.flight, isStatus: true };
-  if (s.includes("in flight") || s.includes("airborne") || s.includes("en route")) return { label: "IN FLIGHT", color: C.flight, isStatus: true };
-  return { label: duration ?? null, color: C.textTertiary, isStatus: false };
 }
 
 function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors; tripId?: string; onPress?: (ev: TravelEvent) => void }) {
@@ -145,8 +112,6 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
   const depTime = ev.time ? formatTimeTo24h(ev.time) : "";
   const arrTime = ev.endTime ? formatTimeTo24h(ev.endTime) : "";
 
-  const badge = flightStatusInfo(ev.status, undefined, C);
-
   const chips = [
     ev.gate && { label: "GATE", value: ev.gate },
     ev.seatDetails && { label: "SEAT", value: ev.seatDetails },
@@ -161,9 +126,12 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
   const flightLabel = ev.flightNum || (ev.airline ? `${ev.airline}` : "");
 
   return (
-    <Pressable
+    <ScalePress
       onPress={handlePress}
-      style={({ pressed }) => [fs.card, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
+      activeScale={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={hasCodes ? `Flight ${depCode} to ${arrCode}` : ev.title}
+      style={[fs.card, { backgroundColor: C.card }]}
     >
       {/* Route — Tripsy-style layout */}
       {arrCity ? (
@@ -176,7 +144,7 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
                 <Text style={[fs.iata, { color: C.textPrimary }]}>{depCode.slice(0, 3)}</Text>
               </>
             ) : (
-              <Text style={[fs.iata, { color: C.textPrimary, fontSize: 22 }]} numberOfLines={1}>{depCity}</Text>
+              <Text style={[fs.iata, fs.iataCity, { color: C.textPrimary }]} numberOfLines={1}>{depCity}</Text>
             )}
             {depTime ? <Text style={[fs.time, { color: C.textTertiary }]}>{depTime}</Text> : null}
           </View>
@@ -200,7 +168,7 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
                 <Text style={[fs.iata, { color: C.textPrimary }]}>{arrCode.slice(0, 3)}</Text>
               </>
             ) : (
-              <Text style={[fs.iata, { color: C.textPrimary, fontSize: 22, textAlign: "right" }]} numberOfLines={1}>{arrCity}</Text>
+              <Text style={[fs.iata, fs.iataCity, { color: C.textPrimary, textAlign: "right" }]} numberOfLines={1}>{arrCity}</Text>
             )}
             {arrTime ? <Text style={[fs.time, { color: C.textTertiary }]}>{arrTime}</Text> : null}
           </View>
@@ -229,24 +197,25 @@ function FlightCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColor
         <View style={[cs.footer, { marginTop: chips.length > 0 ? S.xs : S.sm }]}>
           <View style={{ flex: 1 }} />
           <View style={cs.confRow}>
-            <Hash size={10} color={C.textDim} weight="regular" />
-            <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
+            <Hash size={10} color={C.textTertiary} weight="regular" />
+            <Text style={[cs.confText, { color: C.textTertiary }]}>{ev.confNumber}</Text>
           </View>
         </View>
       )}
-    </Pressable>
+    </ScalePress>
   );
 }
 
 const fs = StyleSheet.create({
-  card: { borderRadius: R.xl, paddingHorizontal: S.lg, paddingVertical: S.xl },
+  card: { borderRadius: R.xl, padding: S.md },
   route: {
     flexDirection: "row", alignItems: "stretch",
     marginBottom: S.sm,
   },
   endpoint: { flex: 1 },
   cityName: { fontSize: T.base, fontWeight: T.regular, marginBottom: 2 },
-  iata: { fontSize: 30, fontWeight: T.extrabold, letterSpacing: -0.5 },
+  iata: { fontSize: 30, fontFamily: F.extrabold, letterSpacing: 0.5, lineHeight: 32, includeFontPadding: false },
+  iataCity: { fontSize: T["2xl"] },
   time: { fontSize: T.base, fontWeight: T.medium, marginTop: 4 },
   connector: {
     alignItems: "center",
@@ -265,7 +234,7 @@ const fs = StyleSheet.create({
     paddingHorizontal: S.sm, paddingVertical: S.xs,
     borderRadius: R.md,
   },
-  chipLabel: { fontSize: 9, fontWeight: T.bold, letterSpacing: 0.8, marginBottom: 2 },
+  chipLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.8, marginBottom: 2 },
   chipValue: { fontSize: T.base, fontWeight: T.bold },
 });
 
@@ -279,26 +248,24 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
   };
 
   return (
-    <Pressable
+    <ScalePress
       onPress={handlePress}
-      style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
+      activeScale={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={ev.title}
+      style={[cs.card, { backgroundColor: C.card, overflow: "hidden" }]}
     >
       {ev.image && (
         <View>
           <CachedImage uri={ev.image} style={cs.imageBanner} />
           <LinearGradient
-            colors={["rgba(10,10,11,0.05)", "rgba(10,10,11,0.45)"]}
-            style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
+            colors={["rgba(9,9,11,0.05)", "rgba(9,9,11,0.45)"]}
+            style={[StyleSheet.absoluteFill, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
           />
           <View style={cs.photoOverlay}>
-            <View style={cs.glassPill}>
-              <Bed size={11} color={C.teal} weight="regular" />
-              <Text style={[cs.glassPillText, { color: C.teal }]}>{ev.isOvernight ? "OVERNIGHT" : "STAY"}</Text>
-            </View>
+            <Pill tone="glass" icon={<Bed size={11} color={C.teal} weight="regular" />} label={ev.isOvernight ? "OVERNIGHT" : "STAY"} />
             {!ev.isOvernight && ev.time && (
-              <View style={cs.glassPill}>
-                <Text style={[cs.glassPillText, { color: "#f4f4f5" }]}>{ev.time}</Text>
-              </View>
+              <Pill tone="glass" label={ev.time} />
             )}
           </View>
         </View>
@@ -310,7 +277,7 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
             <View style={[cs.iconBox, { backgroundColor: C.tealDim }]}>
               <Bed size={12} color={C.teal} weight="regular" />
             </View>
-            <Text style={[cs.smallLabel, { color: C.teal, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
+            <Text style={[cs.smallLabel, { color: C.tealText, flex: 1 }]}>{ev.isOvernight ? "Overnight" : "Stay"}</Text>
             {!ev.isOvernight && ev.time && <Text style={[cs.meta, { color: C.textTertiary }]}>{ev.time}</Text>}
           </View>
         )}
@@ -356,13 +323,13 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
           <View style={[cs.footer, { marginTop: S.sm }]}>
             <View style={{ flex: 1 }} />
             <View style={cs.confRow}>
-              <Hash size={10} color={C.textDim} weight="regular" />
-              <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
+              <Hash size={10} color={C.textTertiary} weight="regular" />
+              <Text style={[cs.confText, { color: C.textTertiary }]}>{ev.confNumber}</Text>
             </View>
           </View>
         )}
       </View>
-    </Pressable>
+    </ScalePress>
   );
 }
 
@@ -384,26 +351,24 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
   const timeStr = ev.time ? (ev.endTime ? `${ev.time} – ${ev.endTime}` : ev.time) : null;
 
   return (
-    <Pressable
+    <ScalePress
       onPress={handlePress}
-      style={({ pressed }) => [cs.card, { backgroundColor: C.card, overflow: "hidden", opacity: pressed ? 0.85 : 1 }]}
+      activeScale={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={ev.title}
+      style={[cs.card, { backgroundColor: C.card, overflow: "hidden" }]}
     >
       {ev.image && (
         <View>
           <CachedImage uri={ev.image} style={cs.imageBanner} />
           <LinearGradient
-            colors={["rgba(10,10,11,0.05)", "rgba(10,10,11,0.45)"]}
-            style={[StyleSheet.absoluteFillObject, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
+            colors={["rgba(9,9,11,0.05)", "rgba(9,9,11,0.45)"]}
+            style={[StyleSheet.absoluteFill, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
           />
           <View style={cs.photoOverlay}>
-            <View style={cs.glassPill}>
-              <Icon size={11} color={C.teal} weight="regular" />
-              <Text style={[cs.glassPillText, { color: C.teal }]}>{label.toUpperCase()}</Text>
-            </View>
+            <Pill tone="glass" icon={<Icon size={11} color={C.teal} weight="regular" />} label={label.toUpperCase()} />
             {timeStr && (
-              <View style={cs.glassPill}>
-                <Text style={[cs.glassPillText, { color: "#f4f4f5" }]}>{timeStr}</Text>
-              </View>
+              <Pill tone="glass" label={timeStr} />
             )}
           </View>
         </View>
@@ -415,7 +380,7 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
             <View style={[cs.iconBox, { backgroundColor: C.tealDim }]}>
               <Icon size={12} color={C.teal} weight="regular" />
             </View>
-            <Text style={[cs.smallLabel, { color: C.teal, flex: 1 }]}>{label}</Text>
+            <Text style={[cs.smallLabel, { color: C.tealText, flex: 1 }]}>{label}</Text>
             {timeStr && (
               <Text style={[cs.meta, { color: C.textTertiary }]}>{timeStr}</Text>
             )}
@@ -443,34 +408,40 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
         {(ev.status || ev.price || ev.confNumber) && (
           <View style={[cs.footer, { marginTop: S.sm }]}>
             {ev.status && (() => {
-              const sp = statusPill(ev.status, C);
+              const label = statusLabel(ev.status);
+              const sp = statusTone(label, C);
               return (
-                <View style={[cs.statusPill, { backgroundColor: sp.bg, borderColor: sp.border }]}>
-                  <View style={[cs.statusDot, { backgroundColor: sp.color }]} />
-                  <Text style={[cs.statusPillText, { color: sp.color }]}>{sp.label}</Text>
-                </View>
+                <Pill
+                  tone="custom"
+                  bg={sp.bg}
+                  color={sp.text}
+                  bordered
+                  style={{ borderColor: sp.border }}
+                  icon={<View style={[cs.statusDot, { backgroundColor: sp.color }]} />}
+                  label={label}
+                />
               );
             })()}
             {ev.price && (
-              <Text style={[cs.priceText, { color: C.teal }]}>{ev.price}</Text>
+              <Text style={[cs.priceText, { color: C.tealText }]}>{ev.price}</Text>
             )}
             <View style={{ flex: 1 }} />
             {ev.confNumber && (
               <View style={cs.confRow}>
-                <Hash size={10} color={C.textDim} weight="regular" />
-                <Text style={[cs.confText, { color: C.textDim }]}>{ev.confNumber}</Text>
+                <Hash size={10} color={C.textTertiary} weight="regular" />
+                <Text style={[cs.confText, { color: C.textTertiary }]}>{ev.confNumber}</Text>
               </View>
             )}
           </View>
         )}
       </View>
-    </Pressable>
+    </ScalePress>
   );
 }
 
 // ── Shared card styles ───────────────────────────────────────────────────────
 const cs = StyleSheet.create({
-  card: { borderRadius: R.xl, padding: S.md },
+  card: { borderRadius: R.xl },
   content: { padding: S.md },
   imageBanner: { width: "100%", height: 170, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl },
 
@@ -481,11 +452,6 @@ const cs = StyleSheet.create({
   },
   smallLabel: { fontSize: T.xs, fontWeight: T.semibold, letterSpacing: 0.5 },
   meta: { fontSize: T.xs, fontWeight: T.regular, marginTop: 1 },
-  timeBadge: {
-    fontSize: T.xs, fontWeight: T.bold,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.full,
-    overflow: "hidden",
-  },
 
   title: { fontSize: T.lg, fontWeight: T.bold, letterSpacing: -0.2, marginBottom: 4 },
   desc: { fontSize: T.sm, lineHeight: 20, marginBottom: S.xs },
@@ -493,29 +459,14 @@ const cs = StyleSheet.create({
   locationRow: { flexDirection: "row", alignItems: "flex-start", gap: 4, marginBottom: S.sm },
   locationText: { fontSize: T.sm, fontWeight: T.medium, flex: 1, lineHeight: 16 },
 
-  // Flight route
-  routeSection: {
-    flexDirection: "row", alignItems: "center",
-    borderRadius: R.lg, padding: S.md, marginBottom: S.sm,
-  },
-  airport: { alignItems: "center", width: 80 },
-  airportCode: { fontSize: T["3xl"], fontWeight: T.bold, letterSpacing: -0.5, lineHeight: 32 },
-  airportLabel: { fontSize: T.xs, fontWeight: T.medium, marginTop: 3, maxWidth: 80 },
-  routeLine: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
-  dash: { flex: 1, height: 1, borderStyle: "dashed", borderWidth: 0.5 },
-
-  metaInline: { flexDirection: "row", flexWrap: "wrap", marginTop: S.xs },
-  metaInlineText: { fontSize: T.sm, fontWeight: T.medium },
-
   // Hotel dates
   checkRow: {
     flexDirection: "row", alignItems: "center", gap: S.xs,
     borderRadius: R.md, paddingHorizontal: S.sm, paddingVertical: S.xs,
     marginBottom: S.xs,
   },
-  checkLabel: { fontSize: 9, fontWeight: T.semibold, letterSpacing: 0.5, marginBottom: 1 },
+  checkLabel: { fontSize: T["2xs"], fontWeight: T.semibold, letterSpacing: 0.5, marginBottom: 1 },
   checkVal: { fontSize: T.sm, fontWeight: T.bold },
-  checkDate: { fontSize: T.xs, marginTop: 2 },
 
   roomType: { fontSize: T.xs, fontWeight: T.bold, marginTop: S.xs },
   notesFlat: { fontSize: T.sm, lineHeight: 20, marginTop: S.xs },
@@ -523,38 +474,14 @@ const cs = StyleSheet.create({
   footer: { flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" },
   priceText: { fontSize: T.sm, fontWeight: T.bold },
   confRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  confText: { fontSize: 10, fontWeight: T.bold, letterSpacing: 0.8 },
+  confText: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.8 },
 
   photoOverlay: {
     position: "absolute", top: S.sm, left: S.sm, right: S.sm,
     flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
   },
-  glassPill: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: R.full,
-    backgroundColor: "rgba(9,9,11,0.65)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.10)",
-  },
-  glassPillText: {
-    fontSize: 9.5, fontWeight: T.semibold, letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  statusPill: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: R.full,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
-  statusPillText: { fontSize: 10.5, fontWeight: T.medium },
+  statusDot: { width: 5, height: 5, borderRadius: 2.5 },
 });
-
-// ── Compat exports ───────────────────────────────────────────────────────────
-export function ConfRow({ confNumber, C }: { confNumber: string; C: ThemeColors }) {
-  return null; // now rendered inside cards
-}
 
 export function DocsRow({ documents, C }: { documents: EventDocument[]; C: ThemeColors }) {
   if (!documents.length) return null;

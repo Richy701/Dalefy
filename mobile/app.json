@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "dafadventures",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#131316"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dafadventures.app",
@@ -29,11 +24,6 @@
       },
       "package": "com.dafadventures.app",
       "backgroundColor": "#131316",
-      "navigationBarColor": "#09090b",
-      "navigationBarStyle": "light-content",
-      "statusBarColor": "#00000000",
-      "statusBarStyle": "light-content",
-      "statusBarTranslucent": true,
       "versionCode": 3
     },
     "extra": {

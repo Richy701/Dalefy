@@ -1,8 +1,7 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform } from "react-native";
+import Animated from "react-native-reanimated";
+import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
@@ -13,7 +12,7 @@ import {
   FileText, CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
   SignOut,
 } from "phosphor-react-native";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, shadow, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -23,16 +22,18 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/context/BrandContext";
 import { useToast } from "@/context/ToastContext";
 import { FadeIn } from "@/components/FadeIn";
-import { CachedImage } from "@/components/CachedImage";
+import { Avatar } from "@/components/ui/Avatar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
 import { useMemo, useState, useCallback } from "react";
 
-function deriveGradient(name: string): [string, string] {
+/** Stable per-name accent for the initials avatar (hex so alpha suffixes work). */
+function deriveAvatarColor(name: string, C: ThemeColors): string {
+  const palette = [C.dining, C.activity, C.hotel, C.transfer, C.green, C.teal];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const hue = Math.abs(hash) % 360;
-  const from = `hsl(${hue}, 65%, 55%)`;
-  const to = `hsl(${(hue + 40) % 360}, 65%, 45%)`;
-  return [from, to];
+  return palette[Math.abs(hash) % palette.length];
 }
 
 export default function ProfileScreen() {
@@ -44,7 +45,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
-  const s = useMemo(() => makeStyles(C), [C]);
+  const s = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -55,7 +56,7 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
-  const [gradFrom, gradTo] = useMemo(() => deriveGradient(prefs.name || "?"), [prefs.name]);
+  const avatarColor = useMemo(() => deriveAvatarColor(prefs.name || "?", C), [prefs.name, C]);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -87,51 +88,41 @@ export default function ProfileScreen() {
 
 
 
-  const insets = useSafeAreaInsets();
+
+  const { onScroll, barStyle } = useCollapsingHeader();
 
   return (
     <View style={s.safe}>
-      {/* ── Sticky blur header ── */}
-      <View style={[s.stickyHeader, { paddingTop: insets.top }]}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-        )}
-        <Text style={s.screenTitle}>Profile</Text>
-      </View>
-
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 52 }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} />}
+        contentContainerStyle={s.scroll}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
+        <ScreenTitle>Profile</ScreenTitle>
 
+        <View style={s.body}>
         {/* ── Profile hero ── */}
         <FadeIn delay={0}>
         <View style={s.heroCard}>
-          <View style={s.avatar}>
-            {prefs.avatar ? (
-              <CachedImage uri={prefs.avatar} style={s.avatarImg} blurhash={null} />
-            ) : initials ? (
-              <View style={[s.avatarGrad, { backgroundColor: gradFrom }]}>
-                <Text style={s.avatarText}>{initials}</Text>
-              </View>
-            ) : (
+          {prefs.avatar || initials ? (
+            <Avatar size={56} uri={prefs.avatar} initials={initials || undefined} color={avatarColor} />
+          ) : (
+            <View style={s.avatarFallback}>
               <User size={28} color={C.teal} weight="light" />
-            )}
-          </View>
+            </View>
+          )}
           <View style={s.heroText}>
             <Text style={s.heroName}>{firstName || "Traveller"}</Text>
             {nextTrip && (
-              <View style={[s.statusPill, { backgroundColor: C.tealMid }]}>
-                <Text style={[s.statusPillText, { color: C.teal }]}>{nextTrip}</Text>
-              </View>
+              <Pill label={nextTrip} tone="custom" bg={C.tealMid} color={C.tealText} style={s.statusPill} />
             )}
           </View>
           <Pressable
             style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.7 }]}
             onPress={() => { haptic.selection(); router.push("/welcome"); }}
+            accessibilityRole="button"
             accessibilityLabel="Edit your profile"
             hitSlop={8}
           >
@@ -146,6 +137,8 @@ export default function ProfileScreen() {
             <Pressable
               onPress={() => { haptic.selection(); router.push("/auth?mode=upgrade"); }}
               style={({ pressed }) => [s.upgradeCard, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to save your trips"
             >
               <View style={[s.upgradeIcon, { backgroundColor: C.tealDim }]}>
                 <UserCirclePlus size={20} color={C.teal} weight="regular" />
@@ -154,21 +147,21 @@ export default function ProfileScreen() {
                 <Text style={s.upgradeTitle}>Sign in to save your trips</Text>
                 <Text style={s.upgradeSub}>Access your trips on any device</Text>
               </View>
-              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.teal, letterSpacing: 0.5 }}>
-                SIGN IN
+              <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: C.tealText, letterSpacing: 0.5 }}>
+                Sign in
               </Text>
             </Pressable>
           </FadeIn>
         )}
 
         {/* ── Appearance ── */}
-        <FadeIn delay={80}>
-        <Text style={s.sectionLabel}>Appearance</Text>
+        <FadeIn delay={120}>
+        <MicroLabel style={s.sectionLabel}>Appearance</MicroLabel>
         <View style={s.card}>
           {/* Theme */}
           <View style={s.row}>
             <Palette size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Theme</Text>
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
             <SegmentedControl
               values={["Light", "Dark", "Auto"]}
               selectedIndex={mode === "light" ? 0 : mode === "dark" ? 1 : 2}
@@ -178,20 +171,7 @@ export default function ProfileScreen() {
                 haptic.selection();
                 setMode(val);
               }}
-              style={{
-                width: 180,
-                ...Platform.select({
-                  ios: {
-                    shadowColor: "#000",
-                    shadowOpacity: 0.08,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 1 },
-                  },
-                  android: {
-                    elevation: 2,
-                  },
-                }),
-              }}
+              style={{ width: 180, ...shadow("card", isDark) }}
               appearance={isDark ? "dark" : "light"}
             />
           </View>
@@ -200,7 +180,9 @@ export default function ProfileScreen() {
 
           {/* Haptics */}
           <View style={s.row}>
-            <Vibrate size={18} color={C.textSecondary} weight="light" />
+            <View style={s.rowIcon}>
+              <Vibrate size={18} color={C.textSecondary} weight="light" />
+            </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Haptic feedback</Text>
               <Text style={s.rowSub}>Subtle vibrations on actions</Text>
@@ -216,11 +198,13 @@ export default function ProfileScreen() {
         </FadeIn>
 
         {/* ── Notifications ── */}
-        <FadeIn delay={160}>
-        <Text style={s.sectionLabel}>Notifications</Text>
+        <FadeIn delay={180}>
+        <MicroLabel style={s.sectionLabel}>Notifications</MicroLabel>
         <View style={s.card}>
           <View style={s.row}>
-            <Bell size={18} color={C.textSecondary} weight="light" />
+            <View style={s.rowIcon}>
+              <Bell size={18} color={C.textSecondary} weight="light" />
+            </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Trip reminders</Text>
               <Text style={s.rowSub}>Push notifications before each event</Text>
@@ -234,7 +218,9 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.row}>
-            <CalendarCheck size={18} color={C.textSecondary} weight="light" />
+            <View style={s.rowIcon}>
+              <CalendarCheck size={18} color={C.textSecondary} weight="light" />
+            </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Itinerary updates</Text>
               <Text style={s.rowSub}>When your organiser changes the plan</Text>
@@ -250,7 +236,9 @@ export default function ProfileScreen() {
             <>
               <View style={s.divider} />
               <View style={s.row}>
-                <Pulse size={18} color={C.textSecondary} weight="light" />
+                <View style={s.rowIcon}>
+                  <Pulse size={18} color={C.textSecondary} weight="light" />
+                </View>
                 <View style={s.rowLabelGroup}>
                   <Text style={s.rowLabel}>Live Activity</Text>
                   <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
@@ -267,23 +255,22 @@ export default function ProfileScreen() {
         </View>
         </FadeIn>
 
-        {/* ── My Documents ── */}
+        {/* ── Documents ── */}
         <FadeIn delay={240}>
-        <Text style={s.sectionLabel}>My Documents</Text>
+        <MicroLabel style={s.sectionLabel}>Documents</MicroLabel>
         <View style={s.card}>
-          <View style={s.docsEmpty}>
-            <FileText size={24} color={C.textTertiary} weight="light" />
-            <Text style={s.docsEmptyTitle}>No documents yet</Text>
-            <Text style={s.docsEmptyText}>
-              Your travel agency will share documents here when they're ready.
-            </Text>
-          </View>
+          <EmptyState
+            compact
+            icon={<FileText size={28} color={C.teal} weight="light" />}
+            title="No documents yet"
+            message="Your travel agency will share documents here when they're ready."
+          />
         </View>
         </FadeIn>
 
         {/* ── About ── */}
-        <FadeIn delay={320}>
-        <Text style={s.sectionLabel}>About</Text>
+        <FadeIn delay={240}>
+        <MicroLabel style={s.sectionLabel}>About</MicroLabel>
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
@@ -292,7 +279,7 @@ export default function ProfileScreen() {
             accessibilityLabel="Help & support"
           >
             <ChatCircle size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Help & support</Text>
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Help & support</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
@@ -303,7 +290,7 @@ export default function ProfileScreen() {
             accessibilityLabel="Privacy policy"
           >
             <Shield size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Privacy policy</Text>
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Privacy policy</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
@@ -314,7 +301,7 @@ export default function ProfileScreen() {
             accessibilityLabel="Terms of service"
           >
             <FileCheckIcon size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Terms of service</Text>
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Terms of service</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
           </Pressable>
           <View style={s.divider} />
@@ -325,10 +312,11 @@ export default function ProfileScreen() {
               await Clipboard.setStringAsync("Dalefy v1.0.0 (27)");
               toast("Version copied");
             }}
+            accessibilityRole="button"
             accessibilityLabel="Copy version to clipboard"
           >
             <Info size={18} color={C.textSecondary} weight="light" />
-            <Text style={s.rowLabel}>Version</Text>
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Version</Text></View>
             <Text style={s.rowValue}>1.0.0 (27)</Text>
           </Pressable>
         </View>
@@ -337,7 +325,7 @@ export default function ProfileScreen() {
 
         {/* ── Sign Out ── */}
         {auth.isAuthenticated && (
-          <FadeIn delay={360}>
+          <FadeIn delay={240}>
             <Pressable
               onPress={async () => {
                 haptic.medium();
@@ -345,9 +333,10 @@ export default function ProfileScreen() {
                 router.replace("/auth");
               }}
               style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
             >
               <SignOut size={18} color={C.red} weight="regular" />
-              <Text style={[s.signOutText, { color: C.red }]}>Sign out</Text>
+              <Text style={[s.signOutText, { color: C.redText }]}>Sign out</Text>
             </Pressable>
           </FadeIn>
         )}
@@ -357,29 +346,23 @@ export default function ProfileScreen() {
           {brand.logoUrl ? (
             <Image source={{ uri: brand.logoUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
           ) : (
-            <Logo size={14} color={C.textDim} />
+            <Logo size={14} color={C.textTertiary} />
           )}
           <Text style={s.footerText}>Powered by {brand.name}</Text>
         </View>
+        </View>
 
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactHeader title="Profile" barStyle={barStyle} />
     </View>
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100, paddingHorizontal: S.md },
-    stickyHeader: {
-      position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-      overflow: "hidden",
-    },
-    screenTitle: {
-      fontSize: 22, fontWeight: "700",
-      color: C.textPrimary,
-      paddingHorizontal: S.md, paddingVertical: 10,
-    },
+    scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
+    body: { paddingHorizontal: S.md },
 
     // ── Hero ──
     heroCard: {
@@ -388,10 +371,9 @@ function makeStyles(C: ThemeColors) {
       gap: S.md,
       padding: S.lg,
       backgroundColor: C.card,
-      borderRadius: R["2xl"],
+      borderRadius: R.xl,
       marginTop: S.md,
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+      ...shadow("card", isDark),
     },
     upgradeCard: {
       flexDirection: "row",
@@ -402,7 +384,7 @@ function makeStyles(C: ThemeColors) {
       borderRadius: R.xl,
       marginTop: S.sm,
       borderWidth: 1,
-      borderColor: `${C.teal}30`,
+      borderColor: C.tealMid,
     },
     upgradeIcon: {
       width: 40, height: 40, borderRadius: R.md,
@@ -414,30 +396,13 @@ function makeStyles(C: ThemeColors) {
     upgradeSub: {
       fontSize: T.xs, color: C.textTertiary, marginTop: 1,
     },
-    avatar: {
+    avatarFallback: {
       width: 56,
       height: 56,
-      borderRadius: R.full,
+      borderRadius: 28,
       backgroundColor: C.elevated,
       alignItems: "center",
       justifyContent: "center",
-    },
-    avatarGrad: {
-      width: 56,
-      height: 56,
-      borderRadius: R.full,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    avatarImg: {
-      width: 56,
-      height: 56,
-      borderRadius: R.full,
-    },
-    avatarText: {
-      fontSize: 22,
-      fontWeight: T.bold,
-      color: "#fff",
     },
     editBtn: {
       width: 36,
@@ -448,15 +413,7 @@ function makeStyles(C: ThemeColors) {
       justifyContent: "center",
     },
     statusPill: {
-      alignSelf: "flex-start",
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: R.full,
-      marginTop: 4,
-    },
-    statusPillText: {
-      fontSize: T.xs,
-      fontWeight: T.semibold,
+      marginTop: S["2xs"],
     },
     heroText: { flex: 1 },
     heroName: {
@@ -465,30 +422,18 @@ function makeStyles(C: ThemeColors) {
       color: C.textPrimary,
       letterSpacing: -0.2,
     },
-    heroSub: {
-      fontSize: T.sm,
-      fontWeight: T.medium,
-      color: C.teal,
-      marginTop: 3,
-    },
 
     // ── Sections ──
     sectionLabel: {
-      fontSize: T.xs,
-      fontWeight: T.semibold,
-      color: C.textTertiary,
-      letterSpacing: 0.8,
-      textTransform: "uppercase",
       marginBottom: S.sm,
       marginTop: S.xl,
       paddingLeft: S["2xs"],
     },
     card: {
       backgroundColor: C.card,
-      borderRadius: R["2xl"],
+      borderRadius: R.xl,
       overflow: "hidden",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+      ...shadow("card", isDark),
     },
 
     // ── Rows ──
@@ -504,12 +449,16 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.border,
       marginLeft: S.md + 18 + S.sm,
     },
+    rowIcon: {
+      alignSelf: "flex-start",
+      height: 18,
+      justifyContent: "center",
+    },
     rowLabelGroup: {
       flex: 1,
       minWidth: 0,
     },
     rowLabel: {
-      flex: 1,
       fontSize: T.base,
       fontWeight: T.medium,
       color: C.textPrimary,
@@ -523,74 +472,6 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.sm,
       color: C.textTertiary,
       fontWeight: T.medium,
-    },
-
-    // ── Theme toggle ──
-    themeToggle: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.elevated,
-      borderRadius: R.full,
-      padding: 3,
-      gap: 2,
-    },
-    themeBtn: {
-      alignItems: "center",
-      justifyContent: "center",
-      width: 32,
-      height: 28,
-      borderRadius: R.full,
-    },
-    themeBtnActive: { backgroundColor: C.card },
-
-    // ── Documents empty ──
-    docsEmpty: {
-      alignItems: "center",
-      paddingVertical: S.xl,
-      paddingHorizontal: S.md,
-      gap: 6,
-    },
-    docsEmptyTitle: {
-      fontSize: T.sm,
-      fontWeight: T.bold,
-      color: C.textSecondary,
-      marginTop: 4,
-    },
-    docsEmptyText: {
-      fontSize: T.xs,
-      color: C.textTertiary,
-      textAlign: "center",
-      lineHeight: 17,
-    },
-
-    // ── Danger zone ──
-    dangerSection: {
-      marginTop: S.xl,
-      alignItems: "center",
-    },
-    demoBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: S.md,
-      paddingVertical: S.sm,
-    },
-    demoBtnText: {
-      fontSize: T.sm,
-      fontWeight: T.medium,
-      color: C.teal,
-    },
-    dangerBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: S.md,
-      paddingVertical: S.sm,
-    },
-    dangerText: {
-      fontSize: T.sm,
-      fontWeight: T.medium,
-      color: "#ef4444",
     },
 
     // ── Sign Out ──
@@ -612,12 +493,12 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
+      gap: S.xs2,
       marginTop: S.xl,
     },
     footerText: {
       fontSize: T.xs,
-      color: C.textDim,
+      color: C.textTertiary,
       fontWeight: T.medium,
       letterSpacing: 0.3,
     },

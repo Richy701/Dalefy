@@ -1,8 +1,9 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
-import { CachedImage } from "@/components/CachedImage";
 import * as Haptics from "expo-haptics";
-import { Phone, Envelope, User } from "phosphor-react-native";
-import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { Phone, Envelope } from "phosphor-react-native";
+import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { Avatar } from "@/components/ui/Avatar";
+import { MicroLabel } from "@/components/ui/MicroLabel";
 import type { TripOrganizer } from "@/shared/types";
 
 interface OrganizerCardProps {
@@ -33,18 +34,11 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
   return (
     <View style={s.card}>
       <View style={s.topRow}>
-        {/* Avatar */}
-        {organizer.avatar ? (
-          <CachedImage uri={organizer.avatar} style={s.avatar} />
-        ) : (
-          <View style={s.avatarFallback}>
-            <Text style={s.avatarInitials}>{initials}</Text>
-          </View>
-        )}
+        <Avatar size={48} uri={organizer.avatar} initials={initials} />
 
         {/* Info */}
         <View style={s.info}>
-          <Text style={s.label}>YOUR ORGANIZER</Text>
+          <MicroLabel style={s.label}>Your organiser</MicroLabel>
           <Text style={s.name} numberOfLines={1}>{organizer.name}</Text>
           {(organizer.role || organizer.company) && (
             <Text style={s.subtitle} numberOfLines={1}>
@@ -89,7 +83,7 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     card: {
       marginHorizontal: S.md,
-      marginTop: S.md,
+      marginTop: S.sm,
       backgroundColor: C.card,
       borderRadius: R.xl,
       padding: S.md,
@@ -99,34 +93,8 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center",
       gap: S.sm,
     },
-    avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: R.full,
-    },
-    avatarFallback: {
-      width: 48,
-      height: 48,
-      borderRadius: R.full,
-      backgroundColor: C.tealDim,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    avatarInitials: {
-      fontSize: T.md,
-      fontWeight: T.bold,
-      color: C.teal,
-      letterSpacing: 0.5,
-    },
     info: { flex: 1 },
-    label: {
-      fontSize: 10,
-      fontWeight: T.bold,
-      color: C.textTertiary,
-      letterSpacing: 1.5,
-      textTransform: "uppercase",
-      marginBottom: 2,
-    },
+    label: { marginBottom: 2 },
     name: {
       fontSize: T.md,
       fontWeight: T.bold,
@@ -151,15 +119,15 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
-      paddingVertical: S.xs + 2,
+      gap: S.xs2,
+      paddingVertical: S.sm2,
       borderRadius: R.md,
       backgroundColor: C.tealDim,
     },
     actionText: {
       fontSize: T.xs,
       fontWeight: T.bold,
-      color: C.teal,
+      color: C.tealText,
       letterSpacing: 1,
     },
   });

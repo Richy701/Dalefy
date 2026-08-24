@@ -4,7 +4,7 @@ import {
   StyleSheet, Platform,
 } from "react-native";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  useSharedValue, useAnimatedStyle, withSpring, withDelay,
 } from "react-native-reanimated";
 import { Skeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,11 +13,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft, Compass, MapPin, Users, Moon, ShareNetwork, Plus, Check, CaretDown,
-  AirplaneTilt, Bed, ForkKnife, Car,
+  AirplaneTilt, Bed, ForkKnife, Car, WarningCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/shared/dates";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -26,6 +26,11 @@ import { useToast } from "@/context/ToastContext";
 import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
+import { Avatar } from "@/components/ui/Avatar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconCircleButton } from "@/components/ui/IconCircleButton";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
 import type { Trip } from "@/shared/types";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
@@ -177,11 +182,13 @@ export default function SharedTripScreen() {
   if (error || !trip) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
-          <Text style={styles.errorText}>Trip not found or not published</Text>
-          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.actionBtn}>
-            <Text style={styles.actionBtnText}>Go back</Text>
-          </Pressable>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <EmptyState
+            icon={<WarningCircle size={28} color={C.teal} weight="light" />}
+            title="Trip not found"
+            message="This trip isn't available or hasn't been published yet."
+            cta={{ label: "Go back", onPress: () => router.canGoBack() ? router.back() : router.replace("/(tabs)") }}
+          />
         </View>
       </SafeAreaView>
     );
@@ -223,67 +230,52 @@ export default function SharedTripScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Hero */}
         <View style={styles.hero}>
-          <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+          <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
           <LinearGradient
             colors={["rgba(0,0,0,0.2)", "transparent"]}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.5)"]}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.backCircle,
-              { top: insets.top + 8, opacity: pressed ? 0.7 : 1 },
-            ]}
+          <IconCircleButton
+            variant="glass"
             onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-            accessibilityRole="button"
             accessibilityLabel="Go back"
+            style={{ position: "absolute", left: S.md, top: insets.top + S.xs }}
           >
-            <ArrowLeft size={18} color="#fff" weight="regular" />
-          </Pressable>
+            <ArrowLeft size={18} color={C.textPrimary} weight="regular" />
+          </IconCircleButton>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.shareCircle,
-              { top: insets.top + 8, opacity: pressed ? 0.7 : 1 },
-            ]}
+          <IconCircleButton
+            variant="glass"
             onPress={handleShare}
-            accessibilityRole="button"
             accessibilityLabel="Share trip"
+            style={{ position: "absolute", right: S.md, top: insets.top + S.xs }}
           >
-            <ShareNetwork size={16} color="#fff" weight="regular" />
-          </Pressable>
+            <ShareNetwork size={18} color={C.textPrimary} weight="regular" />
+          </IconCircleButton>
 
           <View style={styles.heroContent}>
-            <Text style={styles.heroEyebrow}>SHARED TRIP</Text>
+            <MicroLabel color={C.teal} style={{ marginBottom: S.xs2 }}>Shared trip</MicroLabel>
             <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
             <View style={styles.chipsRow}>
               {trip.attendees ? (
-                <View style={styles.chip}>
-                  <Users size={10} color={C.teal} weight="regular" />
-                  <Text style={styles.chipText}>{trip.attendees}</Text>
-                </View>
+                <Pill tone="glass" icon={<Users size={10} color={C.teal} weight="regular" />} label={String(trip.attendees)} />
               ) : null}
-              <View style={styles.chip}>
-                <Moon size={10} color={C.teal} weight="regular" />
-                <Text style={styles.chipText}>
-                  {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {" — "}
-                  {end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </Text>
-              </View>
+              <Pill
+                tone="glass"
+                icon={<Moon size={10} color={C.teal} weight="regular" />}
+                label={`${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+              />
               {trip.destination ? (
-                <View style={styles.chip}>
-                  <MapPin size={10} color={C.teal} weight="regular" />
-                  <Text style={styles.chipText}>{trip.destination}</Text>
-                </View>
+                <Pill tone="glass" icon={<MapPin size={10} color={C.teal} weight="regular" />} label={trip.destination} />
               ) : null}
             </View>
           </View>
@@ -293,19 +285,20 @@ export default function SharedTripScreen() {
         {hasTravelers && (
           <View style={styles.pickerWrap}>
             <Pressable
-              style={[styles.pickerBtn, viewAsId ? styles.pickerBtnActive : null]}
-              onPress={() => setPickerOpen(!pickerOpen)}
+              style={({ pressed }) => [styles.pickerBtn, viewAsId ? styles.pickerBtnActive : null, pressed && { opacity: 0.7 }]}
+              onPress={() => setPickerOpen(!pickerOpen)} accessibilityRole="button" accessibilityLabel="Personalise your view"
             >
-              <View style={[styles.pickerAvatar, viewAsId ? styles.pickerAvatarActive : null]}>
-                {viewAsTraveler
-                  ? <Text style={styles.pickerAvatarText}>{viewAsTraveler.initials}</Text>
-                  : <Users size={14} color={C.textSecondary} weight="regular" />
-                }
-              </View>
+              {viewAsTraveler ? (
+                <Avatar size={36} initials={viewAsTraveler.initials} />
+              ) : (
+                <View style={styles.pickerAvatar}>
+                  <Users size={14} color={C.textSecondary} weight="regular" />
+                </View>
+              )}
               <View style={styles.pickerTextWrap}>
-                <Text style={styles.pickerLabel}>
+                <MicroLabel>
                   {viewAsId ? "Viewing as" : "Personalise your view"}
-                </Text>
+                </MicroLabel>
                 <Text style={[styles.pickerName, { color: C.textPrimary }]} numberOfLines={1}>
                   {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
                 </Text>
@@ -321,13 +314,11 @@ export default function SharedTripScreen() {
             {pickerOpen && (
               <View style={styles.pickerDropdown}>
                 <Pressable
-                  style={[styles.pickerOption, !viewAsId && styles.pickerOptionActive]}
-                  onPress={() => { setViewAsId(null); setPickerOpen(false); }}
+                  style={({ pressed }) => [styles.pickerOption, !viewAsId && styles.pickerOptionActive, pressed && { opacity: 0.7 }]}
+                  onPress={() => { setViewAsId(null); setPickerOpen(false); }} accessibilityRole="button" accessibilityState={{ selected: !viewAsId }}
                 >
-                  <View style={styles.pickerOptionAvatar}>
-                    <Text style={styles.pickerOptionAvatarText}>ALL</Text>
-                  </View>
-                  <Text style={styles.pickerOptionName}>Everyone — Full itinerary</Text>
+                  <Avatar size={30} initials="ALL" color={C.textTertiary} />
+                  <Text style={styles.pickerOptionName}>Everyone · Full itinerary</Text>
                   {!viewAsId && <Check size={14} color={C.teal} weight="bold" />}
                 </Pressable>
 
@@ -336,12 +327,10 @@ export default function SharedTripScreen() {
                 {trip.travelers!.map(t => (
                   <Pressable
                     key={t.id}
-                    style={[styles.pickerOption, viewAsId === t.id && styles.pickerOptionActive]}
-                    onPress={() => { setViewAsId(t.id); setPickerOpen(false); }}
+                    style={({ pressed }) => [styles.pickerOption, viewAsId === t.id && styles.pickerOptionActive, pressed && { opacity: 0.7 }]}
+                    onPress={() => { setViewAsId(t.id); setPickerOpen(false); }} accessibilityRole="button" accessibilityState={{ selected: viewAsId === t.id }}
                   >
-                    <View style={[styles.pickerOptionAvatar, styles.pickerOptionAvatarBrand]}>
-                      <Text style={[styles.pickerOptionAvatarText, { color: C.teal }]}>{t.initials}</Text>
-                    </View>
+                    <Avatar size={30} initials={t.initials} />
                     <Text style={styles.pickerOptionName}>{t.name}</Text>
                     {viewAsId === t.id && <Check size={14} color={C.teal} weight="bold" />}
                   </Pressable>
@@ -372,7 +361,7 @@ export default function SharedTripScreen() {
         {/* Itinerary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionEyebrow}>Itinerary</Text>
+            <MicroLabel>Itinerary</MicroLabel>
           </View>
 
           <View style={styles.dayRows}>
@@ -388,8 +377,6 @@ export default function SharedTripScreen() {
                     events={events}
                     C={C}
                     isToday={date === todayStr}
-                    isFirst={dayIdx === 0}
-                    isLast={dayIdx === sortedDays.length - 1}
                     onPress={() => toggleDay(date)}
                   />
                   {expandedDays.has(date) && (
@@ -419,15 +406,13 @@ export default function SharedTripScreen() {
             })()}
           </View>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Traveler linking overlay */}
       {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
         <View style={styles.linkOverlay}>
           <View style={styles.linkSheet}>
-            <Text style={styles.linkTitle}>Which traveler are you?</Text>
+            <Text style={styles.linkTitle}>Which traveller are you?</Text>
             <Text style={styles.linkSub}>
               This helps show you only the events relevant to you.
             </Text>
@@ -437,22 +422,20 @@ export default function SharedTripScreen() {
               return (
                 <Pressable
                   key={t.id}
-                  onPress={() => !taken && completeJoin(t.id)}
+                  onPress={() => !taken && completeJoin(t.id)} accessibilityRole="button" accessibilityLabel={t.name} accessibilityState={{ disabled: taken }}
                   disabled={taken}
                   style={({ pressed }) => [styles.linkOption, pressed && !taken && { opacity: 0.8 }, taken && { opacity: 0.4 }]}
                 >
-                  <View style={[styles.pickerOptionAvatar, taken ? {} : styles.pickerOptionAvatarBrand]}>
-                    <Text style={[styles.pickerOptionAvatarText, { color: taken ? C.textDim : C.teal }]}>{t.initials}</Text>
-                  </View>
+                  <Avatar size={30} initials={t.initials} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.pickerOptionName, { color: taken ? C.textDim : C.textPrimary }]}>{t.name}</Text>
-                    {taken && <Text style={{ fontSize: 10, color: C.textDim, marginTop: 1 }}>Already claimed</Text>}
+                    <Text style={[styles.pickerOptionName, { color: C.textPrimary }]}>{t.name}</Text>
+                    {taken && <Text style={{ fontSize: T["2xs"], color: C.textTertiary, marginTop: 1 }}>Already claimed</Text>}
                   </View>
                 </Pressable>
               );
             })}
 
-            <Pressable onPress={() => completeJoin()} style={styles.linkSkip}>
+            <Pressable onPress={() => completeJoin()} accessibilityRole="button" style={({ pressed }) => [styles.linkSkip, pressed && { opacity: 0.7 }]}>
               <Text style={styles.linkSkipText}>I'm not listed</Text>
             </Pressable>
           </View>
@@ -465,14 +448,14 @@ export default function SharedTripScreen() {
           <Text style={styles.stickyText}>You're previewing this trip</Text>
           <Animated.View style={[addBtnStyle, { flex: 1 }]}>
             <Pressable
-              onPress={handleAddToMyTrips}
+              onPress={handleAddToMyTrips} accessibilityRole="button" accessibilityLabel="Join a trip"
               style={({ pressed }) => [
                 styles.addCta,
                 { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <Plus size={16} color="#000" weight="bold" />
-              <Text style={[styles.addCtaText, { color: "#000" }]}>Join Trip</Text>
+              <Plus size={16} color={C.onAccent} weight="bold" />
+              <Text style={[styles.addCtaText, { color: C.onAccent }]}>Join a trip</Text>
             </Pressable>
           </Animated.View>
         </View>
@@ -481,7 +464,7 @@ export default function SharedTripScreen() {
           <Animated.View style={checkStyle}>
             <Check size={18} color={C.teal} weight="bold" />
           </Animated.View>
-          <Text style={[styles.stickyTextJoined, { color: C.teal }]}>Saved to my trips</Text>
+          <Text style={[styles.stickyTextJoined, { color: C.tealText }]}>Saved to my trips</Text>
         </View>
       )}
     </SafeAreaView>
@@ -491,64 +474,31 @@ export default function SharedTripScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 100 },
-    center: { flex: 1, alignItems: "center", justifyContent: "center" },
-    errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md, textAlign: "center", paddingHorizontal: S.xl },
-    actionBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
-    actionBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
-
+    scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
     addCta: {
       height: 52, borderRadius: R.xl,
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
     },
     addCtaText: {
-      fontSize: T.sm, fontWeight: T.bold, letterSpacing: 1.2,
-      textTransform: "uppercase",
+      fontSize: T.md, fontWeight: T.bold,
     },
 
     hero: { aspectRatio: 16 / 9, position: "relative" },
-    backCircle: {
-      position: "absolute", left: S.md,
-      width: 44, height: 44, borderRadius: 22,
-      backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
-    },
-    shareCircle: {
-      position: "absolute", right: S.md,
-      width: 44, height: 44, borderRadius: 22,
-      backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
-    },
 
     heroContent: {
       position: "absolute", bottom: 0, left: 0, right: 0,
       paddingHorizontal: S.md, paddingBottom: S.lg,
     },
-    heroEyebrow: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
-    },
     heroTitle: {
-      fontSize: T["3xl"] + 4, fontWeight: "700",
-      color: "#ffffff", letterSpacing: -0.3, marginBottom: S.sm, lineHeight: 36,
+      fontSize: T["4xl"], fontFamily: F.extrabold, textTransform: "uppercase",
+      color: "#fff", letterSpacing: 0.3, marginBottom: S.sm, lineHeight: 36,
+      includeFontPadding: false,
     },
 
-    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-    chip: {
-      flexDirection: "row", alignItems: "center", gap: 5,
-      backgroundColor: "rgba(255,255,255,0.12)",
-      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.12)",
-    },
-    chipText: {
-      fontSize: 10, fontWeight: T.bold,
-      color: "rgba(255,255,255,0.9)", letterSpacing: 0.5, textTransform: "uppercase",
-    },
+    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs2 },
 
     sectionHeader: {
       paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm,
-    },
-    sectionEyebrow: {
-      fontSize: 10, fontWeight: T.bold, color: C.textTertiary,
-      letterSpacing: 1.5, textTransform: "uppercase",
     },
 
     section: { paddingBottom: S.md },
@@ -557,74 +507,52 @@ function makeStyles(C: ThemeColors) {
     // Traveler picker
     pickerWrap: { paddingHorizontal: S.md, paddingTop: S.md },
     pickerBtn: {
-      flexDirection: "row", alignItems: "center", gap: 10,
-      padding: 12, borderRadius: R.xl,
+      flexDirection: "row", alignItems: "center", gap: S.sm2,
+      padding: S.sm, borderRadius: R.xl,
       backgroundColor: C.elevated,
     },
     pickerBtnActive: {
-      backgroundColor: `${C.teal}10`,
+      backgroundColor: C.tealDim,
     },
     pickerAvatar: {
-      width: 36, height: 36, borderRadius: R.md,
+      width: 36, height: 36, borderRadius: 18,
       backgroundColor: C.border, alignItems: "center", justifyContent: "center",
     },
-    pickerAvatarActive: {
-      backgroundColor: `${C.teal}20`,
-    },
-    pickerAvatarText: {
-      fontSize: 10, fontWeight: T.bold as any, color: C.teal,
-      textTransform: "uppercase", letterSpacing: 0.5,
-    },
     pickerTextWrap: { flex: 1 },
-    pickerLabel: {
-      fontSize: T.xs, fontWeight: T.bold as any, color: C.textTertiary,
-      letterSpacing: 1.5, textTransform: "uppercase",
-    },
     pickerName: {
       fontSize: T.md, fontWeight: T.bold as any, marginTop: 1,
     },
     pickerDropdown: {
-      marginTop: 6, borderRadius: R.xl, overflow: "hidden",
+      marginTop: S.xs2, borderRadius: R.xl, overflow: "hidden",
       backgroundColor: C.elevated,
     },
     pickerOption: {
-      flexDirection: "row", alignItems: "center", gap: 10,
-      paddingVertical: 12, paddingHorizontal: 12, minHeight: 44,
+      flexDirection: "row", alignItems: "center", gap: S.sm2,
+      paddingVertical: S.sm, paddingHorizontal: S.sm, minHeight: 44,
     },
     pickerOptionActive: {
-      backgroundColor: `${C.teal}08`,
-    },
-    pickerOptionAvatar: {
-      width: 30, height: 30, borderRadius: R.sm,
-      backgroundColor: C.border, alignItems: "center", justifyContent: "center",
-    },
-    pickerOptionAvatarBrand: {
-      backgroundColor: `${C.teal}15`,
-    },
-    pickerOptionAvatarText: {
-      fontSize: 10, fontWeight: T.bold as any, color: C.textSecondary,
-      textTransform: "uppercase", letterSpacing: 0.3,
+      backgroundColor: C.tealDim,
     },
     pickerOptionName: {
       flex: 1, fontSize: T.sm, fontWeight: T.bold as any, color: C.textSecondary,
     },
-    pickerDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 12 },
+    pickerDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: S.sm },
     pickerSubtext: {
-      fontSize: T.xs, fontWeight: T.bold as any, color: `${C.teal}80`,
+      fontSize: T.xs, fontWeight: T.bold as any, color: C.tealText,
       letterSpacing: 0.8, textTransform: "uppercase",
-      marginTop: 6, paddingHorizontal: 2,
+      marginTop: S.xs2, paddingHorizontal: 2,
     },
 
     // Expanded inline events
     expandedEvents: {
-      marginTop: -2, marginBottom: S.md,
+      marginBottom: S.md,
       backgroundColor: C.card,
       borderRadius: R.xl,
-      paddingVertical: 4, paddingHorizontal: S.sm,
+      paddingVertical: S["2xs"], paddingHorizontal: S.sm,
     },
     inlineEvent: {
-      flexDirection: "row", alignItems: "center", gap: 10,
-      paddingVertical: 8, paddingHorizontal: 4,
+      flexDirection: "row", alignItems: "center", gap: S.sm2,
+      paddingVertical: S.xs, paddingHorizontal: S["2xs"],
     },
     inlineEventIcon: {
       width: 28, height: 28, borderRadius: R.sm,
@@ -635,12 +563,12 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.bold as any, color: C.textPrimary,
     },
     inlineEventSub: {
-      fontSize: 10, color: C.textTertiary, marginTop: 1,
+      fontSize: T["2xs"], color: C.textTertiary, marginTop: 1,
     },
 
     // Traveler linking overlay
     linkOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: "rgba(0,0,0,0.6)",
       justifyContent: "flex-end",
       zIndex: 10,
@@ -652,14 +580,14 @@ function makeStyles(C: ThemeColors) {
     },
     linkTitle: {
       fontSize: T.xl, fontWeight: "800" as any, color: C.textPrimary,
-      marginBottom: 4,
+      marginBottom: S["2xs"],
     },
     linkSub: {
       fontSize: T.sm, color: C.textSecondary, marginBottom: S.lg,
     },
     linkOption: {
-      flexDirection: "row", alignItems: "center", gap: 12,
-      paddingVertical: 14, paddingHorizontal: 4,
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      paddingVertical: S.sm, paddingHorizontal: S["2xs"], minHeight: 56,
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight,
     },
     linkSkip: {
@@ -677,13 +605,13 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md, paddingTop: S.sm,
     },
     stickyBarJoined: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
       paddingVertical: S.md,
     },
     stickyText: {
-      fontSize: 11, fontWeight: T.bold as any, color: C.textTertiary,
+      fontSize: T.xs, fontWeight: T.bold as any, color: C.textTertiary,
       textTransform: "uppercase", letterSpacing: 1,
-      textAlign: "center", marginBottom: 8,
+      textAlign: "center", marginBottom: S.xs,
     },
     stickyTextJoined: {
       fontSize: T.sm, fontWeight: T.bold as any,

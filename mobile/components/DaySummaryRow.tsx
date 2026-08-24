@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useMemo } from "react";
 import { AirplaneTilt, Bed, Compass, ForkKnife, Car, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, T, R, S } from "@/constants/theme";
+import { type ThemeColors, T, R, S, shadow } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
 import type { TravelEvent } from "@/shared/types";
 import { useHaptic } from "@/hooks/useHaptic";
 import { ScalePress } from "@/components/ScalePress";
@@ -48,17 +49,16 @@ interface DaySummaryRowProps {
   events: TravelEvent[];
   C: ThemeColors;
   isToday?: boolean;
-  isFirst?: boolean;
-  isLast?: boolean;
   onPress: () => void;
 }
 
 export function DaySummaryRow({
-  dayIndex, date, events, C, isToday, isFirst, isLast, onPress,
+  dayIndex, date, events, C, isToday, onPress,
 }: DaySummaryRowProps) {
   const d = new Date(date + "T12:00:00");
   const fullDate = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-  const s = useMemo(() => makeStyles(C), [C]);
+  const { isDark } = useTheme();
+  const s = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const haptic = useHaptic();
 
   const handlePress = () => {
@@ -77,6 +77,7 @@ export function DaySummaryRow({
   return (
     <ScalePress
       style={[s.cardOuter, s.card, isToday && s.cardToday]}
+      activeScale={0.98}
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={`Day ${dayIndex}, ${fullDate}, ${events.length} events`}
@@ -84,8 +85,8 @@ export function DaySummaryRow({
           <View style={s.content}>
             {/* Header row — formatted date left, Day N right */}
             <View style={s.headerRow}>
-              <Text style={[s.dateText, isToday && { color: C.teal }]}>{fullDate}</Text>
-              <Text style={[s.dayLabel, isToday && { color: C.teal }]}>Day {dayIndex}</Text>
+              <Text style={[s.dateText, isToday && { color: C.tealText }]}>{fullDate}</Text>
+              <Text style={[s.dayLabel, isToday && { color: C.tealText }]}>Day {dayIndex}</Text>
             </View>
 
             {/* Event type pills — all mint */}
@@ -112,7 +113,7 @@ export function DaySummaryRow({
 
               {/* Count + chevron — no pill background */}
               <View style={s.right}>
-                <Text style={[s.countText, isToday && { color: C.teal }]}>{events.length}</Text>
+                <Text style={[s.countText, isToday && { color: C.tealText }]}>{events.length}</Text>
                 <CaretRight size={14} color={isToday ? C.teal : C.textTertiary} weight="regular" />
               </View>
             </View>
@@ -121,7 +122,7 @@ export function DaySummaryRow({
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     cardOuter: {
       flex: 1,
@@ -132,11 +133,10 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.card,
       borderRadius: R.xl,
       overflow: "hidden",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
+      ...shadow("subtle", isDark),
     },
     cardToday: {
-      backgroundColor: `${C.teal}08`,
+      backgroundColor: C.tealDim,
     },
 
     content: {
@@ -147,16 +147,16 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 6,
+      marginBottom: S.xs2,
     },
     dateText: {
       fontSize: T.sm,
-      fontWeight: "600",
+      fontWeight: T.semibold,
       color: C.textSecondary,
     },
     dayLabel: {
-      fontSize: 10,
-      fontWeight: "700",
+      fontSize: T["2xs"],
+      fontWeight: T.bold,
       color: C.textTertiary,
       letterSpacing: 1.2,
       textTransform: "uppercase",
@@ -165,34 +165,34 @@ function makeStyles(C: ThemeColors) {
     pillsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 4,
-      marginBottom: 6,
+      gap: S["2xs"],
+      marginBottom: S.xs2,
     },
     pill: {
       flexDirection: "row",
       alignItems: "center",
       gap: 3,
-      paddingHorizontal: 7,
-      paddingVertical: 4,
+      paddingHorizontal: S.xs,
+      paddingVertical: S["2xs"],
       borderRadius: R.full,
-      backgroundColor: `${C.teal}15`,
+      backgroundColor: C.tealGlow,
     },
     pillCount: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: C.teal,
+      fontSize: T.xs,
+      fontWeight: T.bold,
+      color: C.tealText,
       fontVariant: ["tabular-nums"],
     },
 
     previewRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: S.xs,
     },
     preview: {
       flex: 1,
       fontSize: T.xs,
-      fontWeight: "500",
+      fontWeight: T.medium,
       color: C.textTertiary,
       lineHeight: 17,
     },
@@ -200,11 +200,11 @@ function makeStyles(C: ThemeColors) {
     right: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
+      gap: S["2xs"],
     },
     countText: {
       fontSize: T.sm,
-      fontWeight: "700",
+      fontWeight: T.bold,
       color: C.textSecondary,
       fontVariant: ["tabular-nums"],
     },

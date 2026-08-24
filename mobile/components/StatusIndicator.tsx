@@ -1,15 +1,17 @@
 import { useEffect } from "react";
-import { View } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
+  cancelAnimation,
 } from "react-native-reanimated";
 import {
   Check, WarningCircle, XCircle,
 } from "phosphor-react-native";
+import { useTheme } from "@/context/ThemeContext";
+import type { ThemeColors } from "@/constants/theme";
 
 export type StatusState =
   | "live"
@@ -19,16 +21,22 @@ export type StatusState =
   | "warning"
   | "destructive";
 
-const COLORS = {
-  live: "#34d399",
-  upcoming: "#34d399",
-  completed: "#34d399",
-  past: "#a1a1aa",
-  warning: "#f59e0b",
-  destructive: "#ef4444",
-} as const;
+function stateColor(state: StatusState, C: ThemeColors): string {
+  switch (state) {
+    case "live":
+    case "upcoming":
+    case "completed":
+      return C.green;
+    case "past":
+      return C.textTertiary;
+    case "warning":
+      return C.amber;
+    case "destructive":
+      return C.red;
+  }
+}
 
-function PulsingDot({ size = 8, color = "#34d399" }: { size?: number; color?: string }) {
+function PulsingDot({ size = 8, color }: { size?: number; color: string }) {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
@@ -40,7 +48,8 @@ function PulsingDot({ size = 8, color = "#34d399" }: { size?: number; color?: st
       -1,
       false,
     );
-  }, []);
+    return () => cancelAnimation(opacity);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
@@ -68,7 +77,8 @@ export function StatusIndicator({
   size?: number;
   color?: string;
 }) {
-  const c = colorOverride ?? COLORS[state];
+  const { C } = useTheme();
+  const c = colorOverride ?? stateColor(state, C);
 
   switch (state) {
     case "live":

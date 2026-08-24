@@ -16,7 +16,7 @@ import * as Crypto from "expo-crypto";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useHaptic } from "@/hooks/useHaptic";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -24,7 +24,7 @@ WebBrowser.maybeCompleteAuthSession();
 type Mode = "signin" | "signup" | "magic" | "forgot";
 
 export default function AuthScreen() {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const auth = useAuth();
   const router = useRouter();
   const { mode: paramMode } = useLocalSearchParams<{ mode?: string }>();
@@ -43,7 +43,7 @@ export default function AuthScreen() {
   });
 
   const googleConfig = useMemo(() => {
-    const cfg: Google.GoogleAuthRequestConfig = { webClientId };
+    const cfg = { webClientId } as Google.GoogleAuthRequestConfig;
     if (iosClientId) cfg.iosClientId = iosClientId;
     if (androidClientId) cfg.androidClientId = androidClientId;
     return cfg;
@@ -62,7 +62,7 @@ export default function AuthScreen() {
   useEffect(() => {
     if (googleResponse?.type !== "success") return;
     const idToken = googleResponse.authentication?.idToken;
-    if (!idToken) { setError("Google Sign-In failed - no token"); return; }
+    if (!idToken) { setError("Google Sign-In failed. No token received."); return; }
     setLoading(true);
     auth.signInWithGoogle(idToken).then((err) => {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function AuthScreen() {
     });
   }, [googleResponse]);
 
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C), [C]);
 
   const clearError = useCallback(() => setError(""), []);
 
@@ -160,7 +160,7 @@ export default function AuthScreen() {
       });
 
       if (!credential.identityToken) {
-        setError("Apple Sign-In failed - no token received");
+        setError("Apple Sign-In failed. No token received.");
         setLoading(false);
         return;
       }
@@ -201,7 +201,7 @@ export default function AuthScreen() {
         <LinearGradient
           colors={[`${C.teal}12`, "transparent"]}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         <SafeAreaView style={{ flex: 1, justifyContent: "center", paddingHorizontal: S.xl }}>
           <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: "center" }}>
@@ -213,8 +213,8 @@ export default function AuthScreen() {
               We sent a sign-in link to {email}
             </Text>
             <Pressable
-              onPress={() => { setMagicSent(false); setMode("signin"); }}
-              style={styles.linkBtn}
+              onPress={() => { setMagicSent(false); setMode("signin"); }} accessibilityRole="button"
+              style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.7 }]}
             >
               <Text style={styles.linkText}>Back to sign in</Text>
             </Pressable>
@@ -231,13 +231,13 @@ export default function AuthScreen() {
 
   const subtitle = mode === "signup" ? "Sign up to save trips across devices."
     : mode === "signin" ? "Sign in to pick up where you left off."
-    : mode === "magic" ? "We'll email you a link - no password needed."
+    : mode === "magic" ? "We'll email you a link. No password needed."
     : "Enter your email and we'll send a reset link.";
 
-  const ctaLabel = mode === "signup" ? "Create Account"
-    : mode === "signin" ? "Sign In"
-    : mode === "magic" ? "Send Link"
-    : "Send Reset Link";
+  const ctaLabel = mode === "signup" ? "Create account"
+    : mode === "signin" ? "Sign in"
+    : mode === "magic" ? "Send link"
+    : "Send reset link";
 
   const canSubmit = mode === "magic" || mode === "forgot"
     ? !!email.trim()
@@ -250,7 +250,7 @@ export default function AuthScreen() {
       <LinearGradient
         colors={[`${C.teal}08`, "transparent"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
@@ -261,7 +261,7 @@ export default function AuthScreen() {
           {(mode === "magic" || mode === "forgot") && (
             <Animated.View entering={FadeIn.duration(300)} style={styles.topNav}>
               <Pressable
-                onPress={() => switchMode("signin")}
+                onPress={() => switchMode("signin")} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8}
                 style={({ pressed }) => [styles.topNavBtn, pressed && { opacity: 0.7 }]}
               >
                 <CaretLeft size={18} color={C.textPrimary} weight="regular" />
@@ -296,7 +296,7 @@ export default function AuthScreen() {
                     value={name}
                     onChangeText={(t) => { setName(t); clearError(); }}
                     placeholder="Your name"
-                    placeholderTextColor={C.textDim}
+                    placeholderTextColor={C.textTertiary}
                     autoCapitalize="words"
                     autoCorrect={false}
                     textContentType="name"
@@ -315,7 +315,7 @@ export default function AuthScreen() {
                   value={email}
                   onChangeText={(t) => { setEmail(t); clearError(); }}
                   placeholder="Email"
-                  placeholderTextColor={C.textDim}
+                  placeholderTextColor={C.textTertiary}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
@@ -336,7 +336,7 @@ export default function AuthScreen() {
                     value={password}
                     onChangeText={(t) => { setPassword(t); clearError(); }}
                     placeholder="Password"
-                    placeholderTextColor={C.textDim}
+                    placeholderTextColor={C.textTertiary}
                     secureTextEntry
                     autoCapitalize="none"
                     textContentType={mode === "signup" ? "newPassword" : "password"}
@@ -357,18 +357,20 @@ export default function AuthScreen() {
 
             {/* Forgot password link */}
             {mode === "signin" && (
-              <Pressable onPress={() => switchMode("forgot")} style={{ marginTop: S.xs }}>
+              <Pressable onPress={() => switchMode("forgot")} accessibilityRole="button" style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
                 <Text style={styles.linkText}>Forgot password?</Text>
               </Pressable>
             )}
           </ScrollView>
 
           {/* Footer */}
-          <Animated.View entering={FadeInUp.duration(400).delay(500)} style={styles.footer}>
+          <Animated.View entering={FadeInUp.duration(300).delay(350)} style={styles.footer}>
             {/* Main CTA */}
             <Pressable
               onPress={handleEmailAuth}
               disabled={!canSubmit || loading}
+              accessibilityRole="button"
+              accessibilityLabel={ctaLabel}
               style={({ pressed }) => [
                 styles.cta,
                 (!canSubmit || loading) && styles.ctaDisabled,
@@ -376,13 +378,13 @@ export default function AuthScreen() {
               ]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#000" />
+                <ActivityIndicator size="small" color={C.onAccent} />
               ) : (
                 <>
                   <Text style={[styles.ctaText, (!canSubmit) && { color: C.textTertiary }]}>
                     {ctaLabel}
                   </Text>
-                  <ArrowRight size={16} color={canSubmit ? "#000" : C.textTertiary} weight="bold" />
+                  <ArrowRight size={16} color={canSubmit ? C.onAccent : C.textTertiary} weight="bold" />
                 </>
               )}
             </Pressable>
@@ -400,6 +402,8 @@ export default function AuthScreen() {
                   {googleEnabled && (
                     <Pressable
                       onPress={handleGoogleSignIn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign in with Google"
                       style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
                     >
                       <Ionicons name="logo-google" size={18} color={C.textPrimary} />
@@ -410,6 +414,8 @@ export default function AuthScreen() {
                   {Platform.OS === "ios" && (
                     <Pressable
                       onPress={handleAppleSignIn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sign in with Apple"
                       style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
                     >
                       <Ionicons name="logo-apple" size={18} color={C.textPrimary} />
@@ -419,7 +425,7 @@ export default function AuthScreen() {
                 </View>
 
                 {/* Magic link option */}
-                <Pressable onPress={() => switchMode("magic")} style={styles.linkBtn}>
+                <Pressable onPress={() => switchMode("magic")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.7 }]}>
                   <Text style={styles.linkText}>Sign in with email link</Text>
                 </Pressable>
               </>
@@ -428,11 +434,12 @@ export default function AuthScreen() {
             {/* Toggle sign in / sign up */}
             <Pressable
               onPress={() => switchMode(mode === "signup" ? "signin" : "signup")}
-              style={styles.toggleBtn}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.toggleBtn, pressed && { opacity: 0.7 }]}
             >
               <Text style={styles.toggleText}>
                 {mode === "signup" ? "Already have an account? " : "Don't have an account? "}
-                <Text style={{ color: C.teal, fontWeight: T.bold }}>
+                <Text style={{ color: C.tealText, fontWeight: T.bold }}>
                   {mode === "signup" ? "Sign in" : "Sign up"}
                 </Text>
               </Text>
@@ -440,7 +447,7 @@ export default function AuthScreen() {
 
             {/* Guest mode */}
             {!isUpgrade && (
-              <Pressable onPress={handleGuest} style={styles.skipBtn}>
+              <Pressable onPress={handleGuest} accessibilityRole="button" style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}>
                 <Text style={styles.skipText}>Continue without an account</Text>
               </Pressable>
             )}
@@ -451,7 +458,7 @@ export default function AuthScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
 
@@ -465,12 +472,12 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
 
     stepScroll: {
-      paddingHorizontal: S.xl, paddingTop: S.xl, flexGrow: 1,
+      paddingHorizontal: S.lg, paddingTop: S.lg, flexGrow: 1,
     },
     stepTitle: {
-      fontSize: 36, fontWeight: "800",
+      fontSize: 36, fontFamily: F.extrabold,
       color: C.textPrimary,
-      letterSpacing: -0.8, lineHeight: 40,
+      letterSpacing: 0, lineHeight: 40,
       marginBottom: S.sm,
     },
     stepSub: {
@@ -479,7 +486,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       marginBottom: S.xl,
     },
 
-    inputWrap: { marginBottom: S.sm },
+    inputWrap: { marginBottom: S.md },
     inputRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
       height: 56,
@@ -495,17 +502,17 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
 
     errorText: {
-      fontSize: T.xs, color: C.red,
+      fontSize: T.xs, color: C.redText,
       fontWeight: T.medium, marginTop: S.xs,
       paddingHorizontal: S.xs,
     },
 
     footer: {
-      paddingHorizontal: S.xl,
+      paddingHorizontal: S.lg,
       paddingTop: S.sm, paddingBottom: S.md,
     },
     cta: {
-      height: 54, borderRadius: R.full,
+      height: 52, borderRadius: R.xl,
       backgroundColor: C.teal,
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: S.xs,
@@ -514,8 +521,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       backgroundColor: C.elevated,
     },
     ctaText: {
-      fontSize: T.base, fontWeight: T.bold, color: "#000",
-      letterSpacing: 0.2,
+      fontSize: T.md, fontWeight: T.bold, color: C.onAccent,
     },
 
     dividerRow: {
@@ -545,7 +551,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center", paddingVertical: S.sm, marginTop: S.xs,
     },
     linkText: {
-      fontSize: T.sm, fontWeight: T.medium, color: C.teal,
+      fontSize: T.sm, fontWeight: T.medium, color: C.tealText,
     },
 
     toggleBtn: {

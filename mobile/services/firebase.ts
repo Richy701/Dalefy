@@ -1,9 +1,11 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { initializeFirestore, getFirestore, type Firestore } from "firebase/firestore";
 import {
-  initializeAuth, getAuth, getReactNativePersistence,
+  initializeAuth, getAuth,
   signInAnonymously, type Auth,
 } from "firebase/auth";
+// @ts-expect-error - only typed in firebase's react-native entrypoint
+import { getReactNativePersistence } from "firebase/auth";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { SecureStorageAdapter } from "./secureStorageAdapter";
 

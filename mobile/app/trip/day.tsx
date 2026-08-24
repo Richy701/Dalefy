@@ -6,12 +6,16 @@ import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Calendar, MapPin,
-  CaretLeft, CaretRight, Clock, X,
+  CaretLeft, CaretRight, Clock,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, type ThemeColors, eventColor } from "@/constants/theme";
+import { T, R, S, F, statusTone, type ThemeColors, eventColor } from "@/constants/theme";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Pill } from "@/components/ui/Pill";
+import { DragHandle } from "@/components/ui/DragHandle";
+import { FadeIn } from "@/components/FadeIn";
 import { EventCard, DocsRow } from "@/components/EventCard";
 import { useMemo, useCallback, useState } from "react";
 import type { TravelEvent } from "@/shared/types";
@@ -63,7 +67,7 @@ export default function DayDetailScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.errorText}>Trip not found</Text>
-          <Pressable onPress={safeBack} style={styles.errorBtn}>
+          <Pressable onPress={safeBack} style={styles.errorBtn} accessibilityRole="button" accessibilityLabel="Go back">
             <Text style={styles.errorBtnText}>Go back</Text>
           </Pressable>
         </View>
@@ -101,6 +105,9 @@ export default function DayDetailScreen() {
     <View style={styles.safe}>
       <Stack.Screen options={{
         headerShown: true,
+        headerLargeTitle: true,
+        headerLargeTitleShadowVisible: false,
+        headerLargeTitleStyle: { color: C.teal },
         title: `Day ${dayIndex}`,
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
@@ -114,43 +121,47 @@ export default function DayDetailScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} contentInsetAdjustmentBehavior="automatic">
         {/* Day title section */}
-        <View style={styles.titleSection}>
+        <FadeIn style={styles.titleSection}>
           <Text style={styles.dayTitle}>{weekday}</Text>
           <View style={styles.dateRow}>
             <Calendar size={12} color={C.textTertiary} weight="regular" />
             <Text style={styles.dateText}>{dateFormatted}</Text>
           </View>
-        </View>
+        </FadeIn>
 
         {/* Type breakdown pills */}
         {Object.keys(typeCounts).length > 0 && (
-          <View style={styles.typeStrip}>
+          <FadeIn delay={60} style={styles.typeStrip}>
             {Object.entries(typeCounts).map(([type, count]) => {
               const color = eventColor(type, C);
               const Icon = TYPE_ICONS[type] ?? Compass;
               return (
-                <View key={type} style={[styles.typeChip, { backgroundColor: `${color}15` }]}>
-                  <Icon size={12} color={color} weight="regular" />
-                  <Text style={[styles.typeChipText, { color }]}>
-                    {count} {type}{count > 1 ? "s" : ""}
-                  </Text>
-                </View>
+                <Pill
+                  key={type}
+                  tone="custom"
+                  bg={`${color}15`}
+                  color={color}
+                  icon={<Icon size={12} color={color} weight="regular" />}
+                  label={`${count} ${type}${count > 1 ? "s" : ""}`}
+                />
               );
             })}
-          </View>
+          </FadeIn>
         )}
 
         {/* Prev / Next day nav */}
         {allDates.length > 1 && (
-          <View style={styles.dayNav}>
+          <FadeIn delay={120} style={styles.dayNav}>
             <Pressable
               onPress={() => prevDate && goToDay(prevDate)}
-              style={[styles.dayNavBtn, !prevDate && styles.dayNavDisabled]}
+              style={({ pressed }) => [styles.dayNavBtn, !prevDate && styles.dayNavDisabled, pressed && { opacity: 0.7 }]}
               disabled={!prevDate}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Previous day"
             >
-              <CaretLeft size={16} color={prevDate ? C.textPrimary : C.textDim} weight="regular" />
-              <Text style={[styles.dayNavText, { color: prevDate ? C.textPrimary : C.textDim }]}>
+              <CaretLeft size={16} color={prevDate ? C.textPrimary : C.textTertiary} weight="regular" />
+              <Text style={[styles.dayNavText, { color: prevDate ? C.textPrimary : C.textTertiary }]}>
                 {prevDate ? `Day ${currentIdx}` : ""}
               </Text>
             </Pressable>
@@ -161,20 +172,22 @@ export default function DayDetailScreen() {
 
             <Pressable
               onPress={() => nextDate && goToDay(nextDate)}
-              style={[styles.dayNavBtn, !nextDate && styles.dayNavDisabled]}
+              style={({ pressed }) => [styles.dayNavBtn, !nextDate && styles.dayNavDisabled, pressed && { opacity: 0.7 }]}
               disabled={!nextDate}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Next day"
             >
-              <Text style={[styles.dayNavText, { color: nextDate ? C.textPrimary : C.textDim }]}>
+              <Text style={[styles.dayNavText, { color: nextDate ? C.textPrimary : C.textTertiary }]}>
                 {nextDate ? `Day ${currentIdx + 2}` : ""}
               </Text>
-              <CaretRight size={16} color={nextDate ? C.textPrimary : C.textDim} weight="regular" />
+              <CaretRight size={16} color={nextDate ? C.textPrimary : C.textTertiary} weight="regular" />
             </Pressable>
-          </View>
+          </FadeIn>
         )}
 
         {/* Events */}
-        <View style={styles.eventsSection}>
+        <FadeIn delay={180} style={styles.eventsSection}>
           {dayEvents.map((ev) => (
             <View key={ev.id}>
               <EventCard ev={ev} C={C} tripId={tripId} isLeader={isLeader} onPress={setSheetEvent} />
@@ -183,15 +196,17 @@ export default function DayDetailScreen() {
               )}
             </View>
           ))}
-        </View>
+        </FadeIn>
 
         {/* Empty state */}
         {dayEvents.length === 0 && (
-          <View style={styles.emptyWrap}>
-            <Compass size={28} color={C.textDim} weight="thin" />
-            <Text style={styles.emptyTitle}>No Events</Text>
-            <Text style={styles.emptyText}>Nothing scheduled for this day yet.</Text>
-          </View>
+          <FadeIn delay={60}>
+            <EmptyState
+              icon={<Compass size={28} color={C.teal} weight="thin" />}
+              title="No events"
+              message="Nothing scheduled for this day yet."
+            />
+          </FadeIn>
         )}
       </ScrollView>
 
@@ -224,7 +239,7 @@ const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity", dining: "Dining", transfer: "Transfer",
 };
 
-function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
+function EventSummarySheet({ ev, C, onViewFull }: {
   ev: TravelEvent;
   C: ThemeColors;
   tripId: string;
@@ -238,10 +253,7 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
 
   return (
     <View style={[ss.container, { backgroundColor: C.bg }]}>
-      {/* Handle bar */}
-      <View style={ss.handleWrap}>
-        <View style={[ss.handle, { backgroundColor: C.border }]} />
-      </View>
+      <DragHandle />
 
       {/* Header */}
       <View style={ss.header}>
@@ -268,7 +280,7 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
           <View style={ss.detailRow}>
             <Clock size={14} color={C.textTertiary} weight="regular" />
             <Text style={[ss.detailText, { color: C.textSecondary }]}>
-              {ev.time}{ev.endTime ? ` - ${ev.endTime}` : ""}{ev.duration ? ` (${ev.duration})` : ""}
+              {ev.time}{ev.endTime ? ` – ${ev.endTime}` : ""}{ev.duration ? ` (${ev.duration})` : ""}
             </Text>
           </View>
         )}
@@ -288,10 +300,7 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
                 : "upcoming"
               }
               size={10}
-              color={
-                ev.status.toLowerCase().includes("cancel") ? "#ef4444"
-                : ev.status.toLowerCase().includes("delay") ? "#f59e0b" : "#22c55e"
-              }
+              color={statusTone(ev.status, C).color}
             />
             <Text style={[ss.detailText, { color: C.textSecondary }]}>{ev.status}</Text>
           </View>
@@ -305,58 +314,57 @@ function EventSummarySheet({ ev, C, tripId, onClose, onViewFull }: {
       {/* View full detail button */}
       <Pressable
         onPress={() => { Haptics.selectionAsync(); onViewFull(); }}
+        accessibilityRole="button"
+        accessibilityLabel="View full details"
         style={({ pressed }) => [ss.fullBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1 }]}
       >
-        <Text style={ss.fullBtnText}>View Full Details</Text>
+        <Text style={[ss.fullBtnText, { color: C.onAccent }]}>View full details</Text>
       </Pressable>
     </View>
   );
 }
 
 const ss = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: S.lg },
-  handleWrap: { alignItems: "center", paddingVertical: 12 },
-  handle: { width: 36, height: 4, borderRadius: 2 },
-  header: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: S.lg },
-  typeDot: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  typeLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 2 },
-  title: { fontSize: 20, fontWeight: "700", letterSpacing: -0.2, lineHeight: 26 },
-  details: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: S.md, gap: 12, marginBottom: S.md },
-  detailRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  detailText: { fontSize: 14, fontWeight: "500", flex: 1 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  container: { flex: 1, paddingHorizontal: S.md },
+  header: { flexDirection: "row", alignItems: "flex-start", gap: S.sm, marginBottom: S.lg },
+  typeDot: { width: 40, height: 40, borderRadius: R.md, alignItems: "center", justifyContent: "center" },
+  typeLabel: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.5, marginBottom: 2 },
+  title: { fontSize: T.xl, fontWeight: T.bold, letterSpacing: -0.3, lineHeight: 26 },
+  details: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: S.md, gap: S.sm, marginBottom: S.md },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: S.sm2 },
+  detailText: { fontSize: 14, fontWeight: T.medium, flex: 1 },
   desc: { fontSize: 14, lineHeight: 22, marginBottom: S.lg },
-  fullBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
-  fullBtnText: { fontSize: 15, fontWeight: "700", color: "#000" },
+  fullBtn: { height: 52, borderRadius: R.xl, alignItems: "center", justifyContent: "center" },
+  fullBtnText: { fontSize: T.md, fontWeight: T.bold },
 });
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: { paddingBottom: 16 },
+    scroll: { paddingBottom: S.md },
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
-    errorBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
-
+    errorBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
 
     // Title section
     titleSection: {
-      paddingHorizontal: S.lg,
+      paddingHorizontal: S.md,
       paddingBottom: S.lg,
     },
     dayTitle: {
-      fontSize: T["3xl"] + 4,
-      fontWeight: "700",
+      fontSize: T["4xl"],
+      fontFamily: F.black,
+      textTransform: "uppercase",
       color: C.textPrimary,
-      letterSpacing: -0.3,
+      letterSpacing: 0.5,
       lineHeight: 36,
     },
     dateRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      marginTop: 6,
+      gap: S.xs2,
+      marginTop: S.xs2,
     },
     dateText: {
       fontSize: T.sm,
@@ -369,22 +377,9 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       flexWrap: "wrap",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: S.lg,
+      gap: S.xs,
+      paddingHorizontal: S.md,
       marginBottom: S.xl,
-    },
-    typeChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: R.full,
-    },
-    typeChipText: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
-      letterSpacing: 0.3,
     },
 
     // Day navigation
@@ -392,44 +387,25 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: S.lg,
+      paddingHorizontal: S.md,
       marginBottom: S.lg,
     },
     dayNavBtn: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
-      paddingVertical: 6,
-      paddingHorizontal: 4,
+      gap: S["2xs"],
+      paddingVertical: S.xs2,
+      paddingHorizontal: S["2xs"],
       minWidth: 70,
     },
     dayNavDisabled: { opacity: 0.3 },
-    dayNavText: { fontSize: T.sm, fontWeight: "600" },
-    dayNavCurrent: { fontSize: T.sm, fontWeight: "600" },
+    dayNavText: { fontSize: T.sm, fontWeight: T.semibold },
+    dayNavCurrent: { fontSize: T.sm, fontWeight: T.semibold },
 
     // Events
     eventsSection: {
       paddingHorizontal: S.md,
       gap: S.lg,
-    },
-
-    // Empty state
-    emptyWrap: {
-      padding: S["2xl"],
-      paddingTop: 80,
-      alignItems: "center",
-      gap: S.xs,
-    },
-    emptyTitle: {
-      fontSize: T.lg,
-      fontWeight: T.bold,
-      color: C.textSecondary,
-      marginTop: S.xs,
-    },
-    emptyText: {
-      fontSize: T.sm,
-      color: C.textTertiary,
-      fontWeight: T.medium,
     },
   });
 }

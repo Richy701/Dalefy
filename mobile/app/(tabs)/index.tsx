@@ -1,40 +1,36 @@
 import {
-  View, Text, ScrollView, Pressable, Image,
+  View, Text, ScrollView, Pressable,
   StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform, Share,
   Dimensions,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withSpring, withDelay, withTiming,
-  Easing, runOnJS, interpolate,
+  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
-import { TripCardSkeleton, SpotlightCardSkeleton, TripRowSkeleton } from "@/components/Skeleton";
+import { TripCardSkeleton, SpotlightCardSkeleton } from "@/components/Skeleton";
+import { Pill } from "@/components/ui/Pill";
+import { Avatar } from "@/components/ui/Avatar";
+import { IconCircleButton } from "@/components/ui/IconCircleButton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { DragHandle } from "@/components/ui/DragHandle";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
-
-let GlassView: any = null;
-let HAS_LIQUID_GLASS = false;
-try {
-  const glass = require("expo-glass-effect");
-  GlassView = glass.GlassView;
-  HAS_LIQUID_GLASS = glass.isLiquidGlassAvailable();
-} catch { /* native module unavailable on this device */ }
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
-import { useHaptic } from "@/hooks/useHaptic";
 import { parseTripDate } from "@/shared/dates";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   MapPin, CaretRight, CalendarDots, Users,
-  ArrowUpRight, Heart, ShareNetwork, Compass, Bed, ForkKnife, AirplaneTilt,
-  Bell, Sun, Moon, Plus, X as XIcon, Scan, Link as LinkIcon, Hash,
-  Check, Clock, WifiSlash, ClipboardText, WarningCircle, Question,
+  ShareNetwork, Compass, Bed, ForkKnife, AirplaneTilt,
+  Bell, Plus, X as XIcon, Scan, Link as LinkIcon, Hash,
+  Check, Clock, WifiSlash, ClipboardText, WarningCircle,
   Images, Info, Camera,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
@@ -42,16 +38,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illustration } from "@/components/Illustration";
 import { Logo } from "@/components/Logo";
 import { NotificationSheet } from "@/components/NotificationSheet";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useTrips, TRIPS_CTX_VERSION } from "@/context/TripsContext";
+import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import { type ThemeColors, T, R, S, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 import { StatusIndicator } from "@/components/StatusIndicator";
 
+const ON_RED = "#fff";
 
 let CameraView: any = null;
 let useCameraPermissions: any = null;
@@ -118,12 +114,12 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
   useEffect(() => {
     imgOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
     imgScale.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
-    checkScale.value = withDelay(300, withSpring(1, { damping: 10, stiffness: 180 }));
-    copyOpacity.value = withDelay(600, withTiming(1, { duration: 300 }));
-    copyY.value = withDelay(600, withSpring(0, { damping: 14, stiffness: 100 }));
-    pillsOpacity.value = withDelay(750, withTiming(1, { duration: 300 }));
-    ctaOpacity.value = withDelay(1100, withTiming(1, { duration: 300 }));
-    ctaY.value = withDelay(1100, withSpring(0, { damping: 14, stiffness: 100 }));
+    checkScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 180 }));
+    copyOpacity.value = withDelay(350, withTiming(1, { duration: 300 }));
+    copyY.value = withDelay(350, withSpring(0, { damping: 14, stiffness: 100 }));
+    pillsOpacity.value = withDelay(450, withTiming(1, { duration: 300 }));
+    ctaOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
+    ctaY.value = withDelay(500, withSpring(0, { damping: 14, stiffness: 100 }));
   }, []);
 
   const imgStyle = useAnimatedStyle(() => ({
@@ -179,7 +175,7 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
               shadowColor: C.teal, shadowOpacity: 0.4, shadowRadius: 20,
               shadowOffset: { width: 0, height: 0 }, elevation: 8,
             }}>
-              <Check size={32} color="#000" weight="bold" />
+              <Check size={32} color={C.onAccent} weight="bold" />
             </View>
           </Animated.View>
 
@@ -189,8 +185,8 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 }}>
                 <MapPin size={10} color={C.teal} weight="fill" />
                 <Text style={{
-                  fontSize: T.xs, fontWeight: "700", color: "rgba(255,255,255,0.7)",
-                  letterSpacing: 1.5, textTransform: "uppercase",
+                  fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, color: "rgba(255,255,255,0.7)",
+                  letterSpacing: 1, textTransform: "uppercase",
                 }}>{trip.destination}</Text>
               </View>
             )}
@@ -204,32 +200,22 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
         {/* Copy + metadata pills */}
         <View style={{ padding: S.md, gap: S.sm }}>
           <Animated.View style={copyStyle}>
-            <Text style={{ fontSize: T.sm, fontWeight: "600", color: C.teal }}>
+            <Text style={{ fontSize: T.sm, fontWeight: "600", color: C.tealText }}>
               {welcomeText}
             </Text>
           </Animated.View>
 
           <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" }, pillsStyle]}>
-            <View style={{
-              flexDirection: "row", alignItems: "center", gap: 5,
-              backgroundColor: C.elevated, borderRadius: R.full,
-              paddingHorizontal: 10, paddingVertical: 5,
-            }}>
-              <CalendarDots size={11} color={C.textTertiary} weight="regular" />
-              <Text style={{ fontSize: T.xs, color: C.textSecondary, fontWeight: "600" }}>
-                {startDate} - {endDate}
-              </Text>
-            </View>
-            <View style={{
-              flexDirection: "row", alignItems: "center", gap: 5,
-              backgroundColor: C.elevated, borderRadius: R.full,
-              paddingHorizontal: 10, paddingVertical: 5,
-            }}>
-              <Clock size={11} color={C.textTertiary} weight="regular" />
-              <Text style={{ fontSize: T.xs, color: C.textSecondary, fontWeight: "600" }}>
-                {nights} night{nights !== 1 ? "s" : ""}
-              </Text>
-            </View>
+            <Pill
+              tone="neutral"
+              icon={<CalendarDots size={11} color={C.textTertiary} weight="regular" />}
+              label={`${startDate} – ${endDate}`}
+            />
+            <Pill
+              tone="neutral"
+              icon={<Clock size={11} color={C.textTertiary} weight="regular" />}
+              label={`${nights} night${nights !== 1 ? "s" : ""}`}
+            />
           </Animated.View>
         </View>
       </View>
@@ -244,11 +230,8 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
             flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
           }}
         >
-          <Text style={{
-            fontSize: T.sm, fontWeight: "700", color: "#000",
-            letterSpacing: 1.2, textTransform: "uppercase",
-          }}>See itinerary</Text>
-          <CaretRight size={14} color="#000" weight="bold" />
+          <Text style={{ fontSize: T.md, fontWeight: T.bold, color: C.onAccent }}>See itinerary</Text>
+          <CaretRight size={14} color={C.onAccent} weight="bold" />
         </ScalePress>
       </Animated.View>
     </View>
@@ -284,7 +267,7 @@ function QRScanPane({ C, styles, onScanned }: {
         <View style={[styles.qrFrame, { alignItems: "center", justifyContent: "center" }]}>
           <Scan size={32} color={C.textTertiary} weight="thin" />
           <Text style={{ color: C.textTertiary, fontSize: T.sm, fontWeight: T.medium, marginTop: S.sm, textAlign: "center" }}>
-            QR scanning needs a rebuild.
+            QR scanning isn't available in this version
           </Text>
         </View>
       </View>
@@ -302,7 +285,7 @@ function QRScanPane({ C, styles, onScanned }: {
           onPress={requestPermission}
           style={[styles.codeSubmit, { backgroundColor: C.teal, width: "100%" }]}
         >
-          <Text style={[styles.codeSubmitText, { color: "#000" }]}>Allow Camera</Text>
+          <Text style={[styles.codeSubmitText, { color: C.onAccent }]}>Allow camera</Text>
         </Pressable>
       </View>
     );
@@ -312,7 +295,7 @@ function QRScanPane({ C, styles, onScanned }: {
     <View style={styles.modeContent}>
       <View style={styles.qrFrame}>
         <CameraView
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           facing="back"
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
           onBarcodeScanned={handleBarcode}
@@ -324,103 +307,6 @@ function QRScanPane({ C, styles, onScanned }: {
         <View style={[styles.qrCorner, { bottom: 12, right: 12, transform: [{ rotate: "180deg" }] }]} />
       </View>
       <Text style={[styles.checkingText, { marginTop: S.sm }]}>Point at a trip QR code</Text>
-    </View>
-  );
-}
-
-// ── Live Countdown ────────────────────────────────────────────────────────────
-
-/** Get the actual departure timestamp from the chronologically earliest event */
-function getFirstEventTime(trip: Trip): string {
-  let earliest: Date | null = null;
-
-  for (const ev of trip.events ?? []) {
-    if (!ev.date || !ev.time) continue;
-    const match = ev.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-    if (!match) continue;
-    let hours = parseInt(match[1], 10);
-    const mins = parseInt(match[2], 10);
-    const ampm = match[3]?.toUpperCase();
-    if (ampm === "PM" && hours < 12) hours += 12;
-    if (ampm === "AM" && hours === 12) hours = 0;
-    const d = parseTripDate(ev.date);
-    d.setHours(hours, mins, 0, 0);
-    if (!earliest || d < earliest) earliest = d;
-  }
-
-  return earliest ? earliest.toISOString() : trip.start;
-}
-
-function useLiveCountdown(trip: Trip | undefined) {
-  const target = trip ? getFirstEventTime(trip) : undefined;
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!target) return;
-    // On Android, update less frequently to reduce re-renders
-    const interval = Platform.OS === "android" ? 10000 : 1000;
-    const id = setInterval(() => setNow(Date.now()), interval);
-    return () => clearInterval(id);
-  }, [target]);
-
-  if (!target) return null;
-  const diff = Math.max(0, new Date(target).getTime() - now);
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  return { d, h, m, s, total: diff };
-}
-
-function LiveCountdownDisplay({ countdown, C }: {
-  countdown: { d: number; h: number; m: number; s: number };
-  C: ThemeColors;
-}) {
-  const units = [
-    { value: countdown.d, label: "DAYS" },
-    { value: countdown.h, label: "HRS" },
-    { value: countdown.m, label: "MIN" },
-    { value: countdown.s, label: "SEC" },
-  ];
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      {units.map((u, i) => (
-        <View key={u.label} style={{ flexDirection: "row", alignItems: "center" }}>
-          <View style={{ alignItems: "center", minWidth: 40 }}>
-            <Text style={{
-              fontSize: 34,
-              fontWeight: "700",
-              color: C.textPrimary,
-              letterSpacing: -1,
-              lineHeight: 38,
-              fontVariant: ["tabular-nums"],
-            }}>
-              {String(u.value).padStart(2, "0")}
-            </Text>
-            <Text style={{
-              fontSize: 8,
-              fontWeight: "700",
-              color: C.textTertiary,
-              letterSpacing: 2,
-              marginTop: 1,
-            }}>
-              {u.label}
-            </Text>
-          </View>
-          {i < 3 && (
-            <Text style={{
-              fontSize: 22,
-              fontWeight: "800",
-              color: C.teal,
-              marginHorizontal: 1,
-              lineHeight: 38,
-              marginBottom: 12,
-              opacity: 0.6,
-            }}>
-              :
-            </Text>
-          )}
-        </View>
-      ))}
     </View>
   );
 }
@@ -486,7 +372,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
     } catch {}
   };
   const handlePaste = useCallback(() => { handlePasteRef.current(); }, []);
-  const styles = useMemo(() => makeGreetingStyles(C), [C]);
+  const styles = useMemo(() => makeGreetingStyles(C, isDark), [C, isDark]);
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
@@ -614,34 +500,29 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push("/(tabs)/profile")}
-            style={({ pressed }) => [styles.avatarBtn, { opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            accessibilityRole="button"
             accessibilityLabel="Profile"
             hitSlop={6}
           >
-            {prefs.avatar ? (
-              <CachedImage uri={prefs.avatar} style={styles.avatarImg} />
-            ) : (
-              <Text style={styles.avatarInitial}>
-                {(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}
-              </Text>
-            )}
+            <Avatar
+              size={32}
+              uri={prefs.avatar}
+              initials={(prefs.name || "").trim().charAt(0).toUpperCase() || "?"}
+            />
           </Pressable>
         </View>
         <Logo size={24} color={C.teal} />
         <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
-          <Pressable
+          <IconCircleButton variant="plain"
             onPress={() => setCodeOpen(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
-            accessibilityLabel="Enter trip code"
-            hitSlop={6}
+            accessibilityLabel="Join a trip"
           >
             <Plus size={22} color={C.textSecondary} weight="regular" />
-          </Pressable>
-          <Pressable
+          </IconCircleButton>
+          <IconCircleButton variant="plain"
             onPress={() => setNotifOpen(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-            hitSlop={6}
           >
             <Bell size={22} color={C.textSecondary} weight="regular" />
             {unreadCount > 0 && (
@@ -651,7 +532,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                 </Text>
               </View>
             )}
-          </Pressable>
+          </IconCircleButton>
         </View>
       </View>
 
@@ -668,7 +549,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
         {nextTrip ? (
           <Pressable
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(nextTrip); }}
-            style={({ pressed }) => [styles.countdownChip, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => ({ flexShrink: 0, opacity: pressed ? 0.7 : 1 })}
+            accessibilityRole="button"
             accessibilityLabel={
               isActive
                 ? dayOfTrip <= 1 ? "On your way" : `Day ${dayOfTrip} in ${nextTrip.destination || nextTrip.name}`
@@ -678,8 +560,11 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             }
             hitSlop={6}
           >
-            <Text style={styles.countdownChipText} numberOfLines={1}>
-              {isActive
+            <Pill
+              tone="custom"
+              bg={C.tealDim}
+              color={C.tealText}
+              label={isActive
                 ? dayOfTrip <= 1
                   ? "On your way"
                   : `Day ${dayOfTrip} in ${nextTrip.destination || nextTrip.name}`
@@ -687,7 +572,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                 : days === 1 ? "Departs tomorrow"
                 : days <= 7 ? `In ${days} days`
                 : `Departs ${new Date(nextTrip.start + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}`}
-            </Text>
+            />
           </Pressable>
         ) : null}
       </View>
@@ -709,7 +594,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               contentContainerStyle={[styles.codeSheet, { paddingBottom: insets.bottom + S.md, flexGrow: 1 }]}
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.sheetGrabber} />
+              <DragHandle />
 
               {/* Success reveal */}
               {foundTrip ? (
@@ -719,21 +604,21 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
               {/* Header */}
               <View style={styles.sheetHeader}>
                 <View style={{ flex: 1 }} />
-                <Pressable onPress={closeSheet} style={styles.codeClose} hitSlop={8}>
+                <IconCircleButton size={32} onPress={closeSheet} accessibilityLabel="Close">
                   <XIcon size={13} color={C.textSecondary} weight="bold" />
-                </Pressable>
+                </IconCircleButton>
               </View>
 
-              {/* Hero — Fix 4: unified "PIN" terminology */}
+              {/* Hero */}
               <View style={styles.bpHero}>
                 <View style={styles.bpIconWrap}>
                   <AirplaneTilt size={28} color={C.teal} weight="light" />
                 </View>
-                <Text style={styles.bpTitle}>Join a Trip</Text>
+                <Text style={styles.bpTitle}>Join a trip</Text>
                 <Text style={styles.bpSub}>Enter the 6-digit PIN from your organiser</Text>
               </View>
 
-              {/* Mode tabs — Fix 7: consistent active/inactive treatment */}
+              {/* Mode tabs */}
               <View style={styles.modeTabs}>
                 {([
                   { key: "pin" as const, icon: Hash, label: "PIN" },
@@ -744,7 +629,9 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                   return (
                     <Pressable
                       key={key}
-                      style={[styles.modeTab, active && styles.modeTabActive]}
+                      style={({ pressed }) => [styles.modeTab, active && styles.modeTabActive, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
                       onPress={() => {
                         Haptics.selectionAsync();
                         setCodeError(null);
@@ -753,20 +640,21 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                         setEntryMode(key);
                       }}
                     >
-                      <Ic size={14} color={active ? C.teal : C.textDim} weight="regular" />
+                      <Ic size={14} color={active ? C.teal : C.textTertiary} weight="regular" />
                       <Text style={[styles.modeTabText, active && styles.modeTabTextActive]}>{label}</Text>
                     </Pressable>
                   );
                 })}
               </View>
 
-              {/* PIN entry — Fixes 1-6 */}
+              {/* PIN entry */}
               {entryMode === "pin" && (
                 <View style={styles.modeContent}>
-                  {/* Fix 3: paste button */}
                   <View style={styles.pasteRow}>
                     <Pressable
                       onPress={handlePaste}
+                      accessibilityRole="button"
+                      accessibilityLabel="Paste PIN from clipboard"
                       style={({ pressed }) => [styles.pasteBtn, { opacity: pressed ? 0.6 : 1 }]}
                     >
                       <ClipboardText size={14} color={C.teal} weight="regular" />
@@ -774,7 +662,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     </Pressable>
                   </View>
 
-                  {/* Fix 1+2: focus-aware cells, tighter layout with shake */}
+                  {/* Focus-aware cells with shake */}
                   <Animated.View style={[styles.pinRow, shakeStyle]}>
                     <View style={styles.pinGroup}>
                       {digits.slice(0, 3).map((d, i) => (
@@ -832,7 +720,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                     </View>
                   </Animated.View>
 
-                  {/* Fix 5: CTA with loading state */}
+                  {/* CTA with loading state */}
                   <Pressable
                     onPress={() => { if (digits.every(d => d)) submitPin(digits.join("")); }}
                     disabled={!digits.every(d => d) || resolving}
@@ -846,12 +734,12 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                       },
                     ]}
                   >
-                    <Text style={[styles.codeSubmitText, { color: digits.every(d => d) && !resolving ? "#000" : C.textTertiary }]}>
-                      {resolving ? "Joining trip…" : "Join Trip"}
+                    <Text style={[styles.codeSubmitText, { color: digits.every(d => d) && !resolving ? C.onAccent : C.textTertiary }]}>
+                      {resolving ? "Joining trip…" : "Join a trip"}
                     </Text>
                   </Pressable>
 
-                  {/* Fix 6: error callout */}
+                  {/* Error callout */}
                   {codeError ? (
                     <View style={styles.errorCallout}>
                       <WarningCircle size={14} color={C.red} weight="fill" />
@@ -882,7 +770,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                 />
               )}
 
-              {/* Link paste — Fix 8: improved with paste + CTA */}
+              {/* Link paste */}
               {entryMode === "link" && (
                 <View style={[styles.modeContent, { width: "100%" }]}>
                   <View style={{ width: "100%", position: "relative" as const }}>
@@ -892,7 +780,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                       autoFocus
                       autoCapitalize="none"
                       autoCorrect={false}
-                      placeholder="dalefy.app/trip/..."
+                      placeholder="dalefy.app/trip/…"
                       placeholderTextColor={C.textTertiary}
                       style={[styles.codeInput, { width: "100%", paddingRight: 72 }]}
                       onSubmitEditing={submitLink}
@@ -905,6 +793,8 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                           if (text) { setLinkValue(text.trim()); setCodeError(null); }
                         } catch {}
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Paste link from clipboard"
                       style={({ pressed }) => [styles.linkPasteBtn, { opacity: pressed ? 0.6 : 1 }]}
                     >
                       <Text style={styles.linkPasteBtnText}>Paste</Text>
@@ -929,18 +819,13 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
                       },
                     ]}
                   >
-                    <Text style={[styles.codeSubmitText, { color: linkValue.trim() && !resolving ? "#000" : C.textTertiary }]}>
-                      {resolving ? "Joining trip…" : "Join Trip"}
+                    <Text style={[styles.codeSubmitText, { color: linkValue.trim() && !resolving ? C.onAccent : C.textTertiary }]}>
+                      {resolving ? "Joining trip…" : "Join a trip"}
                     </Text>
                   </Pressable>
                 </View>
               )}
 
-              {/* Fix 9: help link at bottom */}
-              <View style={styles.helpRow}>
-                <Question size={14} color={C.textTertiary} weight="regular" />
-                <Text style={styles.helpText}>Don't have a PIN? Get help</Text>
-              </View>
               </>
               )}
             </ScrollView>
@@ -951,7 +836,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   );
 }
 
-function makeGreetingStyles(C: ThemeColors) {
+function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     outer: {
       marginBottom: S.xs,
@@ -973,71 +858,28 @@ function makeGreetingStyles(C: ThemeColors) {
       letterSpacing: -0.2,
       flexShrink: 1,
     },
-    countdownChip: {
-      flexDirection: "row", alignItems: "center",
-      backgroundColor: `${C.teal}08`,
-      paddingHorizontal: 6, paddingVertical: 4,
-      borderRadius: R.full,
-    },
-    countdownChipText: {
-      fontSize: 12, fontWeight: T.semibold,
-      color: C.teal,
-    },
     headerActions: {
-      flex: 1, flexDirection: "row", alignItems: "center", gap: 4,
-    },
-    headerBtn: {
-      width: 44, height: 44, borderRadius: 22,
-      alignItems: "center", justifyContent: "center",
-    },
-    avatarBtn: {
-      width: 32, height: 32, borderRadius: 16,
-      backgroundColor: C.elevated,
-      alignItems: "center", justifyContent: "center",
-      overflow: "hidden",
-    },
-    avatarImg: {
-      width: 32, height: 32, borderRadius: 16,
-    },
-    avatarInitial: {
-      fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary,
+      flex: 1, flexDirection: "row", alignItems: "center", gap: S["2xs"],
     },
     unreadBadge: {
-      position: "absolute", top: 0, right: -2,
+      position: "absolute", top: 8, right: 6,
       minWidth: 18, height: 18, borderRadius: 9,
-      backgroundColor: "#ff3b30",
+      backgroundColor: C.red,
       borderWidth: 1.5, borderColor: C.card,
       alignItems: "center", justifyContent: "center",
       paddingHorizontal: 3,
     },
     unreadBadgeText: {
-      fontSize: 10, fontWeight: "700", color: "#fff",
+      fontSize: T["2xs"], fontWeight: "700", color: ON_RED,
       lineHeight: 12,
     },
-    codeBackdrop: {
-      backgroundColor: "rgba(0,0,0,0.12)",
-    },
-    codeCenter: {
-      flex: 1, justifyContent: "flex-end",
-    },
     codeSheet: {
-      backgroundColor: HAS_LIQUID_GLASS ? "transparent" : C.card,
+      backgroundColor: C.card,
       paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.xl,
-    },
-    sheetGrabber: {
-      alignSelf: "center",
-      width: 36, height: 4, borderRadius: 2,
-      backgroundColor: C.border,
-      marginBottom: S.xs,
     },
     sheetHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "flex-end",
       marginBottom: S.xs,
-    },
-    codeClose: {
-      width: 30, height: 30, borderRadius: 15,
-      alignItems: "center", justifyContent: "center",
-      backgroundColor: C.elevated,
     },
     // ── Boarding pass hero ──
     bpHero: {
@@ -1050,9 +892,9 @@ function makeGreetingStyles(C: ThemeColors) {
       marginBottom: S.md,
     },
     bpTitle: {
-      fontSize: T["3xl"], fontWeight: "700",
-      color: C.textPrimary, letterSpacing: -0.5,
-      marginBottom: 6,
+      fontSize: T["3xl"], fontFamily: F.extrabold, lineHeight: 30, includeFontPadding: false,
+      color: C.textPrimary, letterSpacing: 0,
+      marginBottom: S.xs2,
     },
     bpSub: {
       fontSize: T.sm, color: C.textTertiary,
@@ -1065,14 +907,11 @@ function makeGreetingStyles(C: ThemeColors) {
     },
     modeTab: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 5, paddingVertical: 9, borderRadius: R.md,
+      gap: 5, paddingVertical: S.xs, borderRadius: R.md,
     },
     modeTabActive: {
       backgroundColor: C.card,
-      ...Platform.select({
-        ios: { shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-        android: { elevation: 2 },
-      }),
+      ...shadow("subtle", isDark),
     },
     modeTabText: {
       fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
@@ -1090,11 +929,11 @@ function makeGreetingStyles(C: ThemeColors) {
       width: "100%", marginBottom: S.sm,
     },
     pasteBtn: {
-      flexDirection: "row", alignItems: "center", gap: 4,
-      paddingVertical: 4, paddingHorizontal: 8,
+      flexDirection: "row", alignItems: "center", gap: S["2xs"],
+      paddingVertical: S["2xs"], paddingHorizontal: S.xs,
     },
     pasteBtnText: {
-      fontSize: T.xs, fontWeight: T.semibold, color: C.teal,
+      fontSize: T.xs, fontWeight: T.semibold, color: C.tealText,
     },
     pinRow: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -1116,7 +955,7 @@ function makeGreetingStyles(C: ThemeColors) {
       color: C.textPrimary,
     },
     pinCellFilled: {
-      borderColor: `${C.teal}60`, backgroundColor: C.tealDim,
+      borderColor: C.tealMid, backgroundColor: C.tealDim,
     },
     pinCellFocused: {
       borderColor: C.teal, backgroundColor: C.card,
@@ -1133,8 +972,8 @@ function makeGreetingStyles(C: ThemeColors) {
       textAlign: "center", marginTop: S.sm,
     },
     checkingText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 1.5, textTransform: "uppercase",
+      fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, color: C.tealText,
+      letterSpacing: 1, textTransform: "uppercase",
       textAlign: "center", marginTop: S.xs,
     },
     errorCallout: {
@@ -1142,25 +981,18 @@ function makeGreetingStyles(C: ThemeColors) {
       marginTop: S.sm, padding: S.sm,
       borderRadius: R.md,
       backgroundColor: C.redDim,
-      borderWidth: 1, borderColor: `${C.red}30`,
+      borderWidth: 1, borderColor: C.redMid,
       width: "100%",
     },
     errorCalloutText: {
       flex: 1, fontSize: T.xs, fontWeight: T.medium,
-      color: C.red, lineHeight: 17,
-    },
-    helpRow: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 6, marginTop: "auto" as any, paddingTop: S.xl,
-    },
-    helpText: {
-      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
+      color: C.redText, lineHeight: 17,
     },
     qrFrame: {
       width: Dimensions.get("window").width - 80,
       height: Dimensions.get("window").width - 80,
       borderRadius: R["2xl"], overflow: "hidden",
-      backgroundColor: "#000",
+      backgroundColor: C.bg,
       alignSelf: "center",
     },
     qrCorner: {
@@ -1179,30 +1011,29 @@ function makeGreetingStyles(C: ThemeColors) {
     linkPasteBtn: {
       position: "absolute", right: 8, top: 0, bottom: 0,
       justifyContent: "center",
-      paddingHorizontal: 10, paddingVertical: 6,
+      paddingHorizontal: S.sm2, paddingVertical: S.xs2,
     },
     linkPasteBtnText: {
       fontSize: T.xs, fontWeight: T.semibold,
       color: C.textSecondary,
       backgroundColor: C.bg,
-      paddingHorizontal: 10, paddingVertical: 5,
+      paddingHorizontal: S.sm2, paddingVertical: 5,
       borderRadius: R.sm, overflow: "hidden",
     },
     codeSubmit: {
-      height: 48, borderRadius: R.lg,
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+      height: 52, borderRadius: R.xl,
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
     },
     codeSubmitText: {
-      fontSize: T.sm, fontWeight: T.bold,
-      letterSpacing: 1.5, textTransform: "uppercase",
+      fontSize: T.md, fontWeight: T.bold,
     },
   });
 }
 
 // ── Hero Trip Card (16:9 banner for first upcoming) ──────────────────────────
 function HeroTripCard({ trip }: { trip: Trip }) {
-  const { C } = useTheme();
-  const styles = useMemo(() => makeHeroCardStyles(C), [C]);
+  const { C, isDark } = useTheme();
+  const styles = useMemo(() => makeHeroCardStyles(C, isDark), [C, isDark]);
   const start = parseTripDate(trip.start);
   const end = parseTripDate(trip.end);
 
@@ -1212,14 +1043,19 @@ function HeroTripCard({ trip }: { trip: Trip }) {
       onPress={() => { Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` }); }}
     >
     <Link href={`/trip/${trip.id}`} asChild>
-    <ScalePress style={styles.heroCard} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}>
+    <ScalePress
+      style={styles.heroCard}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+      accessibilityRole="button"
+      accessibilityLabel={`${trip.name}${trip.destination ? `, ${trip.destination}` : ""}`}
+    >
       <View style={styles.heroImageWrap}>
         {Platform.OS === "ios" && Link.AppleZoom ? (
           <Link.AppleZoom><CachedImage uri={trip.image} style={styles.heroImage} /></Link.AppleZoom>
         ) : (
           <CachedImage uri={trip.image} style={styles.heroImage} />
         )}
-        <LinearGradient colors={["transparent", "rgba(0,0,0,0.65)"]} style={StyleSheet.absoluteFillObject} />
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.65)"]} style={StyleSheet.absoluteFill} />
         <View style={styles.heroOverlay}>
           {trip.destination ? (
             <View style={styles.heroDestRow}>
@@ -1251,20 +1087,19 @@ function HeroTripCard({ trip }: { trip: Trip }) {
   );
 }
 
-function makeHeroCardStyles(C: ThemeColors) {
+function makeHeroCardStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     heroCard: {
       marginHorizontal: S.md, borderRadius: R["2xl"], overflow: "hidden",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.15, shadowRadius: 20, elevation: 5,
+      ...shadow("deep", isDark),
     },
     heroImageWrap: { aspectRatio: 16 / 9, backgroundColor: C.elevated },
     heroImage: { width: "100%", height: "100%" },
     heroOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, padding: S.md },
     heroDestRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 },
     heroDestText: {
-      fontSize: 10, fontWeight: "700", color: "rgba(255,255,255,0.8)",
-      letterSpacing: 1.5, textTransform: "uppercase",
+      fontSize: T["2xs"], fontFamily: F.bold, lineHeight: 13, includeFontPadding: false, color: "rgba(255,255,255,0.8)",
+      letterSpacing: 1, textTransform: "uppercase",
     },
     heroTripName: {
       fontSize: T.xl, fontWeight: T.bold, color: "#fff",
@@ -1278,24 +1113,25 @@ function makeHeroCardStyles(C: ThemeColors) {
 
 // ── Compact Event Row (spotlight remaining) ──────────────────────────────────
 function CompactEventRow({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const router = useRouter();
   const Icon = ev.type === "hotel" ? Bed : ev.type === "dining" ? ForkKnife : ev.type === "flight" ? AirplaneTilt : Compass;
 
   return (
-    <Pressable
+    <ScalePress
+      activeScale={0.98}
       onPress={() => { if (tripId) router.push(`/trip/event?tripId=${tripId}&eventId=${ev.id}`); }}
-      style={({ pressed }) => [{
+      accessibilityRole="button"
+      accessibilityLabel={normaliseTitle(ev.title, ev.type, ev.transferType)}
+      style={{
         flexDirection: "row" as const, alignItems: "center" as const, gap: S.sm,
         backgroundColor: C.card, borderRadius: R.xl,
-        padding: S.sm, paddingRight: S.md,
-        opacity: pressed ? 0.85 : 1,
-        shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-      }]}
+        padding: S.md,
+        ...shadow("subtle", isDark),
+      }}
     >
       <View style={{
-        width: 42, height: 42, borderRadius: R.lg,
+        width: 42, height: 42, borderRadius: R.md,
         backgroundColor: C.tealDim,
         alignItems: "center" as const, justifyContent: "center" as const,
       }}>
@@ -1306,15 +1142,15 @@ function CompactEventRow({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
         {ev.location ? <Text style={{ fontSize: T.xs, color: C.textTertiary, marginTop: 1 }} numberOfLines={1}>{ev.location}</Text> : null}
       </View>
       {ev.time ? <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary }}>{ev.time}</Text> : null}
-      <CaretRight size={12} color={C.textTertiary} weight="light" />
-    </Pressable>
+      <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
+    </ScalePress>
   );
 }
 
 // ── Upcoming Card (compact horizontal, matches web) ───────────────────────────
 function UpcomingCard({ trip }: { trip: Trip }) {
-  const { C } = useTheme();
-  const styles = useMemo(() => makeUpcomingCardStyles(C), [C]);
+  const { C, isDark } = useTheme();
+  const styles = useMemo(() => makeUpcomingCardStyles(C, isDark), [C, isDark]);
   const days  = daysUntil(trip.start);
   const start = parseTripDate(trip.start);
   const end   = parseTripDate(trip.end);
@@ -1363,31 +1199,31 @@ function UpcomingCard({ trip }: { trip: Trip }) {
           ) : null}
         </View>
       </View>
-      <CaretRight size={14} color={C.textTertiary} weight="light" />
+      <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
     </ScalePress>
     </Link>
     </ContextMenu>
   );
 }
 
-function makeUpcomingCardStyles(C: ThemeColors) {
+function makeUpcomingCardStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     card: {
       flexDirection: "row", alignItems: "center", gap: S.md,
-      backgroundColor: C.card, borderRadius: R["2xl"],
-      padding: S.lg, marginHorizontal: S.md,
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+      backgroundColor: C.card, borderRadius: R.xl,
+      padding: S.md, marginHorizontal: S.md,
+      ...shadow("card", isDark),
     },
     thumb: { width: 72, height: 72, borderRadius: R.xl, backgroundColor: C.elevated },
     body: { flex: 1 },
     dest: {
-      fontSize: 9, fontWeight: T.bold, letterSpacing: 1,
-      color: C.teal, marginBottom: 2,
+      fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, letterSpacing: 1,
+      textTransform: "uppercase",
+      color: C.tealText, marginBottom: 2,
     },
     name: {
       fontSize: T.base, fontWeight: T.bold,
-      color: C.textPrimary, marginBottom: 4,
+      color: C.textPrimary, marginBottom: S["2xs"],
     },
     meta: { flexDirection: "row", alignItems: "center", gap: 5 },
     metaText: {
@@ -1395,24 +1231,19 @@ function makeUpcomingCardStyles(C: ThemeColors) {
       color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5,
     },
     metaDot: { fontSize: T.xs, color: C.textTertiary },
-    daysPill: {
-      backgroundColor: C.teal, borderRadius: R.full,
-      paddingHorizontal: 10, paddingVertical: 5,
-    },
-    daysText: { fontSize: T.xs, fontWeight: T.bold, color: "#000", letterSpacing: 0.5 },
   });
 }
 
 // ── Spotlight Event Card ───────────────────────────────────────────────────────
 function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }) {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const router = useRouter();
   const Icon  = ev.type === "hotel" ? Bed
     : ev.type === "dining" ? ForkKnife
     : ev.type === "flight" ? AirplaneTilt
     : Compass;
 
-  const styles = useMemo(() => makeSpotlightCardStyles(C), [C]);
+  const styles = useMemo(() => makeSpotlightCardStyles(C, isDark), [C, isDark]);
 
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -1446,7 +1277,13 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
   };
 
   return (
-    <Pressable onPress={handlePress} style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}>
+    <ScalePress
+      activeScale={0.98}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={normaliseTitle(ev.title, ev.type, ev.transferType)}
+      style={styles.card}
+    >
       {ev.image ? (
         <CachedImage uri={ev.image} style={styles.img} />
       ) : (
@@ -1479,18 +1316,17 @@ function SpotlightEventCard({ ev, tripId }: { ev: TravelEvent; tripId?: string }
           ) : null}
         </View>
       </View>
-    </Pressable>
+    </ScalePress>
   );
 }
 
-function makeSpotlightCardStyles(C: ThemeColors) {
+function makeSpotlightCardStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     card: {
       flexDirection: "row",
-      backgroundColor: C.card, borderRadius: R["2xl"],
+      backgroundColor: C.card, borderRadius: R.xl,
       overflow: "hidden", minHeight: 120,
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+      ...shadow("card", isDark),
     },
     img: { width: 120, ...Platform.select({ ios: { alignSelf: "stretch" as const }, android: { height: "100%" as any, minHeight: 120 } }) },
     imgPlaceholder: {
@@ -1499,10 +1335,8 @@ function makeSpotlightCardStyles(C: ThemeColors) {
       alignItems: "center", justifyContent: "center",
     },
     content: { flex: 1, padding: S.md, justifyContent: "space-between" },
-    countdownRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 },
-    countdownDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.teal },
     countdownText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
+      fontSize: T.xs, fontWeight: T.bold, color: C.tealText,
       letterSpacing: 0.5, fontVariant: ["tabular-nums"],
     },
     title: {
@@ -1510,13 +1344,13 @@ function makeSpotlightCardStyles(C: ThemeColors) {
       color: C.textPrimary, marginBottom: 3,
     },
     sub: { fontSize: T.sm, color: C.textSecondary, lineHeight: 20 },
-    infoRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 8 },
+    infoRow: { flexDirection: "row", gap: S.xs2, flexWrap: "wrap", marginTop: S.xs },
     infoChip: {
-      flexDirection: "row", alignItems: "center", gap: 4,
+      flexDirection: "row", alignItems: "center", gap: S["2xs"],
       backgroundColor: C.elevated, borderRadius: R.full,
-      paddingHorizontal: 8, paddingVertical: 3,
+      paddingHorizontal: S.xs, paddingVertical: 3,
     },
-    infoText: { fontSize: 11, fontWeight: "500" as const, color: C.textTertiary, maxWidth: 120 },
+    infoText: { fontSize: T.xs, fontWeight: "500" as const, color: C.textTertiary, maxWidth: 120 },
   });
 }
 
@@ -1529,6 +1363,8 @@ function PastTripTile({ trip }: { trip: Trip }) {
     <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+      accessibilityRole="button"
+      accessibilityLabel={`${trip.destination || trip.name}, ${monthYear}`}
       style={{
         width: 130, gap: 8,
       }}
@@ -1560,8 +1396,8 @@ function PastTripTile({ trip }: { trip: Trip }) {
 
 // ── Trip Row (All Trips list) ──────────────────────────────────────────────────
 function TripRow({ trip }: { trip: Trip }) {
-  const { C } = useTheme();
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const { C, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const swipeRef = useRef<Swipeable>(null);
   const start   = parseTripDate(trip.start);
   const end     = parseTripDate(trip.end);
@@ -1577,6 +1413,8 @@ function TripRow({ trip }: { trip: Trip }) {
           Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
           swipeRef.current?.close();
         }}
+        accessibilityRole="button"
+        accessibilityLabel="Share trip"
         style={{
           backgroundColor: C.teal,
           justifyContent: "center",
@@ -1584,8 +1422,8 @@ function TripRow({ trip }: { trip: Trip }) {
           width: 72,
         }}
       >
-        <ShareNetwork size={18} color="#000" weight="regular" />
-        <Text style={{ color: "#000", fontSize: 11, fontWeight: "700", marginTop: 4 }}>Share</Text>
+        <ShareNetwork size={18} color={C.onAccent} weight="regular" />
+        <Text style={{ color: C.onAccent, fontSize: T.xs, fontWeight: "700", marginTop: 4 }}>Share</Text>
       </Pressable>
     </View>
   ), [C, trip]);
@@ -1597,7 +1435,7 @@ function TripRow({ trip }: { trip: Trip }) {
         { title: "Share Trip", systemIcon: "square.and.arrow.up" },
         { title: "Copy Link", systemIcon: "link" },
       ]}
-      onPress={(e) => {
+      onPress={(e: { nativeEvent: { index: number } }) => {
         if (e.nativeEvent.index === 0) {
           Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
         }
@@ -1632,22 +1470,15 @@ function TripRow({ trip }: { trip: Trip }) {
         </View>
       </View>
       {!isPast && days > 0 ? (
-        <View style={styles.daysBadge}>
-          <Text style={styles.daysBadgeNum}>{`${days}d`}</Text>
-        </View>
+        <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`${days}d`} />
       ) : isPast ? (
-        <View style={styles.pastChip}>
-          <Text style={styles.pastLabel}>PAST</Text>
-        </View>
+        <Pill tone="neutral" label="Past" />
+      ) : isActive ? (
+        <Pill tone="accent" icon={<StatusIndicator state="live" size={5} color={C.onAccent} />} label="Active" />
       ) : (
-        <View style={[styles.statusBadgeRow, isActive ? styles.statusBadgeRowActive : styles.statusBadgeRowDraft]}>
-          {isActive && <StatusIndicator state="live" size={5} color="#000" />}
-          <Text style={[styles.statusRowText, { color: isActive ? "#000" : C.textTertiary }]}>
-            {isActive ? "Active" : trip.status}
-          </Text>
-        </View>
+        <Pill tone="neutral" label={trip.status} />
       )}
-      <CaretRight size={14} color={C.textTertiary} weight="light" style={{ marginLeft: 2 }} />
+      <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center", marginLeft: 2 }} />
     </ScalePress>
     </Link>
     </ContextMenu>
@@ -1657,22 +1488,13 @@ function TripRow({ trip }: { trip: Trip }) {
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, ready, offline, _debug, reload } = useTrips();
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const { trips, ready, offline, reload } = useTrips();
   const router = useRouter();
-  const haptic = useHaptic();
   const { toast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
-  const [cacheCount, setCacheCount] = useState<number | null>(null);
-  useEffect(() => {
-    AsyncStorage.getItem("daf-trips-cache").then(raw => {
-      if (raw) {
-        try { setCacheCount(JSON.parse(raw).length); } catch { setCacheCount(-1); }
-      } else { setCacheCount(0); }
-    }).catch(() => setCacheCount(-1));
-  }, [trips.length]);
   const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRefreshing(true);
@@ -1798,7 +1620,7 @@ export default function HomeScreen() {
             </FadeIn>
             <View style={styles.upcomingList}>
               {upcomingCards.map((trip, i) => (
-                <FadeIn key={trip.id} delay={80 + i * 100}>
+                <FadeIn key={trip.id} delay={Math.min(i, 4) * 60}>
                   {i === 0 ? <HeroTripCard trip={trip} /> : <UpcomingCard trip={trip} />}
                 </FadeIn>
               ))}
@@ -1835,7 +1657,7 @@ export default function HomeScreen() {
                   <Text style={styles.sectionSub}>Key events on your itinerary</Text>
                 </View>
                 <View style={styles.sectionChevron}>
-                  <CaretRight size={16} color={C.textTertiary} weight="bold" />
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                 </View>
               </View>
             </FadeIn>
@@ -1843,7 +1665,7 @@ export default function HomeScreen() {
             {spotlightPlaces.length > 0 ? (
               <View style={styles.spotList}>
                 {spotlightPlaces.map((ev, i) => (
-                  <FadeIn key={ev.id} delay={280 + i * 100}>
+                  <FadeIn key={ev.id} delay={180 + Math.min(i, 4) * 60}>
                     {i === 0
                       ? <SpotlightEventCard ev={ev} tripId={spotlightTrip.id} />
                       : <CompactEventRow ev={ev} tripId={spotlightTrip.id} />}
@@ -1851,34 +1673,40 @@ export default function HomeScreen() {
                 ))}
               </View>
             ) : (
-              <FadeIn delay={280}>
-                <Pressable
-                  style={styles.spotEmpty}
-                  onPress={() => router.push(`/trip/${spotlightTrip.id}`)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open trip to add events"
-                >
-                  <Compass size={22} color={C.textTertiary} weight="light" />
-                  <Text style={styles.spotEmptyText}>Open trip to add events</Text>
-                </Pressable>
+              <FadeIn delay={180}>
+                <View style={styles.spotEmpty}>
+                  <EmptyState
+                    compact
+                    icon={<Compass size={26} color={C.teal} weight="light" />}
+                    title="No events yet"
+                    message="Key events will show here once they're on your itinerary."
+                    cta={{ label: "Open trip", onPress: () => router.push(`/trip/${spotlightTrip.id}`) }}
+                  />
+                </View>
               </FadeIn>
             )}
 
             {/* Quick actions */}
-            <FadeIn delay={450}>
+            <FadeIn delay={240}>
               <View style={styles.quickActions}>
                 <ScalePress
+                  activeScale={0.98}
                   style={styles.quickCard}
                   onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${spotlightTrip.id}`); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Itinerary"
                 >
                   <View style={styles.quickIconWrap}>
                     <CalendarDots size={20} color={C.teal} weight="regular" />
                   </View>
-                  <Text style={styles.quickTitle}>Schedule</Text>
+                  <Text style={styles.quickTitle}>Itinerary</Text>
                 </ScalePress>
                 <ScalePress
+                  activeScale={0.98}
                   style={styles.quickCard}
                   onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Gallery"
                 >
                   <View style={styles.quickIconWrap}>
                     <Images size={20} color={C.teal} weight="regular" />
@@ -1886,8 +1714,11 @@ export default function HomeScreen() {
                   <Text style={styles.quickTitle}>Gallery</Text>
                 </ScalePress>
                 <ScalePress
+                  activeScale={0.98}
                   style={styles.quickCard}
                   onPress={() => { Haptics.selectionAsync(); router.push(`/trip/info?tripId=${spotlightTrip.id}`); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Trip info"
                 >
                   <View style={styles.quickIconWrap}>
                     <Info size={20} color={C.teal} weight="regular" />
@@ -1898,15 +1729,17 @@ export default function HomeScreen() {
             </FadeIn>
 
             {/* Latest photos */}
-            <FadeIn delay={600}>
+            <FadeIn delay={300}>
               <View style={styles.latestSection}>
                 {latestPhotos.length > 0 ? (
                   <>
                     <View style={styles.latestHeader}>
-                      <Text style={styles.stripLabel}>Latest</Text>
+                      <MicroLabel>Latest</MicroLabel>
                       <Pressable
                         onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
                         hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="See all photos"
                       >
                         <Text style={styles.seeAll}>See all</Text>
                       </Pressable>
@@ -1914,7 +1747,7 @@ export default function HomeScreen() {
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ gap: 10, paddingHorizontal: S.md }}
+                      contentContainerStyle={{ gap: S.sm2, paddingHorizontal: S.md }}
                     >
                       {latestPhotos.map((photo) => {
                         const firstName = (photo.uploadedBy || "").split(/\s+/)[0];
@@ -1923,6 +1756,8 @@ export default function HomeScreen() {
                           <Pressable
                             key={photo.id}
                             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/media"); }}
+                            accessibilityRole="button"
+                            accessibilityLabel={firstName ? `Photo by ${firstName}` : "Trip photo"}
                             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                           >
                             <CachedImage
@@ -1931,9 +1766,7 @@ export default function HomeScreen() {
                             />
                             {firstName ? (
                               <View style={styles.photoCaption}>
-                                <View style={styles.photoCaptionAvatar}>
-                                  <Text style={styles.photoCaptionInitial}>{initial}</Text>
-                                </View>
+                                <Avatar size={16} initials={initial} />
                                 <Text style={styles.photoCaptionText} numberOfLines={1}>
                                   {firstName} · {relativeTime(photo.uploadedAt)}
                                 </Text>
@@ -1945,17 +1778,13 @@ export default function HomeScreen() {
                     </ScrollView>
                   </>
                 ) : (
-                  <View style={styles.latestEmpty}>
-                    <Camera size={24} color={C.textTertiary} weight="light" />
-                    <Text style={styles.latestEmptyTitle}>No photos yet</Text>
-                    <Text style={styles.latestEmptySub}>Be the first to share a moment from this trip.</Text>
-                    <Pressable
-                      onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
-                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                    >
-                      <Text style={styles.latestEmptyCta}>Add a photo</Text>
-                    </Pressable>
-                  </View>
+                  <EmptyState
+                    compact
+                    icon={<Camera size={26} color={C.teal} weight="light" />}
+                    title="No photos yet"
+                    message="Be the first to share a moment from this trip."
+                    cta={{ label: "Add a photo", onPress: () => { Haptics.selectionAsync(); router.push("/(tabs)/media"); } }}
+                  />
                 )}
               </View>
             </FadeIn>
@@ -1971,7 +1800,7 @@ export default function HomeScreen() {
                   <Text style={styles.sectionTitle}>Past Trips</Text>
                 </View>
                 <View style={styles.sectionChevron}>
-                  <CaretRight size={16} color={C.textTertiary} weight="bold" />
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                 </View>
               </View>
               <ScrollView
@@ -1989,14 +1818,14 @@ export default function HomeScreen() {
 
         {/* ── All Trips ── */}
         {allTrips.length > 0 && (
-          <FadeIn delay={400}>
+          <FadeIn delay={300}>
             <View style={styles.section}>
               <View style={styles.eyebrowRow}>
                 <View style={styles.eyebrowLeft}>
                   <Text style={styles.eyebrow}>All Trips</Text>
-                  <Text style={styles.countChip}>{allTrips.length}</Text>
+                  <Pill size="sm" tone="custom" bg={C.tealDim} color={C.tealText} label={String(allTrips.length)} />
                 </View>
-                <CaretRight size={16} color={C.textTertiary} weight="bold" />
+                <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
               </View>
               <View style={styles.listCard}>
                 {allTrips.map((trip, i) => (
@@ -2015,19 +1844,19 @@ export default function HomeScreen() {
         {ready && trips.length === 0 && (
           offline ? (
             <View style={styles.emptyState}>
-              <WifiSlash size={48} color={C.textTertiary} weight="thin" />
-              <Text style={styles.emptyTitle}>You're offline</Text>
-              <Text style={styles.emptyText}>
-                Your trips will appear here once you're back online.
-              </Text>
+              <EmptyState
+                icon={<WifiSlash size={30} color={C.teal} weight="light" />}
+                title="You're offline"
+                message="Your trips will appear here once you're back online."
+              />
             </View>
           ) : (
             <View style={styles.emptyState}>
               <Illustration name="riding" width={260} height={160} />
-              <Text style={styles.emptyTitle}>Ready for takeoff</Text>
-              <Text style={styles.emptyText}>
-                Paste the trip code or scan the QR your agent shared to unlock your itinerary.
-              </Text>
+              <EmptyState
+                title="Ready for takeoff"
+                message="Paste the trip PIN or scan the QR your organiser shared to unlock your itinerary."
+              />
             </View>
           )
         )}
@@ -2038,12 +1867,12 @@ export default function HomeScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe:   { flex: 1, backgroundColor: C.bg },
     scroll: {},
 
-    section: { marginTop: 20 },
+    section: { marginTop: S.lg },
 
     sectionHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -2059,10 +1888,7 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "center", gap: 2,
       paddingLeft: S.sm,
     },
-    sectionChevronText: {
-      fontSize: T.sm, fontWeight: T.semibold, color: C.textTertiary,
-    },
-    spotlightDest: { color: C.teal },
+    spotlightDest: { color: C.tealText },
 
     upcomingList: { gap: S.md },
 
@@ -2077,34 +1903,22 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
       letterSpacing: -0.2,
     },
-    countChip: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      backgroundColor: C.tealDim, paddingHorizontal: 7, paddingVertical: 2,
-      borderRadius: R.full,
-    },
 
     // ── Spotlight ──
     spotList: { paddingHorizontal: S.md, gap: S.sm },
     spotEmpty: {
       marginHorizontal: S.md, backgroundColor: C.card,
       borderRadius: R.xl,
-      alignItems: "center", justifyContent: "center",
-      paddingVertical: 32, gap: S.xs,
-    },
-    spotEmptyText: {
-      fontSize: T.xs, fontWeight: T.bold,
-      color: C.textTertiary, textTransform: "uppercase", letterSpacing: 1,
     },
 
     // ── Trip rows ──
     listCard: {
       marginHorizontal: S.md,
-      backgroundColor: C.card, borderRadius: R["2xl"],
+      backgroundColor: C.card, borderRadius: R.xl,
       overflow: "hidden",
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08, shadowRadius: 16, elevation: 3,
+      ...shadow("card", isDark),
     },
-    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: 14 },
+    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: S.sm },
     rowDivider: {
       height: StyleSheet.hairlineWidth, backgroundColor: C.border,
       marginLeft: S.md + 72 + S.md,
@@ -2112,8 +1926,8 @@ function makeStyles(C: ThemeColors) {
     rowThumb: { width: 72, height: 72, borderRadius: R.xl, backgroundColor: C.elevated },
     rowBody: { flex: 1 },
     rowDest: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 1.2, marginBottom: 2,
+      fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, color: C.tealText,
+      letterSpacing: 1, textTransform: "uppercase", marginBottom: 2,
     },
     rowName: {
       fontSize: T.base, fontWeight: T.bold,
@@ -2121,30 +1935,6 @@ function makeStyles(C: ThemeColors) {
     },
     rowDateRow: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1 },
     rowDate: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, flexShrink: 1 },
-    statusBadgeRow: {
-      flexDirection: "row", alignItems: "center", gap: 4,
-      borderRadius: R.full, paddingHorizontal: 8, paddingVertical: 4,
-    },
-    statusBadgeRowActive: { backgroundColor: C.teal },
-    statusBadgeRowDraft:  {
-      backgroundColor: C.elevated,
-    },
-    rowActiveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#000" },
-    statusRowText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.8, textTransform: "uppercase" },
-
-    daysBadge: {
-      alignItems: "center", justifyContent: "center",
-      backgroundColor: C.tealDim,
-      paddingHorizontal: 10, paddingVertical: 6, borderRadius: R.full,
-    },
-    daysBadgeNum: { fontSize: T.sm, fontWeight: "700", color: C.teal },
-
-    pastChip: {
-      backgroundColor: C.elevated, paddingHorizontal: 8, paddingVertical: 4,
-      borderRadius: R.full,
-    },
-    pastLabel: { fontSize: T.xs, fontWeight: T.bold, color: C.textTertiary, letterSpacing: 0.8 },
-
     // ── Quick Actions ──
     quickActions: {
       flexDirection: "row", gap: S.sm, paddingHorizontal: S.md, marginTop: S.md,
@@ -2161,60 +1951,33 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.sm, fontWeight: T.bold, color: C.textPrimary,
       marginTop: 2,
     },
-    quickSub: { fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary },
-
-    // ── Section strips ──
-    stripLabel: {
-      fontSize: T.xs, fontWeight: T.semibold,
-      color: C.textTertiary, marginBottom: S.sm,
-    },
 
     // ── Latest photos ──
     latestSection: {
-      marginTop: 28,
+      marginTop: S.xl,
     },
     latestHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       paddingHorizontal: S.md, marginBottom: S.sm,
     },
     seeAll: {
-      fontSize: T.sm, fontWeight: T.semibold, color: C.teal,
+      fontSize: T.sm, fontWeight: T.semibold, color: C.tealText,
     },
     latestPhoto: {
       width: 120, height: 160, borderRadius: R.lg,
       backgroundColor: C.elevated,
     },
     photoCaption: {
-      flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6,
-    },
-    photoCaptionAvatar: {
-      width: 16, height: 16, borderRadius: 8,
-      backgroundColor: C.elevated,
-      alignItems: "center", justifyContent: "center",
-    },
-    photoCaptionInitial: {
-      fontSize: 8, fontWeight: T.semibold, color: C.textSecondary,
+      flexDirection: "row", alignItems: "center", gap: S["2xs"], marginTop: S.xs2,
     },
     photoCaptionText: {
       fontSize: T.xs, color: C.textTertiary, maxWidth: 100,
-    },
-    latestEmpty: {
-      alignItems: "center", paddingVertical: S.xl, paddingHorizontal: S.md, gap: 6,
-    },
-    latestEmptyTitle: {
-      fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, marginTop: 4,
-    },
-    latestEmptySub: {
-      fontSize: T.xs, color: C.textTertiary, textAlign: "center", lineHeight: 18, maxWidth: 240,
-    },
-    latestEmptyCta: {
-      fontSize: T.xs, fontWeight: T.semibold, color: C.teal, marginTop: 4,
     },
 
     // ── Offline banner ──
     offlineBanner: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 8, paddingVertical: 10, paddingHorizontal: S.md,
+      gap: S.xs, paddingVertical: S.sm2, paddingHorizontal: S.md,
       backgroundColor: C.elevated, borderRadius: R.lg,
       marginHorizontal: S.md, marginBottom: S.sm,
     },
@@ -2224,24 +1987,7 @@ function makeStyles(C: ThemeColors) {
 
     // ── Empty ──
     emptyState: {
-      alignItems: "center", paddingTop: 80,
-      paddingHorizontal: S.xl, paddingBottom: S.xl, gap: S.sm,
-    },
-    emptyTitle: {
-      fontSize: T.xl, fontWeight: T.bold,
-      color: C.textPrimary, letterSpacing: -0.3,
-    },
-    emptyText: {
-      fontSize: T.base, color: C.textTertiary,
-      textAlign: "center", lineHeight: 24, maxWidth: 280,
-    },
-    emptyBtn: {
-      marginTop: S.xs, backgroundColor: C.teal,
-      borderRadius: R.full, paddingHorizontal: S.lg, paddingVertical: 11,
-    },
-    emptyBtnText: {
-      fontSize: T.sm, fontWeight: T.bold,
-      color: "#000", letterSpacing: 0.5, textTransform: "uppercase",
+      alignItems: "center", paddingTop: S["2xl"],
     },
   });
 }

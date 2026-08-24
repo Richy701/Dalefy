@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
+import { useTheme } from "@/context/ThemeContext";
 
 let MapboxGL: any = null;
 try {
@@ -90,9 +91,11 @@ export function FlightRouteMap({
   fromCode,
   toCode,
   height = 320,
-  accentColor = "#0bd2b5",
+  accentColor,
   isDark = true,
 }: Props) {
+  const { C } = useTheme();
+  const accent = accentColor ?? C.teal;
   const valid =
     Number.isFinite(from[0]) && Number.isFinite(from[1]) &&
     Number.isFinite(to[0]) && Number.isFinite(to[1]);
@@ -179,7 +182,7 @@ export function FlightRouteMap({
     };
   }, [from, to, arcCoords, valid]);
 
-  if (!MapboxGL || !valid) return <View style={[styles.fallback, { height }]} />;
+  if (!MapboxGL || !valid) return <View style={{ height, backgroundColor: C.bg }} />;
 
   const endpointFeatures = {
     type: "FeatureCollection" as const,
@@ -193,7 +196,7 @@ export function FlightRouteMap({
     <View style={{ height, overflow: "hidden" }}>
       <MapboxGL.MapView
         ref={mapRef}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
         projection="globe"
         scrollEnabled={false}
@@ -213,10 +216,10 @@ export function FlightRouteMap({
 
         <MapboxGL.Atmosphere
           style={{
-            color: isDark ? "rgb(20, 20, 25)" : "rgb(200, 210, 220)",
-            highColor: isDark ? "rgb(10, 10, 11)" : "rgb(180, 196, 210)",
+            color: isDark ? C.card : "rgb(200, 210, 220)",
+            highColor: isDark ? C.bg : "rgb(180, 196, 210)",
             horizonBlend: 0.15,
-            spaceColor: isDark ? "rgb(10, 10, 11)" : "rgb(235, 240, 245)",
+            spaceColor: isDark ? C.bg : "rgb(235, 240, 245)",
             starIntensity: 0,
           }}
         />
@@ -231,7 +234,7 @@ export function FlightRouteMap({
                 <MapboxGL.LineLayer
                   id="route-flight-line-layer"
                   style={{
-                    lineColor: accentColor,
+                    lineColor: accent,
                     lineWidth: 2,
                     lineOpacity: 0.8,
                     lineDasharray: [3, 3],
@@ -248,7 +251,7 @@ export function FlightRouteMap({
                 id="route-endpoint-outer"
                 style={{
                   circleRadius: 8,
-                  circleColor: accentColor,
+                  circleColor: accent,
                   circleOpacity: 0.15,
                 }}
               />
@@ -256,7 +259,7 @@ export function FlightRouteMap({
                 id="route-endpoint-inner"
                 style={{
                   circleRadius: 4,
-                  circleColor: accentColor,
+                  circleColor: accent,
                   circleOpacity: 1,
                 }}
               />
@@ -285,8 +288,3 @@ export function FlightRouteMap({
   );
 }
 
-const styles = StyleSheet.create({
-  fallback: {
-    backgroundColor: "#0a0a0a",
-  },
-});

@@ -9,12 +9,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import {
-  CaretLeft, CaretRight, MapPin, Users, Moon, MapTrifold,
+  CaretLeft, MapPin, Users, Moon, MapTrifold,
   Airplane, Bed, ForkKnife, Car, Compass, Train, Bus, Boat,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, shadow, type ThemeColors } from "@/constants/theme";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
+import { ScalePress } from "@/components/ScalePress";
 import { geocode } from "@/services/geocode";
 import { parseTripDate } from "@/shared/dates";
 import { Logo } from "@/components/Logo";
@@ -45,7 +48,7 @@ const COLLAPSE_END = HERO_H - HEADER_H;
 // Token is set once in app/_layout.tsx before any screen loads.
 let MapboxGL: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   MapboxGL = require("@rnmapbox/maps").default;
 } catch { /* native module not available — map will be hidden */ }
 
@@ -140,10 +143,6 @@ export default function TripScreen() {
     ),
   }));
 
-  // Back button: always visible but adjusts bg
-  const backBtnStyle = useAnimatedStyle(() => ({
-    opacity: 1,
-  }));
   const [mapReady, setMapReady] = useState(false);
   const handleMapLoaded = useCallback(() => setMapReady(true), []);
 
@@ -182,12 +181,12 @@ export default function TripScreen() {
           {!ready ? (
             <>
               <ActivityIndicator size="large" color={C.teal} style={{ marginBottom: S.md }} />
-              <Text style={styles.errorText}>Loading trip...</Text>
+              <Text style={styles.errorText}>Loading trip…</Text>
             </>
           ) : (
             <>
               <Text style={styles.errorText}>Trip not found</Text>
-              <Pressable onPress={safeBack} style={styles.backBtn}>
+              <Pressable onPress={safeBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
                 <Text style={styles.backBtnText}>Go back</Text>
               </Pressable>
             </>
@@ -233,6 +232,8 @@ export default function TripScreen() {
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <CaretLeft size={20} color="#fff" weight="bold" />
             </Pressable>
@@ -253,11 +254,11 @@ export default function TripScreen() {
           <BlurView
             intensity={95}
             tint={isDark ? "dark" : "light"}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         ) : (
-          <View style={[StyleSheet.absoluteFillObject, {
-            backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)",
+          <View style={[StyleSheet.absoluteFill, {
+            backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(245,246,250,0.97)",
           }]} />
         )}
         <View style={styles.stickyInner}>
@@ -278,26 +279,26 @@ export default function TripScreen() {
 
         {/* ── Hero banner — parallax + Apple Zoom target ── */}
         <View style={styles.hero}>
-          <Animated.View style={[StyleSheet.absoluteFillObject, heroImageStyle]}>
+          <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
             {Platform.OS === "ios" && Link.AppleZoomTarget ? (
               <Link.AppleZoomTarget>
-                <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
               </Link.AppleZoomTarget>
             ) : (
-              <CachedImage uri={trip.image} style={StyleSheet.absoluteFillObject} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
             )}
           </Animated.View>
           <LinearGradient
             colors={["rgba(0,0,0,0.2)", "transparent"]}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.5)", "rgba(0,0,0,0.85)"]}
             locations={[0, 0.5, 1]}
             start={{ x: 0.5, y: 0.4 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
 
 
@@ -309,7 +310,7 @@ export default function TripScreen() {
               ) : (
                 <Logo size={10} color={C.teal} />
               )}
-              <Text style={[styles.heroEyebrow, { marginBottom: 0 }]}>{brand.name} · Itinerary</Text>
+              <Text style={styles.heroEyebrow}>{brand.name} · Itinerary</Text>
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
 
@@ -336,7 +337,7 @@ export default function TripScreen() {
                 <Moon size={10} color={C.teal} weight="regular" />
                 <Text style={styles.chipText}>
                   {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {" — "}
+                  {" – "}
                   {end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </Text>
               </View>
@@ -350,7 +351,7 @@ export default function TripScreen() {
           </Animated.View>
         </View>
 
-        {/* ── Organizer contact card ── */}
+        {/* ── Organiser contact card ── */}
         {trip.organizer && <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />}
 
         {/* ── Information & Documents ── */}
@@ -379,17 +380,17 @@ export default function TripScreen() {
               else if (e.nativeEvent.index === 1) Share.share({ message: trip.destination || trip.name });
             }}
           >
-          <Pressable style={styles.mapSection} onPress={openInMaps}>
+          <ScalePress style={styles.mapSection} onPress={openInMaps} accessibilityRole="button" accessibilityLabel="Open location in Maps">
             <View style={styles.sectionHeader}>
               <MapTrifold size={13} color={C.teal} weight="regular" />
-              <Text style={styles.sectionEyebrow}>LOCATION</Text>
+              <MicroLabel>Location</MicroLabel>
               <View style={{ flex: 1 }} />
-              <Text style={[styles.sectionEyebrow, { color: C.teal }]}>Open in Maps ›</Text>
+              <MicroLabel color={C.tealText}>Open in Maps ›</MicroLabel>
             </View>
-            <View style={styles.mapWrap}>
+            <View style={[styles.mapWrap, shadow("card", isDark)]}>
               <MapboxGL.MapView
                 key={isDark ? "dark" : "light"}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
                 styleURL={MAP_STYLE}
                 projection="mercator"
                 scrollEnabled={false}
@@ -423,12 +424,12 @@ export default function TripScreen() {
                 />
                 {mapReady && mapCenter && (
                   <MapboxGL.PointAnnotation id="trip-pin" coordinate={mapCenter}>
-                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#0bd2b5", borderWidth: 2, borderColor: "#fff" }} />
+                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.teal, borderWidth: 2, borderColor: "#fff" }} />
                   </MapboxGL.PointAnnotation>
                 )}
               </MapboxGL.MapView>
             </View>
-          </Pressable>
+          </ScalePress>
           </ContextMenu>
         )}
 
@@ -479,7 +480,7 @@ const DAY_THUMB_ICONS: Record<string, React.ComponentType<any>> = {
   dining: ForkKnife, transfer: Car,
 };
 
-function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linkedTravelerId, showAllEvents, onToggleFilter }: {
+function DayList({ grouped, trip, C, isDark, isLeader, nights, linkedTravelerId, showAllEvents, onToggleFilter }: {
   grouped: Record<string, any[]>;
   trip: { id: string; name: string; events: any[]; paxCount?: string; attendees?: string; travelers?: any[] };
   C: ThemeColors;
@@ -511,20 +512,6 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
   );
   const completed = pastEvents + todayDoneEstimate;
 
-  const dateRange = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-
-  const travelerCount = (() => {
-    if (trip.travelers?.length) return trip.travelers.length;
-    const parsed = parseInt(trip.paxCount || "", 10);
-    if (!isNaN(parsed) && parsed > 0) return parsed;
-    if (trip.attendees) {
-      const moreMatch = trip.attendees.match(/\+(\d+)\s+more/i);
-      const listed = trip.attendees.replace(/\+\d+\s+more/i, "").split(",").filter((s: string) => s.trim()).length;
-      return listed + (moreMatch ? parseInt(moreMatch[1], 10) : 0);
-    }
-    return 0;
-  })();
-
   const toggle = (date: string) => {
     Haptics.selectionAsync();
     setOpenDay(prev => prev === date ? null : date);
@@ -535,12 +522,12 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
       {/* ── Itinerary header ── */}
       <View style={{ paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: S.sm }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: S.sm }}>
-          <Text style={{ fontSize: 10, fontWeight: "700", color: C.textTertiary, letterSpacing: 1.5 }}>ITINERARY</Text>
-          <Text style={{ fontSize: 11, fontWeight: "600", color: C.textDim }}>
+          <MicroLabel>ITINERARY</MicroLabel>
+          <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary }}>
             Day {currentDay} of {totalDays}  ·  {completed}/{totalEvents} done
           </Text>
         </View>
-        <View style={{ height: 3, backgroundColor: isDark ? C.elevated : "#e4e4e7", borderRadius: R.full, overflow: "hidden" }}>
+        <View style={{ height: 3, backgroundColor: C.elevated, borderRadius: R.full, overflow: "hidden" }}>
           <View style={{
             height: 3, backgroundColor: C.teal, borderRadius: R.full,
             width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%` as any,
@@ -553,9 +540,12 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
         <View style={{ paddingHorizontal: S.md, marginBottom: S.sm }}>
           <Pressable
             onPress={() => { onToggleFilter(); Haptics.selectionAsync(); }}
+            accessibilityRole="button"
+            accessibilityLabel={showAllEvents ? "Show only your events" : "Show all events"}
+            accessibilityState={{ selected: !showAllEvents }}
             style={{
-              flexDirection: "row", alignItems: "center", gap: 8,
-              paddingVertical: 8, paddingHorizontal: 12,
+              flexDirection: "row", alignItems: "center", gap: S.xs,
+              paddingVertical: S.xs, paddingHorizontal: S.sm,
               backgroundColor: showAllEvents ? C.elevated : C.tealDim,
               borderRadius: R.full, alignSelf: "flex-start",
             }}
@@ -566,7 +556,7 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
             }} />
             <Text style={{
               fontSize: T.xs, fontWeight: T.bold,
-              color: showAllEvents ? C.textTertiary : C.teal,
+              color: showAllEvents ? C.textTertiary : C.tealText,
               letterSpacing: 0.8, textTransform: "uppercase",
             }}>
               {showAllEvents ? "All events" : "Your events"}
@@ -596,33 +586,35 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
 
           return (
             <View key={date}>
-              <Pressable
+              <ScalePress
                 onPress={() => toggle(date)}
-                style={({ pressed }) => ({
+                accessibilityRole="button"
+                accessibilityLabel={`${weekday} ${fullDate}, ${events.length} event${events.length !== 1 ? "s" : ""}`}
+                accessibilityState={{ expanded: isOpen }}
+                style={{
                   height: 140,
                   borderRadius: R.xl,
                   overflow: "hidden",
-                  opacity: pressed ? 0.9 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                })}
+                  ...shadow("card", isDark),
+                }}
               >
                 {photo ? (
-                  <CachedImage uri={photo} style={StyleSheet.absoluteFillObject} />
+                  <CachedImage uri={photo} style={StyleSheet.absoluteFill} />
                 ) : (
                   <LinearGradient
                     colors={[`hsl(${gradHue}, 35%, ${isDark ? 22 : 55}%)`, `hsl(${(gradHue + 40) % 360}, 30%, ${isDark ? 12 : 40}%)`]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
                 )}
                 {isPast && (
-                  <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
                 )}
                 <LinearGradient
                   colors={["transparent", "rgba(0,0,0,0.7)"]}
                   locations={[0.25, 1]}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                 />
                 {!photo && (
                   <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", opacity: 0.15 }}>
@@ -631,50 +623,43 @@ function DayList({ grouped, trip, C, isDark, isLeader, start, end, nights, linke
                 )}
 
                 <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: S.md }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <Text style={{ fontSize: T.xl, fontWeight: "700", color: "#fff", letterSpacing: -0.2 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S["2xs"] }}>
+                    <Text style={{ fontSize: T.xl, fontWeight: T.bold, color: "#fff", letterSpacing: -0.2 }}>
                       {weekday}
                     </Text>
-                    {isToday && (
-                      <View style={{
-                        paddingHorizontal: 8, paddingVertical: 2, borderRadius: R.full,
-                        backgroundColor: C.teal,
-                      }}>
-                        <Text style={{ fontSize: 9, fontWeight: "800", color: "#000", letterSpacing: 1 }}>TODAY</Text>
-                      </View>
-                    )}
+                    {isToday && <Pill tone="accent" label="TODAY" />}
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs2 }}>
+                      <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.7)" }}>
                         {fullDate}
                       </Text>
-                      <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>·</Text>
-                      <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                      <Text style={{ fontSize: T.sm, color: "rgba(255,255,255,0.35)" }}>·</Text>
+                      <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.7)" }}>
                         {events.length} event{events.length !== 1 ? "s" : ""}
                       </Text>
                       {firstTime && (
                         <>
-                          <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>·</Text>
-                          <Text style={{ fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.7)" }}>
+                          <Text style={{ fontSize: T.sm, color: "rgba(255,255,255,0.35)" }}>·</Text>
+                          <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.7)" }}>
                             {firstTime}
                           </Text>
                         </>
                       )}
                     </View>
                     {icons.length > 0 && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs }}>
                         {icons.map(({ key, Icon, count }) => (
                           <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
                             <Icon size={12} color="rgba(255,255,255,0.6)" weight="regular" />
-                            <Text style={{ fontSize: 10, fontWeight: "600", color: "rgba(255,255,255,0.6)" }}>{count}</Text>
+                            <Text style={{ fontSize: T["2xs"], fontWeight: T.semibold, color: "rgba(255,255,255,0.6)" }}>{count}</Text>
                           </View>
                         ))}
                       </View>
                     )}
                   </View>
                 </View>
-              </Pressable>
+              </ScalePress>
 
               {isOpen && (
                 <View style={{ gap: S.sm, paddingTop: S.xs, paddingBottom: S.xs }}>
@@ -698,7 +683,7 @@ function makeStyles(C: ThemeColors) {
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     backBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
-    backBtnText: { color: C.bg, fontWeight: T.bold, fontSize: T.base },
+    backBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
 
     // Sticky compact header
     stickyHeader: {
@@ -709,10 +694,6 @@ function makeStyles(C: ThemeColors) {
       flex: 1, flexDirection: "row", alignItems: "center",
       paddingHorizontal: S.sm,
     },
-    stickyBackBtn: {
-      width: 44, height: 44, borderRadius: R.full,
-      alignItems: "center", justifyContent: "center",
-    },
     stickyTitle: {
       flex: 1, fontSize: T.base, fontWeight: T.bold,
       textAlign: "center", letterSpacing: -0.2,
@@ -720,23 +701,6 @@ function makeStyles(C: ThemeColors) {
 
     // Hero — parallax
     hero: { height: HERO_H, position: "relative", overflow: "hidden" },
-    backCircle: {
-      width: 44, height: 44,
-      alignItems: "center", justifyContent: "center",
-    },
-
-    heroTopRow: {
-      position: "absolute", left: S.md, right: S.md,
-      flexDirection: "row", alignItems: "center", gap: 8,
-    },
-    countPill: {
-      flexDirection: "row", alignItems: "center", gap: 4,
-      backgroundColor: "rgba(0,0,0,0.35)", borderRadius: R.full,
-      paddingHorizontal: 10, paddingVertical: 5,
-    },
-    countPillText: { fontSize: 10, fontWeight: T.bold, color: "rgba(255,255,255,0.7)", letterSpacing: 0.8 },
-    countPillDot:  { fontSize: 10, color: "rgba(255,255,255,0.3)" },
-
     // Bottom content
     heroContent: {
       position: "absolute", bottom: 0, left: 0, right: 0,
@@ -744,88 +708,41 @@ function makeStyles(C: ThemeColors) {
     },
     heroEyebrow: {
       fontSize: T.xs, fontWeight: T.bold, color: C.teal,
-      letterSpacing: 2, textTransform: "uppercase", marginBottom: 6,
+      letterSpacing: 2, textTransform: "uppercase",
     },
     heroEyebrowRow: {
-      flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6,
+      flexDirection: "row", alignItems: "center", gap: S.xs2, marginBottom: S.xs2,
     },
     heroTitle: {
-      fontSize: T["3xl"] + 4, fontWeight: "700",
-      color: "#ffffff", letterSpacing: -0.3, marginBottom: S.sm, lineHeight: 36,
+      fontSize: T["4xl"], fontFamily: F.extrabold, textTransform: "uppercase",
+      color: "#fff", letterSpacing: 0.3, marginBottom: S.sm, lineHeight: 38,
     },
 
-    // Frosted glass chips — matches web's bg-white/10 backdrop-blur chips
-    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    // Frosted glass chips over the hero photo
+    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs2 },
     chip: {
-      flexDirection: "row", alignItems: "center", gap: 4,
-      backgroundColor: "rgba(255,255,255,0.10)",
-      borderRadius: R.full, paddingHorizontal: 10, paddingVertical: 5,
+      flexDirection: "row", alignItems: "center", gap: S["2xs"],
+      backgroundColor: C.glass,
+      borderWidth: 1, borderColor: C.glassBorder,
+      borderRadius: R.full, paddingHorizontal: S.sm2, paddingVertical: 5,
     },
     chipText: {
-      fontSize: 11, fontWeight: "600",
-      color: "rgba(255,255,255,0.85)", letterSpacing: 0.1,
+      fontSize: T.xs, fontWeight: T.semibold,
+      color: C.textPrimary, letterSpacing: 0.1,
     },
 
     // Map
-    // Compliance badge
-    complianceBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: S.sm,
-      marginHorizontal: S.md,
-      marginTop: S.sm,
-      padding: S.sm,
-      backgroundColor: C.card,
-      borderRadius: R.xl,
-      borderWidth: 1,
-      borderColor: C.amberDim,
-    },
-    complianceIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: R.md,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    complianceTitle: {
-      fontSize: T.sm,
-      fontWeight: T.bold,
-      color: C.textPrimary,
-    },
-    complianceSub: {
-      fontSize: T.xs,
-      color: C.textTertiary,
-      fontWeight: T.medium,
-      marginTop: 1,
-    },
-    complianceCount: {
-      width: 26,
-      height: 26,
-      borderRadius: R.full,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    complianceCountText: {
-      fontSize: T.sm,
-      fontWeight: T.bold,
-    },
-
-    mapSection: { paddingTop: S.md },
+    mapSection: { paddingTop: S.xl },
     mapWrap: {
       height: 240, marginHorizontal: S.md,
       borderRadius: R.xl, overflow: "hidden",
       backgroundColor: C.card,
     },
-    mapFade: { position: "absolute", bottom: 0, left: 0, right: 0, height: 60 },
 
     // Section headers
     sectionHeader: {
-      flexDirection: "row", alignItems: "center", gap: 8,
-      paddingHorizontal: S.md, paddingTop: S.xl, paddingBottom: S.sm,
-    },
-    sectionEyebrow: {
-      fontSize: 10, fontWeight: T.semibold, color: C.textTertiary,
-      letterSpacing: 1.8,
+      flexDirection: "row", alignItems: "center", gap: S.xs,
+      paddingHorizontal: S.md, paddingBottom: S.sm,
     },
 
     // Itinerary

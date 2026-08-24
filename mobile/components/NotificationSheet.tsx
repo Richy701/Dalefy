@@ -15,7 +15,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { DragHandle } from "@/components/ui/DragHandle";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { MicroLabel } from "@/components/ui/MicroLabel";
 import type { Notification } from "@/shared/types";
+
+const ON_RED = "#fff";
 
 interface Props {
   visible: boolean;
@@ -59,8 +64,6 @@ function groupNotifications(notifs: Notification[]): Section[] {
 }
 
 /* ── Icon config by notification type ── */
-
-const NAVIGABLE_TYPES = new Set(["flight", "landed", "boarding", "hotel", "dining", "activity", "transfer", "warning"]);
 
 function getNotifIcon(n: { type: string; message: string }, C: ThemeColors) {
   const msg = n.message.toLowerCase();
@@ -116,7 +119,7 @@ export function NotificationSheet({ visible, onClose }: Props) {
       <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         {/* Native drag indicator */}
-        <View style={styles.dragBar} />
+        <DragHandle />
 
         {/* Header */}
         <View style={styles.header}>
@@ -125,16 +128,18 @@ export function NotificationSheet({ visible, onClose }: Props) {
               <Pressable
                 onPress={() => { haptic.light(); markAllRead(); }}
                 style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
+                hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Mark all as read"
+                accessibilityLabel="Mark all read"
               >
-                <Text style={styles.readAllLabel}>Read all</Text>
+                <Text style={styles.readAllLabel}>Mark all read</Text>
               </Pressable>
             )}
             {notifications.length > 0 && unreadCount === 0 && (
               <Pressable
                 onPress={() => { haptic.light(); clearAll(); }}
                 style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
+                hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Clear all"
               >
@@ -148,7 +153,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
           <View style={[styles.headerSide, { justifyContent: "flex-end" }]}>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, paddingVertical: 4, paddingLeft: 8 })}
+              style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
+              hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
@@ -169,13 +175,12 @@ export function NotificationSheet({ visible, onClose }: Props) {
         {/* Grouped list */}
         {notifications.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <View style={styles.emptyIcon}>
-              <Check size={26} color={C.teal} weight="regular" />
-            </View>
-            <Text style={styles.emptyTitle}>You're all caught up</Text>
-            <Text style={styles.emptyDesc}>
-              New trip updates, reminders, and alerts will appear here.
-            </Text>
+            <EmptyState
+              compact
+              icon={<Check size={26} color={C.teal} weight="regular" />}
+              title="You're all caught up"
+              message="New trip updates, reminders, and alerts will appear here."
+            />
           </View>
         ) : (
           <SectionList
@@ -184,7 +189,7 @@ export function NotificationSheet({ visible, onClose }: Props) {
             stickySectionHeadersEnabled
             renderSectionHeader={({ section }) => (
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionLabel}>{section.label}</Text>
+                <MicroLabel>{section.label}</MicroLabel>
               </View>
             )}
             renderItem={({ item }) => (
@@ -231,33 +236,37 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
       <View style={[styles.swipeActions, { width: actionWidth }]}>
         {!n.read && (
           <Pressable
-            style={[styles.swipeBtn, { backgroundColor: isDark ? "#3f3f46" : "#d4d4d8" }]}
+            style={[styles.swipeBtn, { backgroundColor: C.toggleTrack }]}
             onPress={() => { swipeRef.current?.close(); onMarkRead(); }}
+            accessibilityRole="button"
+            accessibilityLabel="Mark read"
           >
-            <Check size={16} color={isDark ? "#e4e4e7" : "#3f3f46"} weight="bold" />
-            <Text style={[styles.swipeBtnLabel, { color: isDark ? "#e4e4e7" : "#3f3f46" }]}>Read</Text>
+            <Check size={16} color={C.textPrimary} weight="bold" />
+            <Text style={[styles.swipeBtnLabel, { color: C.textPrimary }]}>Mark read</Text>
           </Pressable>
         )}
         <Pressable
           style={[styles.swipeBtn, { backgroundColor: C.red }]}
           onPress={() => { swipeRef.current?.close(); onRemove(); }}
+          accessibilityRole="button"
+          accessibilityLabel="Delete notification"
         >
-          <Trash size={16} color="#fff" weight="regular" />
-          <Text style={[styles.swipeBtnLabel, { color: "#fff" }]}>Delete</Text>
+          <Trash size={16} color={ON_RED} weight="regular" />
+          <Text style={[styles.swipeBtnLabel, { color: ON_RED }]}>Delete</Text>
         </Pressable>
       </View>
     );
   }, [n.read, C, isDark, styles, onMarkRead, onRemove, actionWidth]);
 
   const contextActions = [
-    ...(!n.read ? [{ title: "Mark as Read", systemIcon: "checkmark.circle" }] : []),
+    ...(!n.read ? [{ title: "Mark read", systemIcon: "checkmark.circle" }] : []),
     ...(navigable ? [{ title: "View Trip", systemIcon: "airplane" }] : []),
     { title: "Delete", systemIcon: "trash", destructive: true },
   ];
 
   const handleContextAction = useCallback((e: any) => {
     const action = e.nativeEvent.name;
-    if (action === "Mark as Read") onMarkRead();
+    if (action === "Mark read") onMarkRead();
     if (action === "View Trip") onPress();
     if (action === "Delete") onRemove();
   }, [onMarkRead, onPress, onRemove]);
@@ -279,6 +288,8 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
         >
           <Pressable
             onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={n.detail ? `${n.message}. ${n.detail}` : n.message}
             style={({ pressed }) => [
               styles.item,
               !n.read && styles.itemUnread,
@@ -291,7 +302,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
 
               {/* Type icon */}
               <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-                <Icon size={18} color={color} weight="duotone" />
+                <Icon size={18} color={color} weight="regular" />
               </View>
 
               <View style={styles.itemContent}>
@@ -313,7 +324,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
 
               {navigable && (
                 <View style={styles.chevronWrap}>
-                  <CaretRight size={14} color={C.textDim} weight="bold" />
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
                 </View>
               )}
             </View>
@@ -327,16 +338,6 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
 function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg, overflow: "hidden" as const },
-
-    dragBar: {
-      width: 36,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: C.border,
-      alignSelf: "center",
-      marginTop: 8,
-      marginBottom: 4,
-    },
 
     // Header
     header: {
@@ -353,26 +354,26 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       minWidth: 44,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: "700",
+      fontSize: T.lg,
+      fontWeight: T.bold,
       color: C.textPrimary,
       letterSpacing: -0.2,
       textAlign: "center",
       flex: 1,
     },
     headerTextBtn: {
-      paddingVertical: 4,
-      paddingHorizontal: 4,
+      paddingVertical: S["2xs"],
+      paddingHorizontal: S["2xs"],
     },
     readAllLabel: {
       fontSize: T.xs,
-      fontWeight: "500",
+      fontWeight: T.medium,
       color: C.textSecondary,
     },
     doneText: {
       fontSize: T.base,
-      fontWeight: "700",
-      color: C.teal,
+      fontWeight: T.bold,
+      color: C.tealText,
     },
 
     // Count subtitle
@@ -382,38 +383,31 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     countText: {
       fontSize: T.xs,
-      fontWeight: "500",
+      fontWeight: T.medium,
       color: C.textTertiary,
     },
 
     // Section headers
     sectionHeader: {
       paddingHorizontal: S.md,
-      paddingTop: 14,
-      paddingBottom: 6,
+      paddingTop: S.md,
+      paddingBottom: S.xs2,
       backgroundColor: C.bg,
-    },
-    sectionLabel: {
-      fontSize: 10,
-      fontWeight: "700",
-      color: C.textTertiary,
-      textTransform: "uppercase",
-      letterSpacing: 1.2,
     },
 
     // List
-    list: { paddingHorizontal: S.xs, paddingBottom: 40 },
+    list: { paddingHorizontal: S.md, paddingBottom: S["2xl"] },
 
     // Swipe container
     swipeContainer: {
       borderRadius: R.lg,
       overflow: "hidden" as const,
-      marginBottom: 6,
+      marginBottom: S.xs2,
     },
 
     // Opaque base
     itemOpaqueBase: {
-      backgroundColor: isDark ? C.card : C.card,
+      backgroundColor: C.card,
       borderRadius: R.lg,
       overflow: "hidden" as const,
     },
@@ -423,13 +417,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       position: "relative" as const,
       paddingLeft: S.md,
       paddingRight: S.sm,
-      paddingVertical: 14,
+      paddingVertical: S.sm,
     },
     itemUnread: {
       backgroundColor: isDark ? `${C.teal}14` : `${C.teal}18`,
     },
     itemPressed: {
-      backgroundColor: isDark ? C.elevated : C.elevated,
+      backgroundColor: C.elevated,
     },
     accentBar: {
       position: "absolute" as const,
@@ -442,12 +436,12 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     itemRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: S.sm,
     },
     iconWrap: {
       width: 38,
       height: 38,
-      borderRadius: 12,
+      borderRadius: R.md,
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
@@ -456,16 +450,16 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: 8,
+      gap: S.xs,
     },
     itemMessage: {
       fontSize: T.sm + 1,
-      fontWeight: "600",
+      fontWeight: T.semibold,
       color: C.textPrimary,
       flex: 1,
     },
     itemMessageRead: {
-      fontWeight: "400",
+      fontWeight: T.regular,
       color: C.textSecondary,
     },
     itemDetail: {
@@ -477,12 +471,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       color: C.textTertiary,
     },
     itemTime: {
-      fontSize: 10,
-      fontWeight: "500",
+      fontSize: T["2xs"],
+      fontWeight: T.medium,
       color: C.textTertiary,
     },
     chevronWrap: {
-      paddingLeft: 2,
+      paddingLeft: S["2xs"],
+      alignSelf: "center" as const,
     },
 
     // Swipe actions
@@ -496,12 +491,12 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center",
       justifyContent: "center",
       borderRadius: R.lg,
-      marginLeft: 4,
+      marginLeft: S["2xs"],
       gap: 3,
     },
     swipeBtnLabel: {
-      fontSize: 9,
-      fontWeight: "600",
+      fontSize: T["2xs"],
+      fontWeight: T.semibold,
     },
 
     // Empty state
@@ -509,30 +504,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      paddingBottom: 60,
-      gap: 8,
-    },
-    emptyIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: isDark ? `${C.teal}14` : `${C.teal}12`,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 8,
-    },
-    emptyTitle: {
-      fontSize: T.base,
-      fontWeight: "700",
-      color: C.textPrimary,
-      letterSpacing: -0.3,
-    },
-    emptyDesc: {
-      fontSize: T.sm,
-      color: C.textTertiary,
-      textAlign: "center",
-      maxWidth: 240,
-      lineHeight: 20,
+      paddingBottom: S["2xl"],
+      gap: S.xs,
     },
   });
 }

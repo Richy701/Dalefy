@@ -8,13 +8,7 @@ import {
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity } from "expo-widgets";
-
-type LiveActivityEnvironment = {
-  colorScheme: "light" | "dark";
-  isLuminanceReduced?: boolean;
-  isActivityFullscreen?: boolean;
-  activityFamily?: "small" | "medium";
-};
+import type { SFSymbols7_0 } from "sf-symbols-typescript";
 
 export type UpcomingEventProps = {
   title: string;
@@ -34,8 +28,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 function UpcomingEventActivity(
-  props: UpcomingEventProps,
-  environment: LiveActivityEnvironment
+  props: UpcomingEventProps
 ) {
   "widget";
 
@@ -44,7 +37,7 @@ function UpcomingEventActivity(
   const hierarchicalSecondary = { type: "hierarchical" as const, style: "secondary" as const };
 
   const typeLabel = props.type.charAt(0).toUpperCase() + props.type.slice(1);
-  const icon = props.icon || TYPE_ICONS[props.type] || "calendar";
+  const icon = (props.icon || TYPE_ICONS[props.type] || "calendar") as SFSymbols7_0;
 
   // ── Banner (Lock Screen) — this is the main view, give it room ──
   const banner = (

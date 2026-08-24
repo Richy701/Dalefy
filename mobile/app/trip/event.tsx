@@ -9,7 +9,7 @@ import { FlightRouteMap } from "@/components/FlightRouteMap";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  Airplane, AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
+  AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
   MapPin, Clock, Hash, FileText,
   Calendar, Users, ArrowRight, Copy, CaretRight, CaretLeft,
   AirplaneTakeoff, AirplaneLanding, Timer, Armchair, Door,
@@ -21,13 +21,19 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, shadow, statusTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS } from "@/shared/coordinates";
 import { useMemo, useCallback, useState } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { StatusIndicator } from "@/components/StatusIndicator";
+import { Pill } from "@/components/ui/Pill";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+
+// Airline logo plate stays white in both themes so carrier marks render as designed
+const LOGO_PLATE = "#fff";
+const LOGO_INK = "#111";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -40,13 +46,6 @@ function openInMaps(location: string, coords?: [number, number]) {
   } else {
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`);
   }
-}
-
-function formatDate(d: string): string {
-  const raw = d.includes("T") ? d : d + "T12:00:00";
-  const date = new Date(raw);
-  if (isNaN(date.getTime())) return d;
-  return date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 }
 
 function formatShortDate(d: string): string {
@@ -267,20 +266,19 @@ function cleanEventTitle(title: string, type: string, transferType?: string): st
   return title;
 }
 
-function eventStatusPill(status: string | undefined, C: ThemeColors, eventDate?: string) {
+function eventStatus(status: string | undefined, C: ThemeColors, eventDate?: string) {
   const s = (status || "confirmed").toLowerCase();
-  if (s.includes("cancel")) return { color: C.red, bg: C.redDim, border: "rgba(239,68,68,0.25)", label: "Cancelled", state: "destructive" as const };
-  if (s.includes("delay")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Delayed", state: "warning" as const };
-  if (s.includes("pend") || s.includes("hold")) return { color: C.amber, bg: C.amberDim, border: "rgba(245,158,11,0.25)", label: "Pending", state: "warning" as const };
-  if (s.includes("done") || s.includes("complet")) return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done", state: "past" as const };
-  if (eventDate && new Date(eventDate + "T23:59:59").getTime() < Date.now()) {
-    return { color: C.textDim, bg: C.elevated, border: C.border, label: "Done", state: "past" as const };
-  }
-  return { color: C.teal, bg: C.tealDim, border: C.tealMid, label: "Confirmed", state: "upcoming" as const };
+  const isPast = !!eventDate && new Date(eventDate + "T23:59:59").getTime() < Date.now();
+  const pick = (key: string, label: string, state: "destructive" | "warning" | "past" | "upcoming") =>
+    ({ ...statusTone(key, C), label, state });
+  if (s.includes("cancel")) return pick("cancelled", "Cancelled", "destructive");
+  if (s.includes("delay")) return pick("delayed", "Delayed", "warning");
+  if (s.includes("pend") || s.includes("hold")) return pick("pending", "Pending", "warning");
+  if (s.includes("done") || s.includes("complet") || isPast) return pick("past", "Done", "past");
+  return pick("confirmed", "Confirmed", "upcoming");
 }
 
 function parseDocFilename(filename: string, size: number) {
-  const ext = filename.match(/\.[^.]+$/)?.[0] || "";
   const base = filename.replace(/\.[^.]+$/, "");
   const match = base.match(/^([A-Za-z]+)(\d+)\s+(\d{1,2})([A-Za-z]+)(\d{4})/);
   if (match) {
@@ -294,8 +292,6 @@ function formatFileSize(bytes: number): string {
   const kb = Math.max(1, Math.round(bytes / 1024));
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
 }
-
-const MONO = Platform.OS === "ios" ? "Menlo" : "monospace";
 
 // ── Main Screen ─────────────────────────────────────────────────────────────
 
@@ -321,7 +317,7 @@ export default function EventDetailScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.errorText}>Event not found</Text>
-          <Pressable onPress={safeBack} style={styles.errorBtn}>
+          <Pressable onPress={safeBack} style={styles.errorBtn} accessibilityRole="button" accessibilityLabel="Go back">
             <Text style={styles.errorBtnText}>Go back</Text>
           </Pressable>
         </View>
@@ -340,7 +336,7 @@ export default function EventDetailScreen() {
   const title = cleanEventTitle(ev.title, ev.type, ev.transferType);
   const isHotel = ev.type === "hotel";
 
-  const sp = eventStatusPill(ev.status, C, ev.date);
+  const sp = eventStatus(ev.status, C, ev.date);
   const hasCoords = !!ev.locationCoords;
   const hasDocs = (ev.documents?.length ?? 0) > 0;
   const showActionBar = hasCoords || hasDocs;
@@ -379,6 +375,8 @@ export default function EventDetailScreen() {
               onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <CaretLeft size={20} color="#fff" weight="bold" />
             </Pressable>
@@ -404,44 +402,58 @@ export default function EventDetailScreen() {
             colors={["rgba(0,0,0,0.2)", "transparent"]}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.5)"]}
             locations={[0, 1]}
             start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
         </View>
 
         {/* Type badge + title — below the photo */}
         <View style={styles.px}>
-          <View style={[styles.typePill, { backgroundColor: C.tealDim, borderColor: C.tealMid }]}>
-            <Icon size={11} color={C.teal} weight="bold" />
-            <Text style={[styles.typePillText, { color: C.teal }]}>{typeLabel.toUpperCase()}</Text>
-          </View>
+          <Pill
+            tone="custom"
+            bg={C.tealDim}
+            color={C.tealText}
+            icon={<Icon size={11} color={C.teal} weight="bold" />}
+            label={typeLabel.toUpperCase()}
+            style={styles.typePill}
+          />
           <Text style={[styles.titleBelow, { color: C.textPrimary }]} numberOfLines={3}>{title}</Text>
         </View>
 
         {/* Pill row: Status + Date + Time */}
         <Animated.View entering={FadeInDown.delay(50).duration(300)} style={styles.chipWrap}>
-          <View style={[styles.statusChip, { backgroundColor: sp.bg, borderColor: sp.border }]}>
-            <StatusIndicator state={sp.state} size={10} color={sp.color} />
-            <Text style={[styles.statusChipText, { color: sp.color }]}>{sp.label}</Text>
-          </View>
+          <Pill
+            tone="custom"
+            bg={sp.bg}
+            color={sp.text}
+            icon={<StatusIndicator state={sp.state} size={10} color={sp.color} />}
+            label={sp.label}
+            style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: sp.border }}
+          />
           {ev.date && (
-            <View style={[styles.chip, { backgroundColor: C.card }]}>
-              <Calendar size={12} color={C.teal} weight="regular" />
-              <Text style={[styles.chipText, { color: C.textPrimary }]}>{formatShortDate(ev.date)}</Text>
-            </View>
+            <Pill
+              tone="custom"
+              bg={C.card}
+              color={C.textPrimary}
+              icon={<Calendar size={12} color={C.teal} weight="regular" />}
+              label={formatShortDate(ev.date)}
+            />
           )}
           {!(isHotel && ev.isOvernight) && ev.time && (
-            <View style={[styles.chip, { backgroundColor: C.card }]}>
-              <Clock size={12} color={C.teal} weight="regular" />
-              <Text style={[styles.chipText, { color: C.textPrimary }]}>{ev.time}{ev.endTime ? ` - ${ev.endTime}` : ""}</Text>
-            </View>
+            <Pill
+              tone="custom"
+              bg={C.card}
+              color={C.textPrimary}
+              icon={<Clock size={12} color={C.teal} weight="regular" />}
+              label={`${ev.time}${ev.endTime ? ` – ${ev.endTime}` : ""}`}
+            />
           )}
         </Animated.View>
 
@@ -450,7 +462,9 @@ export default function EventDetailScreen() {
           <Animated.View entering={FadeInDown.delay(100).duration(300)}>
             <Pressable
               onPress={() => openInMaps(ev.location, ev.locationCoords)}
-              style={({ pressed }) => [styles.locationCard, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Open location in Maps"
+              style={({ pressed }) => [styles.locationCard, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }, shadow("card", isDark)]}
             >
               <View style={[styles.locationIcon, { backgroundColor: C.tealDim }]}>
                 <MapPin size={18} color={C.teal} weight="regular" />
@@ -459,7 +473,7 @@ export default function EventDetailScreen() {
                 <Text style={[styles.locationLabel, { color: C.textTertiary }]}>Location</Text>
                 <Text style={[styles.locationValue, { color: C.textPrimary }]} numberOfLines={3}>{ev.location}</Text>
               </View>
-              <CaretRight size={14} color={C.textDim} weight="regular" style={{ flexShrink: 0 }} />
+              <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ flexShrink: 0, alignSelf: "center" }} />
             </Pressable>
           </Animated.View>
         )}
@@ -467,7 +481,7 @@ export default function EventDetailScreen() {
         {/* Hotel check-in/out */}
         {isHotel && !ev.isOvernight && (ev.time || ev.endTime) && (
           <Animated.View entering={FadeInDown.delay(150).duration(300)}>
-            <View style={[styles.checkCard, { backgroundColor: C.card }]}>
+            <View style={[styles.checkCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
               {ev.time && (
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.checkLabel, { color: C.textTertiary }]}>CHECK IN</Text>
@@ -487,13 +501,15 @@ export default function EventDetailScreen() {
 
         {/* Details list */}
         {detailRows.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(200).duration(300)} style={[styles.infoCard, { backgroundColor: C.card, padding: 0 }]}>
+          <Animated.View entering={FadeInDown.delay(200).duration(300)} style={[styles.infoCard, { backgroundColor: C.card, padding: 0 }, shadow("card", isDark)]}>
             {detailRows.map((row, i) => {
               const RowIcon = row.icon;
               return (
                 <Pressable
                   key={i}
                   onPress={row.onPress}
+                  accessibilityRole={row.onPress ? "button" : undefined}
+                  accessibilityLabel={row.onPress ? `Copy ${row.label}` : undefined}
                   style={[
                     styles.detailListRow,
                     i < detailRows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
@@ -502,7 +518,7 @@ export default function EventDetailScreen() {
                   <RowIcon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
                   <Text style={[styles.detailListLabel, { color: C.textTertiary, minWidth: 90 }]}>{row.label}</Text>
                   <Text style={[styles.detailListValue, { color: C.textPrimary, flex: 1 }]}>{row.value}</Text>
-                  {row.onPress && <Copy size={12} color={C.textDim} weight="light" style={{ marginLeft: 6 }} />}
+                  {row.onPress && <Copy size={12} color={C.textTertiary} weight="light" style={{ marginLeft: S.xs2 }} />}
                 </Pressable>
               );
             })}
@@ -511,8 +527,8 @@ export default function EventDetailScreen() {
 
         {/* Notes / description — single section, no double label */}
         {(ev.description || ev.notes) && (
-          <Animated.View entering={FadeInDown.delay(250).duration(300)} style={[styles.infoCard, { backgroundColor: C.card }]}>
-            <Text style={[styles.sectionLabel, { color: C.textDim }]}>NOTES</Text>
+          <Animated.View entering={FadeInDown.delay(250).duration(300)} style={[styles.infoCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
+            <MicroLabel style={{ marginBottom: S.sm }}>Notes</MicroLabel>
             {ev.description && (
               <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{ev.description}</Text>
             )}
@@ -525,9 +541,9 @@ export default function EventDetailScreen() {
 
         {/* Documents */}
         {hasDocs && (
-          <Animated.View entering={FadeInDown.delay(300).duration(300)} style={[styles.infoCard, { backgroundColor: C.card, padding: 0 }]}>
-            <View style={{ paddingHorizontal: S.lg, paddingTop: S.lg, paddingBottom: S.xs }}>
-              <Text style={[styles.sectionLabel, { color: C.textDim }]}>DOCUMENTS</Text>
+          <Animated.View entering={FadeInDown.delay(300).duration(300)} style={[styles.infoCard, { backgroundColor: C.card, padding: 0 }, shadow("card", isDark)]}>
+            <View style={{ paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs }}>
+              <MicroLabel>Documents</MicroLabel>
             </View>
             {ev.documents!.map((doc, i) => {
               const parsed = parseDocFilename(doc.name, doc.size);
@@ -535,6 +551,8 @@ export default function EventDetailScreen() {
                 <Pressable
                   key={doc.id}
                   onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open document ${parsed.label}`}
                   style={({ pressed }) => [
                     styles.detailListRow,
                     { backgroundColor: pressed ? C.elevated : "transparent" },
@@ -546,11 +564,11 @@ export default function EventDetailScreen() {
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{parsed.label}</Text>
-                    <Text style={[styles.docMeta, { color: C.textDim }]}>
+                    <Text style={[styles.docMeta, { color: C.textTertiary }]}>
                       {parsed.date ? `${parsed.date} · ` : ""}{parsed.size}
                     </Text>
                   </View>
-                  <CaretRight size={14} color={C.textDim} weight="regular" />
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                 </Pressable>
               );
             })}
@@ -571,14 +589,18 @@ export default function EventDetailScreen() {
               <>
                 <Pressable
                   onPress={() => openInMaps(ev.location, ev.locationCoords)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open in Maps"
                   style={({ pressed }) => [styles.primaryBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1, flex: 1 }]}
                 >
-                  <MapPin size={16} color="#000" weight="bold" />
+                  <MapPin size={16} color={C.onAccent} weight="bold" />
                   <Text style={styles.primaryBtnText}>Open in Maps</Text>
                 </Pressable>
                 {hasDocs && (
                   <Pressable
                     onPress={() => ev.documents?.[0] && openDocument(ev.documents[0].url, ev.documents[0].name).catch(() => {})}
+                    accessibilityRole="button"
+                    accessibilityLabel="View documents"
                     style={({ pressed }) => [styles.secondaryBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
                   >
                     <FileText size={18} color={C.teal} weight="regular" />
@@ -588,10 +610,12 @@ export default function EventDetailScreen() {
             ) : hasDocs ? (
               <Pressable
                 onPress={() => ev.documents?.[0] && openDocument(ev.documents[0].url, ev.documents[0].name).catch(() => {})}
+                accessibilityRole="button"
+                accessibilityLabel="View documents"
                 style={({ pressed }) => [styles.primaryBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1, flex: 1 }]}
               >
-                <FileText size={16} color="#000" weight="bold" />
-                <Text style={styles.primaryBtnText}>View Documents</Text>
+                <FileText size={16} color={C.onAccent} weight="bold" />
+                <Text style={styles.primaryBtnText}>View documents</Text>
               </Pressable>
             ) : null}
           </View>
@@ -605,12 +629,11 @@ export default function EventDetailScreen() {
 // ── Flight Detail Screen ────────────────────────────────────────────────────
 
 function TbaText({ C }: { C: ThemeColors }) {
-  return <Text style={{ color: C.textDim, fontSize: T.sm, fontWeight: T.semibold }}>TBA</Text>;
+  return <Text style={{ color: C.textTertiary, fontSize: T.sm, fontWeight: T.semibold }}>TBA</Text>;
 }
 
-
 function FlightDetailScreen({
-  ev, trip, C, isDark, isLeader, insets, router, safeBack,
+  ev, C, isDark, isLeader, insets, safeBack,
 }: {
   ev: TravelEvent;
   trip: any;
@@ -687,13 +710,10 @@ function FlightDetailScreen({
     const d = new Date(ev.date + "T23:59:59");
     return d.getTime() < Date.now();
   }, [ev.date]);
-  const statusColor = statusLower.includes("cancel") ? "#ef4444"
-    : statusLower.includes("delay") ? "#f59e0b" : "#22c55e";
-  const statusBg = statusLower.includes("cancel") ? "rgba(239,68,68,0.12)"
-    : statusLower.includes("delay") ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)";
   const statusLabel = statusLower.includes("cancel") ? "Cancelled"
     : statusLower.includes("delay") ? "Delayed"
     : (statusLower.includes("land") || statusLower.includes("arrived") || isPast) ? "Landed" : "On Time";
+  const tone = statusTone(statusLabel, C);
 
   const copyConf = () => {
     if (ev.confNumber) {
@@ -722,6 +742,8 @@ function FlightDetailScreen({
               onPress={safeBack}
               style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)", alignItems: "center", justifyContent: "center", marginLeft: 4 }}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <CaretLeft size={22} color={isDark ? "#fff" : "#000"} weight="regular" />
             </Pressable>
@@ -748,7 +770,7 @@ function FlightDetailScreen({
               />
             ) : (
               <View style={{ height: 320, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-                <AirplaneTilt size={48} color={C.textDim} weight="thin" />
+                <AirplaneTilt size={48} color={C.textTertiary} weight="thin" />
               </View>
             )}
 
@@ -756,18 +778,10 @@ function FlightDetailScreen({
             {(distance || bearing !== null) && (
               <View style={fs.mapStatsRow}>
                 {distance ? (
-                  <View style={[fs.mapStatPill, { backgroundColor: isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)" }]}>
-                    <Text style={[fs.mapStat, { color: isDark ? C.textSecondary : C.textTertiary }]}>
-                      {distance.toLocaleString()} km
-                    </Text>
-                  </View>
+                  <Pill tone="custom" bg={C.glass} color={C.textSecondary} label={`${distance.toLocaleString()} km`} />
                 ) : null}
                 {bearing !== null ? (
-                  <View style={[fs.mapStatPill, { backgroundColor: isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)" }]}>
-                    <Text style={[fs.mapStat, { color: isDark ? C.textSecondary : C.textTertiary }]}>
-                      {Math.round(bearing)}° {bearingLabel(bearing)}
-                    </Text>
-                  </View>
+                  <Pill tone="custom" bg={C.glass} color={C.textSecondary} label={`${Math.round(bearing)}° ${bearingLabel(bearing)}`} />
                 ) : null}
               </View>
             )}
@@ -775,7 +789,7 @@ function FlightDetailScreen({
 
           <View style={fs.body}>
             {/* 2. Airline row */}
-            <Animated.View entering={FadeInDown.delay(20).duration(400)} style={fs.airlineRow}>
+            <Animated.View entering={FadeInDown.delay(20).duration(300)} style={fs.airlineRow}>
               <View style={fs.airlineTile}>
                 {airlineIata && !logoError ? (
                   <Image
@@ -801,10 +815,10 @@ function FlightDetailScreen({
             </Animated.View>
 
             {/* 3. Route header */}
-            <Animated.View entering={FadeInDown.delay(50).duration(400)}>
+            <Animated.View entering={FadeInDown.delay(50).duration(300)}>
               <Text style={[fs.routeTitle, { color: C.textPrimary }]}>
                 {depCity || depCode || "---"}
-                <Text style={{ color: C.teal }}> → </Text>
+                <Text style={{ color: C.tealText }}> → </Text>
                 {arrCity || arrCode || "---"}
               </Text>
               <Text style={[fs.routeSub, { color: C.textTertiary }]}>
@@ -813,38 +827,44 @@ function FlightDetailScreen({
             </Animated.View>
 
             {/* 4. Status pills */}
-            <Animated.View entering={FadeInDown.delay(100).duration(400)} style={fs.pillRow}>
+            <Animated.View entering={FadeInDown.delay(100).duration(300)} style={fs.pillRow}>
               {ev.status && (
-                <View style={[fs.pill, { backgroundColor: statusBg }]}>
-                  <StatusIndicator
-                    state={
-                      statusLabel === "Cancelled" ? "destructive"
-                      : statusLabel === "Delayed" ? "warning"
-                      : statusLabel === "Landed" ? "completed"
-                      : "upcoming"
-                    }
-                    size={10}
-                    color={statusColor}
-                  />
-                  <Text style={[fs.pillText, { color: statusColor }]}>{statusLabel}</Text>
-                </View>
+                <Pill
+                  tone="custom"
+                  bg={tone.bg}
+                  color={tone.text}
+                  icon={
+                    <StatusIndicator
+                      state={
+                        statusLabel === "Cancelled" ? "destructive"
+                        : statusLabel === "Delayed" ? "warning"
+                        : statusLabel === "Landed" ? "completed"
+                        : "upcoming"
+                      }
+                      size={10}
+                      color={tone.color}
+                    />
+                  }
+                  label={statusLabel}
+                />
               )}
               {countdown && (
-                <View style={[fs.pill, { backgroundColor: C.elevated }]}>
-                  <StatusIndicator state="upcoming" size={12} color={C.textSecondary} />
-                  <Text style={[fs.pillText, { color: C.textSecondary }]}>Departs in {countdown}</Text>
-                </View>
+                <Pill
+                  tone="neutral"
+                  icon={<StatusIndicator state="upcoming" size={12} color={C.textSecondary} />}
+                  label={`Departs in ${countdown}`}
+                />
               )}
             </Animated.View>
 
             {/* 5. Times card */}
-            <Animated.View entering={FadeInDown.delay(150).duration(400)} style={[fs.card, { backgroundColor: C.card }]}>
+            <Animated.View entering={FadeInDown.delay(150).duration(300)} style={[fs.card, { backgroundColor: C.card }, shadow("card", isDark)]}>
               <View style={fs.timesRow}>
                 {/* Departure */}
                 <View style={{ flex: 1 }}>
                   <Text style={[fs.bigTime, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
                   {depTz && (
-                    <Text style={[fs.tzLabel, { color: C.textDim }]}>
+                    <Text style={[fs.tzLabel, { color: C.textTertiary }]}>
                       {depTz.abbr ? `${depTz.abbr} · ${depTz.offset}` : depTz.offset}
                     </Text>
                   )}
@@ -872,12 +892,12 @@ function FlightDetailScreen({
                     <Text style={[fs.bigTime, { color: C.textPrimary }]}>{arrTime || "--:--"}</Text>
                     {dayOffset > 0 && (
                       <View style={[fs.plusOneBadge, { backgroundColor: C.tealDim }]}>
-                        <Text style={[fs.plusOneText, { color: C.teal }]}>+{dayOffset}</Text>
+                        <Text style={[fs.plusOneText, { color: C.tealText }]}>+{dayOffset}</Text>
                       </View>
                     )}
                   </View>
                   {arrTz && (
-                    <Text style={[fs.tzLabel, { color: C.textDim }]}>
+                    <Text style={[fs.tzLabel, { color: C.textTertiary }]}>
                       {arrTz.abbr ? `${arrTz.abbr} · ${arrTz.offset}` : arrTz.offset}
                     </Text>
                   )}
@@ -890,18 +910,18 @@ function FlightDetailScreen({
               {ev.date && (
                 <View style={[fs.dateRow, { borderTopColor: C.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[fs.dateColLabel, { color: C.textDim }]}>DEPARTURE</Text>
+                    <Text style={[fs.dateColLabel, { color: C.textTertiary }]}>DEPARTURE</Text>
                     <Text style={[fs.dateText, { color: C.textTertiary }]}>{formatShortDate(ev.date)}</Text>
                   </View>
                   <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    <Text style={[fs.dateColLabel, { color: C.textDim }]}>ARRIVAL</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={[fs.dateColLabel, { color: C.textTertiary }]}>ARRIVAL</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs2 }}>
                       <Text style={[fs.dateText, { color: C.textTertiary }]}>
                         {formatShortDate(arrivalDate)}
                       </Text>
                       {dayOffset > 0 && (
                         <View style={[fs.plusOneBadge, { backgroundColor: C.tealDim }]}>
-                          <Text style={[fs.plusOneText, { color: C.teal }]}>+{dayOffset}</Text>
+                          <Text style={[fs.plusOneText, { color: C.tealText }]}>+{dayOffset}</Text>
                         </View>
                       )}
                     </View>
@@ -911,51 +931,51 @@ function FlightDetailScreen({
             </Animated.View>
 
             {/* 6. Terminal pair */}
-            <Animated.View entering={FadeInDown.delay(200).duration(400)} style={fs.termRow}>
-              <View style={[fs.termCard, { backgroundColor: C.card }]}>
+            <Animated.View entering={FadeInDown.delay(200).duration(300)} style={fs.termRow}>
+              <View style={[fs.termCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
                 <View style={fs.termHeader}>
                   <AirplaneTakeoff size={13} color={C.teal} weight="bold" />
                   <Text style={[fs.termHeaderText, { color: C.textTertiary }]}>DEPARTURE</Text>
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Terminal</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Terminal</Text>
                   {(live?.terminal || ev.terminal) ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{(live?.terminal || ev.terminal || "").replace(/^T/i, "")}</Text>
                   ) : <TbaText C={C} />}
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Gate</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Gate</Text>
                   {(live?.gate || ev.gate) ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.gate || ev.gate}</Text>
                   ) : <TbaText C={C} />}
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Check-in</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Check-in</Text>
                   {ev.checkin ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{ev.checkin}</Text>
                   ) : <TbaText C={C} />}
                 </View>
               </View>
 
-              <View style={[fs.termCard, { backgroundColor: C.card }]}>
+              <View style={[fs.termCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
                 <View style={fs.termHeader}>
                   <AirplaneLanding size={13} color={C.teal} weight="bold" />
                   <Text style={[fs.termHeaderText, { color: C.textTertiary }]}>ARRIVAL</Text>
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Terminal</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Terminal</Text>
                   {(live?.arrTerminal || ev.arrTerminal) ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{(live?.arrTerminal || ev.arrTerminal || "").replace(/^T/i, "")}</Text>
                   ) : <TbaText C={C} />}
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Gate</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Gate</Text>
                   {(live?.arrGate || ev.arrGate) ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.arrGate || ev.arrGate}</Text>
                   ) : <TbaText C={C} />}
                 </View>
                 <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textDim }]}>Belt</Text>
+                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Belt</Text>
                   {(live?.baggageBelt || ev.baggageBelt) ? (
                     <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.baggageBelt || ev.baggageBelt}</Text>
                   ) : <TbaText C={C} />}
@@ -964,7 +984,7 @@ function FlightDetailScreen({
             </Animated.View>
 
             {/* 7. Details list */}
-            <Animated.View entering={FadeInDown.delay(250).duration(400)} style={[fs.card, { backgroundColor: C.card, padding: 0 }]}>
+            <Animated.View entering={FadeInDown.delay(250).duration(300)} style={[fs.card, { backgroundColor: C.card, padding: 0 }, shadow("card", isDark)]}>
               {[
                 { icon: AirplaneTilt, label: "Aircraft", value: live?.aircraft || ev.aircraft || null },
                 distance ? { icon: Ruler, label: "Distance", value: `${distance.toLocaleString()} km` } : null,
@@ -974,6 +994,8 @@ function FlightDetailScreen({
                 <Pressable
                   key={i}
                   onPress={item.onPress}
+                  accessibilityRole={item.onPress ? "button" : undefined}
+                  accessibilityLabel={item.onPress ? `Copy ${item.label}` : undefined}
                   style={[
                     fs.detailRow,
                     i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
@@ -984,7 +1006,7 @@ function FlightDetailScreen({
                   {item.value ? (
                     <Text style={[fs.detailValue, { color: C.textPrimary, textAlign: "right" }]}>{item.value}</Text>
                   ) : <TbaText C={C} />}
-                  {item.onPress && <Copy size={12} color={C.textDim} weight="light" style={{ marginLeft: 6 }} />}
+                  {item.onPress && <Copy size={12} color={C.textTertiary} weight="light" style={{ marginLeft: S.xs2 }} />}
                 </Pressable>
               ))}
             </Animated.View>
@@ -992,11 +1014,13 @@ function FlightDetailScreen({
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
               <View>
-                <Text style={[fs.sectionHead, { color: C.teal }]}>DOCUMENTS</Text>
+                <MicroLabel style={{ marginBottom: S.xs }}>Documents</MicroLabel>
                 {ev.documents.map(doc => (
                   <Pressable
                     key={doc.id}
                     onPress={() => openDocument(doc.url, doc.name).catch(() => {})}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open document ${doc.name}`}
                     style={({ pressed }) => [fs.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
                   >
                     <View style={[fs.docIcon, { backgroundColor: C.tealDim }]}>
@@ -1006,7 +1030,7 @@ function FlightDetailScreen({
                       <Text style={[{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
                       <Text style={{ fontSize: T.xs, color: C.textTertiary }}>{Math.round(doc.size / 1024)} KB</Text>
                     </View>
-                    <CaretRight size={12} color={C.textDim} weight="regular" />
+                    <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                   </Pressable>
                 ))}
               </View>
@@ -1027,55 +1051,42 @@ function makeFlightStyles(C: ThemeColors) {
       position: "absolute", bottom: S.xs, left: S.md, right: S.md,
       flexDirection: "row", justifyContent: "space-between",
     },
-    mapStatPill: {
-      paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.sm,
-    },
-    mapStat: {
-      fontSize: T.xs, fontWeight: T.semibold, letterSpacing: 0.5,
-      fontVariant: ["tabular-nums"],
-    },
 
-    body: { paddingHorizontal: S.lg, paddingTop: S.lg, gap: S.md },
+    body: { paddingHorizontal: S.md, paddingTop: S.lg, gap: S.md },
 
     airlineRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
     airlineTile: {
       width: 40, height: 40, borderRadius: R.md,
-      backgroundColor: "#fff",
+      backgroundColor: LOGO_PLATE,
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       alignItems: "center", justifyContent: "center",
     },
-    airlineIata: { fontSize: T.xs, fontWeight: T.black, color: "#111", letterSpacing: 0.5 },
+    airlineIata: { fontSize: T.xs, fontWeight: T.black, color: LOGO_INK, letterSpacing: 0.5 },
     airlineLogo: { width: 30, height: 30, borderRadius: 4 },
     airlineName: { fontSize: T.sm, fontWeight: T.bold },
     flightNum: { fontSize: T.xs, fontWeight: T.medium, letterSpacing: 0.3, marginTop: 1 },
 
-    routeTitle: { fontSize: 28, fontWeight: T.extrabold, letterSpacing: -0.5, lineHeight: 34 },
+    routeTitle: { fontSize: 28, fontFamily: F.black, textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 34 },
     routeSub: { fontSize: T.xs, fontWeight: T.medium, letterSpacing: 0.2, marginTop: 4 },
 
     pillRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs },
-    pill: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      paddingHorizontal: 12, paddingVertical: 7, borderRadius: R.full,
-    },
-    statusDot: { width: 6, height: 6, borderRadius: 3 },
-    pillText: { fontSize: T.xs, fontWeight: T.bold, letterSpacing: 0.3 },
 
-    card: { borderRadius: R.xl, padding: S.lg },
+    card: { borderRadius: R.xl, padding: S.md },
 
     timesRow: { flexDirection: "row", alignItems: "flex-start" },
     bigTime: {
       fontSize: 32, fontWeight: T.bold, lineHeight: 36,
       fontVariant: ["tabular-nums"], letterSpacing: -0.5,
     },
-    tzLabel: { fontSize: 10, fontWeight: T.medium, letterSpacing: 0.5, marginTop: 4, fontVariant: ["tabular-nums"] },
+    tzLabel: { fontSize: T["2xs"], fontWeight: T.medium, letterSpacing: 0.5, marginTop: 4, fontVariant: ["tabular-nums"] },
     airportCode: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6 },
     airportName: { fontSize: T.xs, marginTop: 2 },
     arcConnector: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.sm, paddingTop: 8 },
     arcLineRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     dashLine: { width: 20, height: 0, borderTopWidth: 1, borderStyle: "dashed" },
-    durLabel: { fontSize: 10, fontWeight: T.bold, letterSpacing: 0.3, marginTop: 6 },
+    durLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.3, marginTop: 6 },
     plusOneBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginTop: 2 },
-    plusOneText: { fontSize: 10, fontWeight: T.bold },
+    plusOneText: { fontSize: T["2xs"], fontWeight: T.bold },
 
     dateRow: {
       flexDirection: "row", justifyContent: "space-between",
@@ -1086,27 +1097,26 @@ function makeFlightStyles(C: ThemeColors) {
 
     termRow: { flexDirection: "row", gap: S.sm },
     termCard: { flex: 1, borderRadius: R.lg, padding: S.md },
-    termHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: S.sm },
-    termHeaderText: { fontSize: 9, fontWeight: T.black, letterSpacing: 1.2 },
+    termHeader: { flexDirection: "row", alignItems: "center", gap: S.xs2, marginBottom: S.sm },
+    termHeaderText: { fontSize: T["2xs"], fontWeight: T.black, letterSpacing: 1.2 },
     termField: { marginBottom: S.xs },
-    termFieldLabel: { fontSize: 9, fontWeight: T.bold, letterSpacing: 0.5, marginBottom: 2 },
+    termFieldLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.5, marginBottom: 2 },
     termFieldValue: { fontSize: T.sm, fontWeight: T.bold },
 
     detailRow: {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,
-      paddingHorizontal: S.lg, paddingVertical: 14,
+      paddingHorizontal: S.md, paddingVertical: S.sm,
     },
     detailLabel: { fontSize: T.sm, fontWeight: T.medium },
     detailValue: { fontSize: T.sm, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
 
-    sectionHead: { fontSize: 10, fontWeight: T.bold, letterSpacing: 1, marginBottom: S.xs },
     docRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      padding: S.md, borderRadius: R.lg, marginBottom: 4,
+      padding: S.md, borderRadius: R.lg, marginBottom: S["2xs"],
     },
-    docIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+    docIcon: { width: 40, height: 40, borderRadius: R.md, alignItems: "center", justifyContent: "center" },
 
-    dateColLabel: { fontSize: 9, fontWeight: T.bold, letterSpacing: 1, marginBottom: 4 },
+    dateColLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 1, marginBottom: 4 },
   });
 }
 
@@ -1118,8 +1128,8 @@ function makeStyles(C: ThemeColors) {
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
     errorBtn: { backgroundColor: C.teal, paddingHorizontal: S.lg, paddingVertical: S.xs, borderRadius: R.full },
-    errorBtnText: { color: C.bg, fontWeight: "700", fontSize: T.base },
-    px: { paddingHorizontal: S.lg, marginBottom: S.md },
+    errorBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
+    px: { paddingHorizontal: S.md, marginBottom: S.md },
 
     heroWrap: { position: "relative", aspectRatio: 16 / 9, marginBottom: 0 },
     heroImage: {
@@ -1127,82 +1137,62 @@ function makeStyles(C: ThemeColors) {
       alignItems: "center", justifyContent: "center",
     },
     typePill: {
-      flexDirection: "row", alignItems: "center", gap: 5,
-      alignSelf: "flex-start",
-      paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.full,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
       marginTop: S.lg, marginBottom: S.sm,
     },
-    typePillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.2 },
     titleBelow: {
-      fontSize: T["2xl"], fontWeight: "700",
+      fontSize: T["2xl"], fontWeight: T.bold,
       letterSpacing: -0.3, lineHeight: 30,
       marginBottom: S.md,
     },
 
     chipWrap: {
-      flexDirection: "row", flexWrap: "wrap", gap: 8,
-      paddingHorizontal: S.lg, marginBottom: S.md,
+      flexDirection: "row", flexWrap: "wrap", gap: S.xs,
+      paddingHorizontal: S.md, marginBottom: S.md,
     },
-    chip: {
-      flexDirection: "row", alignItems: "center", gap: 6,
-      paddingHorizontal: 12, paddingVertical: 8, borderRadius: R.full,
-      maxWidth: "100%",
-    },
-    chipText: { fontSize: T.sm, fontWeight: "600" },
-
-    statusChip: {
-      flexDirection: "row", alignItems: "center", gap: 5,
-      paddingHorizontal: 10, paddingVertical: 6, borderRadius: R.full,
-      borderWidth: StyleSheet.hairlineWidth,
-    },
-    statusDotSmall: { width: 5, height: 5, borderRadius: 3 },
-    statusChipText: { fontSize: 10.5, fontWeight: "600" },
 
     locationCard: {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,
-      marginHorizontal: S.lg, marginBottom: S.md,
+      marginHorizontal: S.md, marginBottom: S.md,
       padding: S.md, borderRadius: R.xl,
     },
     locationIcon: {
       width: 32, height: 32, borderRadius: R.md,
       alignItems: "center", justifyContent: "center", flexShrink: 0,
     },
-    locationLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.5, marginBottom: 2 },
-    locationValue: { fontSize: T.sm, fontWeight: "600", lineHeight: 18 },
+    locationLabel: { fontSize: T["2xs"], fontWeight: T.semibold, letterSpacing: 0.5, marginBottom: 2 },
+    locationValue: { fontSize: T.sm, fontWeight: T.semibold, lineHeight: 18 },
 
     checkCard: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      marginHorizontal: S.lg, marginBottom: S.md,
-      padding: S.lg, borderRadius: R.xl,
+      marginHorizontal: S.md, marginBottom: S.md,
+      padding: S.md, borderRadius: R.xl,
     },
-    checkLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 },
-    checkValue: { fontSize: T.base, fontWeight: "700" },
+    checkLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 1, marginBottom: S["2xs"] },
+    checkValue: { fontSize: T.base, fontWeight: T.bold },
 
     infoCard: {
-      marginHorizontal: S.lg, marginBottom: S.md,
-      padding: S.lg, borderRadius: R.xl,
+      marginHorizontal: S.md, marginBottom: S.md,
+      padding: S.md, borderRadius: R.xl,
     },
-    infoValue: { fontSize: T.sm, lineHeight: 20, fontWeight: "400" },
-
-    sectionLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1.5, marginBottom: S.sm },
+    infoValue: { fontSize: T.sm, lineHeight: 20, fontWeight: T.regular },
 
     detailListRow: {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,
-      paddingHorizontal: S.lg, paddingVertical: S.sm + 2,
+      paddingHorizontal: S.md, paddingVertical: S.sm,
     },
-    detailListLabel: { fontSize: T.sm, fontWeight: "500" },
-    detailListValue: { fontSize: T.sm, fontWeight: "600" },
+    detailListLabel: { fontSize: T.sm, fontWeight: T.medium },
+    detailListValue: { fontSize: T.sm, fontWeight: T.semibold },
 
     docIcon: {
-      width: 40, height: 40, borderRadius: R.lg,
+      width: 40, height: 40, borderRadius: R.md,
       alignItems: "center", justifyContent: "center",
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: "rgba(255,255,255,0.06)",
+      borderColor: C.borderLight,
     },
-    docName: { fontSize: T.sm, fontWeight: "600" },
+    docName: { fontSize: T.sm, fontWeight: T.semibold },
     docMeta: {
-      fontSize: 10.5, fontWeight: "500", marginTop: 2,
+      fontSize: T.xs, fontWeight: T.medium, marginTop: 2,
       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     },
 
@@ -1214,14 +1204,14 @@ function makeStyles(C: ThemeColors) {
     },
     actionBarInner: {
       flexDirection: "row", gap: S.sm,
-      paddingHorizontal: S.lg, paddingVertical: S.md,
+      paddingHorizontal: S.md, paddingVertical: S.md,
       backgroundColor: C.bg,
     },
     primaryBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: 8, paddingVertical: 16, borderRadius: R.xl,
+      gap: S.xs, height: 52, borderRadius: R.xl,
     },
-    primaryBtnText: { fontSize: T.base, fontWeight: "800", color: "#000" },
+    primaryBtnText: { fontSize: T.md, fontWeight: T.bold, color: C.onAccent },
     secondaryBtn: {
       width: 52, height: 52, borderRadius: R.xl,
       alignItems: "center", justifyContent: "center",

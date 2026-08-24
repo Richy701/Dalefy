@@ -31,7 +31,7 @@ export function CachedImage({
   const [retries, setRetries] = useState(0);
   const maxRetries = 3;
   const failed = retries > maxRetries;
-  const retryTimer = useRef<ReturnType<typeof setTimeout>>();
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
 

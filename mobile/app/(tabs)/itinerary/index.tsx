@@ -1,21 +1,25 @@
+import Animated from "react-native-reanimated";
+import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import {
-  View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl, Share, Platform,
+  View, Text,
+  StyleSheet, RefreshControl, Share,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { Illustration } from "@/components/Illustration";
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
-  CalendarDots, MapPin, CaretRight,
+  MapPin, CaretRight,
   AirplaneTilt, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useMemo, useState, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { type ThemeColors, T, R, S, F } from "@/constants/theme";
+import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
+import { FadeIn } from "@/components/FadeIn";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { MicroLabel } from "@/components/ui/MicroLabel";
+import { Pill } from "@/components/ui/Pill";
 import * as Haptics from "expo-haptics";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { StatusIndicator } from "@/components/StatusIndicator";
@@ -24,10 +28,6 @@ const LOOKAHEAD_DAYS = 4; // today + 3
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function isSameDay(a: Date, b: Date) {
-  return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
 }
 
 function timeToMinutes(t: string): number {
@@ -116,6 +116,7 @@ function EventRow({ item, C, onPress }: {
   onPress: () => void;
 }) {
   const { event: ev, trip } = item;
+  const { isDark } = useTheme();
   const TRANSFER_ICONS: Record<string, typeof Car> = { car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor, other: Compass };
   const Icon = ev.type === "transfer" ? (TRANSFER_ICONS[ev.transferType || "car"] || Car) : (EVENT_ICON[ev.type] ?? Compass);
   const colorKey = EVENT_COLOR_KEY[ev.type] ?? "teal";
@@ -123,8 +124,10 @@ function EventRow({ item, C, onPress }: {
 
   return (
     <ScalePress
-      style={[styles.eventRow, { backgroundColor: C.card }]}
+      style={[styles.eventRow, { backgroundColor: C.card }, shadow("card", isDark)]}
       activeScale={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={`${ev.title}, ${ev.time || "no time"}`}
       onPress={() => { Haptics.selectionAsync(); onPress(); }}
     >
       {/* Time column */}
@@ -159,15 +162,11 @@ function EventRow({ item, C, onPress }: {
               </View>
             )}
           </View>
-          <CaretRight size={14} color={C.textTertiary} weight="light" />
+          <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
         </View>
 
         {/* Trip badge */}
-        <View style={[styles.tripBadge, { backgroundColor: C.elevated }]}>
-          <Text style={[styles.tripBadgeText, { color: C.textSecondary }]} numberOfLines={1}>
-            {trip.destination || trip.name}
-          </Text>
-        </View>
+        <Pill tone="neutral" label={trip.destination || trip.name} style={{ marginTop: S.xs2, marginLeft: S.xs + 30 }} />
       </View>
     </ScalePress>
   );
@@ -176,14 +175,13 @@ function EventRow({ item, C, onPress }: {
 function EmptyDay({ C }: { C: ThemeColors }) {
   return (
     <View style={[styles.emptyDay, { backgroundColor: C.card }]}>
-      <Text style={[styles.emptyDayText, { color: C.textTertiary }]}>Nothing planned</Text>
+      <EmptyState compact title="Nothing planned" />
     </View>
   );
 }
 
 export default function ScheduleScreen() {
-  const { C, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { C } = useTheme();
   const { trips, ready, reload } = useTrips();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -194,25 +192,19 @@ export default function ScheduleScreen() {
   }, [reload]);
 
   const schedule = useMemo(() => buildSchedule(trips), [trips]);
-  const hasAnyEvents = schedule.some(d => d.events.length > 0);
+  const { onScroll, barStyle } = useCollapsingHeader();
 
   if (ready && trips.length === 0) {
     return (
       <View style={[styles.safe, { backgroundColor: C.bg }]}>
-        <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-          {Platform.OS === "ios" ? (
-            <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-          )}
-          <Text style={[styles.screenTitle, { color: C.textPrimary }]}>Schedule</Text>
-        </View>
+        <ScreenTitle>Schedule</ScreenTitle>
         <View style={styles.emptyState}>
           <Illustration name="sitting" width={260} height={160} />
-          <Text style={[styles.emptyTitle, { color: C.textPrimary }]}>No schedule yet</Text>
-          <Text style={[styles.emptyText, { color: C.textTertiary }]}>
-            Join a trip from the home screen and your upcoming events will appear here.
-          </Text>
+          <EmptyState
+            compact
+            title="No schedule yet"
+            message="Join a trip from the home screen and your upcoming events will appear here."
+          />
         </View>
       </View>
     );
@@ -220,29 +212,23 @@ export default function ScheduleScreen() {
 
   return (
     <View style={[styles.safe, { backgroundColor: C.bg }]}>
-      {/* ── Sticky blur header ── */}
-      <View style={[styles.stickyHeader, { paddingTop: insets.top }]}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFillObject} />
-        ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(255,255,255,0.97)" }]} />
-        )}
-        <Text style={[styles.screenTitle, { color: C.textPrimary }]}>Schedule</Text>
-      </View>
-
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 52 }]}
+        contentContainerStyle={styles.scroll}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />
         }
       >
+        <ScreenTitle>Schedule</ScreenTitle>
 
         {/* Day groups */}
         {schedule.map((day, i) => {
           const isToday = i === 0;
           return (
-            <View key={day.label} style={styles.dayGroup}>
+            <FadeIn key={day.label} delay={Math.min(i, 6) * 60}>
+            <View style={styles.dayGroup}>
               {/* Day header */}
               <View style={styles.dayHeader}>
                 <StatusIndicator
@@ -250,28 +236,25 @@ export default function ScheduleScreen() {
                   size={8}
                   color={isToday ? C.teal : C.border}
                 />
-                <Text style={[styles.dayLabel, {
-                  color: isToday ? C.teal : C.textPrimary,
-                }]}>
+                <MicroLabel color={isToday ? C.tealText : C.textPrimary}>
                   {day.label}
-                </Text>
+                </MicroLabel>
                 <Text style={[styles.daySublabel, { color: C.textTertiary }]}>
                   {day.sublabel}
                 </Text>
                 {day.events.length > 0 && (
-                  <View style={[styles.countBadge, {
-                    backgroundColor: isToday ? C.tealDim : C.elevated,
-                  }]}>
-                    <Text style={[styles.countText, {
-                      color: isToday ? C.teal : C.textSecondary,
-                    }]}>{day.events.length}</Text>
-                  </View>
+                  <Pill
+                    tone="custom"
+                    bg={isToday ? C.tealDim : C.elevated}
+                    color={isToday ? C.tealText : C.textSecondary}
+                    label={String(day.events.length)}
+                  />
                 )}
               </View>
 
               {/* Events or empty */}
               {day.events.length > 0 ? (
-                <View style={styles.eventsList}>
+                <View>
                   {day.events.map(item => (
                     <ContextMenu
                       key={`${item.trip.id}-${item.event.id}`}
@@ -296,45 +279,26 @@ export default function ScheduleScreen() {
                 <EmptyDay C={C} />
               )}
             </View>
+            </FadeIn>
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactHeader title="Schedule" barStyle={barStyle} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingBottom: 100 },
-  stickyHeader: {
-    position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-    overflow: "hidden",
-  },
-  screenTitle: {
-    fontSize: 22, fontWeight: "700",
-    paddingHorizontal: S.md, paddingVertical: 10,
-  },
-
-  header: { paddingHorizontal: S.md, marginBottom: S.lg },
-  headerTitle: {
-    fontSize: 28, fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  headerSub: { fontSize: T.sm, fontWeight: "500", marginTop: 4 },
+  scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
 
   // Day groups
   dayGroup: { marginBottom: S.lg },
   dayHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
+    flexDirection: "row", alignItems: "center", gap: S.xs,
     paddingHorizontal: S.md, marginBottom: S.sm,
   },
-  dayDot: { width: 8, height: 8, borderRadius: 4 },
-  dayLabel: { fontSize: T.md, fontWeight: "700" },
   daySublabel: { fontSize: T.sm, fontWeight: "500", flex: 1 },
-  countBadge: {
-    borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
-  },
-  countText: { fontSize: T.xs, fontWeight: "700" },
 
   // Event row
   eventRow: {
@@ -344,7 +308,7 @@ const styles = StyleSheet.create({
   },
   timeCol: { width: 52, alignItems: "center" },
   timeText: { fontSize: T.sm, fontWeight: "700" },
-  endTimeText: { fontSize: 10, fontWeight: "500", marginTop: 1 },
+  endTimeText: { fontSize: T["2xs"], fontWeight: "500", marginTop: 1 },
   colorBar: { width: 3, borderRadius: 2, alignSelf: "stretch", marginHorizontal: S.xs },
   eventContent: { flex: 1 },
   eventTop: { flexDirection: "row", alignItems: "center", gap: S.xs },
@@ -355,26 +319,15 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: T.base, fontWeight: "600", letterSpacing: -0.1 },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 },
   locationText: { fontSize: T.xs, fontWeight: "500", flex: 1 },
-  tripBadge: {
-    alignSelf: "flex-start", borderRadius: R.full,
-    paddingHorizontal: 8, paddingVertical: 2, marginTop: 6, marginLeft: 38,
-  },
-  tripBadgeText: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3 },
-
   // Empty day
   emptyDay: {
     marginHorizontal: S.md, borderRadius: R.lg,
-    paddingVertical: S.md, alignItems: "center",
+    alignItems: "center",
   },
-  emptyDayText: { fontSize: T.sm, fontWeight: "500", fontStyle: "italic" },
 
   // Empty state
   emptyState: {
-    alignItems: "center", paddingTop: 100,
+    alignItems: "center", paddingTop: S["2xl"],
     paddingHorizontal: S.xl, gap: S.sm,
-  },
-  emptyTitle: { fontSize: T.xl, fontWeight: "700", letterSpacing: -0.3 },
-  emptyText: {
-    fontSize: T.base, textAlign: "center", lineHeight: 24, maxWidth: 280,
   },
 });

@@ -1,6 +1,16 @@
 module.exports = ({ config }) => ({
   ...config,
   plugins: [
+    "expo-secure-store",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        resizeMode: "contain",
+        backgroundColor: "#131316",
+      },
+    ],
+    "expo-status-bar",
     "expo-router",
     "expo-font",
     "expo-image",
