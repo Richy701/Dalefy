@@ -1801,43 +1801,72 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
         )}
 
         {/* ── STEP 2: EXTRACTING ── */}
-        {step === "extracting" && (
-          <div className="flex flex-col items-center justify-center py-12 gap-5" role="status" aria-live="polite">
-            <Spinner className="size-10 text-brand" />
-            <div className="text-center space-y-1">
-              <p className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-                {extractStage === "reading" ? "Reading your file" : "Building the itinerary"}
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
-                {extractStage === "reading"
-                  ? "Pulling out the text, images and attachments."
-                  : "Picking out dates, flights, hotels and activities. Usually 10 to 30 seconds."}
-              </p>
+        {step === "extracting" && (() => {
+          const stages = [
+            { key: "reading", title: "Read the document", hint: "Text, images and attachments come out of the file." },
+            { key: "parsing", title: "Build the itinerary", hint: "Dates, flights, hotels and activities get picked out. Usually 10 to 30 seconds." },
+            { key: "review", title: "Review", hint: "You check every event before anything is saved." },
+          ] as const;
+          const activeIndex = extractStage === "reading" ? 0 : 1;
+          return (
+            <div className="py-4 sm:py-6 max-w-md mx-auto w-full" role="status" aria-live="polite">
+              {extractFile && (
+                <div className="mb-6 flex items-center gap-3 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background px-3.5 py-3">
+                  <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                    <FileText className="h-4 w-4 text-brand" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{extractFile.name}</p>
+                    <p className="text-[10px] font-mono text-slate-500 dark:text-muted-foreground">{formatBytes(extractFile.size)}</p>
+                  </div>
+                </div>
+              )}
+              <ol className="relative">
+                {stages.map((st, i) => {
+                  const done = i < activeIndex;
+                  const active = i === activeIndex;
+                  const last = i === stages.length - 1;
+                  return (
+                    <li key={st.key} className="relative flex gap-4 pb-6 last:pb-0">
+                      {!last && (
+                        <span
+                          aria-hidden="true"
+                          className={`absolute left-[11px] top-6 bottom-0 w-px ${done ? "bg-brand" : "bg-slate-200 dark:bg-border"}`}
+                        />
+                      )}
+                      <span
+                        className={`relative z-10 mt-0.5 h-6 w-6 rounded-full flex items-center justify-center shrink-0 border-2 ${
+                          done
+                            ? "bg-brand border-brand"
+                            : active
+                              ? "bg-white dark:bg-card border-brand"
+                              : "bg-white dark:bg-card border-slate-200 dark:border-border"
+                        }`}
+                      >
+                        {done && <Check className="h-3 w-3 text-black" weight="bold" />}
+                        {active && <span className="h-2 w-2 rounded-full bg-brand" />}
+                      </span>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <p className={`text-sm font-bold tracking-tight ${active || done ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-muted-foreground/70"}`}>
+                          {st.title}
+                        </p>
+                        <p className={`mt-0.5 text-[11px] leading-snug ${active ? "text-slate-600 dark:text-muted-foreground" : "text-slate-400 dark:text-muted-foreground/60"}`}>
+                          {st.hint}
+                        </p>
+                        {active && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <Progress value={extractProgress} className="h-1.5 flex-1" />
+                            <Spinner className="size-3.5 text-brand shrink-0" />
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
-            {extractFile && (
-              <div className="inline-flex items-center gap-2 max-w-full rounded-lg bg-slate-100 dark:bg-secondary px-3 py-1.5">
-                <FileText className="h-3.5 w-3.5 text-brand shrink-0" />
-                <span className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{extractFile.name}</span>
-                <span className="text-[10px] font-mono text-slate-500 dark:text-muted-foreground shrink-0">{formatBytes(extractFile.size)}</span>
-              </div>
-            )}
-            <Progress value={extractProgress} className="w-64" />
-            <ol className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em]">
-              <li className={`flex items-center gap-1.5 ${extractStage === "reading" ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>
-                {extractStage === "parsing" ? <Check className="h-3 w-3 text-brand" weight="bold" /> : <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                Read
-              </li>
-              <li className={`flex items-center gap-1.5 ${extractStage === "parsing" ? "text-brand" : "text-slate-400 dark:text-muted-foreground/60"}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${extractStage === "parsing" ? "bg-brand" : "bg-slate-300 dark:bg-border"}`} />
-                Parse
-              </li>
-              <li className="flex items-center gap-1.5 text-slate-400 dark:text-muted-foreground/60">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-border" />
-                Review
-              </li>
-            </ol>
-          </div>
-        )}
+          );
+        })()}
 
         {step === "importing" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
