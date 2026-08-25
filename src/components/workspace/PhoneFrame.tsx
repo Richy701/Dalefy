@@ -44,7 +44,7 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
   const band = isDark
     ? { a: "#3a4a6a", b: "#161d2c", c: "#24304a", edge: "rgba(255,255,255,0.2)" }
     : { a: "#f4f4f7", b: "#c2c3ca", c: "#e1e1e6", edge: "rgba(255,255,255,0.9)" };
-  const buttonFill = isDark ? "#2f3b57" : "#cfcfd6";
+  const buttonFill = isDark ? "#3b4a6b" : "#d6d6dc";
 
   return (
     <div ref={hostRef} className="w-full h-full flex items-start justify-center">
@@ -64,10 +64,14 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
               <stop offset="0.65" stopColor={band.c} />
               <stop offset="1" stopColor={band.b} />
             </linearGradient>
-            <linearGradient id="pf-btn" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor={buttonFill} />
+            <linearGradient id="pf-btn" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={band.a} />
+              <stop offset="0.5" stopColor={buttonFill} />
               <stop offset="1" stopColor={band.b} />
             </linearGradient>
+            <clipPath id="pf-body">
+              <rect x={0} y={0} width={W} height={H} rx={66} />
+            </clipPath>
             <filter id="pf-shadow" x="-20%" y="-10%" width="140%" height="130%">
               <feDropShadow dx="0" dy="18" stdDeviation="18" floodColor="#000" floodOpacity={isDark ? 0.55 : 0.22} />
               <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity={isDark ? 0.4 : 0.12} />
@@ -86,15 +90,17 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
           <rect x={0} y={0} width={W} height={H} rx={66} fill="url(#pf-band)" filter="url(#pf-shadow)" />
           <rect x={0.75} y={0.75} width={W - 1.5} height={H - 1.5} rx={65.5} fill="none" stroke={band.edge} strokeWidth={1} />
 
-          {/* Antenna breaks */}
-          {[
-            [0, 118, 0, 132], [0, 780, 0, 794],
-            [W, 118, W, 132], [W, 780, W, 794],
-            [96, 0, 110, 0], [310, 0, 324, 0],
-            [96, H, 110, H], [310, H, 324, H],
-          ].map(([x1, y1, x2, y2], i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={isDark ? "#0c0c0d" : "#8e8e95"} strokeWidth={RIM * 2} strokeOpacity={0.9} />
-          ))}
+          {/* Antenna seams: hairlines in the band, clipped to the body */}
+          <g clipPath="url(#pf-body)">
+            {[
+              [0, 118, RIM, 118], [0, 794, RIM, 794],
+              [W - RIM, 118, W, 118], [W - RIM, 794, W, 794],
+              [96, 0, 96, RIM], [324, 0, 324, RIM],
+              [96, H - RIM, 96, H], [324, H - RIM, 324, H],
+            ].map(([x1, y1, x2, y2], i) => (
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={isDark ? "#0b0e16" : "#9a9aa3"} strokeWidth={1.5} strokeOpacity={0.7} />
+            ))}
+          </g>
 
           {/* Black bezel */}
           <rect x={RIM} y={RIM} width={W - RIM * 2} height={H - RIM * 2} rx={61} fill="#050506" />
