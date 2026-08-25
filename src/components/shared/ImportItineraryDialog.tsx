@@ -1229,6 +1229,24 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   // What the extracting screen is doing right now, so the wait is never silent.
   const [extractStage, setExtractStage] = useState<"reading" | "parsing">("reading");
   const [extractFile, setExtractFile] = useState<{ name: string; size: number } | null>(null);
+  // Time-driven so the bar keeps moving through a 10-30s AI parse instead of
+  // jumping to a fixed value and sitting there. Eases toward 90, never completes
+  // on its own: the review step is the real 100%.
+  const [extractProgress, setExtractProgress] = useState(0);
+  useEffect(() => {
+    if (step !== "extracting") return;
+    const startedAt = Date.now();
+    // Reading a file is quick (target ~2s), parsing is the long stretch (~25s).
+    const ceiling = extractStage === "reading" ? 25 : 90;
+    const floor = extractStage === "reading" ? 0 : 25;
+    const horizon = extractStage === "reading" ? 2000 : 25000;
+    const id = window.setInterval(() => {
+      const t = (Date.now() - startedAt) / horizon;
+      const eased = 1 - Math.exp(-2.2 * t);
+      setExtractProgress(prev => Math.max(prev, floor + (ceiling - floor) * eased));
+    }, 120);
+    return () => window.clearInterval(id);
+  }, [step, extractStage]);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
   const [parsed, setParsed] = useState<ParsedTrip | null>(null);
@@ -1309,6 +1327,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     setError("");
     setExtractFile({ name: file.name, size: file.size });
     setExtractStage("reading");
+    setExtractProgress(0);
     setStep("extracting");
     try {
       const { text, media } = await extractContent(file);
@@ -1740,6 +1759,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     setError("");
                     setExtractFile(null);
                     setExtractStage("parsing");
+                    setExtractProgress(0);
                     setStep("extracting");
                     try {
                       await processText(text);
@@ -1801,7 +1821,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 <span className="text-[10px] font-mono text-slate-500 dark:text-muted-foreground shrink-0">{formatBytes(extractFile.size)}</span>
               </div>
             )}
-            <Progress value={extractStage === "reading" ? 30 : 75} className="w-64" />
+            <Progress value={extractProgress} className="w-64" />
             <ol className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em]">
               <li className={`flex items-center gap-1.5 ${extractStage === "reading" ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>
                 {extractStage === "parsing" ? <Check className="h-3 w-3 text-brand" weight="bold" /> : <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
