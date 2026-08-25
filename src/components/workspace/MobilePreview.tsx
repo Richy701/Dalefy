@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { PhoneFrame } from "./PhoneFrame";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
@@ -760,42 +761,11 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
       </div>
 
       {/* Phone frame container */}
-      <div className="flex-1 flex items-start justify-center overflow-hidden p-4">
-        <div
-          className="relative w-full shrink-0"
-          style={{ maxWidth: 310, aspectRatio: "390 / 844" }}
-        >
-          {/* Phone bezel */}
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{
-              borderRadius: 44,
-              background: isDark
-                ? "linear-gradient(160deg, #3a3a3e 0%, #1c1c1e 30%, #252528 60%, #1a1a1c 100%)"
-                : "linear-gradient(160deg, #e8e8ed 0%, #d1d1d6 30%, #e0e0e5 60%, #c7c7cc 100%)",
-              padding: 2,
-              boxShadow: isDark
-                ? "0 2px 4px rgba(0,0,0,0.3), 0 12px 40px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.08) inset"
-                : "0 2px 4px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(255,255,255,0.6) inset",
-            }}
-          >
-            {/* Screen area */}
-            <div style={{ borderRadius: 42, overflow: "hidden", height: "100%", position: "relative" }}>
-              {/* Status bar */}
-              <div style={{ background: c.bg, padding: "6px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", height: 40, position: "relative", zIndex: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: c.textPrimary }}>{new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
-                {/* Dynamic Island */}
-                <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: 6, width: 100, height: 24, borderRadius: 16, background: "#000" }} />
-                <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                  <div style={{ width: 14, height: 9, borderRadius: 2, border: `1.5px solid ${c.textTertiary}`, position: "relative" }}>
-                    <div style={{ position: "absolute", inset: 2, borderRadius: 1, background: c.textPrimary }} />
-                  </div>
-                </div>
-              </div>
-
+      <div className="flex-1 min-h-0 overflow-hidden p-4">
+        <PhoneFrame isDark={isDark} screenBg={c.bg} statusInk={c.textPrimary}>
               {/* Scrollable mobile screen */}
               <div
-                style={{ background: c.bg, height: "calc(100% - 40px)", overflowY: "auto", overflowX: "hidden" }}
+                style={{ background: c.bg, height: "100%", overflowY: "auto", overflowX: "hidden" }}
                 className="scrollbar-hide"
               >
                 {/* Hero */}
@@ -852,15 +822,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />
               </div>
-            </div>
-          </div>
-
-          {/* Side buttons */}
-          <div className="absolute top-[18%] -left-px w-[2px] h-[20px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[26%] -left-px w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[34%] -left-px w-[2px] h-[38px] rounded-r-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-          <div className="absolute top-[28%] -right-px w-[2px] h-[56px] rounded-l-sm" style={{ background: isDark ? "#2a2a2c" : "#c7c7cc" }} />
-        </div>
+        </PhoneFrame>
       </div>
     </div>
   );
