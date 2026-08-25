@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
+import { Upload, FileText, Check, CheckCircle, WarningCircle, CaretRight, X, PencilSimple } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -394,6 +394,12 @@ function toTitleCase(str: string): string {
     if (idx > 0 && TITLE_CASE_LOWER.has(word.toLowerCase())) return word.toLowerCase();
     return word.charAt(0).toUpperCase() + word.slice(1);
   });
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // ─── Heuristic parser ──────────────────────────────────────────────────────────
@@ -1220,6 +1226,9 @@ type Step = "upload" | "extracting" | "review" | "importing" | "done";
 
 export function ImportItineraryDialog({ open, onOpenChange, initialFile, existingTripId }: ImportItineraryDialogProps) {
   const [step, setStep] = useState<Step>("upload");
+  // What the extracting screen is doing right now, so the wait is never silent.
+  const [extractStage, setExtractStage] = useState<"reading" | "parsing">("reading");
+  const [extractFile, setExtractFile] = useState<{ name: string; size: number } | null>(null);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
   const [parsed, setParsed] = useState<ParsedTrip | null>(null);
@@ -1234,6 +1243,10 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
   const [uploadTab, setUploadTab] = useState<"file" | "paste">("file");
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pasteRef = useRef<HTMLTextAreaElement>(null);
+  // Large pastes: the textarea is uncontrolled so a 50k-character paste doesn't
+  // re-render this whole dialog on every keystroke. Only a boolean tracks emptiness.
+  const [hasPaste, setHasPaste] = useState(false);
   const { trips, addTrip, updateTrip } = useTrips();
   const { showToast, addNotification } = useNotifications();
   const isReimport = !!existingTripId;
@@ -1272,6 +1285,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   const processText = async (text: string, media: ExtractedMedia[] = [], pdfDataUrl?: string) => {
     setRawText(text);
+    setExtractStage("parsing");
     let result: ParsedTrip;
 
     // Try AI parser first, fall back to heuristic
@@ -1293,6 +1307,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
   const handleFile = async (file: File) => {
     setError("");
+    setExtractFile({ name: file.name, size: file.size });
+    setExtractStage("reading");
     setStep("extracting");
     try {
       const { text, media } = await extractContent(file);
@@ -1708,24 +1724,31 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 <Textarea
                   id="import-paste"
                   placeholder="Paste itinerary text. We'll pick out the dates, flights, hotels and activities."
-                  className="w-full min-h-[160px] resize-none"
-                  onChange={e => setRawText(e.target.value)}
-                  value={rawText}
+                  className="w-full field-sizing-fixed h-[200px] sm:h-[240px] max-h-[40dvh] resize-none overflow-y-auto font-mono text-xs leading-relaxed"
+                  ref={pasteRef}
+                  defaultValue={rawText}
+                  onChange={e => {
+                    const filled = e.target.value.trim().length > 0;
+                    setHasPaste(prev => (prev === filled ? prev : filled));
+                  }}
                   autoFocus
                 />
                 <Button
                   onClick={async () => {
-                    if (!rawText.trim()) return;
+                    const text = pasteRef.current?.value ?? "";
+                    if (!text.trim()) return;
                     setError("");
+                    setExtractFile(null);
+                    setExtractStage("parsing");
                     setStep("extracting");
                     try {
-                      await processText(rawText);
+                      await processText(text);
                     } catch (e: any) {
                       setError(e.message ?? "Could not parse this text.");
                       setStep("upload");
                     }
                   }}
-                  disabled={!rawText.trim()}
+                  disabled={!hasPaste}
                   className="w-full h-10 rounded-xl font-bold bg-brand hover:opacity-90 text-black shadow-lg shadow-brand/20"
                 >
                   Parse Text <CaretRight className="h-4 w-4 ml-1" />
@@ -1759,9 +1782,40 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
 
         {/* ── STEP 2: EXTRACTING ── */}
         {step === "extracting" && (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <div className="flex flex-col items-center justify-center py-12 gap-5" role="status" aria-live="polite">
             <Spinner className="size-10 text-brand" />
-            <p className="text-sm font-bold tracking-tight text-slate-500 dark:text-muted-foreground">Extracting text, images &amp; attachments...</p>
+            <div className="text-center space-y-1">
+              <p className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+                {extractStage === "reading" ? "Reading your file" : "Building the itinerary"}
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
+                {extractStage === "reading"
+                  ? "Pulling out the text, images and attachments."
+                  : "Picking out dates, flights, hotels and activities. Usually 10 to 30 seconds."}
+              </p>
+            </div>
+            {extractFile && (
+              <div className="inline-flex items-center gap-2 max-w-full rounded-lg bg-slate-100 dark:bg-secondary px-3 py-1.5">
+                <FileText className="h-3.5 w-3.5 text-brand shrink-0" />
+                <span className="text-[11px] font-bold text-slate-900 dark:text-white truncate">{extractFile.name}</span>
+                <span className="text-[10px] font-mono text-slate-500 dark:text-muted-foreground shrink-0">{formatBytes(extractFile.size)}</span>
+              </div>
+            )}
+            <Progress value={extractStage === "reading" ? 30 : 75} className="w-64" />
+            <ol className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-[0.15em]">
+              <li className={`flex items-center gap-1.5 ${extractStage === "reading" ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>
+                {extractStage === "parsing" ? <Check className="h-3 w-3 text-brand" weight="bold" /> : <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                Read
+              </li>
+              <li className={`flex items-center gap-1.5 ${extractStage === "parsing" ? "text-brand" : "text-slate-400 dark:text-muted-foreground/60"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${extractStage === "parsing" ? "bg-brand" : "bg-slate-300 dark:bg-border"}`} />
+                Parse
+              </li>
+              <li className="flex items-center gap-1.5 text-slate-400 dark:text-muted-foreground/60">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-border" />
+                Review
+              </li>
+            </ol>
           </div>
         )}
 
@@ -1794,7 +1848,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
                 </div>
-                <button onClick={() => { setStep("upload"); setRawText(rawText); }} className="text-[10px] font-semibold text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors">
+                <button onClick={() => { setStep("upload"); setHasPaste(rawText.trim().length > 0); }} className="text-[10px] font-semibold text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors">
                   ← Back
                 </button>
               </div>

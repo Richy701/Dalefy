@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Bell, Check, CheckCircle, Info, Warning, X, Trash } from "@phosphor-icons/react";
+import { Bell, Check, X, Trash } from "@phosphor-icons/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/context/NotificationContext";
 import type { Notification } from "@/types";
 
-const TYPE_CONFIG: Record<Notification["type"], { icon: typeof Info; color: string; bg: string }> = {
-  info: { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" },
-  success: { icon: CheckCircle, color: "text-brand", bg: "bg-brand/10" },
-  warning: { icon: Warning, color: "text-amber-400", bg: "bg-amber-500/10" },
+const TYPE_CONFIG: Record<Notification["type"], { bar: string }> = {
+  info: { bar: "bg-blue-400" },
+  success: { bar: "bg-brand" },
+  warning: { bar: "bg-amber-400" },
 };
 
 function relativeTime(n: { time: string; createdAt?: number }): string {
@@ -28,41 +28,43 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
   return (
     <>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center">
-            <Bell className="h-3.5 w-3.5 text-brand" />
-          </div>
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white leading-none">Notifications</p>
-            {unreadCount > 0 && (
-              <p className="text-[9px] font-bold text-brand uppercase tracking-[0.2em] mt-0.5">{unreadCount} unread</p>
-            )}
-          </div>
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center gap-3">
+        <div className="h-7 w-7 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+          <Bell className="h-3.5 w-3.5 text-brand" />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex-1 min-w-0 flex items-baseline gap-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-900 dark:text-white leading-none truncate">Notifications</p>
+          {unreadCount > 0 && (
+            <span className="shrink-0 inline-flex items-center h-4 px-1.5 rounded-md bg-brand/10 text-brand text-[9px] font-black tabular-nums leading-none">
+              {unreadCount}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-brand hover:bg-brand/10 px-2.5 py-1.5 rounded-lg transition-colors"
+              aria-label="Mark all as read"
+              title="Mark all as read"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-brand hover:bg-brand/10 transition-colors"
             >
-              <Check className="h-3 w-3" />
-              Mark all read
+              <Check className="h-4 w-4" weight="bold" />
             </button>
           )}
           {notifications.length > 0 && (
             <button
               onClick={clearAll}
               aria-label="Clear all notifications"
-              className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary px-2.5 py-1.5 rounded-lg transition-colors"
+              title="Clear all"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors"
             >
-              <Trash className="h-3 w-3" />
-              Clear
+              <Trash className="h-4 w-4" />
             </button>
           )}
           {onClose && (
             <button
               onClick={onClose}
+              aria-label="Close"
               className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors sm:hidden"
             >
               <X className="h-4 w-4" />
@@ -85,7 +87,6 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           <div className="p-1.5 space-y-0.5">
             {notifications.map((n) => {
               const config = TYPE_CONFIG[n.type] || TYPE_CONFIG.info;
-              const Icon = config.icon;
               return (
                 <button
                   key={n.id}
@@ -96,11 +97,9 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                       : "bg-brand/3 dark:bg-brand/4 hover:bg-brand/6 dark:hover:bg-brand/8"
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`h-6 w-6 rounded-md ${config.bg} flex items-center justify-center shrink-0`}>
-                      <Icon className={`h-3 w-3 ${config.color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
+                  <div className="flex items-stretch gap-3">
+                    <span className={`w-0.5 self-stretch rounded-full shrink-0 ${config.bar} ${n.read ? "opacity-40" : ""}`} aria-hidden="true" />
+                    <div className="flex-1 min-w-0 self-center">
                       <div className="flex items-center gap-1.5">
                         <p className={`text-[11px] font-bold leading-tight truncate ${n.read ? "text-slate-500 dark:text-muted-foreground" : "text-slate-900 dark:text-white"}`}>
                           {n.message}
@@ -109,7 +108,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                       </div>
                       <p className="text-[10px] text-slate-500 dark:text-muted-foreground truncate leading-tight">{n.detail}</p>
                     </div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground shrink-0">{relativeTime(n)}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground shrink-0 self-center">{relativeTime(n)}</p>
                   </div>
                 </button>
               );

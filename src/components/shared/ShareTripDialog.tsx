@@ -66,35 +66,43 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
     });
   };
 
+  const pinLength = shortCode?.length || 6;
+  const pinCopied = copiedKey === "pin";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-0 bg-slate-100 dark:bg-background p-0 overflow-y-auto w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl border border-slate-200 dark:border-border"
+        className="p-0 overflow-x-hidden overflow-y-auto grid-cols-[minmax(0,1fr)] w-[calc(100vw-2rem)] max-w-md max-h-[calc(100vh-2rem)] rounded-xl bg-background border border-border"
         style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Share trip - {tripName}</DialogTitle>
-          <DialogDescription>Scan QR to open itinerary</DialogDescription>
+          <DialogDescription>Share the trip PIN, QR code or link with travelers</DialogDescription>
         </DialogHeader>
 
-        {/* Header with close */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Share Trip</p>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Share Trip</p>
+            <p className="mt-0.5 text-sm font-bold tracking-tight text-foreground truncate">{tripName}</p>
+          </div>
           <button
+            type="button"
             onClick={() => onOpenChange(false)}
-            className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-secondary flex items-center justify-center text-slate-500 dark:text-muted-foreground active:scale-95 transition-transform"
+            aria-label="Close"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground active:scale-95 transition-colors shrink-0"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" weight="bold" />
           </button>
         </div>
 
-        <div className="p-5 pt-2 sm:pt-5">
+        <div className="px-5 pb-5 space-y-3">
           {!isPublished && (
-            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
               <WarningCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" weight="fill" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">This trip is still a draft</p>
-                <p className="text-[11px] text-slate-600 dark:text-muted-foreground mt-0.5">Travelers can't open the link or PIN until it's published.</p>
+                <p className="text-xs font-bold text-foreground">This trip is still a draft</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Travelers can't open the link or PIN until it's published.</p>
                 {onPublish && (
                   <button
                     type="button"
@@ -108,16 +116,11 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
               </div>
             </div>
           )}
-          {/* Boarding pass ticket */}
-          <div className="relative bg-white dark:bg-background rounded-xl overflow-hidden border border-slate-200 dark:border-border shadow-lg">
-            {/* Top accent bar */}
-            <div
-              className="px-4 py-3 flex items-center justify-center gap-2 border-b"
-              style={{
-                backgroundColor: `${accentColor}14`,
-                borderColor: `${accentColor}30`,
-              }}
-            >
+
+          {/* Trip pass */}
+          <div className="relative bg-card rounded-xl overflow-hidden border border-border shadow-sm">
+            {/* Brand strip */}
+            <div className="px-4 py-2.5 flex items-center gap-2 bg-brand/10 border-b border-brand/20">
               {brand.logoUrl ? (
                 <img src={brand.logoUrl} alt="" className="h-5 w-5 rounded-full object-contain shrink-0" />
               ) : (
@@ -128,129 +131,113 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                   <AirplaneTilt className="h-3 w-3" style={{ color: accentFg }} weight="bold" />
                 </div>
               )}
-              <span
-                className="text-[10px] font-black uppercase tracking-[0.2em] truncate"
-                style={{ color: accentColor }}
-              >
-                {brand.name} · Trip Pass
+              <span className="text-[11px] font-black uppercase tracking-[0.18em] text-brand truncate">
+                {brand.name}
+              </span>
+              <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground shrink-0">
+                Trip Pass
               </span>
             </div>
 
-            {/* Top: trip info + compact QR */}
-            <div className="px-4 pt-4 pb-4 min-w-0 flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
-                  Itinerary
-                </p>
-                <h3 className="mt-1 text-base font-bold tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-2">
-                  {tripName}
-                </h3>
-                {trip?.destination && (
-                  <div className="mt-2 flex items-center gap-1.5 min-w-0">
-                    <MapPin className="h-2.5 w-2.5 shrink-0" style={{ color: accentColor }} weight="bold" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:text-foreground/80 truncate">
-                      {trip.destination}
-                    </span>
-                  </div>
-                )}
-                {trip && (
-                  <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                    <CalendarDots className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" weight="bold" />
-                    <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-muted-foreground tracking-wide truncate">
-                      {formatRange(trip.start, trip.end)}
-                    </span>
-                  </div>
-                )}
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
-                    Gate
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-white tracking-wider truncate max-w-[120px]">
-                    {brand.name}
-                  </span>
-                </div>
-              </div>
-              <div
-                className="shrink-0 p-1.5 rounded-lg bg-white border"
-                style={{ borderColor: `${accentColor}40` }}
-              >
-                <QRCodeSVG
-                  value={deepLink}
-                  size={72}
-                  bgColor="#ffffff"
-                  fgColor={accentColor === "#ffffff" ? "#000000" : accentColor}
-                  level="M"
-                  marginSize={0}
-                />
-                <p
-                  className="mt-1 text-center text-[7px] font-black uppercase tracking-[0.15em]"
-                  style={{ color: accentColor }}
-                >
-                  Scan
-                </p>
-              </div>
-            </div>
-
-            {/* Perforation with side notches */}
-            <div className="relative h-6">
-              <div className="absolute left-3 right-3 top-1/2 border-t-[1.5px] border-dashed border-slate-300 dark:border-border" />
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-background" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 dark:bg-background" />
-            </div>
-
-            {/* Stub: OTP-style PIN */}
-            <div className="px-4 pt-4 pb-6 flex flex-col items-center gap-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
+            {/* Hero: the PIN */}
+            <div className="px-4 pt-5 pb-4 flex flex-col items-center gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                 Trip PIN
               </p>
               <button
                 type="button"
                 onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
                 disabled={!shortCode}
-                className="flex items-center gap-2 group disabled:cursor-default"
+                className="group flex items-center gap-1.5 sm:gap-2 disabled:cursor-default"
                 aria-label="Copy trip PIN"
               >
-                {Array.from({ length: shortCode?.length || 6 }).map((_, i) => {
+                {Array.from({ length: pinLength }).map((_, i) => {
                   const char = shortCode?.[i];
                   const filled = !!char;
-                  const isShort = (shortCode?.length ?? 6) <= 4;
                   return (
                     <span
                       key={i}
-                      className={`${isShort ? "w-10 h-12 text-[24px] sm:w-12 sm:h-14 sm:text-[32px]" : "w-8 h-10 text-[20px] sm:w-10 sm:h-12 sm:text-[24px]"} rounded-lg border-2 flex items-center justify-center font-mono font-black tabular-nums leading-none transition-colors`}
-                      style={{
-                        borderColor: filled ? `${accentColor}50` : "rgba(148,163,184,0.25)",
-                        backgroundColor: filled ? `${accentColor}10` : "transparent",
-                        color: filled ? accentColor : "rgba(148,163,184,0.4)",
-                      }}
+                      className={[
+                        "w-11 h-14 sm:w-12 sm:h-16 rounded-lg border-2 flex items-center justify-center",
+                        "font-mono font-black text-[26px] sm:text-[30px] leading-none tabular-nums transition-colors",
+                        filled
+                          ? "bg-brand/10 border-brand/40 text-brand group-hover:border-brand/70"
+                          : "bg-secondary border-border text-muted-foreground/50",
+                      ].join(" ")}
                     >
                       {filled ? char : allocating ? "·" : "·"}
                     </span>
                   );
                 })}
               </button>
-              <div className="flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground">
-                {copiedKey === "pin" ? (
-                  <>
-                    <Check className="h-2.5 w-2.5" style={{ color: accentColor }} weight="bold" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: accentColor }}>
-                      Copied
+              <button
+                type="button"
+                onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
+                disabled={!shortCode}
+                className={[
+                  "inline-flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-[0.18em] transition-colors disabled:opacity-60",
+                  pinCopied
+                    ? "bg-brand"
+                    : "bg-secondary text-foreground hover:bg-brand/15 hover:text-brand",
+                ].join(" ")}
+                style={pinCopied ? { color: accentFg } : undefined}
+              >
+                {pinCopied ? <Check className="h-3.5 w-3.5" weight="bold" /> : <Copy className="h-3.5 w-3.5" weight="bold" />}
+                {pinCopied ? "Copied" : "Copy PIN"}
+              </button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Travelers enter this in the app to join the trip.
+              </p>
+            </div>
+
+            {/* Perforation with side notches */}
+            <div className="relative h-6">
+              <div className="absolute left-4 right-4 top-1/2 border-t-[1.5px] border-dashed border-border" />
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border-r border-border" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-background border-l border-border" />
+            </div>
+
+            {/* Stub: trip meta + QR */}
+            <div className="px-4 pt-3 pb-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  Or scan
+                </p>
+                <h3 className="mt-1 text-sm font-bold tracking-tight text-foreground leading-tight line-clamp-2">
+                  {tripName}
+                </h3>
+                {trip?.destination && (
+                  <div className="mt-2 flex items-center gap-1.5 min-w-0">
+                    <MapPin className="h-3 w-3 shrink-0 text-brand" weight="bold" />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/80 truncate">
+                      {trip.destination}
                     </span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-2.5 w-2.5" weight="bold" />
-                    <span className="text-[9px] font-bold uppercase tracking-[0.2em]">
-                      Tap to copy · Type on mobile
-                    </span>
-                  </>
+                  </div>
                 )}
+                {trip && (
+                  <div className="mt-1 flex items-center gap-1.5 min-w-0">
+                    <CalendarDots className="h-3 w-3 shrink-0 text-muted-foreground" weight="bold" />
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground tracking-wide truncate">
+                      {formatRange(trip.start, trip.end)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 p-2 rounded-lg bg-white border border-border">
+                <QRCodeSVG
+                  value={deepLink}
+                  size={108}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  level="M"
+                  marginSize={0}
+                />
               </div>
             </div>
           </div>
 
           {/* Link rows */}
-          <div className="mt-4 space-y-2 pb-4 sm:pb-0">
+          <div className="space-y-2">
             <LinkRow
               icon={Link}
               label="Web Link"
@@ -277,7 +264,7 @@ function formatRange(start: string, end: string): string {
   const e = new Date(end);
   const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const year = e.getFullYear();
-  return `${fmt(s)} – ${fmt(e)}, ${year}`;
+  return `${fmt(s)} - ${fmt(e)}, ${year}`;
 }
 
 interface LinkRowProps {
@@ -290,15 +277,15 @@ interface LinkRowProps {
 
 function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
   return (
-    <div className="flex items-center gap-2 bg-white dark:bg-background border border-slate-200 dark:border-border rounded-xl px-3 py-2.5">
-      <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
-        <Icon className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />
+    <div className="flex items-center gap-3 bg-card border border-border rounded-xl pl-3 pr-2 py-2">
+      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
           {label}
         </p>
-        <p className="text-[11px] font-mono text-slate-900 dark:text-white truncate">
+        <p className="text-[12px] font-mono text-foreground truncate">
           {value}
         </p>
       </div>
@@ -306,11 +293,12 @@ function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
         variant="ghost"
         size="sm"
         onClick={onCopy}
-        className="h-8 w-8 p-0 rounded-lg hover:bg-slate-200 dark:hover:bg-[#2a2a2a] shrink-0"
+        aria-label={`Copy ${label}`}
+        className="h-8 w-8 p-0 rounded-lg hover:bg-secondary shrink-0"
       >
         {copied
-          ? <Check className="h-3.5 w-3.5 text-brand" />
-          : <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground" />}
+          ? <Check className="h-3.5 w-3.5 text-brand" weight="bold" />
+          : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
       </Button>
     </div>
   );
