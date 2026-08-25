@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
@@ -465,9 +465,37 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean }) {
+function DayListSection({ events, trip, c, isDark, activeEventId }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean; activeEventId?: string | null }) {
   const groups = useMemo(() => groupEventsByDay(events), [events]);
   const [openDay, setOpenDay] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Follow the event being edited in the workspace: open its day and bring the
+  // card into view so the organizer sees how their change lands on a phone.
+  useEffect(() => {
+    if (!activeEventId) return;
+    const group = groups.find(([, evs]) => evs.some(e => e.id === activeEventId));
+    if (!group) return;
+    const day = group[0];
+    const id = window.setTimeout(() => {
+      setOpenDay(day);
+      requestAnimationFrame(() => {
+        rootRef.current
+          ?.querySelector<HTMLElement>(`[data-preview-event="${activeEventId}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [activeEventId, groups]);
+
+  const jumpToDay = (date: string) => {
+    setOpenDay(date);
+    window.setTimeout(() => {
+      rootRef.current
+        ?.querySelector<HTMLElement>(`[data-preview-day="${date}"]`)
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 30);
+  };
 
   if (groups.length === 0) return null;
 
@@ -485,7 +513,7 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
   const progressBg = isDark ? c.elevated : "#e4e4e7";
 
   return (
-    <div style={{ paddingBottom: 16 }}>
+    <div ref={rootRef} style={{ paddingBottom: 16 }}>
       {/* Itinerary header */}
       <div style={{ padding: "18px 14px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -500,6 +528,32 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
             width: `${Math.min((completed / Math.max(totalEvents, 1)) * 100, 100)}%`,
           }} />
         </div>
+        {groups.length > 1 && (
+          <div className="scrollbar-hide" style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 12, paddingBottom: 2 }}>
+            {groups.map(([date], i) => {
+              const active = openDay === date;
+              let lbl = "";
+              try { lbl = format(parseISO(date), "EEE d"); } catch { lbl = date; }
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  onClick={() => jumpToDay(date)}
+                  style={{
+                    flexShrink: 0, cursor: "pointer",
+                    padding: "5px 9px", borderRadius: 8,
+                    border: `1px solid ${active ? c.teal : c.border}`,
+                    background: active ? c.tealDim : "transparent",
+                    color: active ? c.teal : c.textDim,
+                    fontSize: 10, fontWeight: 700, letterSpacing: 0.3, lineHeight: 1,
+                  }}
+                >
+                  <span style={{ opacity: 0.6, marginRight: 4 }}>D{i + 1}</span>{lbl}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Day cards */}
@@ -527,7 +581,7 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
           const gradHue = hashStr(evs[0]?.title || date) % 360;
 
           return (
-            <div key={date}>
+            <div key={date} data-preview-day={date} style={{ scrollMarginTop: 8 }}>
               <button
                 type="button"
                 onClick={() => setOpenDay(prev => prev === date ? null : date)}
@@ -621,7 +675,22 @@ function DayListSection({ events, trip, c, isDark }: { events: TravelEvent[]; tr
               {/* Expanded events */}
               {isOpen && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 6, paddingBottom: 4 }}>
-                  {evs.map(ev => <MobileEventCard key={ev.id} ev={ev} c={c} />)}
+                  {evs.map(ev => {
+                    const active = ev.id === activeEventId;
+                    return (
+                      <div
+                        key={ev.id}
+                        data-preview-event={ev.id}
+                        style={{
+                          borderRadius: 14,
+                          boxShadow: active ? `0 0 0 2px ${c.teal}, 0 0 0 6px ${c.tealDim}` : "none",
+                          transition: "box-shadow 200ms",
+                        }}
+                      >
+                        <MobileEventCard ev={ev} c={c} />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -637,9 +706,13 @@ interface MobilePreviewProps {
   onClose: () => void;
   /** Events to show (e.g. already filtered by "View As"); defaults to all trip events. */
   events?: TravelEvent[];
+  /** Event currently open in the edit panel; the preview scrolls to and highlights it. */
+  activeEventId?: string | null;
+  /** Name of the traveler the workspace is viewing as, if any. */
+  viewAsName?: string | null;
 }
 
-export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
+export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName }: MobilePreviewProps) {
   const [previewTheme, setPreviewTheme] = useState<"dark" | "light">("dark");
   const isDark = previewTheme === "dark";
   const { brand } = useBrand();
@@ -664,6 +737,11 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
         <div className="flex items-center gap-2">
           <DeviceMobileCamera className="h-4 w-4 text-brand" />
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Mobile Preview</span>
+          {viewAsName && (
+            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-md bg-brand/10 text-brand text-[9px] font-black uppercase tracking-[0.12em] truncate max-w-[120px]" title={`Showing what ${viewAsName} sees`}>
+              <Users size={10} /> {viewAsName}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -769,7 +847,7 @@ export function MobilePreview({ trip, onClose, events }: MobilePreviewProps) {
                 {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && <InfoDocsSection info={trip.info ?? []} documents={trip.documents ?? []} c={c} />}
 
                 {/* Day list */}
-                <DayListSection events={previewEvents} trip={trip} c={c} isDark={isDark} />
+                <DayListSection events={previewEvents} trip={trip} c={c} isDark={isDark} activeEventId={activeEventId} />
 
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />

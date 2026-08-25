@@ -2013,7 +2013,13 @@ export function WorkspacePage() {
           )}
           {showMobilePreview && (
             <aside className="absolute inset-0 lg:relative lg:inset-auto w-full lg:w-[40%] h-full border-l-0 lg:border-l border-slate-200 dark:border-border bg-white dark:bg-card animate-in slide-in-from-right duration-500 z-40 overflow-hidden shadow-2xl flex flex-col">
-              <MobilePreview trip={trip} events={groupedEvents.flatMap(([, evs]) => evs)} onClose={() => setShowMobilePreview(false)} />
+              <MobilePreview
+                trip={trip}
+                events={groupedEvents.flatMap(([, evs]) => evs)}
+                activeEventId={isEditPanelOpen && editingEvent ? editingEvent.id : null}
+                viewAsName={viewAsTraveler?.name ?? null}
+                onClose={() => setShowMobilePreview(false)}
+              />
             </aside>
           )}
         </div>
