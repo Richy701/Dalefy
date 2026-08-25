@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { FINISHES, type Device } from "./phoneFrameConfig";
 
 /**
- * iPhone 17 Pro style frame (unibody band, Camera Control, slimmer island). Geometry is authored in a 420 x 900 unit space and
- * scaled to the measured container width so radii, buttons and the island stay
- * in proportion at any panel size.
+ * Phone frame. Geometry is authored in a 420 x 900 unit space and scaled to
+ * the measured container width so radii, buttons and cutouts stay in
+ * proportion at any panel size.
  */
 const W = 420;
 const H = 900;
-const RIM = 5; // titanium band
-const BEZEL = 10; // band + black bezel to the glass
-const SCREEN_R = 56;
+
+const GEO: Record<Device, { rim: number; bezel: number; bodyR: number; screenR: number }> = {
+  iphone: { rim: 5, bezel: 10, bodyR: 66, screenR: 56 },
+  android: { rim: 4, bezel: 9, bodyR: 50, screenR: 42 },
+};
 
 interface PhoneFrameProps {
   isDark: boolean;
+  device?: Device;
+  finish?: string;
   /** Screen background and status-bar ink, so the frame matches the previewed theme. */
   screenBg: string;
   statusInk: string;
@@ -20,7 +25,10 @@ interface PhoneFrameProps {
   children: ReactNode;
 }
 
-export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, children }: PhoneFrameProps) {
+export function PhoneFrame({ isDark, device = "iphone", finish, screenBg, statusInk, maxWidth = 320, children }: PhoneFrameProps) {
+  const { rim: RIM, bezel: BEZEL, bodyR, screenR: SCREEN_R } = GEO[device];
+  const band = FINISHES[device].find(f => f.key === finish) ?? FINISHES[device][0];
+  const isIphone = device === "iphone";
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(Math.min(maxWidth, 300));
 
@@ -39,12 +47,6 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
   const s = width / W;
   const px = (n: number) => n * s;
   const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
-  // Deep Blue in dark mode, Silver in light
-  const band = isDark
-    ? { a: "#3a4a6a", b: "#161d2c", c: "#24304a", edge: "rgba(255,255,255,0.2)" }
-    : { a: "#f4f4f7", b: "#c2c3ca", c: "#e1e1e6", edge: "rgba(255,255,255,0.9)" };
-  const buttonFill = isDark ? "#3b4a6b" : "#d6d6dc";
 
   return (
     <div ref={hostRef} className="w-full h-full flex items-start justify-center">
@@ -66,11 +68,11 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
             </linearGradient>
             <linearGradient id="pf-btn" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor={band.a} />
-              <stop offset="0.5" stopColor={buttonFill} />
+              <stop offset="0.5" stopColor={band.button} />
               <stop offset="1" stopColor={band.b} />
             </linearGradient>
             <clipPath id="pf-body">
-              <rect x={0} y={0} width={W} height={H} rx={66} />
+              <rect x={0} y={0} width={W} height={H} rx={bodyR} />
             </clipPath>
             <filter id="pf-shadow" x="-20%" y="-10%" width="140%" height="130%">
               <feDropShadow dx="0" dy="18" stdDeviation="18" floodColor="#000" floodOpacity={isDark ? 0.55 : 0.22} />
@@ -79,31 +81,40 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
           </defs>
 
           {/* Side buttons sit behind the body so only their edge shows */}
-          <rect x={-4} y={172} width={8} height={34} rx={2} fill="url(#pf-btn)" />
-          <rect x={-4} y={232} width={8} height={64} rx={2} fill="url(#pf-btn)" />
-          <rect x={-4} y={312} width={8} height={64} rx={2} fill="url(#pf-btn)" />
-          <rect x={W - 4} y={262} width={8} height={104} rx={2} fill="url(#pf-btn)" />
-          {/* Camera Control */}
-          <rect x={W - 3} y={548} width={6} height={58} rx={1.5} fill="url(#pf-btn)" />
+          {isIphone ? (
+            <>
+              <rect x={-4} y={172} width={8} height={34} rx={2} fill="url(#pf-btn)" />
+              <rect x={-4} y={232} width={8} height={64} rx={2} fill="url(#pf-btn)" />
+              <rect x={-4} y={312} width={8} height={64} rx={2} fill="url(#pf-btn)" />
+              <rect x={W - 4} y={262} width={8} height={104} rx={2} fill="url(#pf-btn)" />
+              {/* Camera Control */}
+              <rect x={W - 3} y={548} width={6} height={58} rx={1.5} fill="url(#pf-btn)" />
+            </>
+          ) : (
+            <>
+              <rect x={W - 4} y={214} width={8} height={54} rx={2} fill="url(#pf-btn)" />
+              <rect x={W - 4} y={296} width={8} height={104} rx={2} fill="url(#pf-btn)" />
+            </>
+          )}
 
-          {/* Titanium band */}
-          <rect x={0} y={0} width={W} height={H} rx={66} fill="url(#pf-band)" filter="url(#pf-shadow)" />
-          <rect x={0.75} y={0.75} width={W - 1.5} height={H - 1.5} rx={65.5} fill="none" stroke={band.edge} strokeWidth={1} />
+          {/* Band */}
+          <rect x={0} y={0} width={W} height={H} rx={bodyR} fill="url(#pf-band)" filter="url(#pf-shadow)" />
+          <rect x={0.75} y={0.75} width={W - 1.5} height={H - 1.5} rx={bodyR - 0.5} fill="none" stroke={band.edge} strokeWidth={1} />
 
           {/* Antenna seams: hairlines in the band, clipped to the body */}
-          <g clipPath="url(#pf-body)">
+          {isIphone && <g clipPath="url(#pf-body)">
             {[
               [0, 118, RIM, 118], [0, 794, RIM, 794],
               [W - RIM, 118, W, 118], [W - RIM, 794, W, 794],
               [96, 0, 96, RIM], [324, 0, 324, RIM],
               [96, H - RIM, 96, H], [324, H - RIM, 324, H],
             ].map(([x1, y1, x2, y2], i) => (
-              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={isDark ? "#0b0e16" : "#9a9aa3"} strokeWidth={1.5} strokeOpacity={0.7} />
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={band.seam} strokeWidth={1.5} strokeOpacity={0.7} />
             ))}
-          </g>
+          </g>}
 
           {/* Black bezel */}
-          <rect x={RIM} y={RIM} width={W - RIM * 2} height={H - RIM * 2} rx={61} fill="#050506" />
+          <rect x={RIM} y={RIM} width={W - RIM * 2} height={H - RIM * 2} rx={bodyR - RIM + 1} fill="#050506" />
         </svg>
 
         {/* Glass */}
@@ -139,17 +150,20 @@ export function PhoneFrame({ isDark, screenBg, statusInk, maxWidth = 320, childr
                 <path d="M25 4.5v4a2 2 0 0 0 0-4Z" fill={statusInk} fillOpacity="0.4" />
               </svg>
             </div>
-            {/* Dynamic Island */}
-            <div style={{ position: "absolute", left: "50%", top: px(11), transform: "translateX(-50%)", width: px(112), height: px(33), borderRadius: px(17), background: "#000" }}>
-              <div style={{ position: "absolute", right: px(10), top: px(10), width: px(13), height: px(13), borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #2a2a33, #000 65%)" }} />
-            </div>
+            {isIphone ? (
+              <div style={{ position: "absolute", left: "50%", top: px(11), transform: "translateX(-50%)", width: px(112), height: px(33), borderRadius: px(17), background: "#000" }}>
+                <div style={{ position: "absolute", right: px(10), top: px(10), width: px(13), height: px(13), borderRadius: "50%", background: "radial-gradient(circle at 35% 35%, #2a2a33, #000 65%)" }} />
+              </div>
+            ) : (
+              <div style={{ position: "absolute", left: "50%", top: px(14), transform: "translateX(-50%)", width: px(20), height: px(20), borderRadius: "50%", background: "radial-gradient(circle at 38% 38%, #1e1e26, #000 62%)", boxShadow: "0 0 0 1px rgba(255,255,255,0.06)" }} />
+            )}
           </div>
 
           {/* Content */}
           <div style={{ flex: 1, minHeight: 0, position: "relative" }}>{children}</div>
 
           {/* Home indicator */}
-          <div style={{ position: "absolute", left: "50%", bottom: px(8), transform: "translateX(-50%)", width: px(140), height: px(5), borderRadius: px(3), background: statusInk, opacity: 0.85, zIndex: 3, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: "50%", bottom: px(8), transform: "translateX(-50%)", width: px(isIphone ? 140 : 96), height: px(isIphone ? 5 : 3.5), borderRadius: px(3), background: statusInk, opacity: isIphone ? 0.85 : 0.6, zIndex: 3, pointerEvents: "none" }} />
         </div>
       </div>
     </div>

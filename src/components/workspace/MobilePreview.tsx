@@ -1,10 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { PhoneFrame } from "./PhoneFrame";
+import { DEVICES, FINISHES, type Device } from "./phoneFrameConfig";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
   CaretRight, CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
   DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold, Paperclip,
+  AppleLogo, AndroidLogo, SlidersHorizontal, TextAa, CalendarDot,
 } from "@phosphor-icons/react";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
 import type { Trip, TravelEvent, TripOrganizer, TripInfo } from "@/types";
@@ -466,7 +469,7 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-function DayListSection({ events, trip, c, isDark, activeEventId }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean; activeEventId?: string | null }) {
+function DayListSection({ events, trip, c, isDark, activeEventId, today }: { events: TravelEvent[]; trip: Trip; c: C; isDark: boolean; activeEventId?: string | null; today?: string }) {
   const groups = useMemo(() => groupEventsByDay(events), [events]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -500,7 +503,7 @@ function DayListSection({ events, trip, c, isDark, activeEventId }: { events: Tr
 
   if (groups.length === 0) return null;
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = today ?? new Date().toISOString().split("T")[0];
   const start = new Date(trip.start + "T00:00:00");
   const end = new Date(trip.end + "T00:00:00");
   const totalDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
@@ -702,6 +705,29 @@ function DayListSection({ events, trip, c, isDark, activeEventId }: { events: Tr
   );
 }
 
+interface PreviewPrefs {
+  device: Device;
+  finish: Record<Device, string>;
+  textScale: number;
+  /** ISO date to treat as "today", or null for the real date. */
+  today: string | null;
+}
+const PREFS_KEY = "daf-preview-prefs";
+const DEFAULT_PREFS: PreviewPrefs = { device: "iphone", finish: { iphone: "deep-blue", android: "obsidian" }, textScale: 1, today: null };
+function loadPrefs(): PreviewPrefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return DEFAULT_PREFS;
+    const p = JSON.parse(raw);
+    return { ...DEFAULT_PREFS, ...p, finish: { ...DEFAULT_PREFS.finish, ...(p.finish ?? {}) } };
+  } catch { return DEFAULT_PREFS; }
+}
+const TEXT_SCALES = [
+  { value: 1, label: "Default" },
+  { value: 1.15, label: "Large" },
+  { value: 1.3, label: "Larger" },
+];
+
 interface MobilePreviewProps {
   trip: Trip;
   onClose: () => void;
@@ -716,6 +742,25 @@ interface MobilePreviewProps {
 export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName }: MobilePreviewProps) {
   const [previewTheme, setPreviewTheme] = useState<"dark" | "light">("dark");
   const isDark = previewTheme === "dark";
+  const [prefs, setPrefs] = useState<PreviewPrefs>(loadPrefs);
+  const updatePrefs = (patch: Partial<PreviewPrefs>) => {
+    setPrefs(prev => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  };
+  const tripDays = useMemo(() => {
+    const out: string[] = [];
+    try {
+      const d = new Date(trip.start + "T00:00:00");
+      const end = new Date(trip.end + "T00:00:00");
+      for (let i = 0; d <= end && i < 60; i++) { out.push(d.toISOString().split("T")[0]); d.setDate(d.getDate() + 1); }
+    } catch { /* bad dates */ }
+    return out;
+  }, [trip.start, trip.end]);
+  const dayBefore = tripDays[0] ? shiftDay(tripDays[0], -1) : null;
+  const dayAfter = tripDays.length ? shiftDay(tripDays[tripDays.length - 1], 1) : null;
   const { brand } = useBrand();
   // Show the traveler what they'll actually get: the agency accent, not the default teal
   const c: C = useMemo(() => {
@@ -744,7 +789,88 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border p-0.5">
+            {DEVICES.map(d => (
+              <button
+                key={d.key}
+                type="button"
+                title={d.label}
+                aria-pressed={prefs.device === d.key}
+                onClick={() => updatePrefs({ device: d.key })}
+                className={`h-6 w-7 rounded-md flex items-center justify-center transition-colors ${prefs.device === d.key ? "bg-white dark:bg-card text-brand shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"}`}
+              >
+                {d.key === "iphone" ? <AppleLogo size={13} weight="fill" /> : <AndroidLogo size={13} weight="fill" />}
+              </button>
+            ))}
+          </div>
+          <Popover>
+            <PopoverTrigger
+              title="Preview settings"
+              className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors data-popup-open:text-brand"
+            >
+              <SlidersHorizontal size={12} weight="bold" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-3 space-y-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">Finish</p>
+                <div className="flex items-center gap-2">
+                  {FINISHES[prefs.device].map(f => {
+                    const active = prefs.finish[prefs.device] === f.key;
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        title={f.label}
+                        aria-pressed={active}
+                        onClick={() => updatePrefs({ finish: { ...prefs.finish, [prefs.device]: f.key } })}
+                        className={`h-7 w-7 rounded-full border-2 transition-transform ${active ? "border-brand scale-110" : "border-transparent hover:scale-105"}`}
+                        style={{ background: `linear-gradient(135deg, ${f.a}, ${f.b})` }}
+                      />
+                    );
+                  })}
+                  <span className="ml-auto text-[10px] font-bold text-slate-600 dark:text-muted-foreground">
+                    {FINISHES[prefs.device].find(f => f.key === prefs.finish[prefs.device])?.label}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2 flex items-center gap-1"><TextAa size={11} /> Text size</p>
+                <div className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
+                  {TEXT_SCALES.map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      aria-pressed={prefs.textScale === t.value}
+                      onClick={() => updatePrefs({ textScale: t.value })}
+                      className={`h-7 rounded-md text-[10px] font-bold transition-colors ${prefs.textScale === t.value ? "bg-white dark:bg-card text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-muted-foreground"}`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Checks the itinerary still reads with larger accessibility text.</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2 flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
+                <select
+                  value={prefs.today ?? ""}
+                  onChange={e => updatePrefs({ today: e.target.value || null })}
+                  className="w-full h-8 rounded-lg border border-slate-200 dark:border-border bg-white dark:bg-background px-2 text-[11px] font-semibold text-slate-900 dark:text-white"
+                >
+                  <option value="">Real date</option>
+                  {dayBefore && <option value={dayBefore}>Before the trip</option>}
+                  {tripDays.map((d, i) => {
+                    let lbl = d;
+                    try { lbl = format(parseISO(d), "EEE, MMM d"); } catch { /* keep iso */ }
+                    return <option key={d} value={d}>Day {i + 1} · {lbl}</option>;
+                  })}
+                  {dayAfter && <option value={dayAfter}>After the trip</option>}
+                </select>
+                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">See past days dimmed, the TODAY badge and progress as travelers will on that day.</p>
+              </div>
+            </PopoverContent>
+          </Popover>
           <button
             onClick={() => setPreviewTheme(previewTheme === "dark" ? "light" : "dark")}
             className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
@@ -762,10 +888,10 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
 
       {/* Phone frame container */}
       <div className="flex-1 min-h-0 overflow-hidden p-4">
-        <PhoneFrame isDark={isDark} screenBg={c.bg} statusInk={c.textPrimary}>
+        <PhoneFrame isDark={isDark} device={prefs.device} finish={prefs.finish[prefs.device]} screenBg={c.bg} statusInk={c.textPrimary}>
               {/* Scrollable mobile screen */}
               <div
-                style={{ background: c.bg, height: "100%", overflowY: "auto", overflowX: "hidden" }}
+                style={{ background: c.bg, height: "100%", overflowY: "auto", overflowX: "hidden", zoom: prefs.textScale }}
                 className="scrollbar-hide"
               >
                 {/* Hero */}
@@ -817,7 +943,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && <InfoDocsSection info={trip.info ?? []} documents={trip.documents ?? []} c={c} />}
 
                 {/* Day list */}
-                <DayListSection events={previewEvents} trip={trip} c={c} isDark={isDark} activeEventId={activeEventId} />
+                <DayListSection events={previewEvents} trip={trip} c={c} isDark={isDark} activeEventId={activeEventId} today={prefs.today ?? undefined} />
 
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />
@@ -826,6 +952,12 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
       </div>
     </div>
   );
+}
+
+function shiftDay(iso: string, delta: number): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + delta);
+  return d.toISOString().split("T")[0];
 }
 
 function HeroChip({ children }: { children: React.ReactNode }) {
