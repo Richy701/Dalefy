@@ -24,6 +24,7 @@
   /* Brand accent (runtime-swappable via Settings → Appearance) */
   :root {
     --brand-rgb: 11 210 181; /* Cyber Teal — default */
+    --accent-fg: #050505; /* readable-on-accent, kept in sync by PreferencesProvider */
   }
 
   /* LIGHT MODE — three-tier elevation ramp.
@@ -146,6 +147,16 @@ html[data-accent-fg="light"] .data-active\:bg-brand[data-active],
 html[data-accent-fg="light"] .data-active\:bg-brand[data-active] * {
   color: #fff !important;
 }
+/* Tailwind's important suffix produces distinct class names (.bg-brand\!),
+   so the safety net must name them too - the calendar's selected days use them */
+html[data-accent-fg="light"] .bg-brand\!,
+html[data-accent-fg="light"] .bg-brand\! *,
+html[data-accent-fg="light"] .hover\:bg-brand\!:hover,
+html[data-accent-fg="light"] .hover\:bg-brand\!:hover *,
+html[data-accent-fg="light"] .focus\:bg-brand\!:focus,
+html[data-accent-fg="light"] .focus\:bg-brand\!:focus * {
+  color: #fff !important;
+}
 html[data-accent-fg="light"] .hover\:bg-brand:hover,
 html[data-accent-fg="light"] .hover\:bg-brand:hover * {
   color: #fff !important;
@@ -166,19 +177,25 @@ html[data-accent-fg="light"]:not(.dark) [data-workspace-hero] .text-brand {
   color: #fff !important;
 }
 
-/* ── Compact mode ── tightens large vertical rhythms on dashboard/lists */
+/* ── Compact mode ── tightens large vertical rhythms on dashboard/lists.
+   Tailwind v4 space-y-* sets margin-bottom on :not(:last-child), so overrides
+   must target the same property or the gap, never add margin-top. */
 html[data-compact="true"] [data-compact-section] { padding-top: 0.75rem; padding-bottom: 1.5rem; }
-html[data-compact="true"] [data-compact-section] > * + * { margin-top: 0.75rem !important; }
-html[data-compact="true"] [data-compact-card] { padding: 0.75rem !important; }
-html[data-compact="true"] [data-compact-row] { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+html[data-compact="true"] [data-compact-section] > :not(:last-child) { margin-bottom: 0.75rem !important; }
 
 /* Hero area */
-html[data-compact="true"] [data-compact-hero] { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+html[data-compact="true"] [data-compact-hero] { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; min-height: 0 !important; }
 html[data-compact="true"] [data-compact-hero] h1 { font-size: 1.25rem !important; }
-html[data-compact="true"] [data-compact-hero] [data-compact-countdown] { font-size: 2.5rem !important; }
+html[data-compact="true"] [data-compact-countdown] span.tabular-nums { font-size: 1.75rem !important; }
 
-/* Two-column layout */
+/* Two-column layout: keep the columns stretched (the spotlight cards grow to
+   fill, so a short left column never leaves a void) but tighten both stacks */
 html[data-compact="true"] [data-compact-grid] { gap: 1rem !important; }
+html[data-compact="true"] [data-compact-grid] > div { gap: 0.75rem !important; }
+
+/* Card internals shared across dashboard cards */
+html[data-compact="true"] [data-compact-card-head] { padding: 0.75rem 1rem 0.5rem !important; }
+html[data-compact="true"] [data-compact-cell] { padding: 0.625rem 0.75rem !important; }
 
 /* Grid trip cards */
 html[data-compact="true"] [data-compact-trip-grid] { gap: 0.75rem !important; }
@@ -198,16 +215,14 @@ html[data-compact="true"] [data-compact-section-head] h2,
 html[data-compact="true"] [data-compact-section-head] h3 { font-size: 1rem !important; }
 
 /* Right sidebar cards */
-html[data-compact="true"] [data-compact-sidebar] > * + * { margin-top: 0.75rem !important; }
-html[data-compact="true"] [data-compact-map] { height: 160px !important; }
 html[data-compact="true"] [data-compact-spotlight-hero] { height: 140px !important; }
+html[data-compact="true"] [data-compact-hero] img { height: 8rem !important; }
 html[data-compact="true"] [data-compact-stat-grid] { gap: 0.375rem !important; padding: 0.625rem 0.75rem !important; }
 html[data-compact="true"] [data-compact-stat-grid] > div { padding: 0.375rem 0.5rem !important; }
 
 /* Place cards (spotlight events) */
 html[data-compact="true"] [data-compact-place-list] { gap: 0.5rem !important; }
-html[data-compact="true"] [data-compact-place] { border-radius: 0.75rem !important; flex: none !important; }
-html[data-compact="true"] [data-compact-place-img] { width: 80px !important; height: auto !important; }
+html[data-compact="true"] [data-compact-place] { border-radius: 0.75rem !important; }
 html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important; gap: 0.25rem !important; }
 
 /* ── Sidebar mini-calendar ── */
@@ -217,6 +232,25 @@ html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important
   padding: 0 0.5rem !important;
   font-size: 10px;
 }
+/* Trip days render as tinted ranges; only TODAY gets the solid accent.
+   Solid runs turned into slabs with dark accents (mono/black). */
+.daf-sidebar-cal .cal-trip-day {
+  background: rgb(var(--brand-rgb) / 0.10) !important;
+  color: rgb(var(--brand-rgb)) !important;
+  font-weight: 700 !important;
+}
+.daf-sidebar-cal .cal-active-day {
+  background: rgb(var(--brand-rgb) / 0.22) !important;
+  color: rgb(var(--brand-rgb)) !important;
+  font-weight: 800 !important;
+}
+.daf-sidebar-cal .cal-today {
+  background: rgb(var(--brand-rgb)) !important;
+  color: #050505 !important;
+  font-weight: 900 !important;
+  border-radius: 8px !important;
+}
+html[data-accent-fg="light"] .daf-sidebar-cal .cal-today { color: #fff !important; }
 .daf-sidebar-cal .rdp-months { width: 100% !important; }
 .daf-sidebar-cal .rdp-month { width: 100% !important; space-y: 0 !important; }
 .daf-sidebar-cal .rdp-month > * + * { margin-top: 0 !important; }

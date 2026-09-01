@@ -25,7 +25,9 @@ import type { DateRange } from "react-day-picker";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { parseTripDate } from "@/lib/dates";
-import type { DisplayMode, Trip } from "@/types";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { MOCK_USERS } from "@/data/mock-users";
+import type { ComplianceDoc, DisplayMode, Trip, User as UserType } from "@/types";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -54,6 +56,8 @@ const EVENT_COLORS = {
 
 
 
+
+const templateId = () => `tpl-${Date.now()}`;
 
 function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((parseTripDate(dateStr).getTime() - Date.now()) / 86400000));
@@ -113,6 +117,63 @@ function getRelativeDay(dateStr: string) {
   return target.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+
+/** Own component so the 1-second countdown tick re-renders only this block, not the whole dashboard. */
+function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
+  const countdown = useLiveCountdown(trip);
+  if (!countdown) return null;
+  if (countdown.total > 0) {
+    return (
+      <button onClick={onOpen} className="group mt-5 block text-left">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">
+          Next Trip
+        </p>
+        <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
+          {[
+            { value: countdown.days, label: "DAYS" },
+            { value: countdown.hours, label: "HRS" },
+            { value: countdown.minutes, label: "MIN" },
+            { value: countdown.seconds, label: "SEC" },
+          ].map((u, i) => (
+            <div key={u.label} className="flex items-center">
+              <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px] lg:min-w-[60px]">
+                <span className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                  <NumberFlow value={u.value} format={{ minimumIntegerDigits: 2 }} />
+                </span>
+                <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-0.5">
+                  {u.label}
+                </span>
+              </div>
+              {i < 3 && (
+                <span className="text-xl sm:text-2xl font-black text-brand/60 mx-0.5 -mt-2.5 sm:-mt-3 select-none">:</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand/80 group-hover:text-brand transition-colors">
+          <AirplaneTilt className="h-3 w-3" />
+          {trip.destination || trip.name}
+          <ArrowUpRight className="h-2.5 w-2.5 opacity-40" />
+        </p>
+      </button>
+    );
+  }
+  return (
+    <button onClick={onOpen} className="group mt-5 block text-left">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-2">
+        Currently Travelling
+      </p>
+      <p className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-brand">
+        NOW
+      </p>
+      <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/80 group-hover:text-brand transition-colors">
+        <MapPin className="h-3 w-3 text-brand" />
+        {trip.destination || trip.name}
+        <ArrowUpRight className="h-3 w-3" />
+      </p>
+    </button>
+  );
+}
 
 /** Makes a clickable div behave like a button for keyboard and screen-reader users. */
 function buttonA11y(label: string, onActivate: () => void) {
@@ -188,13 +249,16 @@ export function DashboardPage() {
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   })();
 
-  const filteredTrips = useMemo(() =>
-    [...trips]
+  const filteredTrips = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return [...trips]
       .sort((a, b) => a.start.localeCompare(b.start))
       .filter(t =>
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.attendees.toLowerCase().includes(searchQuery.toLowerCase())
-      ), [trips, searchQuery]);
+        t.name.toLowerCase().includes(q) ||
+        t.attendees.toLowerCase().includes(q) ||
+        (t.destination?.toLowerCase().includes(q) ?? false)
+      );
+  }, [trips, searchQuery]);
 
   // Next 2 upcoming trips for cards
   const upcomingCards = useMemo(() =>
@@ -203,8 +267,6 @@ export function DashboardPage() {
       .filter(t => parseTripDate(t.end) >= new Date())
       .slice(0, 2),
     [trips]);
-
-  const countdown = useLiveCountdown(upcomingCards[0]);
 
   // Spotlight trip for "For your X Trip"
   const spotlightTrip = useMemo(() =>
@@ -240,13 +302,38 @@ export function DashboardPage() {
       .slice(0, 4);
   }, [trips]);
 
+  const [complianceOverrides] = useLocalStorage<Record<string, ComplianceDoc[]>>(STORAGE.COMPLIANCE, {});
+  const [customTravelers] = useLocalStorage<UserType[]>(STORAGE.CUSTOM_TRAVELERS, []);
+
   const attentionItems = useMemo(() => {
     const items: Array<{ tripId: string; tripName: string; message: string; severity: "warn" | "info" }> = [];
     const now = new Date();
+
+    // Compliance docs per traveler, same precedence as TravelersPage:
+    // localStorage overrides win over the traveler's own docs.
+    const docsById = new Map<string, ComplianceDoc[]>();
+    if (isDemo) for (const u of MOCK_USERS) docsById.set(u.id, u.compliance ?? []);
+    for (const cu of customTravelers) docsById.set(cu.id, cu.compliance ?? []);
+    for (const [id, docs] of Object.entries(complianceOverrides)) docsById.set(id, docs);
+
     trips.forEach(trip => {
       const start = parseTripDate(trip.start);
       const end = parseTripDate(trip.end);
       const days = Math.ceil((start.getTime() - now.getTime()) / 86400000);
+
+      if (days > 0 && days <= 30 && end >= now) {
+        const ids = new Set([...(trip.travelerIds ?? []), ...(trip.travelers?.map(tv => tv.id) ?? [])]);
+        let flagged = 0;
+        ids.forEach(id => {
+          const docs = docsById.get(id);
+          if (docs?.some(d => d.status === "Pending" || d.status === "Expired")) flagged++;
+        });
+        if (flagged > 0) {
+          items.push({ tripId: trip.id, tripName: trip.name, message: `${flagged} traveler${flagged === 1 ? "" : "s"} with outstanding docs - departs in ${days}d`, severity: "warn" });
+          return;
+        }
+      }
+
       if (trip.status === "Draft" && days > 0 && days <= 30)
         items.push({ tripId: trip.id, tripName: trip.name, message: `Draft - departs in ${days}d`, severity: "warn" });
       else if (trip.events.length === 0 && end >= now)
@@ -255,7 +342,7 @@ export function DashboardPage() {
         items.push({ tripId: trip.id, tripName: trip.name, message: "Past end date - still active", severity: "warn" });
     });
     return items.slice(0, 3);
-  }, [trips]);
+  }, [trips, complianceOverrides, customTravelers, isDemo]);
 
   const [coverNotice, setCoverNotice] = useState<string | null>(null);
   const [newTripDateError, setNewTripDateError] = useState<string | null>(null);
@@ -335,16 +422,14 @@ export function DashboardPage() {
   };
 
   const handleSaveAsTemplate = (trip: Trip) => {
-    const templates: Trip[] = JSON.parse(localStorage.getItem(STORAGE.TEMPLATES) ?? "[]");
     const tpl: Trip = {
       ...trip,
-      id: `tpl-${Date.now()}`,
+      id: templateId(),
       name: trip.name,
       status: "Draft",
       shortCode: undefined,
     };
-    templates.push(tpl);
-    localStorage.setItem(STORAGE.TEMPLATES, JSON.stringify(templates));
+    setTemplates(prev => [...prev, tpl]);
     toast.success("Saved as template");
   };
 
@@ -376,10 +461,7 @@ export function DashboardPage() {
     navigate(`/trip/${newTrip.id}`);
   };
 
-  const templates: Trip[] = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE.TEMPLATES) ?? "[]"); }
-    catch { return []; }
-  }, []);
+  const [templates, setTemplates] = useLocalStorage<Trip[]>(STORAGE.TEMPLATES, []);
 
   const handleOpenTrip = (trip: Trip, eventId?: string) => navigate(`/trip/${trip.id}${eventId ? `?event=${eventId}` : ""}`);
 
@@ -400,7 +482,7 @@ export function DashboardPage() {
             </div>
             <div className="text-center space-y-2">
               <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Drop to Import</p>
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
             </div>
           </div>
         </div>
@@ -415,7 +497,7 @@ export function DashboardPage() {
           </div>
         }
         cta={
-          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{isViewer ? "View Only" : "New Trip"}</span>
           </Button>
         }
@@ -455,14 +537,14 @@ export function DashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand text-black px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand text-primary-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" /> New Trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.15em] hover:border-brand/40 hover:text-brand transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:border-brand/40 hover:text-brand transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
@@ -480,59 +562,8 @@ export function DashboardPage() {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
                 {greeting}, {firstName}
               </h1>
-              {upcomingCards[0] && countdown && countdown.total > 0 ? (
-                <button
-                  onClick={() => handleOpenTrip(upcomingCards[0])}
-                  className="group mt-5 block text-left"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-2">
-                    Next Trip
-                  </p>
-                  <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
-                    {[
-                      { value: countdown.days, label: "DAYS" },
-                      { value: countdown.hours, label: "HRS" },
-                      { value: countdown.minutes, label: "MIN" },
-                      { value: countdown.seconds, label: "SEC" },
-                    ].map((u, i) => (
-                      <div key={u.label} className="flex items-center">
-                        <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px] lg:min-w-[60px]">
-                          <span className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-slate-900 dark:text-white tabular-nums">
-                            <NumberFlow value={u.value} format={{ minimumIntegerDigits: 2 }} />
-                          </span>
-                          <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-0.5">
-                            {u.label}
-                          </span>
-                        </div>
-                        {i < 3 && (
-                          <span className="text-xl sm:text-2xl font-black text-brand/60 mx-0.5 -mt-2.5 sm:-mt-3 select-none">:</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-brand/80 group-hover:text-brand transition-colors">
-                    <AirplaneTilt className="h-3 w-3" />
-                    {upcomingCards[0].destination || upcomingCards[0].name}
-                    <ArrowUpRight className="h-2.5 w-2.5 opacity-40" />
-                  </p>
-                </button>
-              ) : upcomingCards[0] && new Date(upcomingCards[0].end) >= new Date() ? (
-                <button
-                  onClick={() => handleOpenTrip(upcomingCards[0])}
-                  className="group mt-5 block text-left"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-brand mb-2">
-                    Currently Travelling
-                  </p>
-                  <p className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-brand">
-                    NOW
-                  </p>
-                  <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/80 group-hover:text-brand transition-colors">
-                    <MapPin className="h-3 w-3 text-brand" />
-                    {upcomingCards[0].destination || upcomingCards[0].name}
-                    <ArrowUpRight className="h-3 w-3" />
-                  </p>
-                </button>
+              {upcomingCards[0] ? (
+                <NextTripHero trip={upcomingCards[0]} onOpen={() => handleOpenTrip(upcomingCards[0])} />
               ) : (
                 <p className="mt-4 text-sm sm:text-base font-bold tracking-tight text-slate-500 dark:text-muted-foreground">
                   Where to next?
@@ -578,7 +609,7 @@ export function DashboardPage() {
           {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
             <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
                   <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Across all your trips</p>
@@ -592,13 +623,14 @@ export function DashboardPage() {
                       key={ev.id}
                       type="button"
                       onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
+                      data-compact-cell
                       className="bg-white dark:bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                     >
                       <div className="flex items-center gap-2 mb-2.5">
                         <div className={cn("h-5 w-5 rounded-md flex items-center justify-center shrink-0", cfg.bg)}>
                           <cfg.Icon className={cn("h-2.5 w-2.5", cfg.text)} weight="bold" />
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-brand">{getRelativeDay(ev.date)}</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">{getRelativeDay(ev.date)}</span>
                       </div>
                       <p className="text-xs font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1 group-hover:text-brand transition-colors">
                         {ev.title}
@@ -707,7 +739,8 @@ export function DashboardPage() {
                         // Events are stored 12-hour, so "12:00 AM" is the form that actually
                         // occurs; the 24-hour spellings are kept for older/imported data.
                         const isMidnight = !!rawTime && /^(0?0:00(:00)?|12:00\s*am)$/i.test(rawTime);
-                        const hasRealTime = !!rawTime && !isMidnight;
+                        const isPlaceholderTime = !!rawTime && /^(tbd|tba|n\/a|—|-)$/i.test(rawTime);
+                        const hasRealTime = !!rawTime && !isMidnight && !isPlaceholderTime;
                         const timeParts = hasRealTime ? rawTime.split(/\s+/) : null;
 
                         // Type-specific detail row
@@ -767,7 +800,7 @@ export function DashboardPage() {
                             data-compact-place className="text-left bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
-                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-[160px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
+                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
                               {hasImg ? (
                                 <img src={ev.image} alt={ev.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               ) : (
@@ -782,7 +815,7 @@ export function DashboardPage() {
                               {/* Top: type pill + title + inline time on mobile */}
                               <div className="min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em]", cfg.bg, cfg.text)}>
+                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-[0.2em]", cfg.bg, cfg.text)}>
                                     <cfg.Icon className="h-2.5 w-2.5" weight="bold" />
                                     {typeLabel}
                                   </div>
@@ -847,7 +880,7 @@ export function DashboardPage() {
                                 ) : null}
                                 {monthDayLabel && (
                                   <span className={cn(
-                                    "text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground",
+                                    "text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground",
                                     timeParts ? "mt-1" : "mt-0.5",
                                   )}>
                                     {monthDayLabel}
@@ -881,7 +914,7 @@ export function DashboardPage() {
               {/* Needs Attention */}
               {attentionItems.length > 0 && (
                 <div className="bg-white dark:bg-card border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-xl overflow-hidden">
-                  <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
+                  <div data-compact-card-head className="flex items-center gap-2.5 px-5 pt-5 pb-3">
                     <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
                     <div>
                       <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</p>
@@ -913,7 +946,7 @@ export function DashboardPage() {
 
               {/* At a Glance - stats card */}
               <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
-                <div className="px-5 pt-5 pb-3">
+                <div data-compact-card-head className="px-5 pt-5 pb-3">
                   <p className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
                   <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
                     {stats.pipeline.total === 0
@@ -931,6 +964,7 @@ export function DashboardPage() {
                   ].map(({ icon: Icon, label, value }) => (
                     <div
                       key={label}
+                      data-compact-cell
                       className="rounded-xl bg-slate-50 dark:bg-background px-3 py-3 group/stat hover:bg-brand/4 dark:hover:bg-brand/6 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 mb-1.5">
@@ -945,7 +979,7 @@ export function DashboardPage() {
                 </div>
 
                 <div className="px-5 pb-5 pt-2 space-y-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
                   {[
                     { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
                     { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-muted-foreground/40" },
@@ -980,7 +1014,7 @@ export function DashboardPage() {
                 })();
                 const statusStyle =
                   spotlightTrip.status === "Published"  ? "bg-brand text-primary-foreground"
-                  : spotlightTrip.status === "In Progress" ? "bg-white/15 text-white backdrop-blur border border-brand/40"
+                  : spotlightTrip.status === "In Progress" ? "bg-white/15 text-white backdrop-blur border border-emerald-400/40"
                   : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
 
                 return (
@@ -993,7 +1027,7 @@ export function DashboardPage() {
 
                       {/* Status + eyebrow */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                        <span className="text-[10px] font-semibold tracking-[0.14em] text-brand uppercase">
+                        <span className="text-[10px] font-semibold tracking-[0.2em] text-brand uppercase">
                           Spotlight
                         </span>
                         <span className={cn(
@@ -1002,7 +1036,7 @@ export function DashboardPage() {
                         )}>
                           {spotlightTrip.status === "In Progress" ? (
                             <>
-                              <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active
                             </>
                           ) : spotlightTrip.status === "Published" ? "✓ Published"
@@ -1084,22 +1118,24 @@ export function DashboardPage() {
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 const activeDays: Date[] = [];
-                const tripDayMap = new Map<string, { tripId: string; tripName: string }>();
+                const tripDayMap = new Map<string, Array<{ tripId: string; tripName: string }>>();
                 trips.forEach(t => {
                   const s = new Date(t.start + "T00:00:00");
                   const e = new Date(t.end + "T00:00:00");
                   const isActive = s <= now && e >= now;
                   for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
                     const key = d.toISOString().split("T")[0];
-                    tripDayMap.set(key, { tripId: t.id, tripName: t.name });
+                    const list = tripDayMap.get(key) ?? [];
+                    list.push({ tripId: t.id, tripName: t.name });
+                    tripDayMap.set(key, list);
                     if (isActive) activeDays.push(new Date(d));
                   }
                 });
 
                 const handleDayClick = (day: Date) => {
                   const key = day.toISOString().split("T")[0];
-                  const trip = tripDayMap.get(key);
-                  if (trip) navigate(`/trip/${trip.tripId}`);
+                  const dayTrips = tripDayMap.get(key);
+                  if (dayTrips?.length) navigate(`/trip/${dayTrips[0].tripId}`);
                 };
 
                 const modifiers = {
@@ -1117,7 +1153,7 @@ export function DashboardPage() {
                       <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
                       <button
                         onClick={() => setCalMonth(new Date())}
-                        className="text-[8px] font-bold uppercase tracking-wider text-brand hover:text-brand/80 transition-colors"
+                        className="text-[10px] font-bold uppercase tracking-wider text-brand hover:text-brand/80 transition-colors"
                       >
                         Today
                       </button>
@@ -1130,21 +1166,22 @@ export function DashboardPage() {
                         showOutsideDays
                         modifiers={modifiers}
                         modifiersClassNames={{
-                          tripDay: "bg-brand/10! text-brand! font-bold!",
-                          activeDay: "bg-brand! text-white! font-black!",
+                          tripDay: "cal-trip-day",
+                          activeDay: "cal-active-day",
+                          today: "cal-today",
                         }}
                         onDayClick={handleDayClick}
                         components={{
                           DayContent: ({ date }) => {
                             const key = date.toISOString().split("T")[0];
-                            const trip = tripDayMap.get(key);
-                            if (trip) {
+                            const dayTrips = tripDayMap.get(key);
+                            if (dayTrips?.length) {
                               return (
                                 <Tooltip>
                                   <TooltipTrigger className="w-full h-full flex items-center justify-center">
                                     {date.getDate()}
                                   </TooltipTrigger>
-                                  <TooltipContent side="top">{trip.tripName}</TooltipContent>
+                                  <TooltipContent side="top">{dayTrips.map(t => t.tripName).join(" · ")}</TooltipContent>
                                 </Tooltip>
                               );
                             }
@@ -1171,7 +1208,7 @@ export function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
-                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-slate-500" />
+                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-muted-foreground" />
                   <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
                 </div>
 <div className="flex gap-1 bg-white dark:bg-card p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
@@ -1216,7 +1253,7 @@ export function DashboardPage() {
 
                       {/* Top row: status + countdown */}
                       <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-brand/90 text-primary-foreground" : "bg-black/45 text-white"}`}>
+                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
                           {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
                           {isActive ? "Active" : trip.status}
                         </span>
@@ -1263,7 +1300,7 @@ export function DashboardPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
@@ -1295,14 +1332,14 @@ export function DashboardPage() {
                           </p>
                           <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] ${
                             isActive
-                              ? "bg-brand/10 text-brand"
-                              : trip.status === "Published"
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : trip.status === "Published"
+                              ? "bg-brand/10 text-brand"
                               : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-muted-foreground"
                           }`}>
                             <span className={`h-1 w-1 rounded-full ${
-                              isActive ? "bg-brand animate-pulse"
-                              : trip.status === "Published" ? "bg-emerald-500 dark:bg-emerald-400"
+                              isActive ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
+                              : trip.status === "Published" ? "bg-brand"
                               : "bg-slate-400 dark:bg-slate-500"
                             }`} />
                             {isActive ? "Active" : trip.status}
@@ -1353,7 +1390,7 @@ export function DashboardPage() {
                     <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em]">New Trip</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">New Trip</span>
                   </button>
                 )}
               </div>
@@ -1401,7 +1438,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
+                  <Drawer.Title className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
                   <p className="text-[13px] text-slate-500 dark:text-muted-foreground mt-1">Only the title, client and dates are required.</p>
                 </div>
                 <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
@@ -1476,7 +1513,7 @@ export function DashboardPage() {
                         <span className="text-xs font-bold text-brand">
                           {format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}
                         </span>
-                        <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-slate-500 dark:text-slate-500 hover:text-red-400 transition-colors">Clear</button>
+                        <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors">Clear</button>
                       </div>
                     )}
                   </div>
@@ -1561,15 +1598,15 @@ export function DashboardPage() {
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
@@ -1614,7 +1651,7 @@ export function DashboardPage() {
                     Cancel
                   </button>
                   <button type="submit"
-                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    className="flex-2 h-10 rounded-xl bg-brand text-primary-foreground text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
                     <Plus className="h-4 w-4" /> Create Itinerary
                   </button>
                 </div>

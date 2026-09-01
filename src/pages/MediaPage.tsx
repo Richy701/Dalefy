@@ -21,6 +21,7 @@ import {
   Check,
 } from "@phosphor-icons/react";
 import Lightbox from "yet-another-react-lightbox";
+import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
 import JSZip from "jszip";
@@ -28,6 +29,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebas
 import { firebaseStorage, firebaseAuth } from "@/services/firebase";
 import { useTrips } from "@/context/TripsContext";
 import { useAuth } from "@/context/AuthContext";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -39,6 +41,13 @@ type MediaFilter = "all" | "image" | "video";
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function videoMime(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "webm") return "video/webm";
+  if (ext === "mov") return "video/quicktime";
+  return "video/mp4";
 }
 
 async function downloadFile(url: string, name: string) {
@@ -69,12 +78,10 @@ export function MediaPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadTripId, setUploadTripId] = useState<string>(() => trips[0]?.id ?? "");
-  const [tripPickerOpen, setTripPickerOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
 
   // Aggregate all media across trips
   const allItems = useMemo<FilteredItem[]>(() =>
@@ -113,10 +120,13 @@ export function MediaPage() {
     return Array.from(map.values());
   }, [filtered]);
 
+  // All filtered items in display order, so videos open in the lightbox too
   const lightboxSlides = useMemo(() =>
-    filtered
-      .filter((m) => m.type === "image")
-      .map((m) => ({ src: m.url, title: `${m.name} · ${m.tripName}` })),
+    filtered.map((m) =>
+      m.type === "image"
+        ? { src: m.url }
+        : { type: "video" as const, sources: [{ src: m.url, type: videoMime(m.name) }] }
+    ),
     [filtered]
   );
 
@@ -201,7 +211,7 @@ export function MediaPage() {
       else if (failed) toast.error(failed === 1 ? "Upload failed. Check your connection and try again." : `${failed} uploads failed. Check your connection and try again.`);
       else toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to ${trip.name}`);
     },
-    [uploadTripId, trips, updateTrip]
+    [uploadTripId, trips, updateTrip, user]
   );
 
   const handleDrop = useCallback(
@@ -346,10 +356,8 @@ export function MediaPage() {
     );
   };
 
-  const getLightboxIndex = (item: FilteredItem) => {
-    if (item.type !== "image") return -1;
-    return lightboxSlides.findIndex((s) => s.src === item.url);
-  };
+  const getLightboxIndex = (item: FilteredItem) =>
+    filtered.findIndex((m) => m.id === item.id && m.tripId === item.tripId);
 
   const tripsWithMedia = trips.filter((t) => (t.media?.length ?? 0) > 0);
 
@@ -358,51 +366,39 @@ export function MediaPage() {
     ? trips.find((t) => t.id === activeTripFilter) ?? null
     : null;
 
-  // For "all" mode - rotating carousel through all trips with images
+  // For "all" mode - rotating carousel through trips that actually have media
   const carouselTrips = useMemo(() =>
-    trips.filter((t) => !!t.image),
+    trips.filter((t) => (t.media?.length ?? 0) > 0 && !!t.image),
     [trips]
   );
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [carouselPaused, setCarouselPaused] = useState(false);
 
-  // Auto-rotate every 5s when on "All" view
+  // Auto-rotate every 5s when on "All" view; hold still on hover and under reduced motion
   useEffect(() => {
-    if (bannerTrip || carouselTrips.length <= 1) return;
+    if (bannerTrip || carouselTrips.length <= 1 || carouselPaused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = setInterval(() => {
       setCarouselIdx((i) => (i + 1) % carouselTrips.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [bannerTrip, carouselTrips.length]);
+  }, [bannerTrip, carouselTrips.length, carouselPaused]);
 
-  // Reset carousel index when trips change
-  useEffect(() => {
-    if (carouselIdx >= carouselTrips.length) setCarouselIdx(0);
-  }, [carouselTrips.length, carouselIdx]);
+  // Clamp instead of resetting state when the trip list shrinks
+  const safeCarouselIdx = carouselIdx < carouselTrips.length ? carouselIdx : 0;
+  const currentCarouselTrip = carouselTrips[safeCarouselIdx] ?? null;
 
-  const currentCarouselTrip = carouselTrips[carouselIdx] ?? null;
-
+  // True totals for the trip (or library) - independent of the type filter
   const bannerPhotos = bannerTrip
-    ? filtered.filter((m) => m.type === "image").length
+    ? allItems.filter((m) => m.tripId === bannerTrip.id && m.type === "image").length
     : totalPhotos;
   const bannerVideos = bannerTrip
-    ? filtered.filter((m) => m.type === "video").length
+    ? allItems.filter((m) => m.tripId === bannerTrip.id && m.type === "video").length
     : totalVideos;
 
   const chipScrollRef = useRef<HTMLDivElement>(null);
 
-  // Click-outside to close trip picker
-  useEffect(() => {
-    if (!tripPickerOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setTripPickerOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTripPickerOpen(false); };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("keydown", onKey); };
-  }, [tripPickerOpen]);
+  const allFilteredSelected = filtered.length > 0 && filtered.every((m) => selected.has(m.id));
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
@@ -434,7 +430,11 @@ export function MediaPage() {
 
         {/* Hero Banner - rotating carousel (All) or trip-specific cover */}
         <div className="px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-          <div className="relative overflow-hidden rounded-xl min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]">
+          <div
+            className="relative overflow-hidden rounded-xl min-h-[220px] sm:min-h-[260px] bg-[#0e0e0e]"
+            onMouseEnter={() => setCarouselPaused(true)}
+            onMouseLeave={() => setCarouselPaused(false)}
+          >
             {/* Background image layer */}
             {bannerTrip ? (
               /* ── Trip-specific: full cover image ── */
@@ -453,7 +453,7 @@ export function MediaPage() {
                   src={t.image}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-                  style={{ opacity: i === carouselIdx ? 1 : 0 }}
+                  style={{ opacity: i === safeCarouselIdx ? 1 : 0 }}
                   draggable={false}
                 />
               ))
@@ -465,7 +465,7 @@ export function MediaPage() {
 
             <div className="relative px-4 sm:px-8 py-8 sm:py-10 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.55em] text-brand mb-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-3">
                   {bannerTrip ? bannerTrip.destination : "Your Gallery"}
                 </p>
                 <h2 className="text-[2.5rem] font-black uppercase leading-none tracking-tight text-white">
@@ -486,19 +486,19 @@ export function MediaPage() {
                 <div className="flex items-center gap-6">
                   <div>
                     <p className="text-3xl font-black leading-none text-white">{bannerPhotos}</p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Photos</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Photos</p>
                   </div>
                   <div className="h-10 w-px bg-white/15" />
                   <div>
                     <p className="text-3xl font-black leading-none text-white">{bannerVideos}</p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Videos</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Videos</p>
                   </div>
                   {!bannerTrip && (
                     <>
                       <div className="h-10 w-px bg-white/15" />
                       <div>
                         <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
-                        <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/60 mt-1.5">Trips</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Trips</p>
                       </div>
                     </>
                   )}
@@ -507,13 +507,13 @@ export function MediaPage() {
                 {bannerTrip ? (
                   <button
                     onClick={() => navigate(`/trip/${bannerTrip.id}`)}
-                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.3em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
+                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
                   >
                     Open Trip
                     <ArrowUpRight className="h-3 w-3" />
                   </button>
                 ) : currentCarouselTrip ? (
-                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
+                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                     {currentCarouselTrip.name}
                   </div>
@@ -526,17 +526,20 @@ export function MediaPage() {
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
                 <button
                   onClick={() => setCarouselIdx((i) => (i - 1 + carouselTrips.length) % carouselTrips.length)}
+                  aria-label="Previous trip"
                   className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
                 >
                   <CaretLeft className="h-3.5 w-3.5" />
                 </button>
                 <div className="flex items-center gap-1.5 px-1">
-                  {carouselTrips.map((_, i) => (
+                  {carouselTrips.map((t, i) => (
                     <button
                       key={i}
                       onClick={() => setCarouselIdx(i)}
+                      aria-label={`Show ${t.name}`}
+                      aria-current={i === safeCarouselIdx ? "true" : undefined}
                       className={`rounded-full transition-all duration-300 ${
-                        i === carouselIdx
+                        i === safeCarouselIdx
                           ? "h-2 w-5 bg-brand"
                           : "h-2 w-2 bg-white/30 hover:bg-white/50"
                       }`}
@@ -545,6 +548,7 @@ export function MediaPage() {
                 </div>
                 <button
                   onClick={() => setCarouselIdx((i) => (i + 1) % carouselTrips.length)}
+                  aria-label="Next trip"
                   className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white/70 hover:bg-black/60 transition-colors"
                 >
                   <CaretRight className="h-3.5 w-3.5" />
@@ -579,34 +583,30 @@ export function MediaPage() {
         >
           {/* Trip picker + upload button row */}
           <div className="flex items-center gap-2.5 sm:contents">
-          <div className="relative shrink-0 flex-1 sm:flex-none" ref={pickerRef}>
-            <button
-              onClick={() => setTripPickerOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={tripPickerOpen}
-              aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
-            >
-              {selectedTrip ? (
-                <>
-                  <div className="h-5 w-6 rounded overflow-hidden shrink-0">
-                    <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
-                  </div>
-                  <span className="truncate max-w-[180px]">{selectedTrip.name}</span>
-                </>
-              ) : (
-                <span className="text-slate-500 dark:text-muted-foreground">Select trip</span>
-              )}
-              <CaretDown className={`h-3 w-3 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {tripPickerOpen && (
-              <div role="listbox" aria-label="Trips" className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+          <div className="shrink-0 flex-1 sm:flex-none">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
+                className="group flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
+              >
+                {selectedTrip ? (
+                  <>
+                    <div className="h-5 w-6 rounded overflow-hidden shrink-0">
+                      <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
+                    </div>
+                    <span className="truncate max-w-[180px]">{selectedTrip.name}</span>
+                  </>
+                ) : (
+                  <span className="text-slate-500 dark:text-muted-foreground">Select trip</span>
+                )}
+                <CaretDown className="h-3 w-3 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
                 {trips.map((t) => (
-                  <button
+                  <DropdownMenuItem
                     key={t.id}
-                    onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-background transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-foreground/80"}`}
+                    onClick={() => setUploadTripId(t.id)}
+                    className={t.id === uploadTripId ? "text-brand" : undefined}
                   >
                     <div className="h-6 w-8 rounded overflow-hidden shrink-0">
                       <img src={t.image} alt="" className="h-full w-full object-cover" />
@@ -616,10 +616,10 @@ export function MediaPage() {
                       <p className="text-[10px] text-slate-500 dark:text-muted-foreground">{t.media?.length ?? 0} files</p>
                     </div>
                     {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
-                  </button>
+                  </DropdownMenuItem>
                 ))}
-              </div>
-            )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Upload button (mobile: beside trip picker) */}
@@ -653,7 +653,7 @@ export function MediaPage() {
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
               </div>
             ) : (
-              <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground truncate">
+              <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground truncate">
                 {isDragging ? "Drop files here…" : "Drag & drop or click upload"}
               </p>
             )}
@@ -693,7 +693,8 @@ export function MediaPage() {
               {tripsWithMedia.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => setActiveTripFilter(t.id)}
+                  onClick={() => setActiveTripFilter(activeTripFilter === t.id ? "all" : t.id)}
+                  aria-pressed={activeTripFilter === t.id}
                   className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
                       ? "bg-brand text-black border-transparent"
@@ -701,9 +702,7 @@ export function MediaPage() {
                   }`}
                 >
                   {t.name} · {t.media!.length}
-                  {activeTripFilter === t.id && (
-                    <X className="h-2.5 w-2.5" onClick={(e) => { e.stopPropagation(); setActiveTripFilter("all"); }} />
-                  )}
+                  {activeTripFilter === t.id && <X className="h-2.5 w-2.5" aria-hidden="true" />}
                 </button>
               ))}
             </div>
@@ -720,7 +719,9 @@ export function MediaPage() {
                 <button
                   key={opt.key}
                   onClick={() => setMediaFilter(opt.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] transition-all ${
+                  aria-label={opt.label}
+                  aria-pressed={mediaFilter === opt.key}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
                     mediaFilter === opt.key
                       ? "bg-brand text-black shadow-sm"
                       : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"
@@ -735,7 +736,9 @@ export function MediaPage() {
             {/* Select toggle */}
             <button
               onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all border ${
+              aria-label={selectMode ? "Cancel selection" : "Select files"}
+              aria-pressed={selectMode}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                 selectMode
                   ? "bg-brand text-black border-transparent"
                   : "bg-white dark:bg-card border-black/6 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white shadow-sm dark:shadow-none"
@@ -751,16 +754,16 @@ export function MediaPage() {
         {selectMode && filtered.length > 0 && (
           <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/8">
             <button
-              onClick={() => selected.size === filtered.length ? setSelected(new Set()) : selectAllFiltered()}
-              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:text-brand transition-colors"
+              onClick={() => allFilteredSelected ? setSelected(new Set()) : selectAllFiltered()}
+              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-white hover:text-brand transition-colors"
             >
-              {selected.size === filtered.length ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
-              {selected.size === filtered.length ? "Deselect All" : "Select All"}
+              {allFilteredSelected ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
+              {allFilteredSelected ? "Deselect All" : "Select All"}
             </button>
 
             <div className="h-4 w-px bg-slate-200 dark:bg-[#2a2a2a]" />
 
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-brand">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">
               {selected.size} selected
             </span>
 
@@ -769,7 +772,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDownload}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-card border border-black/6 dark:border-border text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-card border border-black/6 dark:border-border text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -778,7 +781,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDelete}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.15em] text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-30"
             >
               <Trash className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Delete</span>
@@ -825,7 +828,7 @@ export function MediaPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">
                         {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
                       </p>
                     </div>
@@ -881,37 +884,30 @@ export function MediaPage() {
 
             {/* Trip picker + upload button - separate row below drop zone */}
             <div className="flex items-center gap-2.5">
-              <div className="relative flex-1 min-w-0" ref={pickerRef}>
-                <button
-                  onClick={() => setTripPickerOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={tripPickerOpen}
-              aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                  className={`w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white ${
-                    tripPickerOpen
-                      ? "bg-white dark:bg-card border-brand/50 shadow-md"
-                      : "bg-white dark:bg-card border-black/6 dark:border-border hover:border-brand/40 shadow-sm dark:shadow-none"
-                  }`}
-                >
-                  {selectedTrip ? (
-                    <>
-                      <div className="h-6 w-8 rounded-lg overflow-hidden shrink-0">
-                        <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
-                      </div>
-                      <span className="truncate flex-1 text-left">{selectedTrip.name}</span>
-                    </>
-                  ) : (
-                    <span className="text-slate-500 dark:text-muted-foreground flex-1 text-left">Select trip</span>
-                  )}
-                  <CaretDown className={`h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform ${tripPickerOpen ? "rotate-180" : ""}`} />
-                </button>
-                {tripPickerOpen && (
-                  <div role="listbox" aria-label="Trips" className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+              <div className="flex-1 min-w-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
+                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white bg-white dark:bg-card border-black/6 dark:border-border hover:border-brand/40 data-popup-open:border-brand/50 shadow-sm dark:shadow-none"
+                  >
+                    {selectedTrip ? (
+                      <>
+                        <div className="h-6 w-8 rounded-lg overflow-hidden shrink-0">
+                          <img src={selectedTrip.image} alt="" className="h-full w-full object-cover" />
+                        </div>
+                        <span className="truncate flex-1 text-left">{selectedTrip.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-500 dark:text-muted-foreground flex-1 text-left">Select trip</span>
+                    )}
+                    <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-(--anchor-width)">
                     {trips.map((t) => (
-                      <button
+                      <DropdownMenuItem
                         key={t.id}
-                        onClick={() => { setUploadTripId(t.id); setTripPickerOpen(false); }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-background transition-colors text-left ${t.id === uploadTripId ? "text-brand" : "text-slate-700 dark:text-foreground/80"}`}
+                        onClick={() => setUploadTripId(t.id)}
+                        className={t.id === uploadTripId ? "text-brand" : undefined}
                       >
                         <div className="h-7 w-10 rounded-lg overflow-hidden shrink-0">
                           <img src={t.image} alt="" className="h-full w-full object-cover" />
@@ -921,10 +917,10 @@ export function MediaPage() {
                           <p className="text-[10px] text-slate-500 dark:text-muted-foreground">{t.destination}</p>
                         </div>
                         {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
-                      </button>
+                      </DropdownMenuItem>
                     ))}
-                  </div>
-                )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <button
                 onClick={() => !uploading && fileInputRef.current?.click()}
@@ -946,6 +942,7 @@ export function MediaPage() {
         close={() => setLightboxIndex(-1)}
         index={lightboxIndex}
         slides={lightboxSlides}
+        plugins={[Video]}
       />
 
       <ConfirmDialog
@@ -984,7 +981,12 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
           ? "border-brand ring-2 ring-brand/30"
           : "border-black/6 dark:border-border hover:border-brand/30"
       }`}
+      role={selectMode ? "checkbox" : undefined}
+      aria-checked={selectMode ? isSelected : undefined}
+      aria-label={selectMode ? item.name : undefined}
+      tabIndex={selectMode ? 0 : undefined}
       onClick={selectMode ? () => onToggleSelect?.(item.id) : undefined}
+      onKeyDown={selectMode ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleSelect?.(item.id); } } : undefined}
     >
       <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-background">
         {item.type === "image" ? (
@@ -995,9 +997,12 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
             onClick={!selectMode ? () => onZoom(lbIdx) : undefined}
           />
         ) : (
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video src={item.url} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+          <div
+            className={`relative w-full h-full flex items-center justify-center ${selectMode ? "" : "cursor-pointer"}`}
+            onClick={!selectMode ? () => onZoom(lbIdx) : undefined}
+          >
+            <video src={item.url} preload="metadata" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
               <div className="h-11 w-11 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
                 <Play className="h-4.5 w-4.5 text-white ml-0.5" fill="white" />
               </div>
@@ -1016,31 +1021,34 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
           </div>
         )}
 
-        {/* Type badge */}
-        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.15em] text-white/90 flex items-center gap-1">
-          {item.type === "image" ? <ImageIcon className="h-2.5 w-2.5" /> : <FilmStrip className="h-2.5 w-2.5" />}
-          {item.type === "image" ? "Photo" : "Video"}
-        </div>
+        {/* Type badge - videos only; photos are self-evident */}
+        {item.type === "video" && (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.2em] text-white/90 flex items-center gap-1">
+            <FilmStrip className="h-2.5 w-2.5" />
+            Video
+          </div>
+        )}
 
         {/* Hover overlay - hidden in select mode */}
         {!selectMode && (
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
-          {item.type === "image" && (
-            <button
-              onClick={() => onZoom(lbIdx)}
-              className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-            >
-              <MagnifyingGlassPlus className="h-4 w-4" />
-            </button>
-          )}
+          <button
+            onClick={() => onZoom(lbIdx)}
+            aria-label={item.type === "image" ? `View ${item.name}` : `Play ${item.name}`}
+            className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+          >
+            {item.type === "image" ? <MagnifyingGlassPlus className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </button>
           <button
             onClick={() => downloadFile(item.url, item.name)}
+            aria-label={`Download ${item.name}`}
             className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 flex items-center justify-center text-white transition-colors"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDelete(item)}
+            aria-label={`Delete ${item.name}`}
             className="h-9 w-9 rounded-xl bg-red-500/80 backdrop-blur-sm hover:bg-red-500 flex items-center justify-center text-white transition-colors"
           >
             <Trash className="h-4 w-4" />

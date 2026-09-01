@@ -4,7 +4,7 @@ import Papa from "papaparse";
 import { toast } from "sonner";
 import { parseTripDate } from "@/lib/dates";
 import { AirplaneTilt, Calendar as LucideCalendar, Briefcase, Users, SealCheck, Clock, ChartBar, FileText, Warning, WarningCircle, CheckCircle, Download } from "@phosphor-icons/react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { BarChart, Bar, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { useTrips } from "@/context/TripsContext";
@@ -23,19 +23,23 @@ import type { ComplianceDoc, User } from "@/types";
 
 type Tab = "operations" | "compliance";
 
+// Single source of truth for document-status colors (icons use the matching
+// emerald-400 / amber-400 / red-400 utility classes)
+const STATUS_COLORS = { signed: "#34d399", pending: "#fbbf24", expired: "#f87171" };
+
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
     <div className="rounded-xl border border-black/6 dark:border-border bg-white dark:bg-card shadow-sm dark:shadow-none overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
-          <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground">{label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{label}</span>
           <div className={`h-8 w-8 rounded-lg border border-black/6 dark:border-border bg-slate-50 dark:bg-background ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
         <p className="text-3xl lg:text-4xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-3">{sub}</p>
+        <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-3">{sub}</p>
       </div>
     </div>
   );
@@ -139,7 +143,7 @@ export function ReportsPage() {
         else if (doc.status === "Pending") p++;
         else if (doc.status === "Expired") e++;
       });
-      return { name: name.length > 18 ? name.slice(0, 16) + "…" : name, fullName: name, signed: s, pending: p, expired: e };
+      return { name, signed: s, pending: p, expired: e };
     });
 
     // Recent activity (signed docs sorted by date)
@@ -156,23 +160,36 @@ export function ReportsPage() {
     return { travelers, signed, pending, expired, total, rate, byDocType, recentActivity: recentActivity.slice(0, 6) };
   }, [complianceOverrides, customTravelers, isDemoUser, trips]);
 
-  // Pipeline chart data
-  const pipelineData = [
-    { name: "Draft", value: stats.pipeline.draft, color: "#64748b" },
-    { name: "Published", value: stats.pipeline.published, color: brandHex },
-    { name: "In Progress", value: stats.pipeline.inProgress, color: "#f59e0b" },
-  ].filter(d => d.value > 0);
+  const handleExportComplianceCsv = useCallback(() => {
+    const docNames = ["Passport", "Travel Insurance", "Behavioural Agreement", "Code of Conduct Review", "Risk Assessment"];
+    const rows = complianceData.travelers.map(t => {
+      const row: Record<string, string> = { "Name": t.name, "Role": t.role || "" };
+      docNames.forEach(dn => { row[dn] = t.compliance.find(d => d.name === dn)?.status || "Not Required"; });
+      return row;
+    });
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${BRAND.storagePrefix}-compliance-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} ${rows.length === 1 ? "member" : "members"} to CSV`);
+  }, [complianceData]);
+
+  const exportDisabled = tab === "operations" ? trips.length === 0 : complianceData.travelers.length === 0;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
       <PageHeader
         cta={
           <button
-            onClick={handleExportCsv}
-            disabled={trips.length === 0}
+            onClick={tab === "operations" ? handleExportCsv : handleExportComplianceCsv}
+            disabled={exportDisabled}
             className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Export trips as CSV"
-            title={trips.length === 0 ? "Nothing to export yet" : undefined}
+            aria-label={tab === "operations" ? "Export trips as CSV" : "Export compliance as CSV"}
+            title={exportDisabled ? "Nothing to export yet" : undefined}
           >
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export CSV</span>
@@ -185,13 +202,15 @@ export function ReportsPage() {
           {/* Title + tabs */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/6 dark:border-border">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-2">{BRAND.name}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-2">{BRAND.name}</p>
               <h1 className="text-2xl lg:text-4xl font-bold tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
             </div>
-            <div className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/6 dark:border-border shrink-0">
+            <div role="tablist" className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/6 dark:border-border shrink-0">
               {(["operations", "compliance"] as const).map(t => (
                 <button
                   key={t}
+                  role="tab"
+                  aria-selected={tab === t}
                   onClick={() => setTab(t)}
                   className={`px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
                     tab === t
@@ -231,9 +250,9 @@ export function ReportsPage() {
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
                   <div className="text-center lg:text-left shrink-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-brand mb-1">Total Travel Days</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-1">Total Travel Days</p>
                     <p className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{stats.totalDays}</p>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
                   </div>
                   <div className="hidden lg:block w-px h-20 bg-slate-200 dark:bg-secondary" />
                   <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
@@ -246,10 +265,10 @@ export function ReportsPage() {
                         <div className="text-center lg:text-left flex-1">
                           <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
                             <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">{kpi.icon}</div>
-                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">{kpi.label}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{kpi.label}</span>
                           </div>
                           <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{kpi.value}</p>
-                          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1.5">{kpi.sub}</p>
+                          <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-1.5">{kpi.sub}</p>
                         </div>
                         {i < arr.length - 1 && (
                           <div className="hidden lg:block w-px self-stretch bg-slate-200 dark:bg-secondary" />
@@ -262,60 +281,50 @@ export function ReportsPage() {
 
               {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Trip Pipeline</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Status breakdown across all trips</p>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                    <ChartBar className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Trip Pipeline</h3>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{stats.pipeline.total} {stats.pipeline.total === 1 ? "trip" : "trips"} by status</p>
+                  </div>
                 </div>
-                {pipelineData.length === 0 ? (
+                {stats.pipeline.total === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-black/6 dark:border-border">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No trips in pipeline</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips in pipeline</p>
                     <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
                   </div>
                 ) : (
-                <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-                  {/* Donut chart */}
-                  <div className="h-56 w-56 shrink-0">
-                    <ChartContainer config={{ draft: { label: "Draft", color: "#64748b" }, published: { label: "Published", color: brandHex }, inProgress: { label: "In Progress", color: "#f59e0b" } } satisfies ChartConfig} className="h-56 w-56 aspect-square">
-                      <PieChart>
-                        <Pie data={pipelineData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} strokeWidth={0} animationDuration={700}>
-                          {pipelineData.map((d) => <Cell key={d.name} fill={d.color} />)}
-                        </Pie>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-sm font-black">{stats.pipeline.total} Trips</text>
-                      </PieChart>
-                    </ChartContainer>
-                  </div>
-                  {/* Status breakdown bars */}
-                  <div className="flex-1 w-full space-y-5">
-                    {[
-                      { name: "Draft", value: stats.pipeline.draft, color: "#64748b", desc: "Not yet published" },
-                      { name: "Published", value: stats.pipeline.published, color: brandHex, desc: "Ready to go" },
-                      { name: "In Progress", value: stats.pipeline.inProgress, color: "#f59e0b", desc: "Currently active" },
-                    ].filter(s => s.value > 0).map(s => {
-                      const pct = stats.pipeline.total > 0 ? Math.round((s.value / stats.pipeline.total) * 100) : 0;
-                      return (
-                        <div key={s.name} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
-                              <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider hidden sm:inline">{s.desc}</span>
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">{pct}%</span>
-                            </div>
+                <div className="space-y-5">
+                  {[
+                    { name: "Draft", value: stats.pipeline.draft, color: "#64748b", desc: "Not yet published" },
+                    { name: "Published", value: stats.pipeline.published, color: brandHex, desc: "Ready to go" },
+                    { name: "In Progress", value: stats.pipeline.inProgress, color: STATUS_COLORS.pending, desc: "Currently active" },
+                  ].filter(s => s.value > 0).map(s => {
+                    const pct = stats.pipeline.total > 0 ? Math.round((s.value / stats.pipeline.total) * 100) : 0;
+                    return (
+                      <div key={s.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
+                            <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground hidden sm:inline">{s.desc}</span>
                           </div>
-                          <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color,  }} />
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">{pct}%</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 )}
               </div>
@@ -324,9 +333,14 @@ export function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Team Overview */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                  <div className="mb-5">
-                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Team</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} members`; })()}</p>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Team</h3>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} ${all.length === 1 ? "member" : "members"}`; })()}</p>
+                    </div>
                   </div>
                   {(() => {
                     const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
@@ -335,10 +349,10 @@ export function ReportsPage() {
                         <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                           <Users className="h-5 w-5 text-brand opacity-60" />
                         </div>
-                        <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No team members</p>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No team members</p>
                       </div>
                     );
-                    const roleColors: Record<string, string> = { "Trip Manager": brandHex, Agent: "#38bdf8", Traveller: "#fbbf24", Admin: "#a78bfa", Other: "#64748b" };
+                    const roleColors: Record<string, string> = { "Trip Manager": brandHex, Agent: "#38bdf8", Traveler: "#fbbf24", Admin: "#a78bfa", Other: "#64748b" };
                     return (
                       <div className="space-y-1">
                         {allTravelers.slice(0, 7).map(t => {
@@ -356,7 +370,7 @@ export function ReportsPage() {
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {hasIssue ? (
-                                  <Warning className="h-3.5 w-3.5 text-amber-500" />
+                                  <Warning className="h-3.5 w-3.5 text-amber-400" />
                                 ) : reqDocs.length > 0 ? (
                                   <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : null}
@@ -377,16 +391,21 @@ export function ReportsPage() {
 
                 {/* Trips by Month */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Trips by Month</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Departure schedule</p>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                      <LucideCalendar className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Trips by Month</h3>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Departure schedule</p>
+                    </div>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
                     <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/6 dark:border-border">
                       <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
-                      <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No data yet</p>
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No data yet</p>
                       <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
                     </div>
                   ) : (
@@ -414,7 +433,7 @@ export function ReportsPage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-0.5">Most booked</p>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Most booked</p>
                     </div>
                   </div>
                   {stats.topAirlines.length > 0 ? (
@@ -449,7 +468,7 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <AirplaneTilt className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No airline data</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No airline data</p>
                     </div>
                   )}
                 </div>
@@ -462,7 +481,7 @@ export function ReportsPage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Travelers per Trip</h3>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-0.5">Group sizes</p>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Group sizes</p>
                     </div>
                   </div>
                   {trips.length > 0 ? (
@@ -500,7 +519,7 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <Users className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
                     </div>
                   )}
                 </div>
@@ -528,85 +547,70 @@ export function ReportsPage() {
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 <div className="animate-fade-up stagger-1"><StatCard label="Up to Date" value={`${complianceData.rate}%`} sub={`${complianceData.signed} of ${complianceData.total} signed`} icon={<SealCheck className="h-5 w-5" />} /></div>
-                <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub="All done" icon={<FileText className="h-5 w-5" />} accent="text-emerald-400" /></div>
-                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<Warning className="h-5 w-5" />} accent="text-amber-500" /></div>
+                <div className="animate-fade-up stagger-2"><StatCard label="Documents Signed" value={complianceData.signed.toString()} sub={complianceData.pending + complianceData.expired === 0 ? "All done" : `Of ${complianceData.total} required`} icon={<FileText className="h-5 w-5" />} accent="text-emerald-400" /></div>
+                <div className="animate-fade-up stagger-3"><StatCard label="Needs Attention" value={(complianceData.pending + complianceData.expired).toString()} sub={`${complianceData.pending} waiting · ${complianceData.expired} expired`} icon={<Warning className="h-5 w-5" />} accent="text-amber-400" /></div>
                 <div className="animate-fade-up stagger-4"><StatCard label="Team Members" value={complianceData.travelers.length.toString()} sub="On the team" icon={<Users className="h-5 w-5" />} /></div>
               </div>
 
               {/* Overall Compliance - full-width hero with donut + breakdown bars */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Document Status</h3>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Across all team members</p>
-                </div>
-                <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-                  {/* Donut chart */}
-                  <div className="h-56 w-56 shrink-0">
-                    {(() => {
-                      const compDonutData = [
-                        { name: "Signed", value: complianceData.signed, color: "#34d399" },
-                        { name: "Pending", value: complianceData.pending, color: "#fbbf24" },
-                        { name: "Expired", value: complianceData.expired, color: "#f87171" },
-                      ].filter(d => d.value > 0);
-                      return (
-                        <ChartContainer config={{ Signed: { label: "Signed", color: "#34d399" }, Pending: { label: "Pending", color: "#fbbf24" }, Expired: { label: "Expired", color: "#f87171" } } satisfies ChartConfig} className="h-56 w-56 aspect-square">
-                          <PieChart>
-                            <Pie data={compDonutData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} strokeWidth={0} animationDuration={700}>
-                              {compDonutData.map((d) => <Cell key={d.name} fill={d.color} />)}
-                            </Pie>
-                            <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-                            <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 dark:fill-white text-sm font-black">{complianceData.rate}%</text>
-                            <text x="50%" y="56%" textAnchor="middle" dominantBaseline="central" className="fill-slate-500 dark:fill-[#888] text-[10px] font-bold">Up to Date</text>
-                          </PieChart>
-                        </ChartContainer>
-                      );
-                    })()}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                    <SealCheck className="h-4 w-4" />
                   </div>
-                  {/* Status breakdown bars */}
-                  <div className="flex-1 w-full space-y-5">
-                    {[
-                      { name: "Signed", value: complianceData.signed, color: "#34d399", icon: <CheckCircle className="h-4 w-4" />, desc: "Signed & done" },
-                      { name: "Pending", value: complianceData.pending, color: "#fbbf24", icon: <Clock className="h-4 w-4" />, desc: "Needs signing" },
-                      { name: "Expired", value: complianceData.expired, color: "#f87171", icon: <WarningCircle className="h-4 w-4" />, desc: "Needs renewal" },
-                    ].map(s => {
-                      const pct = complianceData.total > 0 ? Math.round((s.value / complianceData.total) * 100) : 0;
-                      return (
-                        <div key={s.name} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18`, color: s.color }}>{s.icon}</div>
-                              <div>
-                                <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                                <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider hidden sm:block">{s.desc}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">{pct}%</span>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Document Status</h3>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{complianceData.rate}% up to date across all team members</p>
+                  </div>
+                </div>
+                <div className="space-y-5">
+                  {[
+                    { name: "Signed", value: complianceData.signed, color: STATUS_COLORS.signed, icon: <CheckCircle className="h-4 w-4" />, desc: "Signed & done" },
+                    { name: "Pending", value: complianceData.pending, color: STATUS_COLORS.pending, icon: <Clock className="h-4 w-4" />, desc: "Needs signing" },
+                    { name: "Expired", value: complianceData.expired, color: STATUS_COLORS.expired, icon: <WarningCircle className="h-4 w-4" />, desc: "Needs renewal" },
+                  ].map(s => {
+                    const pct = complianceData.total > 0 ? Math.round((s.value / complianceData.total) * 100) : 0;
+                    return (
+                      <div key={s.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18`, color: s.color }}>{s.icon}</div>
+                            <div>
+                              <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground hidden sm:block">{s.desc}</p>
                             </div>
                           </div>
-                          <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color,  }} />
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">{pct}%</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* By Document Type - full width */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">By Document Type</h3>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Signed / Pending / Expired per type</p>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">By Document Type</h3>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Signed, pending and expired per type</p>
+                  </div>
                 </div>
                 <div className="space-y-4">
                   {complianceData.byDocType.map(doc => {
                     const docTotal = doc.signed + doc.pending + doc.expired;
                     return (
                       <div key={doc.name} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white w-44 shrink-0 truncate">{doc.fullName}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white w-44 shrink-0 truncate">{doc.name}</span>
                         <div className="flex-1 flex items-center gap-2">
                           <div className="flex-1 h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden flex">
                             {docTotal > 0 && (
@@ -628,7 +632,7 @@ export function ReportsPage() {
                   })}
                 </div>
                 <div className="flex items-center justify-end gap-5 mt-6 pt-4 border-t border-black/6 dark:border-white/6">
-                  {[{ l: "Signed", c: "#34d399" }, { l: "Pending", c: "#fbbf24" }, { l: "Expired", c: "#f87171" }].map(i => (
+                  {[{ l: "Signed", c: STATUS_COLORS.signed }, { l: "Pending", c: STATUS_COLORS.pending }, { l: "Expired", c: STATUS_COLORS.expired }].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ background: i.c }} />
                       <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">{i.l}</span>
@@ -641,13 +645,13 @@ export function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Recent Activity</h3>
-                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Latest signed documents</p>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Recent Activity</h3>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Latest signed documents</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -671,13 +675,13 @@ export function ReportsPage() {
 
                 {/* Members Needing Action */}
                 <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
                       <Warning className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Needs Attention</h3>
-                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Members with pending or expired docs</p>
+                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</h3>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Members with pending or expired docs</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -699,7 +703,7 @@ export function ReportsPage() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {t.pend > 0 && (
-                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500">
+                              <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400">
                                 <Clock className="h-3 w-3" />{t.pend}
                               </span>
                             )}
@@ -720,9 +724,14 @@ export function ReportsPage() {
 
               {/* Team Compliance Grid / Heatmap */}
               <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Team Compliance Grid</h3>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mt-1">Overview by traveler and document</p>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Team Compliance Grid</h3>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Overview by traveler and document</p>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">

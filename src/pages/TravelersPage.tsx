@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,6 +13,8 @@ import { Drawer } from "vaul";
 import { MagnifyingGlass, UserPlus, FileText, FileMinus, FileDashed, FileX, PaperPlaneTilt, Eye, SealWarning, SealCheck, Clock, ChartBar, CaretUp, CaretDown, CaretUpDown, CaretLeft as PgLeft, CaretRight as PgRight, X, User, Envelope, Briefcase, DeviceMobile, MapPin, CalendarDots, Upload, Check, Trash, Fingerprint, Pencil, DotsThree, FunnelSimple, ArrowsDownUp, SignOut, Bell, DownloadSimple, CheckSquare, Square, SpinnerGap } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTrips } from "@/context/TripsContext";
@@ -23,7 +24,6 @@ import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { BrandIllustration } from "@/components/shared/BrandIllustration";
-import { usePreferences } from "@/context/PreferencesContext";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
@@ -53,9 +53,10 @@ const DOC_STATUS_CONFIG: Record<ComplianceDoc["status"], { color: string; bg: st
   "Not Required": { color: "text-slate-500 dark:text-muted-foreground", bg: "bg-slate-100 dark:bg-secondary", icon: FileMinus, bar: "bg-slate-300 dark:bg-[#333]" },
 };
 
+// Same green/amber language as document statuses and the drawer preview dots
 const STATUS_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
-  Active: { dot: "bg-brand", badge: "bg-brand/15 text-brand ring-1 ring-brand/30", label: "Active" },
-  Away: { dot: "bg-brand/50", badge: "bg-brand/10 text-brand/70 ring-1 ring-brand/20", label: "Away" },
+  Active: { dot: "bg-emerald-400", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/25", label: "Active" },
+  Away: { dot: "bg-amber-400", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/25", label: "Away" },
   Offline: { dot: "bg-slate-400", badge: "bg-slate-200 dark:bg-[#222] text-slate-600 dark:text-muted-foreground ring-1 ring-slate-300 dark:ring-[#333]", label: "Offline" },
 };
 
@@ -101,12 +102,10 @@ function PageNumbers({ current, total, onSelect }: { current: number; total: num
 export function TravelersPage() {
   const { trips } = useTrips();
   const { showToast } = useNotifications();
-  const { resolvedAccent } = usePreferences();
   const { user } = useAuth();
   const isDemoUser = !user || user.id === "demo" || (user.id?.length ?? 0) <= 20;
   const { demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const { isViewer } = usePermissions();
-  const brandHex = resolvedAccent;
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("travelers");
@@ -131,9 +130,6 @@ export function TravelersPage() {
   const [detailPanelUser, setDetailPanelUser] = useState<string | null>(null);
   const [renamingUser, setRenamingUser] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [sendingPush, setSendingPush] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
   const [appUserPage, setAppUserPage] = useState(0);
@@ -143,22 +139,6 @@ export function TravelersPage() {
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
   const [removingFromTrip, setRemovingFromTrip] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<{ action: () => Promise<void>; title: string; description: string } | null>(null);
-
-  useEffect(() => {
-    if (!showSortMenu && !showFilterMenu && !showActionsMenu) return;
-    const close = () => { setShowSortMenu(false); setShowFilterMenu(false); setShowActionsMenu(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    const timer = setTimeout(() => document.addEventListener("click", close, { once: true }), 0);
-    document.addEventListener("keydown", onKey);
-    return () => { clearTimeout(timer); document.removeEventListener("click", close); document.removeEventListener("keydown", onKey); };
-  }, [showSortMenu, showFilterMenu, showActionsMenu]);
-
-  useEffect(() => {
-    if (!detailPanelUser) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setDetailPanelUser(null); setRenamingUser(null); } };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [detailPanelUser]);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -373,6 +353,26 @@ export function TravelersPage() {
     URL.revokeObjectURL(url);
     showToast(`Exported ${filteredAppUsers.length} users`);
   }, [filteredAppUsers, showToast]);
+
+  const sendPushToUser = useCallback(async (deviceId: string, name: string) => {
+    if (!pushMessage.trim()) return;
+    setSendingPush(true);
+    try {
+      const idToken = await getIdToken();
+      if (!idToken) throw new Error("Not authenticated");
+      const data = await apiFetch<{ sent?: boolean; reason?: string }>("/api/send-push", {
+        method: "POST",
+        auth: idToken,
+        body: { deviceId, title: "Dalefy", body: pushMessage.trim() },
+      });
+      if (data.sent) showToast(`Notification sent to ${name || "user"}`);
+      else showToast(data.reason || "No push token found for this user");
+    } catch (err) {
+      showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
+    }
+    setSendingPush(false);
+    setPushMessage("");
+  }, [pushMessage, showToast]);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetDoc, setSheetDoc] = useState<ComplianceDoc | null>(null);
@@ -675,15 +675,15 @@ export function TravelersPage() {
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-none text-balance">Team Directory</h2>
               <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 dark:text-muted-foreground">People & Documents</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">People & Documents</span>
                 <span className="text-slate-200 dark:text-muted-foreground">·</span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-brand">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-brand">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                   {travelers.length} {travelers.length === 1 ? "Member" : "Members"}
                 </span>
                 {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 && (
                   <><span className="text-slate-200 dark:text-muted-foreground">·</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     {travelers.filter(t => t.status === "Active").length} on app
                   </span></>
                 )}
@@ -697,7 +697,7 @@ export function TravelersPage() {
                     <button
                       key={t}
                       onClick={() => setTab(t)}
-                      className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] transition-all duration-300 ${
+                      className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 ${
                         active
                           ? "bg-brand text-black shadow-md shadow-brand/20"
                           : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300"
@@ -748,7 +748,7 @@ export function TravelersPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <User className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
                   </div>
                 )}
                 {table.getRowModel().rows.map(row => {
@@ -803,7 +803,7 @@ export function TravelersPage() {
               </div>
 
               {/* ── Desktop table layout (sm+) ── */}
-              <div className="hidden sm:block bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
+              <div className="hidden sm:block bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-sm dark:shadow-none">
               <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -816,7 +816,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
+                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -846,8 +846,8 @@ export function TravelersPage() {
                           <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                             <User className="h-6 w-6 text-brand opacity-60" />
                           </div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
-                          <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">Add your first traveler using the button above</p>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No team members yet</p>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">Add your first traveler using the button above</p>
                         </div>
                       </td>
                     </tr>
@@ -921,7 +921,7 @@ export function TravelersPage() {
               {/* Pagination - only shown when data > 10 */}
               {table.getPageCount() > 1 && (
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-border flex items-center justify-between bg-slate-50/30 dark:bg-background">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {filtered.length} members
                   </span>
                   <div className="flex items-center gap-1">
@@ -950,7 +950,7 @@ export function TravelersPage() {
               {/* Mobile pagination */}
               {table.getPageCount() > 1 && (
                 <div className="sm:hidden flex items-center justify-between mt-3 px-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
                   </span>
                   <div className="flex items-center gap-1">
@@ -982,21 +982,21 @@ export function TravelersPage() {
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {[
-                  { label: "Signed", value: hrStats.signed.toString(), sub: "All done", icon: <SealCheck className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <SealWarning className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
-                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand", bar: brandHex },
+                  { label: "Signed", value: hrStats.signed.toString(), sub: hrStats.pending + hrStats.expired === 0 ? "All done" : `Of ${hrStats.total} required`, icon: <SealCheck className="h-4 w-4" />, accent: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-amber-600 dark:text-amber-400" },
+                  { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <SealWarning className="h-4 w-4" />, accent: "text-red-600 dark:text-red-400" },
+                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xl hover:-translate-y-0.5 transition-transform duration-300">
+                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-sm dark:shadow-none">
                     <div className="p-5 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
                         <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-border bg-slate-50 dark:bg-background ${card.accent} flex items-center justify-center`}>
                           {card.icon}
                         </div>
                       </div>
                       <p className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-none">{card.value}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-4">{card.sub}</p>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-4">{card.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -1004,7 +1004,7 @@ export function TravelersPage() {
 
               {/* Upload button */}
               <div className="flex items-center justify-between">
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">All Documents</p>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">All Documents</p>
                 <button
                   onClick={() => setUploadOpen(true)}
                   className="flex items-center gap-2 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-brand/20"
@@ -1014,13 +1014,13 @@ export function TravelersPage() {
               </div>
 
               {filteredGroupedDocs.length === 0 ? (
-                <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
+                <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-sm dark:shadow-none">
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <FileText className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">No documents yet</p>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">Add team members to track compliance</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No documents yet</p>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">Add team members to track compliance</p>
                   </div>
                 </div>
               ) : (() => {
@@ -1044,13 +1044,13 @@ export function TravelersPage() {
                     const visibleDocs = isExpanded ? sortedDocs : sortedDocs.slice(0, MAX_VISIBLE);
                     const hiddenCount = sortedDocs.length - MAX_VISIBLE;
                     return (
-                      <div key={userId} className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-xl">
+                      <div key={userId} className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-sm dark:shadow-none">
                         {/* Person header */}
                         <div className="px-5 pt-5 pb-4 flex items-center gap-3">
                           <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{initials}</div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white truncate">{userName}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                            <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">{userName}</p>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">
                               {allGood ? "All signed" : `${signed} of ${total} signed`}
                             </p>
                           </div>
@@ -1072,14 +1072,14 @@ export function TravelersPage() {
                                   <Icon className="h-3.5 w-3.5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-muted-foreground truncate">{doc.name}</p>
-                                  <p className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground">
+                                  <p className="text-xs font-bold tracking-tight text-slate-800 dark:text-white truncate">{doc.name}</p>
+                                  <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground">
                                     {doc.date ? new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "Not signed yet"}
                                   </p>
                                 </div>
                                 <Badge className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border-none uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
                                 {doc.status === "Signed" ? (
-                                  <button onClick={() => openDocSheet(userId, userName, doc)} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all">
+                                  <button onClick={() => openDocSheet(userId, userName, doc)} title={`View ${doc.name}`} aria-label={`View ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all">
                                     <Eye className="h-3 w-3" />
                                   </button>
                                 ) : (
@@ -1087,7 +1087,7 @@ export function TravelersPage() {
                                     <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 transition-opacity">
                                       Sign
                                     </button>
-                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
+                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} title={`Send reminder for ${doc.name}`} aria-label={`Send reminder for ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
                                       <PaperPlaneTilt className="h-3 w-3" />
                                     </button>
                                   </div>
@@ -1120,7 +1120,7 @@ export function TravelersPage() {
                 {/* HR Pagination */}
                 {hrTotalPages > 1 && (
                   <div className="flex items-center justify-between mt-4">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                       Page {safePage + 1} of {hrTotalPages} · {filteredGroupedDocs.length} people
                     </span>
                     <div className="flex items-center gap-1">
@@ -1159,10 +1159,10 @@ export function TravelersPage() {
                   { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
                   { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDots className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-xl">
+                  <div key={card.label} className="rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card overflow-hidden shadow-sm dark:shadow-none">
                     <div className="p-5 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{card.label}</span>
                         <div className={`h-8 w-8 rounded-lg border border-slate-100 dark:border-border bg-slate-50 dark:bg-background ${card.accent} flex items-center justify-center`}>
                           {card.icon}
                         </div>
@@ -1176,124 +1176,67 @@ export function TravelersPage() {
               {/* Toolbar: sort, filter, actions */}
               {groupedAppUsers.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mr-auto">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mr-auto">
                     {filteredAppUsers.length} User{filteredAppUsers.length === 1 ? "" : "s"}
-                    {appUserTripFilter !== "all" && <span className="text-brand ml-1">· Filtered</span>}
                   </p>
 
                   {/* Sort dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => { setShowSortMenu(!showSortMenu); setShowFilterMenu(false); setShowActionsMenu(false); }}
-                      aria-haspopup="menu"
-                      aria-expanded={showSortMenu}
-                      className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors"
-                    >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors">
                       <ArrowsDownUp className="h-3.5 w-3.5" />
                       {appUserSort === "name" ? "Name" : appUserSort === "trips" ? "Trips" : "Recent"}
-                    </button>
-                    {showSortMenu && (
-                      <div role="menu" aria-label="Sort app users" className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden">
-                        {([["recent", "Most Recent"], ["name", "Name A-Z"], ["trips", "Most Trips"]] as const).map(([key, label]) => (
-                          <button
-                            key={key}
-                            role="menuitem"
-                            onClick={() => { setAppUserSort(key); setShowSortMenu(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                              appUserSort === key
-                                ? "text-brand bg-brand/5"
-                                : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
-                            }`}
-                          >
-                            {label}
-                            {appUserSort === key && <Check className="h-3 w-3 inline ml-2" weight="bold" />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuRadioGroup value={appUserSort} onValueChange={v => setAppUserSort(v as typeof appUserSort)}>
+                        <DropdownMenuRadioItem value="recent">Most Recent</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="name">Name A-Z</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="trips">Most Trips</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   {/* Filter by trip dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => { setShowFilterMenu(!showFilterMenu); setShowSortMenu(false); setShowActionsMenu(false); }}
-                      aria-haspopup="menu"
-                      aria-expanded={showFilterMenu}
-                      className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
-                        appUserTripFilter !== "all"
-                          ? "bg-brand/10 border-brand/30 text-brand"
-                          : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30"
-                      }`}
-                    >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                      appUserTripFilter !== "all"
+                        ? "bg-brand/10 border-brand/30 text-brand"
+                        : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30"
+                    }`}>
                       <FunnelSimple className="h-3.5 w-3.5" />
                       {appUserTripFilter !== "all" ? "Filtered" : "Trip"}
-                    </button>
-                    {showFilterMenu && (
-                      <div role="menu" aria-label="Filter by trip" className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden max-h-64 overflow-y-auto">
-                        <button
-                          onClick={() => { setAppUserTripFilter("all"); setShowFilterMenu(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                            appUserTripFilter === "all"
-                              ? "text-brand bg-brand/5"
-                              : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
-                          }`}
-                        >
-                          All Trips
-                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 max-h-64">
+                      <DropdownMenuRadioGroup value={appUserTripFilter} onValueChange={setAppUserTripFilter}>
+                        <DropdownMenuRadioItem value="all">All Trips</DropdownMenuRadioItem>
                         {uniqueAppTrips.map(t => (
-                          <button
-                            key={t.id}
-                            onClick={() => { setAppUserTripFilter(t.id); setShowFilterMenu(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider truncate transition-colors ${
-                              appUserTripFilter === t.id
-                                ? "text-brand bg-brand/5"
-                                : "text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background"
-                            }`}
-                          >
-                            {t.name}
-                          </button>
+                          <DropdownMenuRadioItem key={t.id} value={t.id}>{t.name}</DropdownMenuRadioItem>
                         ))}
-                      </div>
-                    )}
-                  </div>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   {/* Actions menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => { setShowActionsMenu(!showActionsMenu); setShowSortMenu(false); setShowFilterMenu(false); }}
-                      aria-haspopup="menu"
-                      aria-expanded={showActionsMenu}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
                       aria-label="More actions"
                       className="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors"
                     >
                       <DotsThree className="h-4 w-4" weight="bold" />
-                    </button>
-                    {showActionsMenu && (
-                      <div role="menu" aria-label="More actions" className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-xl z-20 overflow-hidden">
-                        <button
-                          onClick={() => { setShowActionsMenu(false); exportAppUsersCSV(); }}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center gap-2"
-                        >
-                          <DownloadSimple className="h-3.5 w-3.5" /> Export CSV
-                        </button>
-                        <button
-                          onClick={() => { setShowActionsMenu(false); setBulkAction(!bulkAction); setSelectedUsers(new Set()); }}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-muted-foreground hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center gap-2"
-                        >
-                          <CheckSquare className="h-3.5 w-3.5" /> {bulkAction ? "Exit Select Mode" : "Select Mode"}
-                        </button>
-                        <div className="border-t border-slate-100 dark:border-border" />
-                        <button
-                          onClick={() => { setShowActionsMenu(false); handleClearAppUsers(); }}
-                          disabled={clearing}
-                          className="w-full text-left px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-red-500 hover:bg-red-500/5 transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <Trash className="h-3.5 w-3.5" />
-                          {clearing ? "Clearing..." : "Clear All Users"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuItem onClick={exportAppUsersCSV}>
+                        <DownloadSimple className="h-3.5 w-3.5" /> Export CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setBulkAction(!bulkAction); setSelectedUsers(new Set()); }}>
+                        <CheckSquare className="h-3.5 w-3.5" /> {bulkAction ? "Exit Select Mode" : "Select Mode"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" disabled={clearing} onClick={handleClearAppUsers}>
+                        <Trash className="h-3.5 w-3.5" />
+                        {clearing ? "Clearing..." : "Clear All Users"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
 
@@ -1331,14 +1274,14 @@ export function TravelersPage() {
               )}
 
               {/* Users list */}
-              <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-2xl">
+              <div className="bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border overflow-hidden shadow-sm dark:shadow-none">
                 {/* Header - hidden on mobile */}
                 <div className="hidden sm:flex px-6 py-4 border-b border-slate-200 dark:border-border bg-slate-50/50 dark:bg-background items-center">
                   {bulkAction && <div className="w-10" />}
                   <div className="w-14" />
-                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Name</div>
-                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Trips Joined</div>
-                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground text-right">Last Active</div>
+                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Name</div>
+                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Trips Joined</div>
+                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground text-right">Last Active</div>
                 </div>
 
                 {appUsersLoading ? (
@@ -1361,10 +1304,10 @@ export function TravelersPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
                       <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                       {search || appUserTripFilter !== "all" ? "No matching users" : "No app users yet"}
                     </p>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider">
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">
                       {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
                     {appUserTripFilter !== "all" && (
@@ -1505,22 +1448,18 @@ export function TravelersPage() {
               ? panelUser.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
               : "?";
             const isRenaming = renamingUser === panelUser.deviceId;
-            return createPortal(
-              <div className="fixed inset-0 z-50 flex justify-end" onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}>
-                <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
-                <div
-                  role="dialog"
-                  aria-modal="true"
+            return (
+              <Sheet open onOpenChange={open => { if (!open) { setDetailPanelUser(null); setRenamingUser(null); } }}>
+                <SheetContent
+                  side="right"
+                  showCloseButton={false}
                   aria-label={`${panelUser.name || "App user"} details`}
-                  tabIndex={-1}
-                  ref={el => { if (el && !el.contains(document.activeElement)) el.focus(); }}
-                  className="relative w-full sm:w-[420px] h-full bg-white dark:bg-background sm:border-l border-slate-200 dark:border-border shadow-2xl overflow-y-auto animate-slide-in-right focus:outline-none"
-                  onClick={e => e.stopPropagation()}
+                  className="w-full sm:w-[420px] sm:max-w-[420px] gap-0 overflow-y-auto bg-white dark:bg-background"
                 >
                   {/* Panel header */}
                   <div className="sticky top-0 z-10 bg-white/80 dark:bg-background/80 backdrop-blur-xl border-b border-slate-200 dark:border-border">
                     <div className="flex items-center justify-between p-5">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">User Details</p>
+                      <SheetTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">User Details</SheetTitle>
                       <button
                         onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}
                         className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -1584,11 +1523,11 @@ export function TravelersPage() {
                     {/* Quick stats */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Trips</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Trips</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1">{panelUser.trips.length}</p>
                       </div>
                       <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border">
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground">Role</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Role</p>
                         <p className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white mt-1 capitalize">
                           {panelUser.trips.some(t => t.role === "leader") ? "Leader" : "Traveler"}
                         </p>
@@ -1597,7 +1536,7 @@ export function TravelersPage() {
 
                     {/* Trip memberships */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Trip Memberships</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-3">Trip Memberships</p>
                       <div className="space-y-2.5">
                         {[...panelUser.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
                           <div key={t.id} className="rounded-xl bg-slate-50 dark:bg-card border border-slate-100 dark:border-border overflow-hidden">
@@ -1614,7 +1553,7 @@ export function TravelersPage() {
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   onClick={() => handleToggleRole(panelUser.deviceId, t.id, t.role)}
-                                  className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center gap-1.5 ${
+                                  className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
                                     t.role === "leader"
                                       ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
                                       : "bg-white dark:bg-secondary text-slate-500 dark:text-muted-foreground ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
@@ -1644,7 +1583,7 @@ export function TravelersPage() {
 
                     {/* Activity timeline */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Activity Timeline</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-3">Activity Timeline</p>
                       <div className="relative pl-5">
                         <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-secondary" />
                         {[...panelUser.trips]
@@ -1670,55 +1609,22 @@ export function TravelersPage() {
 
                     {/* Push notification */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Push Notification</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-3">Push Notification</p>
                       <div className="space-y-2">
                         <Input
                           value={pushMessage}
                           onChange={e => setPushMessage(e.target.value)}
                           placeholder="Type a message to send..."
-                          onKeyDown={async e => {
+                          onKeyDown={e => {
                             if (e.key === "Enter" && pushMessage.trim()) {
                               e.preventDefault();
-                              setSendingPush(true);
-                              try {
-                                const idToken = await getIdToken();
-                                if (!idToken) throw new Error("Not authenticated");
-                                const data = await apiFetch<{ sent?: boolean; reason?: string }>("/api/send-push", {
-                                  method: "POST",
-                                  auth: idToken,
-                                  body: { deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() },
-                                });
-                                if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
-                                else showToast(data.reason || "No push token found for this user");
-                              } catch (err) {
-                                showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
-                              }
-                              setSendingPush(false);
-                              setPushMessage("");
+                              sendPushToUser(panelUser.deviceId, panelUser.name);
                             }
                           }}
                           className="w-full font-bold"
                         />
                         <button
-                          onClick={async () => {
-                            if (!pushMessage.trim()) return;
-                            setSendingPush(true);
-                            try {
-                              const idToken = await getIdToken();
-                              if (!idToken) throw new Error("Not authenticated");
-                              const data = await apiFetch<{ sent?: boolean; reason?: string }>("/api/send-push", {
-                                method: "POST",
-                                auth: idToken,
-                                body: { deviceId: panelUser.deviceId, title: "Dalefy", body: pushMessage.trim() },
-                              });
-                              if (data.sent) showToast(`Notification sent to ${panelUser.name || "user"}`);
-                              else showToast(data.reason || "No push token found for this user");
-                            } catch (err) {
-                              showToast(err instanceof ApiError && err.status !== 0 ? err.message : "Failed to send notification");
-                            }
-                            setSendingPush(false);
-                            setPushMessage("");
-                          }}
+                          onClick={() => sendPushToUser(panelUser.deviceId, panelUser.name)}
                           disabled={sendingPush || !pushMessage.trim()}
                           className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-brand/10 text-brand text-[10px] font-black uppercase tracking-widest ring-1 ring-brand/20 hover:bg-brand/20 transition-colors disabled:opacity-50"
                         >
@@ -1730,7 +1636,7 @@ export function TravelersPage() {
 
                     {/* Danger zone */}
                     <div className="pt-4 border-t border-slate-100 dark:border-border">
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-3">Danger Zone</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-3">Danger Zone</p>
                       <button
                         onClick={() => handleDeleteAppUser(panelUser.deviceId, panelUser.name)}
                         disabled={deletingUser === panelUser.deviceId}
@@ -1744,9 +1650,8 @@ export function TravelersPage() {
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>,
-              document.body,
+                </SheetContent>
+              </Sheet>
             );
           })()}
         </div>
@@ -1763,8 +1668,8 @@ export function TravelersPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-8 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground mt-1">New team member</p>
+                  <Drawer.Title className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Add Traveler</Drawer.Title>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-1">New team member</p>
                 </div>
                 <button onClick={() => setInviteOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
                   <X className="h-4 w-4" />
@@ -1774,7 +1679,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     <User className="h-3 w-3" /> Full Name
                   </Label>
                   <Input
@@ -1788,7 +1693,7 @@ export function TravelersPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     <Envelope className="h-3 w-3" /> Email Address
                   </Label>
                   <Input
@@ -1803,7 +1708,7 @@ export function TravelersPage() {
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-muted-foreground">
+                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
                     <Briefcase className="h-3 w-3" /> Role
                   </Label>
                   <Input
@@ -1814,7 +1719,7 @@ export function TravelersPage() {
                     className="w-full font-bold"
                   />
                   <datalist id="role-suggestions">
-                    {["Lead Designer", "Senior Agent", "Travel Specialist", "Product Manager", "EU Sales Lead", "Content Creator", "Executive Advisor", "Operations Manager"].map(r => (
+                    {["Trip Manager", "Travel Specialist", "Senior Agent", "Group Leader", "Operations Manager", "Coordinator", "Chaperone", "Admin"].map(r => (
                       <option key={r} value={r} />
                     ))}
                   </datalist>
@@ -1840,7 +1745,7 @@ export function TravelersPage() {
 
               {/* Existing team preview */}
               <div className="mt-10 pt-8 border-t border-slate-100 dark:border-border">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-slate-500 dark:text-muted-foreground mb-4">Current Team · {travelers.length} members</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-4">Current Team · {travelers.length} members</p>
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
                     <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-background border border-slate-100 dark:border-border">
@@ -1868,14 +1773,14 @@ export function TravelersPage() {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card rounded-t-xl border-t border-slate-200 dark:border-border max-h-[85vh] overflow-y-auto">
-            <div className="mx-auto w-12 h-1.5 bg-slate-200 dark:bg-[#333] rounded-full mt-3 mb-2" />
-            <div className="px-6 sm:px-8 pb-8">
-              <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
-              <p className="text-xs font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
+            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-[#2a2a2a] mt-4 shrink-0" />
+            <div className="px-6 sm:px-8 pb-8 pt-6">
+              <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">Assign Document</p>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mb-6">Add a document team members need to sign. It starts as Pending for each person.</p>
 
               {/* Document name */}
               <div className="space-y-2 mb-5">
-                <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Document Name</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Document Name</Label>
                 <Input
                   value={uploadDocName}
                   onChange={e => setUploadDocName(e.target.value)}
@@ -1887,7 +1792,7 @@ export function TravelersPage() {
               {/* Assign to travelers */}
               <div className="space-y-2 mb-6">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground">Assign To</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Assign To</Label>
                   <button
                     onClick={() => setUploadAssignees(prev => prev.length === travelers.length ? [] : travelers.map(t => t.id))}
                     className="text-[10px] font-bold text-brand uppercase tracking-wider hover:opacity-70 transition-opacity"

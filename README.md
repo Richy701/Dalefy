@@ -14,9 +14,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Role-based Access** -- Owner, admin, agent, and viewer roles with UI gating (sidebar, settings sections, team management)
 - **Leader-only Info Pages** -- Toggle info pages as "leader only" so sensitive data (pricing, PNR, supplier details) is hidden from travelers on mobile
 - **Draft/Publish System** -- Edits stay as drafts until explicitly published. Mobile travelers only see the last published version, not work-in-progress changes. Amber indicator shows when unpublished changes exist
-- **Mobile Preview** -- Live phone-frame preview in the workspace matching the actual mobile trip detail screen. Includes brand eyebrow, parallax-style hero, trip header with progress bar, collapsible day rows with thumbnails, density bars, temporal coloring (today/past/future), type icons with counts, and glass pill overlays on event images. Independent dark/light theme toggle
+- **Mobile Preview** -- Live phone-frame preview in the workspace matching the actual mobile trip detail screen, rendered inside a realistic iPhone 17 Pro or Pixel 10 Pro frame with device and finish pickers. Includes brand eyebrow, parallax-style hero, trip header with progress bar, collapsible day rows with thumbnails, density bars, temporal coloring (today/past/future), type icons with counts, and glass pill overlays on event images. Preview settings cover accessibility text size and a "simulate today" day stepper; independent dark/light theme toggle
 - **Real-time Sync** -- Firebase-backed data with per-user scoping and live updates
-- **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, swipe viewer, multi-select, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
+- **Media Library** -- Upload photos and videos from mobile or web, organized by trip with gallery view, lightbox with in-place video playback, multi-select with zip download, and per-trip filtering. HEIC auto-converted to JPEG for web compatibility. 500 MB per file limit
 - **Mobile Companion** -- Expo React Native app with five tabs (Home, Today, Schedule, Gallery, Profile) for travelers to join trips via PIN code or QR scan, with choreographed success animation and trip preview
 - **Interactive Maps** -- Mapbox-powered trip maps with Standard 3D basemap on the Today tab (pitched city view with 3D buildings, facades, trees, landmarks), flat Standard style on trip detail, animated flight routes, native symbol-layer plane markers, and destination explorer
 - **Landing Page** -- Public marketing page with interactive map, scroll-reveal feature sections, and trip showcase
@@ -28,7 +28,7 @@ Trip planning without the mess. A modern travel management platform for organize
 - **Event Status Indicators** -- Per-state glyphs on events (confirmed, pending, cancelled) synced across web and mobile preview
 - **Clickable URLs** -- URLs typed in info page body text auto-render as clickable hyperlinks
 - **PDF Export** -- Polished PDF itineraries with cover images and static map headers
-- **Unified Theming** -- Single brand accent color across all event types, light and dark modes
+- **Unified Theming** -- Single brand accent color across all event types, light and dark modes. Runtime-swappable accent (including a mono black/white option) with a computed readable-on-accent foreground so text stays legible on any accent
 - **iOS Home Screen Widget** -- Trip countdown widget with radial progress ring, destination name, start date, and upcoming events. Dynamically scales the countdown ring based on days remaining, auto-transitions between upcoming/active/empty states via WidgetKit timeline entries (up to 30 days)
 - **iOS Live Activities & Dynamic Island** -- Real-time flight tracking on the Lock Screen and Dynamic Island with airport codes, times, status, and gate info. Automatically starts for today's flights and updates live via the flight status cron
 - **Interactive Destination Map** -- Native MapView on the Today tab showing trip destinations with animated markers and region labels
@@ -37,7 +37,9 @@ Trip planning without the mess. A modern travel management platform for organize
 - **PWA Support** -- Installable as a progressive web app with offline caching
 - **Password Reset** -- Forgot password flow with email reset link from the login page
 - **Support Pages** -- Help & support, privacy policy, and terms of service pages linked from the mobile app profile
-- **Dashboard** -- At a Glance stats with animated counters, interactive travel calendar with trip day highlights and tooltips, Next Up departures, Needs Attention alerts, upcoming trip carousel, and quick actions
+- **Dashboard** -- At a Glance stats with animated counters, interactive travel calendar with trip day highlights and multi-trip tooltips, Next Up departures, Needs Attention alerts (including travelers with outstanding compliance docs before departure), live next-trip countdown, trip templates, upcoming trip carousel, and quick actions. Optional compact mode tightens the whole layout
+- **Destinations Explorer** -- Mapbox globe wired to the destination card grid: clicking a pin flies in and highlights the matching card, hovering a card lights up its pin, with a destination stepper and re-center control
+- **Reports** -- Operations overview (travel days, pipeline, trips by month, top airlines) and a Documents tab tracking signed/pending/expired compliance per traveler and per document type, each with tab-aware CSV export
 - **Demo Mode** -- Full-featured demo with floating indicator badge, localStorage-only data
 
 ## Tech Stack

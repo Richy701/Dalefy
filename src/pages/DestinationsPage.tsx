@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MagnifyingGlass, MapPin, Calendar as LucideCalendar, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight } from "@phosphor-icons/react";
-import MapboxMap, { Marker, Source, Layer } from "react-map-gl/mapbox";
+import { MagnifyingGlass, MapPin, Calendar as LucideCalendar, AirplaneTilt, Bed, Compass, ForkKnife, CaretLeft, CaretRight, Crosshair } from "@phosphor-icons/react";
+import MapboxMap, { Marker } from "react-map-gl/mapbox";
 import type { MapRef } from "react-map-gl/mapbox";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -196,31 +196,46 @@ export function DestinationsPage() {
       .filter((d): d is typeof d & { coords: [number, number] } => !!d.coords);
   }, [destinations, geoCoords]);
 
-  const heatmapGeoJSON = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: mapPins.map(p => ({
-      type: "Feature" as const,
-      properties: { weight: Math.min(p.tripCount / 3, 1) },
-      geometry: { type: "Point" as const, coordinates: p.coords },
-    })),
-  }), [mapPins]);
-
   type MapPin = typeof mapPins[0];
   const [hoveredPin, setHoveredPin] = useState<MapPin | null>(null);
-  const [tappedPin, setTappedPin] = useState<MapPin | null>(null);
+  const [selectedDest, setSelectedDest] = useState<string | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const mousePos = useRef({ x: 0, y: 0 });
   const mapRef = useRef<MapRef>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Pin and card are two views of the same destination: selecting either
+  // flies the map in and scrolls the grid to the matching card.
+  const selectDest = useCallback((pin: MapPin) => {
+    setSelectedDest(pin.name);
+    const idx = mapPins.findIndex(p => p.name === pin.name);
+    if (idx >= 0) setActiveIdx(idx);
+    mapRef.current?.getMap()?.flyTo({ center: pin.coords, zoom: 4, duration: 1200 });
+    cardRefs.current[pin.name]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [mapPins]);
+
+  const recenter = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || mapPins.length === 0) return;
+    setSelectedDest(null);
+    if (mapPins.length === 1) {
+      map.flyTo({ center: mapPins[0].coords, zoom: 4, duration: 1200 });
+      return;
+    }
+    const lngs = mapPins.map(p => p.coords[0]);
+    const lats = mapPins.map(p => p.coords[1]);
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 60, maxZoom: 5, duration: 1200 }
+    );
+  }, [mapPins]);
 
   // Navigate between destinations
   const flyToPin = useCallback((idx: number) => {
-    const map = mapRef.current?.getMap();
-    if (!map || mapPins.length === 0) return;
-    const pin = mapPins[idx % mapPins.length];
-    setActiveIdx(idx % mapPins.length);
-    map.flyTo({ center: pin.coords, zoom: 4, duration: 1500 });
-  }, [mapPins]);
+    if (mapPins.length === 0) return;
+    selectDest(mapPins[idx % mapPins.length]);
+  }, [mapPins, selectDest]);
 
   const handlePrev = useCallback(() => {
     const next = (activeIdx - 1 + mapPins.length) % mapPins.length;
@@ -245,15 +260,6 @@ export function DestinationsPage() {
         "space-color": cardBg,
         "star-intensity": isDark ? 0.1 : 0,
       } as Parameters<typeof map.setFog>[0]);
-      if (!map.getSource("mapbox-dem")) {
-        map.addSource("mapbox-dem", {
-          type: "raster-dem",
-          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-          tileSize: 512,
-          maxzoom: 14,
-        });
-      }
-      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
       // Hide admin boundary lines in dark mode - they bleed through the banner
       if (isDark) {
         map.getStyle().layers?.forEach((layer: any) => {
@@ -325,7 +331,7 @@ export function DestinationsPage() {
                   Destinations
                 </h1>
                 <div className="mt-3 sm:mt-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground mb-2">Your Travel Footprint</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">Your Travel Footprint</p>
                   <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
                     {destinations.length}
                   </span>
@@ -350,53 +356,29 @@ export function DestinationsPage() {
                 style={{ width: "100%", height: "100%" }}
                 scrollZoom={false}
                 dragPan={true}
-                dragRotate={true}
+                dragRotate={false}
                 touchZoomRotate={true}
                 keyboard={false}
+                minZoom={1}
+                maxZoom={8}
                 onLoad={onMapLoad}
               >
-                <Source id="heatmap-data" type="geojson" data={heatmapGeoJSON}>
-                  <Layer
-                    id="dest-heatmap"
-                    type="heatmap"
-                    paint={{
-                      "heatmap-weight": ["get", "weight"],
-                      "heatmap-intensity": 0.6,
-                      "heatmap-radius": 40,
-                      "heatmap-opacity": 0.5,
-                      "heatmap-color": [
-                        "interpolate", ["linear"], ["heatmap-density"],
-                        0, "rgba(0,0,0,0)",
-                        0.2, `rgba(${ACCENT_RGB},0.15)`,
-                        0.4, `rgba(${ACCENT_RGB},0.3)`,
-                        0.6, `rgba(${ACCENT_RGB},0.5)`,
-                        0.8, `rgba(${ACCENT_RGB},0.7)`,
-                        1, ACCENT,
-                      ],
-                    }}
-                  />
-                </Source>
-                {mapPins.map((pin, i) => (
+                {mapPins.map((pin, i) => {
+                  const lit = selectedDest === pin.name || hoveredCard === pin.name;
+                  return (
                   <Marker key={pin.name} longitude={pin.coords[0]} latitude={pin.coords[1]} anchor="center">
                     <div
                       style={{ position: "relative", width: 48, height: 48, cursor: "pointer" }}
                       onMouseEnter={() => setHoveredPin(pin)}
                       onMouseLeave={() => setHoveredPin(null)}
-                      onClick={(e) => { e.stopPropagation(); setTappedPin(prev => prev?.name === pin.name ? null : pin); }}
+                      onClick={(e) => { e.stopPropagation(); selectDest(pin); }}
                     >
                       <div style={{
                         position: "absolute", top: "50%", left: "50%",
                         width: 48, height: 48, marginLeft: -24, marginTop: -24, borderRadius: "50%",
-                        border: `1px solid rgba(${ACCENT_RGB},0.2)`,
-                        background: `rgba(${ACCENT_RGB},0.06)`,
+                        border: `1px solid rgba(${ACCENT_RGB},${lit ? 0.5 : 0.2})`,
+                        background: `rgba(${ACCENT_RGB},${lit ? 0.14 : 0.06})`,
                         animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35}s infinite`,
-                        pointerEvents: "none",
-                      }} />
-                      <div style={{
-                        position: "absolute", top: "50%", left: "50%",
-                        width: 28, height: 28, marginLeft: -14, marginTop: -14, borderRadius: "50%",
-                        background: `rgba(${ACCENT_RGB},0.18)`,
-                        animation: `dest-pin-pulse 3s ease-in-out ${i * 0.35 + 0.4}s infinite`,
                         pointerEvents: "none",
                       }} />
                       <div style={{
@@ -405,6 +387,9 @@ export function DestinationsPage() {
                         background: ACCENT,
                         border: `2px solid ${isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)"}`,
                         display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2,
+                        transform: lit ? "scale(1.3)" : "scale(1)",
+                        transition: "transform 0.2s ease",
+                        boxShadow: lit ? `0 0 12px rgba(${ACCENT_RGB},0.6)` : "none",
                       }}>
                         <span style={{
                           fontFamily: "'Barlow Condensed', system-ui, sans-serif",
@@ -413,11 +398,20 @@ export function DestinationsPage() {
                       </div>
                     </div>
                   </Marker>
-                ))}
+                  );
+                })}
               </MapboxMap>
               {/* Nav buttons - bottom right of globe */}
               {mapPins.length > 1 && (
                 <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+                  <button
+                    onClick={recenter}
+                    title="Show all destinations"
+                    aria-label="Show all destinations"
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-white/90 dark:bg-card/90 backdrop-blur-sm border border-slate-200 dark:border-border shadow-lg hover:bg-slate-100 dark:hover:bg-secondary transition-colors"
+                  >
+                    <Crosshair className="h-4 w-4 text-slate-600 dark:text-muted-foreground" />
+                  </button>
                   <div className="flex items-center gap-1 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-full border border-slate-200 dark:border-border shadow-lg px-1 py-1">
                     <button
                       onClick={handlePrev}
@@ -442,99 +436,52 @@ export function DestinationsPage() {
           </div>
         </div>
 
-        {/* Tooltip - fixed to cursor (desktop) or centered (mobile tap) */}
-        {(hoveredPin || tappedPin) && (() => {
-          const pin = hoveredPin || tappedPin;
-          if (!pin) return null;
-          return (
+        {/* Hover label - the full stats live on the destination cards */}
+        {hoveredPin && (
           <div
             className="fixed z-9999 pointer-events-none"
-            style={hoveredPin ? { left: mousePos.current.x + 16, top: mousePos.current.y - 16 } : { left: "50%", bottom: 24, transform: "translateX(-50%)" }}
+            style={{ left: mousePos.current.x + 14, top: mousePos.current.y - 12 }}
           >
-            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl shadow-2xl min-w-[200px] overflow-hidden">
-              {/* Header */}
-              <div className="px-4 pt-3 pb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-5 w-5 rounded-lg flex items-center justify-center" style={{ background: `rgba(${ACCENT_RGB},0.15)` }}>
-                    <MapPin className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                  </div>
-                  <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">{pin.name}</p>
-                </div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-muted-foreground pl-7">{pin.region}</p>
-              </div>
-              {/* Stats */}
-              <div className="flex items-center border-t border-slate-100 dark:border-border">
-                <div className="flex-1 px-4 py-2.5 text-center border-r border-slate-100 dark:border-border">
-                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.tripCount}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-1">{pin.tripCount === 1 ? "Trip" : "Trips"}</p>
-                </div>
-                <div className="flex-1 px-4 py-2.5 text-center">
-                  <p className="text-base font-black text-slate-900 dark:text-white leading-none tabular-nums">{pin.eventCount}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-1">Events</p>
-                </div>
-              </div>
-              {/* Event type breakdown */}
-              {(pin.types.flights > 0 || pin.types.hotels > 0 || pin.types.activities > 0 || pin.types.dining > 0) && (
-                <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-border bg-slate-50 dark:bg-background">
-                  {pin.types.flights > 0 && (
-                    <div className="flex items-center gap-1">
-                      <AirplaneTilt className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">{pin.types.flights}</span>
-                    </div>
-                  )}
-                  {pin.types.hotels > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Bed className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">{pin.types.hotels}</span>
-                    </div>
-                  )}
-                  {pin.types.activities > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Compass className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">{pin.types.activities}</span>
-                    </div>
-                  )}
-                  {pin.types.dining > 0 && (
-                    <div className="flex items-center gap-1">
-                      <ForkKnife className="h-2.5 w-2.5" style={{ color: ACCENT }} />
-                      <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">{pin.types.dining}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-xl px-3 py-1.5 flex items-center gap-2">
+              <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
+              <span className="text-xs font-bold tracking-tight text-slate-900 dark:text-white">{hoveredPin.name}</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
+                {hoveredPin.tripCount} {hoveredPin.tripCount === 1 ? "trip" : "trips"}
+              </span>
             </div>
           </div>
-          );
-        })()}
+        )}
 
         {/* ── Cards Section ── */}
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
-          <div className="space-y-6">
-            <div className="flex gap-2 flex-wrap">
-              {regions.map(r => (
-                <button
-                  key={r}
-                  onClick={() => setFilter(r)}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-card text-slate-500 dark:text-muted-foreground border border-slate-200 dark:border-border hover:border-brand/40"}`}
-                >
-                  {r === "all" ? "All Regions" : r}
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-2 flex-wrap">
+            {regions.map(r => (
+              <button
+                key={r}
+                onClick={() => setFilter(r)}
+                aria-pressed={filter === r}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-card text-slate-500 dark:text-muted-foreground border border-slate-200 dark:border-border hover:border-brand/40"}`}
+              >
+                {r === "all" ? "All Regions" : r}
+              </button>
+            ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 pb-10">
             {filtered.map((dest, idx) => (
               <div
                 key={dest.name}
+                ref={el => { cardRefs.current[dest.name] = el; }}
                 role="button"
                 tabIndex={0}
                 aria-label={dest.tripCount > 1 ? `${dest.name}: choose one of ${dest.tripCount} trips` : `Open trip for ${dest.name}`}
                 aria-expanded={dest.tripCount > 1 ? expandedDest === dest.name : undefined}
                 onClick={() => openDest(dest)}
+                onMouseEnter={() => setHoveredCard(dest.name)}
+                onMouseLeave={() => setHoveredCard(null)}
                 onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDest(dest); } if (e.key === "Escape") setExpandedDest(null); }}
                 data-dest-card
-                className={`group relative rounded-xl overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)}`}
+                className={`group relative rounded-xl overflow-hidden border border-white/10 dark:border-white/5 flex flex-col min-h-[320px] sm:min-h-[380px] transition-[transform,box-shadow] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:-translate-y-0.5 active:scale-[0.98] hover:shadow-[0_12px_28px_rgba(0,0,0,0.32)] cursor-pointer stagger-${Math.min(idx + 1, 8)} ${selectedDest === dest.name ? "ring-2 ring-brand" : ""}`}
                 style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
                 <div className="absolute inset-0">
@@ -542,15 +489,17 @@ export function DestinationsPage() {
                   <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/30 to-black/5" />
                 </div>
                 <div className="relative z-10 flex items-start justify-between p-6">
-                  <span className="rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
-                  <span className="bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
+                  {dest.region !== "Unknown" && (
+                    <span className="rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
+                  )}
+                  <span className="ml-auto bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
                   <h3 className="text-3xl font-bold tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>
                   <div className="flex items-center gap-1.5 flex-wrap mb-5">
                     {dest.types.flights > 0 && (
                       <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2 py-0.5">
-                        <AirplaneTilt className="h-2.5 w-2.5 text-white/90" />
+                        <AirplaneTilt className="h-2.5 w-2.5 text-brand" />
                         <span className="text-[10px] font-bold text-white/90">{dest.types.flights}</span>
                       </div>
                     )}
@@ -590,7 +539,7 @@ export function DestinationsPage() {
                 </div>
                 {expandedDest === dest.name && dest.tripCount > 1 && (
                   <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm p-5 flex flex-col gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/60 mb-1">Open a trip</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-1">Open a trip</p>
                     {dest.tripIds.map((id, i) => (
                       <button
                         key={id}

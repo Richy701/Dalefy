@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, Compass, ForkKnife, Car, MapPin, Users, Moon,
-  CaretRight, CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
+  CaretRight, CaretLeft, CaretDown, FileText, Phone, Envelope, Hash, ArrowRight, Sun,
   DeviceMobileCamera, X, Train, Bus, Boat, Anchor, MapTrifold, Paperclip,
   AppleLogo, AndroidLogo, SlidersHorizontal, TextAa, CalendarDot,
 } from "@phosphor-icons/react";
@@ -169,35 +169,43 @@ function FlightCard({ ev, c }: { ev: TravelEvent; c: C }) {
       if (!arrCode) arrCode = m[2].toUpperCase();
     }
   }
-  const depCity = (depCode && IATA_CITY[depCode]) || ev.location?.split("→")[0]?.trim() || "";
-  const arrCity = (arrCode && IATA_CITY[arrCode]) || ev.location?.split("→")[1]?.trim() || "";
-  const depTime = ev.time ? formatTo24h(ev.time) : "";
-  const arrTime = ev.endTime ? formatTo24h(ev.endTime) : "";
+  const cleanAirportName = (s: string) => s.replace(/\s+(international\s+)?airport$/i, "").trim();
+  const depCity = (depCode && IATA_CITY[depCode]) || cleanAirportName(ev.location?.split("→")[0]?.trim() || "");
+  const arrCity = (arrCode && IATA_CITY[arrCode]) || cleanAirportName(ev.location?.split("→")[1]?.trim() || "");
+  const cleanTime = (t?: string) => (!t || /^(tbd|tba|n\/a|—|-)$/i.test(t.trim()) ? "" : formatTo24h(t));
+  const depTime = cleanTime(ev.time);
+  const arrTime = cleanTime(ev.endTime);
+
+  const primary = (code: string, city: string, placeholder: string) =>
+    code ? (
+      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{code}</div>
+    ) : city ? (
+      <div style={{
+        fontSize: 15, fontWeight: 700, letterSpacing: -0.2, lineHeight: 1.25, color: c.textPrimary,
+        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+      }}>{city}</div>
+    ) : (
+      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textDim }}>{placeholder}</div>
+    );
 
   return (
     <div style={{ background: c.card, borderRadius: 20, padding: "20px 16px" }}>
-      <div style={{ display: "flex", gap: 4, alignItems: "stretch" }}>
-        <div style={{ flex: 1 }}>
-          {depCity && <div style={{ fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{depCity}</div>}
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{depCode || "DEP"}</div>
-          {depTime && <div style={{ fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{depTime}</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", columnGap: 8 }}>
+        {depCode && depCity && <div style={{ gridColumn: 1, gridRow: 1, alignSelf: "end", fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{depCity}</div>}
+        {ev.flightNum && <div style={{ gridColumn: 2, gridRow: 1, alignSelf: "end", textAlign: "center", fontSize: 10, fontWeight: 500, color: c.textTertiary, letterSpacing: 0.3, marginBottom: 2 }}>{ev.flightNum}</div>}
+        {arrCode && arrCity && <div style={{ gridColumn: 3, gridRow: 1, alignSelf: "end", textAlign: "right", fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{arrCity}</div>}
+
+        <div style={{ gridColumn: 1, gridRow: 2, alignSelf: "center" }}>{primary(depCode, depCity, "DEP")}</div>
+        <div style={{ gridColumn: 2, gridRow: 2, alignSelf: "center", display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ flex: 1, height: 3, background: col + "55", borderRadius: 2 }} />
+          <AirplaneTilt size={16} color={col} style={{ transform: "rotate(90deg)" }} />
+          <div style={{ flex: 1, height: 3, background: col + "55", borderRadius: 2 }} />
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {ev.flightNum && <span style={{ fontSize: 10, fontWeight: 500, color: c.textTertiary, letterSpacing: 0.3 }}>{ev.flightNum}</span>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 4 }}>
-            <div style={{ flex: 1, height: 3, background: col + "55", borderRadius: 2 }} />
-            <AirplaneTilt size={16} color={col} style={{ transform: "rotate(90deg)" }} />
-            <div style={{ flex: 1, height: 3, background: col + "55", borderRadius: 2 }} />
-          </div>
-          {ev.duration && <span style={{ fontSize: 10, fontWeight: 500, color: c.textTertiary }}>{ev.duration}</span>}
-        </div>
-        <div style={{ flex: 1, textAlign: "right" }}>
-          {arrCity && <div style={{ fontSize: 11, color: c.textSecondary, marginBottom: 2 }}>{arrCity}</div>}
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, color: c.textPrimary }}>{arrCode || "ARR"}</div>
-          {arrTime && <div style={{ fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{arrTime}</div>}
-        </div>
+        <div style={{ gridColumn: 3, gridRow: 2, alignSelf: "center", display: "flex", justifyContent: "flex-end", textAlign: "right" }}>{primary(arrCode, arrCity, "ARR")}</div>
+
+        {depTime && <div style={{ gridColumn: 1, gridRow: 3, fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{depTime}</div>}
+        {ev.duration && <div style={{ gridColumn: 2, gridRow: 3, textAlign: "center", fontSize: 10, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{ev.duration}</div>}
+        {arrTime && <div style={{ gridColumn: 3, gridRow: 3, textAlign: "right", fontSize: 12, fontWeight: 500, color: c.textTertiary, marginTop: 4 }}>{arrTime}</div>}
       </div>
 
       {(ev.gate || ev.seatDetails) && (
@@ -761,6 +769,35 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
   }, [trip.start, trip.end]);
   const dayBefore = tripDays[0] ? shiftDay(tripDays[0], -1) : null;
   const dayAfter = tripDays.length ? shiftDay(tripDays[tripDays.length - 1], 1) : null;
+  const simDays = useMemo(() => {
+    const arr: string[] = [];
+    if (dayBefore) arr.push(dayBefore);
+    arr.push(...tripDays);
+    if (dayAfter) arr.push(dayAfter);
+    return arr;
+  }, [tripDays, dayBefore, dayAfter]);
+  const simIndex = prefs.today ? simDays.indexOf(prefs.today) : -1;
+  const simLabel = (() => {
+    if (!prefs.today) return "Real date";
+    if (prefs.today === dayBefore) return "Before the trip";
+    if (prefs.today === dayAfter) return "After the trip";
+    const di = tripDays.indexOf(prefs.today);
+    let lbl = prefs.today;
+    try { lbl = format(parseISO(prefs.today), "EEE, MMM d"); } catch { /* keep iso */ }
+    return di >= 0 ? `Day ${di + 1} · ${lbl}` : lbl;
+  })();
+  const stepSim = (dir: 1 | -1) => {
+    if (!simDays.length) return;
+    if (simIndex === -1) {
+      const start = dir === 1 ? simDays.indexOf(tripDays[0] ?? simDays[0]) : (dayBefore ? 0 : -1);
+      if (start >= 0) updatePrefs({ today: simDays[start] });
+      return;
+    }
+    const n = simIndex + dir;
+    if (n >= 0 && n < simDays.length) updatePrefs({ today: simDays[n] });
+  };
+  const simPrevDisabled = simIndex === 0 || (simIndex === -1 && !dayBefore);
+  const simNextDisabled = simIndex === simDays.length - 1 || !simDays.length;
   const { brand } = useBrand();
   // Show the traveler what they'll actually get: the agency accent, not the default teal
   const c: C = useMemo(() => {
@@ -811,63 +848,97 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
             >
               <SlidersHorizontal size={12} weight="bold" />
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 p-3 space-y-4">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">Finish</p>
-                <div className="flex items-center gap-2">
-                  {FINISHES[prefs.device].map(f => {
-                    const active = prefs.finish[prefs.device] === f.key;
-                    return (
+            <PopoverContent align="end" className="w-72 p-0 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-slate-200 dark:border-border">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Preview settings</p>
+              </div>
+              <div className="divide-y divide-slate-200 dark:divide-border">
+                <div className="px-4 py-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2.5">Finish</p>
+                  <div className="flex items-start gap-1">
+                    {FINISHES[prefs.device].map(f => {
+                      const active = prefs.finish[prefs.device] === f.key;
+                      return (
+                        <button
+                          key={f.key}
+                          type="button"
+                          title={f.label}
+                          aria-pressed={active}
+                          onClick={() => updatePrefs({ finish: { ...prefs.finish, [prefs.device]: f.key } })}
+                          className="flex flex-col items-center gap-1.5 flex-1 py-1 rounded-lg group"
+                        >
+                          <span
+                            className={`h-7 w-7 rounded-full transition-transform ${active ? "scale-110" : "group-hover:scale-105"}`}
+                            style={{
+                              background: `linear-gradient(135deg, ${f.a}, ${f.b})`,
+                              boxShadow: active ? "0 0 0 2px hsl(var(--popover)), 0 0 0 4px rgb(var(--brand-rgb))" : undefined,
+                            }}
+                          />
+                          <span className={`text-[9px] font-bold tracking-wide ${active ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-muted-foreground"}`}>
+                            {f.label.split(" ").pop()}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground flex items-center gap-1 shrink-0"><TextAa size={11} /> Text size</p>
+                    <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
+                      {TEXT_SCALES.map(t => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          aria-pressed={prefs.textScale === t.value}
+                          onClick={() => updatePrefs({ textScale: t.value })}
+                          className={`h-6 px-2 rounded-md text-[10px] font-bold transition-colors ${prefs.textScale === t.value ? "bg-white dark:bg-card text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"}`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Checks readability with larger accessibility text.</p>
+                </div>
+                <div className="px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
+                    {prefs.today && (
                       <button
-                        key={f.key}
                         type="button"
-                        title={f.label}
-                        aria-pressed={active}
-                        onClick={() => updatePrefs({ finish: { ...prefs.finish, [prefs.device]: f.key } })}
-                        className={`h-7 w-7 rounded-full border-2 transition-transform ${active ? "border-brand scale-110" : "border-transparent hover:scale-105"}`}
-                        style={{ background: `linear-gradient(135deg, ${f.a}, ${f.b})` }}
-                      />
-                    );
-                  })}
-                  <span className="ml-auto text-[10px] font-bold text-slate-600 dark:text-muted-foreground">
-                    {FINISHES[prefs.device].find(f => f.key === prefs.finish[prefs.device])?.label}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2 flex items-center gap-1"><TextAa size={11} /> Text size</p>
-                <div className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
-                  {TEXT_SCALES.map(t => (
+                        onClick={() => updatePrefs({ today: null })}
+                        className="text-[9px] font-bold uppercase tracking-[0.12em] text-brand hover:underline"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
                     <button
-                      key={t.value}
                       type="button"
-                      aria-pressed={prefs.textScale === t.value}
-                      onClick={() => updatePrefs({ textScale: t.value })}
-                      className={`h-7 rounded-md text-[10px] font-bold transition-colors ${prefs.textScale === t.value ? "bg-white dark:bg-card text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-muted-foreground"}`}
+                      aria-label="Previous day"
+                      disabled={simPrevDisabled}
+                      onClick={() => stepSim(-1)}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-slate-600 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
                     >
-                      {t.label}
+                      <CaretLeft size={12} weight="bold" />
                     </button>
-                  ))}
+                    <span className={`flex-1 text-center text-[11px] font-bold ${prefs.today ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-muted-foreground"}`}>
+                      {simLabel}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Next day"
+                      disabled={simNextDisabled}
+                      onClick={() => stepSim(1)}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-slate-600 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    >
+                      <CaretRight size={12} weight="bold" />
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Shows past days dimmed and the TODAY badge as travelers will see them.</p>
                 </div>
-                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Checks the itinerary still reads with larger accessibility text.</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2 flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
-                <select
-                  value={prefs.today ?? ""}
-                  onChange={e => updatePrefs({ today: e.target.value || null })}
-                  className="w-full h-8 rounded-lg border border-slate-200 dark:border-border bg-white dark:bg-background px-2 text-[11px] font-semibold text-slate-900 dark:text-white"
-                >
-                  <option value="">Real date</option>
-                  {dayBefore && <option value={dayBefore}>Before the trip</option>}
-                  {tripDays.map((d, i) => {
-                    let lbl = d;
-                    try { lbl = format(parseISO(d), "EEE, MMM d"); } catch { /* keep iso */ }
-                    return <option key={d} value={d}>Day {i + 1} · {lbl}</option>;
-                  })}
-                  {dayAfter && <option value={dayAfter}>After the trip</option>}
-                </select>
-                <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">See past days dimmed, the TODAY badge and progress as travelers will on that day.</p>
               </div>
             </PopoverContent>
           </Popover>

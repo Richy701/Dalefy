@@ -106,6 +106,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--brand-rgb", hexToRgbStr(resolvedAccent));
+    root.style.setProperty("--accent-fg", accentFg);
     root.style.setProperty("--primary", hexToHsl(resolvedAccent));
     root.style.setProperty("--ring", hexToHsl(resolvedAccent));
     root.style.setProperty("--sidebar-ring", hexToHsl(resolvedAccent));
