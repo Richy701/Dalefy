@@ -19,10 +19,12 @@ export function categoryIcon(type: string, transferType?: string): React.Compone
  * Category circle: soft tint with a solid glyph. This is the only place a glyph
  * is filled, so the circle reads as the category marker everywhere it appears.
  */
-export function CategoryDot({ type, transferType, size = 28 }: {
+export function CategoryDot({ type, transferType, size = 28, base }: {
   type: string;
   transferType?: string;
   size?: number;
+  /** Opaque colour under the tint so lines behind the circle don't show through. Defaults to the card colour. */
+  base?: string;
 }) {
   const { C } = useTheme();
   const tone = categoryTone(type, C);
@@ -31,12 +33,20 @@ export function CategoryDot({ type, transferType, size = 28 }: {
     <View
       style={{
         width: size, height: size, borderRadius: size / 2,
-        backgroundColor: tone.bg,
+        backgroundColor: base ?? C.card,
         alignItems: "center", justifyContent: "center",
       }}
       accessible={false}
     >
-      <Icon size={Math.round(size * 0.5)} color={tone.fg} weight="fill" />
+      <View
+        style={{
+          width: size, height: size, borderRadius: size / 2,
+          backgroundColor: tone.bg,
+          alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <Icon size={Math.round(size * 0.5)} color={tone.fg} weight="fill" />
+      </View>
     </View>
   );
 }

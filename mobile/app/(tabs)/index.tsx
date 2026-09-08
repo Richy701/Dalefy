@@ -1087,7 +1087,7 @@ export default function HomeScreen() {
     <View style={styles.safe}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: Platform.OS === "ios" ? S["2xl"] : TAB_BAR_HEIGHT + S.lg }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + S.xs }]}
         keyboardShouldPersistTaps="handled"
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
