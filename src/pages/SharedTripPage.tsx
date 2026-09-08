@@ -268,7 +268,7 @@ export function SharedTripPage() {
           <button
             type="button"
             onClick={() => setReloadKey(k => k + 1)}
-            className="h-11 px-6 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90"
+            className="h-11 px-6 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90"
           >
             Try again
           </button>
@@ -302,7 +302,7 @@ export function SharedTripPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
               <CalendarDots className="h-3 w-3 text-white/70" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+              <span className="text-xs font-medium text-white/90">
                 {parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 {" - "}
                 {parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
@@ -312,13 +312,13 @@ export function SharedTripPage() {
             {trip.destination && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
                 <MapPin className="h-3 w-3 text-white/70" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
+                <span className="text-xs font-medium text-white/90">{trip.destination}</span>
               </div>
             )}
             {trip.attendees && (
               <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
                 <Users className="h-3 w-3 text-white/70" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
+                <span className="text-xs font-medium text-white/90">{trip.attendees}</span>
               </div>
             )}
           </div>
@@ -346,7 +346,7 @@ export function SharedTripPage() {
                     {viewAsTraveler ? viewAsTraveler.initials : <Users className="h-4 w-4" />}
                   </div>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                    <p className="text-xs font-medium text-muted-foreground">
                       {viewAsId ? "Viewing as" : "Who are you?"}
                     </p>
                     <p className="text-sm font-bold text-foreground truncate">

@@ -84,7 +84,7 @@ function PageNumbers({ current, total, onSelect }: { current: number; total: num
             onClick={() => onSelect(pn)}
             aria-label={`Page ${pn + 1}`}
             aria-current={current === pn ? "page" : undefined}
-            className={`h-8 w-8 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+            className={`h-8 w-8 rounded-lg text-xs font-medium transition-all ${
               current === pn
                 ? "bg-brand text-black shadow-sm"
                 : "text-muted-foreground hover:text-brand hover:bg-brand/5"
@@ -751,11 +751,11 @@ export function TravelersPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{user.role}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{user.role}</span>
                         <span className="text-muted-foreground/60">·</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{user.assignedTrips.length} {user.assignedTrips.length === 1 ? "trip" : "trips"}</span>
                         <span className="text-muted-foreground/60">·</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground tabular-nums">{signedCount}/{docs.length} docs</span>
+                        <span className="text-xs font-medium text-muted-foreground tabular-nums">{signedCount}/{docs.length} docs</span>
                       </div>
                       {user.compliance.length > 0 && (
                         <div className="flex gap-1 mt-2.5 flex-wrap">
@@ -1047,15 +1047,15 @@ export function TravelersPage() {
                                 </div>
                                 <Badge className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border-none uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.color}`}>{doc.status}</Badge>
                                 {doc.status === "Signed" ? (
-                                  <button onClick={() => openDocSheet(userId, userName, doc)} title={`View ${doc.name}`} aria-label={`View ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-brand hover:border-brand/40 transition-all">
+                                  <button onClick={() => openDocSheet(userId, userName, doc)} title={`View ${doc.name}`} aria-label={`View ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/40 transition-all">
                                     <Eye className="h-3 w-3" />
                                   </button>
                                 ) : (
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand text-[10px] font-black uppercase tracking-widest text-black hover:opacity-90 transition-opacity">
+                                    <button onClick={() => openDocSheet(userId, userName, doc)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand text-xs font-medium text-black hover:opacity-90 transition-opacity">
                                       Sign
                                     </button>
-                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} title={`Send reminder for ${doc.name}`} aria-label={`Send reminder for ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
+                                    <button onClick={() => handleSendReminder(userId, userName, doc.name)} disabled={isSending} title={`Send reminder for ${doc.name}`} aria-label={`Send reminder for ${doc.name}`} className="opacity-60 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/40 transition-all disabled:opacity-50">
                                       <PaperPlaneTilt className="h-3 w-3" />
                                     </button>
                                   </div>
@@ -1074,7 +1074,7 @@ export function TravelersPage() {
                               if (next.has(userId)) next.delete(userId); else next.add(userId);
                               return next;
                             })}
-                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-brand transition-colors border-t border-border cursor-pointer"
+                            className="w-full py-2.5 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-brand transition-colors border-t border-border cursor-pointer"
                           >
                             <CaretDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                             {isExpanded ? "Show less" : `${hiddenCount} more`}
@@ -1143,7 +1143,7 @@ export function TravelersPage() {
 
                   {/* Sort dropdown */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors">
+                    <DropdownMenuTrigger className="flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/30 transition-colors">
                       <ArrowsDownUp className="h-3.5 w-3.5" />
                       {appUserSort === "name" ? "Name" : appUserSort === "trips" ? "Trips" : "Recent"}
                     </DropdownMenuTrigger>
@@ -1158,7 +1158,7 @@ export function TravelersPage() {
 
                   {/* Filter by trip dropdown */}
                   <DropdownMenu>
-                    <DropdownMenuTrigger className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    <DropdownMenuTrigger className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-xs font-medium transition-colors ${
                       appUserTripFilter !== "all"
                         ? "bg-brand/10 border-brand/30 text-brand"
                         : "bg-card border-border text-muted-foreground hover:text-brand hover:border-brand/30"
@@ -1209,7 +1209,7 @@ export function TravelersPage() {
                       if (selectedUsers.size === paginatedAppUsers.length) setSelectedUsers(new Set());
                       else setSelectedUsers(new Set(paginatedAppUsers.map(u => u.deviceId)));
                     }}
-                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-brand"
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand"
                   >
                     {selectedUsers.size === paginatedAppUsers.length && paginatedAppUsers.length > 0
                       ? <CheckSquare className="h-3.5 w-3.5" weight="fill" />
@@ -1220,14 +1220,14 @@ export function TravelersPage() {
                   {selectedUsers.size > 0 && (
                     <button
                       onClick={handleBulkDelete}
-                      className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
+                      className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg bg-red-500/10 text-red-500 text-xs font-medium ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
                     >
                       <Trash className="h-3 w-3" /> Remove {selectedUsers.size}
                     </button>
                   )}
                   <button
                     onClick={() => { setBulkAction(false); setSelectedUsers(new Set()); }}
-                    className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Cancel
                   </button>
@@ -1240,9 +1240,9 @@ export function TravelersPage() {
                 <div className="hidden sm:flex px-6 py-4 border-b border-border bg-secondary/50 items-center">
                   {bulkAction && <div className="w-10" />}
                   <div className="w-14" />
-                  <div className="flex-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Name</div>
-                  <div className="w-48 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Trips Joined</div>
-                  <div className="w-40 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Last Active</div>
+                  <div className="flex-1 text-xs font-medium text-muted-foreground">Name</div>
+                  <div className="w-48 text-xs font-medium text-muted-foreground">Trips Joined</div>
+                  <div className="w-40 text-xs font-medium text-muted-foreground text-right">Last Active</div>
                 </div>
 
                 {appUsersLoading ? (
@@ -1255,7 +1255,7 @@ export function TravelersPage() {
                     <button
                       type="button"
                       onClick={() => setAppUsersReload(k => k + 1)}
-                      className="h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider"
+                      className="h-9 px-4 rounded-xl bg-brand text-black text-xs font-medium"
                     >
                       Try again
                     </button>
@@ -1269,7 +1269,7 @@ export function TravelersPage() {
                       {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
                     {appUserTripFilter !== "all" && (
-                      <button onClick={() => setAppUserTripFilter("all")} className="text-[10px] font-black uppercase tracking-widest text-brand hover:underline mt-1">
+                      <button onClick={() => setAppUserTripFilter("all")} className="text-xs font-medium text-brand hover:underline mt-1">
                         Clear Filter
                       </button>
                     )}
@@ -1346,7 +1346,7 @@ export function TravelersPage() {
                             <div className="w-48">
                               <div className="flex flex-wrap gap-1.5">
                                 {appUser.trips.slice(0, 3).map(t => (
-                                  <span key={t.id} className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-brand/10 text-brand">
+                                  <span key={t.id} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-brand/10 text-brand">
                                     <MapPin className="h-2.5 w-2.5" />
                                     <HighlightText text={t.name.length > 14 ? t.name.slice(0, 14).trimEnd() + "..." : t.name} query={search} />
                                   </span>
@@ -1357,7 +1357,7 @@ export function TravelersPage() {
                               </div>
                             </div>
                             <div className="w-40 flex items-center justify-end gap-2">
-                              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              <span className="text-xs font-medium text-muted-foreground">
                                 {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                               </span>
                               {!bulkAction && <PgRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${detailPanelUser === appUser.deviceId ? "text-brand" : ""}`} />}
@@ -1373,7 +1373,7 @@ export function TravelersPage() {
               {/* Pagination */}
               {appUserTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs font-medium text-muted-foreground">
                     {safeAppUserPage * APP_USERS_PER_PAGE + 1}-{Math.min((safeAppUserPage + 1) * APP_USERS_PER_PAGE, filteredAppUsers.length)} of {filteredAppUsers.length}
                   </p>
                   <div className="flex items-center gap-1">
@@ -1417,7 +1417,7 @@ export function TravelersPage() {
                   {/* Panel header */}
                   <div className="sticky top-0 z-10 bg-white/80 dark:bg-background/80 backdrop-blur-xl border-b border-border">
                     <div className="flex items-center justify-between p-5">
-                      <SheetTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">User Details</SheetTitle>
+                      <SheetTitle className="text-xs font-medium text-muted-foreground">User Details</SheetTitle>
                       <button
                         onClick={() => { setDetailPanelUser(null); setRenamingUser(null); }}
                         className="h-8 w-8 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -1494,7 +1494,7 @@ export function TravelersPage() {
 
                     {/* Trip memberships */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Trip Memberships</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Trip Memberships</p>
                       <div className="space-y-2.5">
                         {[...panelUser.trips].sort((a, b) => new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()).map(t => (
                           <div key={t.id} className="rounded-xl bg-secondary border border-border overflow-hidden">
@@ -1541,7 +1541,7 @@ export function TravelersPage() {
 
                     {/* Activity timeline */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Activity Timeline</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Activity Timeline</p>
                       <div className="relative pl-5">
                         <div className="absolute left-[7px] top-1 bottom-1 w-px bg-secondary" />
                         {[...panelUser.trips]
@@ -1567,7 +1567,7 @@ export function TravelersPage() {
 
                     {/* Push notification */}
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Push Notification</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Push Notification</p>
                       <div className="space-y-2">
                         <Input
                           value={pushMessage}
@@ -1584,7 +1584,7 @@ export function TravelersPage() {
                         <button
                           onClick={() => sendPushToUser(panelUser.deviceId, panelUser.name)}
                           disabled={sendingPush || !pushMessage.trim()}
-                          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-brand/10 text-brand text-[10px] font-black uppercase tracking-widest ring-1 ring-brand/20 hover:bg-brand/20 transition-colors disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-brand/10 text-brand text-xs font-medium ring-1 ring-brand/20 hover:bg-brand/20 transition-colors disabled:opacity-50"
                         >
                           <Bell className="h-3.5 w-3.5" />
                           {sendingPush ? "Sending..." : "Send Notification"}
@@ -1594,11 +1594,11 @@ export function TravelersPage() {
 
                     {/* Danger zone */}
                     <div className="pt-4 border-t border-border">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Danger Zone</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Danger Zone</p>
                       <button
                         onClick={() => handleDeleteAppUser(panelUser.deviceId, panelUser.name)}
                         disabled={deletingUser === panelUser.deviceId}
-                        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-red-500/10 text-red-500 text-xs font-medium ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {deletingUser === panelUser.deviceId ? (
                           <><SpinnerGap className="h-3.5 w-3.5 animate-spin" /> Removing...</>
@@ -1688,13 +1688,13 @@ export function TravelersPage() {
                   <button
                     type="button"
                     onClick={() => setInviteOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-background border border-border text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-foreground hover:border-slate-300 dark:hover:border-border transition-all"
+                    className="flex-1 h-10 rounded-xl bg-background border border-border text-muted-foreground text-xs font-medium hover:text-foreground hover:border-slate-300 dark:hover:border-border transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
+                    className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
                   >
                     <UserPlus className="h-4 w-4" /> Add to Team
                   </button>
@@ -1703,7 +1703,7 @@ export function TravelersPage() {
 
               {/* Existing team preview */}
               <div className="mt-10 pt-8 border-t border-border">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">Current Team · {travelers.length} members</p>
+                <p className="text-xs font-medium text-muted-foreground mb-4">Current Team · {travelers.length} members</p>
                 <div className="flex flex-wrap gap-2">
                   {travelers.slice(0, 8).map(u => (
                     <div key={u.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-background border border-border">
@@ -1738,7 +1738,7 @@ export function TravelersPage() {
 
               {/* Document name */}
               <div className="space-y-2 mb-5">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Document Name</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Document Name</Label>
                 <Input
                   value={uploadDocName}
                   onChange={e => setUploadDocName(e.target.value)}
@@ -1750,7 +1750,7 @@ export function TravelersPage() {
               {/* Assign to travelers */}
               <div className="space-y-2 mb-6">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Assign To</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Assign To</Label>
                   <button
                     onClick={() => setUploadAssignees(prev => prev.length === travelers.length ? [] : travelers.map(t => t.id))}
                     className="text-[10px] font-bold text-brand uppercase tracking-wider hover:opacity-70 transition-opacity"
@@ -1765,7 +1765,7 @@ export function TravelersPage() {
                       <button
                         key={t.id}
                         onClick={() => setUploadAssignees(prev => selected ? prev.filter(id => id !== t.id) : [...prev, t.id])}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
                           selected
                             ? "bg-brand/10 border-brand/30 text-brand"
                             : "bg-background border-border text-muted-foreground hover:border-brand/20"
@@ -1783,13 +1783,13 @@ export function TravelersPage() {
 
               {/* Actions */}
               <div className="flex gap-3">
-                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadAssignees([]); }} className="flex-1 h-10 rounded-xl border border-border text-xs font-black uppercase tracking-wider text-muted-foreground hover:bg-secondary transition-colors">
+                <button onClick={() => { setUploadOpen(false); setUploadDocName(""); setUploadAssignees([]); }} className="flex-1 h-10 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:bg-secondary transition-colors">
                   Cancel
                 </button>
                 <button
                   onClick={handleUploadDocument}
                   disabled={!uploadDocName.trim() || uploadAssignees.length === 0}
-                  className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-2 h-10 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" /> Assign Document
                 </button>

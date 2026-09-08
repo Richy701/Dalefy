@@ -230,7 +230,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
               <Button
                 onClick={handleInvite}
                 disabled={sending || !isValidEmail(normalizedEmail) || alreadyMember}
-                className="h-10 rounded-xl bg-brand hover:opacity-90 px-4 sm:px-5 shadow-lg shadow-brand/20 text-xs font-bold uppercase tracking-wider gap-2 disabled:opacity-40 disabled:shadow-none"
+                className="h-10 rounded-xl bg-brand hover:opacity-90 px-4 sm:px-5 shadow-lg shadow-brand/20 text-xs font-medium gap-2 disabled:opacity-40 disabled:shadow-none"
                 style={{ color: accentFg }}
               >
                 {sending ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" weight="bold" />}
@@ -353,14 +353,14 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                         type="button"
                         onClick={() => handleRevoke(invite)}
                         disabled={isBusy}
-                        className="h-8 px-3 rounded-lg bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider"
+                        className="h-8 px-3 rounded-lg bg-red-500 text-white text-xs font-medium"
                       >
                         {isBusy ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : "Revoke"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmRevokeId(null)}
-                        className="h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-secondary"
+                        className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-secondary"
                       >
                         Keep
                       </button>
@@ -424,7 +424,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
           >
             <GearSix className="h-3.5 w-3.5" /> Manage roles in Settings
           </button>
-          <Button variant="ghost" onClick={handleClose} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <Button variant="ghost" onClick={handleClose} className="rounded-xl h-9 px-4 text-xs font-medium text-muted-foreground">
             Done
           </Button>
         </div>

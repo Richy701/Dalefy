@@ -546,7 +546,7 @@ export function DashboardPage() {
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Supports PDF · DOCX · PPTX · TXT
             </p>
           </div>
@@ -658,7 +658,7 @@ export function DashboardPage() {
                             <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">
                               {trip.name}
                             </p>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs font-medium text-muted-foreground">
                               <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
                               <span className="text-muted-foreground">·</span>
                               <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
@@ -850,7 +850,7 @@ export function DashboardPage() {
                                       {timeParts[0]}
                                     </span>
                                     {timeParts[1] && (
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                      <span className="text-xs font-medium text-muted-foreground">
                                         {timeParts[1]}
                                       </span>
                                     )}
@@ -1287,7 +1287,7 @@ export function DashboardPage() {
                     <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">New Trip</span>
+                    <span className="text-xs font-medium">New Trip</span>
                   </button>
                 )}
               </div>
@@ -1310,7 +1310,7 @@ export function DashboardPage() {
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">{tpl.name}</p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <div className="flex items-center gap-2 mt-1.5 text-xs font-medium text-muted-foreground">
                           {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
                           <span className="flex items-center gap-1"><Stack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
                         </div>
@@ -1362,14 +1362,14 @@ export function DashboardPage() {
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <Label htmlFor="nt-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Itinerary title</Label>
+                  <Label htmlFor="nt-title" className="text-xs font-medium text-muted-foreground">Itinerary title</Label>
                   <Input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
                     className="w-full text-lg font-semibold tracking-tight" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <span id="nt-type-label" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Trip type</span>
+                  <span id="nt-type-label" className="text-xs font-medium text-muted-foreground">Trip type</span>
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
@@ -1383,12 +1383,12 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <Label htmlFor="nt-destination" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</Label>
+                    <Label htmlFor="nt-destination" className="text-xs font-medium text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</Label>
                     <Input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
                       className="w-full" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nt-pax" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Travelers</Label>
+                    <Label htmlFor="nt-pax" className="text-xs font-medium text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Travelers</Label>
                     <Input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
                       className="w-full" />
                   </div>
@@ -1396,7 +1396,7 @@ export function DashboardPage() {
 
                 {/* Group */}
                 <div className="space-y-2">
-                  <Label htmlFor="nt-group" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / client</Label>
+                  <Label htmlFor="nt-group" className="text-xs font-medium text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / client</Label>
                   <Input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
                     className="w-full" />
                 </div>
@@ -1404,7 +1404,7 @@ export function DashboardPage() {
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
                 <div className="space-y-3" id="nt-dates">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-brand">
@@ -1425,7 +1425,7 @@ export function DashboardPage() {
                 {/* ── Optional extras ── */}
                 <Collapsible className="rounded-xl border border-slate-200/80 border-border overflow-hidden">
                   <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary transition-colors group/nt">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Budget &amp; cover image</span>
+                    <span className="text-xs font-medium text-muted-foreground">Budget &amp; cover image</span>
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">
                         {[newTripData.budget, newTripData.image?.startsWith("http") ? "img" : ""].filter(Boolean).length
@@ -1438,7 +1438,7 @@ export function DashboardPage() {
                   <CollapsibleContent>
                     <div className="p-4 pt-1 space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="nt-budget" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total budget</Label>
+                  <Label htmlFor="nt-budget" className="text-xs font-medium text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total budget</Label>
                   <div className="flex gap-2">
                     <Input
                       id="nt-budget"
@@ -1465,7 +1465,7 @@ export function DashboardPage() {
 
                 {/* Cover Image */}
                 <div className="space-y-3">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2">
+                  <Label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                     <ImageIcon className="h-3 w-3" /> Cover image
                   </Label>
                   {/* Preview */}
@@ -1515,7 +1515,7 @@ export function DashboardPage() {
                     {isCoverSearching ? (
                       <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-muted-foreground">
                         <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
+                        <span className="text-xs font-medium">Searching…</span>
                       </div>
                     ) : coverResults.length > 0 ? (
                       coverResults.map((url, i) => (
@@ -1544,11 +1544,11 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-background border border-transparent dark:border-transparent text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-foreground hover:border-black/10 dark:hover:border-white/10 transition-all">
+                    className="flex-1 h-10 rounded-xl bg-background border border-transparent dark:border-transparent text-muted-foreground text-xs font-medium hover:text-foreground hover:border-black/10 dark:hover:border-white/10 transition-all">
                     Cancel
                   </button>
                   <button type="submit"
-                    className="flex-2 h-10 rounded-xl bg-brand text-primary-foreground text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    className="flex-2 h-10 rounded-xl bg-brand text-primary-foreground text-xs font-medium hover:opacity-90 transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
                     <Plus className="h-4 w-4" /> Create Itinerary
                   </button>
                 </div>

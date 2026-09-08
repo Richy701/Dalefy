@@ -109,7 +109,7 @@ function HeroBackground() {
         >
           <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-white/60 dark:bg-white/4 border border-slate-200/50 border-border backdrop-blur-sm">
             <LockKey className="h-3.5 w-3.5 text-brand" weight="bold" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Internal · access by invitation</span>
+            <span className="text-xs font-medium text-muted-foreground">Internal · access by invitation</span>
           </div>
         </motion.div>
       </div>

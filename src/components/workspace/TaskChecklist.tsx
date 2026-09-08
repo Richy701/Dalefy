@@ -91,7 +91,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {sortedTasks.length === 0 && !showForm && (
           <div className="text-center py-8 text-muted-foreground">
-            <p className="text-xs font-bold uppercase tracking-wider">No tasks yet</p>
+            <p className="text-xs font-medium">No tasks yet</p>
             <p className="text-[10px] mt-1 opacity-70">Add tasks to track trip preparation</p>
           </div>
         )}
@@ -186,7 +186,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             <Popover>
               <PopoverTrigger className="h-7 px-2 rounded-lg bg-card border border-border hover:border-brand/50 flex items-center gap-1.5 transition-colors cursor-pointer">
                 <CalendarDots className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${newDueDate ? "text-foreground" : "text-muted-foreground"}`}>
+                <span className={`text-xs font-medium ${newDueDate ? "text-foreground" : "text-muted-foreground"}`}>
                   {newDueDate ? format(parse(newDueDate, "yyyy-MM-dd", new Date()), "MMM d") : "Due date"}
                 </span>
               </PopoverTrigger>
@@ -216,13 +216,13 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             <button
               onClick={handleAdd}
               disabled={!newTitle.trim()}
-              className="flex-1 h-8 rounded-lg bg-brand text-black text-[10px] font-bold uppercase tracking-wider disabled:opacity-40 hover:opacity-90 transition-opacity"
+              className="flex-1 h-8 rounded-lg bg-brand text-black text-xs font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               Add Task
             </button>
             <button
               onClick={() => setShowForm(false)}
-              className="h-8 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:hover:text-foreground transition-colors"
+              className="h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:hover:text-foreground transition-colors"
             >
               Cancel
             </button>
@@ -235,7 +235,7 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
             className="w-full h-9 rounded-xl border-2 border-dashed border-border hover:border-brand text-muted-foreground hover:text-brand flex items-center justify-center gap-2 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Add Task</span>
+            <span className="text-xs font-medium">Add Task</span>
           </button>
         </div>
       )}

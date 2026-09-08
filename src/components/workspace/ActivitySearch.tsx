@@ -51,14 +51,14 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Activity Search</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Location</label>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>
             <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Dubai" autoComplete="off" className={inputCls} />
           </div>
           <button
             type="button"
             onClick={search}
             disabled={loading || !query}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-opacity flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Compass className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search

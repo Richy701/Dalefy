@@ -70,12 +70,12 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
             </div>
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-card border border-border">
               <div className="flex flex-col">
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-0.5">For</span>
+                <span className="text-xs font-medium text-muted-foreground mb-0.5">For</span>
                 <span className="text-xs font-black text-foreground uppercase tracking-tight">{travelerName}</span>
               </div>
               <div className="h-8 w-px bg-secondary" />
               <div className="flex flex-col text-right">
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-0.5">Reference</span>
+                <span className="text-xs font-medium text-muted-foreground mb-0.5">Reference</span>
                 <span className="text-xs font-mono font-bold text-muted-foreground">{reference}</span>
               </div>
             </div>
@@ -122,7 +122,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                     <SealCheck className="h-6 w-6 text-brand" />
                   </div>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-widest text-brand">Signed & Verified</p>
+                    <p className="text-xs font-medium text-brand">Signed & Verified</p>
                     <p className="text-xs text-muted-foreground mt-1 font-bold uppercase tracking-tighter">
                       Signed on {new Date(doc.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}
                     </p>
@@ -139,7 +139,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 <div className="h-5 w-5 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                   <Info className="h-3 w-3 text-amber-500" />
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground leading-tight">
+                <p className="text-xs font-medium text-muted-foreground leading-tight">
                   Confirm that {travelerName} has read and accepted the terms above. This records the signature in your team's compliance list.
                 </p>
               </div>

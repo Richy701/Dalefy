@@ -493,7 +493,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <DeviceMobileCamera className="h-4 w-4 text-brand" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">Mobile Preview</span>
+          <span className="text-xs font-medium text-foreground">Mobile Preview</span>
           {viewAsName && (
             <span className="inline-flex items-center gap-1 h-5 px-2 rounded-md bg-brand/10 text-brand text-[9px] font-black uppercase tracking-[0.12em] truncate max-w-[120px]" title={`Showing what ${viewAsName} sees`}>
               <Users size={10} /> {viewAsName}

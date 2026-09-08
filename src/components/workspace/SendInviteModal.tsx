@@ -247,11 +247,11 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             {/* To */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">To</label>
+                <label className="text-xs font-medium text-muted-foreground">To</label>
                 {travelers.length > 0 && (
                   <button
                     onClick={selectAll}
-                    className="text-[10px] font-bold uppercase tracking-widest hover:underline cursor-pointer transition-colors"
+                    className="text-xs font-medium hover:underline cursor-pointer transition-colors"
                     style={{ color: accentColor }}
                   >
                     {selectedIds.size === travelers.length ? "Deselect All" : "Select All"}
@@ -296,9 +296,9 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Template Selector */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Template</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Template</label>
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-border bg-background text-xs font-bold uppercase tracking-wider text-foreground/80 cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
+                <DropdownMenuTrigger className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl border border-border bg-background text-xs font-medium text-foreground/80 cursor-pointer hover:border-slate-300 dark:hover:border-[#333] transition-colors">
                     {template.label}
                     <CaretDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </DropdownMenuTrigger>
@@ -308,7 +308,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                       key={t.id}
                       onClick={() => handleTemplateChange(t)}
                       className={cn(
-                        "text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer",
+                        "text-xs font-medium rounded-lg cursor-pointer",
                         t.id === template.id && "text-brand"
                       )}
                       style={t.id === template.id ? { color: accentColor } : undefined}
@@ -322,7 +322,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Subject */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Subject</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Subject</label>
               <input
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
@@ -333,7 +333,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Message Body */}
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Message</label>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Message</label>
               <Textarea
                 value={body}
                 onChange={e => setBody(e.target.value)}
@@ -361,7 +361,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             {/* Secondary: Copy buttons for manual compose */}
             <details className="group">
-              <summary className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer hover:text-slate-600 dark:hover:text-muted-foreground transition-colors list-none flex items-center gap-1.5">
+              <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-slate-600 dark:hover:text-muted-foreground transition-colors list-none flex items-center gap-1.5">
                 <CaretDown className="h-3 w-3 -rotate-90 group-open:rotate-0 transition-transform" />
                 Or copy manually
               </summary>
@@ -397,7 +397,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
           {/* Right: Live Preview */}
           <div className="flex-1 p-5 sm:p-8 bg-background min-w-0 overflow-hidden">
             <div className="flex items-center justify-between mb-4 gap-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">Preview</span>
+              <span className="text-xs font-medium text-muted-foreground shrink-0">Preview</span>
               <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[240px]">
                 {resolvedSubject}
               </span>

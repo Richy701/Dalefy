@@ -421,7 +421,7 @@ export function MediaPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-9 px-5 rounded-lg bg-brand text-[#050505] text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
+              className="h-9 px-5 rounded-lg bg-brand text-[#050505] text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -626,7 +626,7 @@ export function MediaPage() {
           <button
             onClick={() => !uploading && fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40 sm:hidden"
+            className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40 sm:hidden"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload
@@ -639,7 +639,7 @@ export function MediaPage() {
               <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                 <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
+              <span className="text-xs font-medium text-brand shrink-0">Uploading…</span>
             </div>
           )}
 
@@ -650,7 +650,7 @@ export function MediaPage() {
                 <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
+                <span className="text-xs font-medium text-brand shrink-0">Uploading…</span>
               </div>
             ) : (
               <p className="text-[11px] font-medium text-muted-foreground truncate">
@@ -663,7 +663,7 @@ export function MediaPage() {
           <button
             onClick={() => !uploading && fileInputRef.current?.click()}
             disabled={uploading}
-            className="hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+            className="hidden sm:flex items-center gap-1.5 h-9 px-4 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
           >
             <Upload className="h-3.5 w-3.5" />
             Upload
@@ -721,7 +721,7 @@ export function MediaPage() {
                   onClick={() => setMediaFilter(opt.key)}
                   aria-label={opt.label}
                   aria-pressed={mediaFilter === opt.key}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     mediaFilter === opt.key
                       ? "bg-brand text-black shadow-sm"
                       : "text-muted-foreground hover:hover:text-foreground"
@@ -738,7 +738,7 @@ export function MediaPage() {
               onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
               aria-label={selectMode ? "Cancel selection" : "Select files"}
               aria-pressed={selectMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
                 selectMode
                   ? "bg-brand text-black border-transparent"
                   : "bg-card border-border text-muted-foreground hover:hover:text-foreground shadow-sm"
@@ -755,7 +755,7 @@ export function MediaPage() {
           <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/8">
             <button
               onClick={() => allFilteredSelected ? setSelected(new Set()) : selectAllFiltered()}
-              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground hover:text-brand transition-colors"
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-brand transition-colors"
             >
               {allFilteredSelected ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
               {allFilteredSelected ? "Deselect All" : "Select All"}
@@ -763,7 +763,7 @@ export function MediaPage() {
 
             <div className="h-4 w-px bg-secondary dark:bg-[#2a2a2a]" />
 
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">
+            <span className="text-xs font-medium text-brand">
               {selected.size} selected
             </span>
 
@@ -772,7 +772,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDownload}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card border border-border text-[10px] font-black uppercase tracking-[0.2em] text-foreground hover:border-brand/40 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card border border-border text-xs font-medium text-foreground hover:border-brand/40 transition-colors disabled:opacity-30"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -781,7 +781,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDelete}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs font-medium text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-30"
             >
               <Trash className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Delete</span>
@@ -834,7 +834,7 @@ export function MediaPage() {
                     </div>
                     <button
                       onClick={() => navigate(`/trip/${group.tripId}`)}
-                      className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] text-brand hover:opacity-70 transition-opacity shrink-0"
+                      className="flex items-center gap-1 text-xs font-medium text-brand hover:opacity-70 transition-opacity shrink-0"
                     >
                       View Trip
                       <ArrowUpRight className="h-3 w-3" />
@@ -927,7 +927,7 @@ export function MediaPage() {
               <button
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
               >
                 <Upload className="h-3.5 w-3.5" />
                 Upload

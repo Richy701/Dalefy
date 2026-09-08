@@ -80,7 +80,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
     "w-full h-11 sm:h-9 px-3 rounded-lg bg-card border border-border text-base sm:text-sm font-semibold text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus:outline-none focus:border-brand dark:focus:border-brand transition-colors";
 
   const tabCls = (active: boolean) =>
-    `px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
+    `px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 ${
       active
         ? "bg-brand/15 text-brand"
         : "text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground"
@@ -106,11 +106,11 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         {mode === "number" ? (
           <div className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[120px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Flight Number</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">Flight Number</label>
               <input value={flightNum} onChange={e => setFlightNum(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="EK 2" autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="flex-1 min-w-[140px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Date</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
                   <span className={`truncate ${date ? "" : "text-muted-foreground"}`}>
@@ -123,7 +123,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
                 </PopoverContent>
               </Popover>
             </div>
-            <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0">
+            <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-opacity flex items-center justify-center gap-1.5 shrink-0">
               {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <AirplaneTilt className="h-4 w-4 sm:h-3 sm:w-3" />}
               Lookup
             </button>
@@ -131,15 +131,15 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         ) : (
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
             <div className="sm:flex-1 sm:min-w-[70px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">From</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">From</label>
               <input value={from} onChange={e => setFrom(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="LHR" maxLength={4} autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="sm:flex-1 sm:min-w-[70px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">To</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">To</label>
               <input value={to} onChange={e => setTo(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="DXB" maxLength={4} autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="col-span-2 sm:flex-1 sm:min-w-[140px]">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Date</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">Date</label>
               <Popover>
                 <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
                   <span className={`truncate ${date ? "" : "text-muted-foreground"}`}>
@@ -152,7 +152,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
                 </PopoverContent>
               </Popover>
             </div>
-            <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-opacity flex items-center justify-center gap-1.5 shrink-0">
+            <button type="button" onClick={search} disabled={loading || !canSearch} className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:opacity-90 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-opacity flex items-center justify-center gap-1.5 shrink-0">
               {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <AirplaneTilt className="h-4 w-4 sm:h-3 sm:w-3" />}
               Search
             </button>

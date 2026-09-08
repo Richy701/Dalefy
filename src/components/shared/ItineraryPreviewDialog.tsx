@@ -250,7 +250,7 @@ function Pill({ icon: Icon, children, className, forPrint }: { icon: React.Compo
   return (
     <div className={cn("flex items-center gap-1.5 border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5", forPrint ? "bg-white/15" : "bg-white/10 backdrop-blur-sm", className)}>
       <Icon className="h-3 w-3 text-brand" />
-      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{children}</span>
+      <span className="text-[9px] sm:text-xs font-medium text-white/90">{children}</span>
     </div>
   );
 }

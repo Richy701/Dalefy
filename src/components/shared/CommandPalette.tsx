@@ -198,9 +198,9 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
         <div className="px-4 py-3 border-t border-border flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <CmdIcon className="h-3 w-3" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">K</span>
+            <span className="text-xs font-medium">K</span>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
             <span className="flex items-center gap-1"><kbd className="bg-secondary border border-border rounded px-1 py-0.5 font-mono">↑↓</kbd> navigate</span>
             <span className="flex items-center gap-1"><kbd className="bg-secondary border border-border rounded px-1 py-0.5 font-mono">↵</kbd> select</span>
           </div>

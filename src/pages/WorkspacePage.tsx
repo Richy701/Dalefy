@@ -1185,7 +1185,7 @@ export function WorkspacePage() {
           {/* View As dropdown */}
           {tripTravelers.length > 0 && (
             <Popover>
-              <PopoverTrigger className={`hidden sm:flex h-10 items-center gap-2 px-3 rounded-xl border transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm cursor-pointer ${
+              <PopoverTrigger className={`hidden sm:flex h-10 items-center gap-2 px-3 rounded-xl border transition-all text-xs font-medium shadow-sm cursor-pointer ${
                 viewAsId
                   ? "bg-brand/10 border-brand/30 text-brand"
                   : "bg-card border-border text-muted-foreground hover:text-brand"
@@ -1286,45 +1286,45 @@ export function WorkspacePage() {
                 <DotsThreeVertical className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-card border border-border shadow-2xl rounded-xl p-1">
-              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <ListChecks className="h-4 w-4 text-brand" /> {showTasks ? "Hide Tasks" : "Tasks"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowMap(!showMap); if (!showMap) { setShowTasks(false); setShowMobilePreview(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <MapIcon className="h-4 w-4 text-brand" /> {showMap ? "Hide Map" : "Show Map"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => { setShowMobilePreview(!showMobilePreview); if (!showMobilePreview) { setShowMap(false); setShowTasks(false); } }} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <DeviceMobileCamera className="h-4 w-4 text-brand" /> {showMobilePreview ? "Hide Mobile" : "Mobile Preview"}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <Eye className="h-4 w-4" /> Preview
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleOpenEditTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={handleOpenEditTrip} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <Pencil className="h-4 w-4" /> Edit Trip
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={() => setReimportOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <Upload className="h-4 w-4" /> Re-import
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={handleGeocodeAll} disabled={geocoding} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 {geocoding ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {geocoding ? "Geocoding..." : "Geocode Locations"}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-secondary" />
-              <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={handleShareTrip} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <ShareNetwork className="h-4 w-4" /> Share Link
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={handleSendEmail} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <EnvelopeOpen className="h-4 w-4" /> Send to Client
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 <FileText className="h-4 w-4" /> Export PDF
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-secondary" />
-              <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer">
+              <DropdownMenuItem onClick={toggleTheme} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} {theme === "dark" ? "Light Mode" : "Dark Mode"}
               </DropdownMenuItem>
               {(!isOrgMember || canDeleteTrip) && (
                 <>
                   <DropdownMenuSeparator className="bg-secondary" />
-                  <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer text-red-500 focus:text-red-500">
+                  <DropdownMenuItem onClick={() => setDeleteConfirmOpen(true)} className="flex items-center gap-2.5 text-xs font-medium rounded-lg cursor-pointer text-red-500 focus:text-red-500">
                     <Trash className="h-4 w-4" /> Delete Trip
                   </DropdownMenuItem>
                 </>
@@ -1436,7 +1436,7 @@ export function WorkspacePage() {
                 <p className="text-[11px] font-bold uppercase tracking-wider text-brand flex-1">
                   Viewing as {viewAsTraveler.name} - showing {groupedEvents.reduce((n, [, evs]) => n + evs.length, 0)} events
                 </p>
-                <button onClick={() => setViewAsId(null)} className="text-[10px] font-bold uppercase tracking-wider text-brand/70 hover:text-brand transition-colors flex items-center gap-1">
+                <button onClick={() => setViewAsId(null)} className="text-xs font-medium text-brand/70 hover:text-brand transition-colors flex items-center gap-1">
                   <X className="h-3 w-3" /> Clear
                 </button>
               </div>
@@ -1490,7 +1490,7 @@ export function WorkspacePage() {
                             </div>
                             {/* Name + meta */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-1">Organizer</p>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Organizer</p>
                               <p className="text-base font-extrabold text-foreground truncate">{trip.organizer.name}</p>
                               {(trip.organizer.role || trip.organizer.company) && (
                                 <p className="text-xs text-muted-foreground font-medium truncate mt-0.5">
@@ -1503,13 +1503,13 @@ export function WorkspacePage() {
                               {trip.organizer.email && (
                                 <a href={`mailto:${trip.organizer.email}`} className="h-10 px-4 rounded-xl bg-brand/10 border border-brand/20 flex items-center gap-2 text-brand hover:bg-brand/20 transition-colors">
                                   <Envelope className="h-3.5 w-3.5" />
-                                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Email</span>
+                                  <span className="text-xs font-medium hidden sm:inline">Email</span>
                                 </a>
                               )}
                               {trip.organizer.phone && (
                                 <a href={`tel:${trip.organizer.phone}`} className="h-10 px-4 rounded-xl bg-brand/10 border border-brand/20 flex items-center gap-2 text-brand hover:bg-brand/20 transition-colors">
                                   <Phone className="h-3.5 w-3.5" />
-                                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Call</span>
+                                  <span className="text-xs font-medium hidden sm:inline">Call</span>
                                 </a>
                               )}
                               <button onClick={handleOpenEditOrg} className="h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/org:opacity-100 transition-all">
@@ -1532,7 +1532,7 @@ export function WorkspacePage() {
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                               <FileText className="h-3.5 w-3.5 text-brand" />
-                              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Information & Documents</span>
+                              <span className="text-xs font-medium text-muted-foreground">Information & Documents</span>
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
@@ -1642,7 +1642,7 @@ export function WorkspacePage() {
                                   className={`w-full py-2.5 px-4 rounded-xl border-2 border-dashed transition-all flex flex-col items-center gap-1.5 ${tripDocDragOver ? "border-brand bg-brand/10 dark:bg-brand/10" : "border-border hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808]"}`}
                                 >
                                   <Upload className={`h-5 w-5 ${tripDocDragOver ? "text-brand" : "text-muted-foreground"}`} />
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                  <span className="text-xs font-medium text-muted-foreground">
                                     {tripDocDragOver ? "Drop to upload" : "Drop files here or click to upload"}
                                   </span>
                                 </button>
@@ -1718,7 +1718,7 @@ export function WorkspacePage() {
                   {/* Trip Travelers */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-brand">Trip Travelers</h3>
+                      <h3 className="text-sm font-semibold text-brand">Trip travellers</h3>
                       <div className="flex items-center gap-2">
                         {tripTravelers.length > 2 && !bulkEmailMode && (
                           <button
@@ -1741,7 +1741,7 @@ export function WorkspacePage() {
                     {bulkEmailMode && tripTravelers.length > 0 && (
                       <div className="mb-6 rounded-xl bg-card border border-brand/30 overflow-hidden">
                         <div className="px-4 py-3 bg-brand/5 border-b border-brand/20 flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Bulk Email Editor</p>
+                          <p className="text-xs font-medium text-brand">Bulk email</p>
                           <p className="text-[10px] font-bold text-muted-foreground">{tripTravelers.filter(t => bulkEmails[t.id]).length}/{tripTravelers.length} with email</p>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-border">
@@ -1760,7 +1760,7 @@ export function WorkspacePage() {
                           ))}
                         </div>
                         <div className="px-4 py-3 border-t border-border flex items-center gap-2 justify-end">
-                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+                          <button onClick={() => setBulkEmailMode(false)} className="h-8 px-4 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
                             Cancel
                           </button>
                           <button
@@ -1774,7 +1774,7 @@ export function WorkspacePage() {
                               setBulkEmailMode(false);
                               toast.success("Emails updated");
                             }}
-                            className="h-8 px-5 rounded-lg bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                            className="h-8 px-5 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity"
                           >
                             Save All
                           </button>
@@ -1858,7 +1858,7 @@ export function WorkspacePage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-16 bg-card border-2 border-dashed border-border rounded-xl text-muted-foreground">
                         <Users className="h-10 w-10 mb-3 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-[0.2em]">No travelers assigned yet</p>
+                        <p className="text-xs font-medium">No travellers assigned yet</p>
                         <p className="text-[10px] text-muted-foreground mt-1">Add travelers below to tag them on specific events</p>
                       </div>
                     )}
@@ -1867,7 +1867,7 @@ export function WorkspacePage() {
                   {/* Add Travelers */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground">Add Travelers</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground">Add travellers</h3>
                     </div>
                     <div className="relative mb-3">
                       <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1907,14 +1907,14 @@ export function WorkspacePage() {
                         </div>
                       ) : (
                         <div className="text-center py-4 text-muted-foreground">
-                          <p className="text-xs font-bold uppercase tracking-wider">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
+                          <p className="text-xs font-medium">{allTravelers.length === 0 ? "No travelers yet" : "All travelers are assigned"}</p>
                         </div>
                       );
                     })()}
 
                     {/* Quick add traveler inline */}
                     <div className="mt-4 pt-4 border-t border-border">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Quick Add</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-3">Quick add</p>
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
@@ -1936,7 +1936,7 @@ export function WorkspacePage() {
                       >
                         <Input name="qname" required placeholder="Name" className="w-full font-bold" />
                         <Input name="qemail" type="email" placeholder="Email (links their app account)" className="w-full font-bold" />
-                        <button type="submit" className="w-full h-9 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
+                        <button type="submit" className="w-full h-9 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5">
                           <UserPlus className="h-3.5 w-3.5" /> Add to Trip
                         </button>
                       </form>
@@ -1953,7 +1953,7 @@ export function WorkspacePage() {
               <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card/95/95 backdrop-blur-sm shrink-0 z-50">
                 <div className="flex items-center gap-2.5">
                   <MapIcon className="h-4 w-4 text-brand" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground">Route Map</span>
+                  <span className="text-xs font-medium text-foreground">Route map</span>
                 </div>
                 <button
                   onClick={() => setShowMap(false)}
@@ -1973,7 +1973,7 @@ export function WorkspacePage() {
               <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card/95/95 backdrop-blur-sm shrink-0 z-50">
                 <div className="flex items-center gap-2.5">
                   <ListChecks className="h-4 w-4 text-brand" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground">Tasks</span>
+                  <span className="text-xs font-medium text-foreground">Tasks</span>
                 </div>
                 <button
                   onClick={() => setShowTasks(false)}
@@ -2099,12 +2099,12 @@ export function WorkspacePage() {
                 )}
 
                 <div className="px-4 sm:px-6 pt-4 pb-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Essentials</span>
+                  <span className="text-xs font-medium text-muted-foreground">Essentials</span>
                 </div>
                 <div className="px-4 sm:px-6 pb-5 pt-1 space-y-5">
                   {/* Title - large underline style */}
                   <div className="space-y-1">
-                    <Label htmlFor="event-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Event Title</Label>
+                    <Label htmlFor="event-title" className="text-xs font-medium text-muted-foreground">Event title</Label>
                     <Input
                       id="event-title"
                       value={editingEvent?.title || ""}
@@ -2119,7 +2119,7 @@ export function WorkspacePage() {
                   {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Date</label>
+                      <label className="text-xs font-medium text-muted-foreground">Date</label>
                       <Popover>
                         <PopoverTrigger className={cn(
                           "w-full h-10 flex items-center gap-2 px-3 rounded-lg text-sm font-semibold bg-background border border-border hover:border-brand/50 transition-colors text-left",
@@ -2142,7 +2142,7 @@ export function WorkspacePage() {
                       {eventErrors.date && <p className="text-[11px] font-semibold text-red-500">{eventErrors.date}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in Time" : "Start Time"}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "Check-in time" : "Start time"}</Label>
                       <Input value={editingEvent?.time || ""} onChange={e => { setEditingEvent(prev => prev ? { ...prev, time: e.target.value } : null); if (eventErrors.time) setEventErrors(prev => ({ ...prev, time: undefined })); }} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, time: f } : null); setEventErrors(prev => ({ ...prev, time: isValidTimeInput(e.target.value) ? undefined : "Use a time like 09:30 or 2pm" })); }} placeholder={editingEvent?.type === "hotel" && !editingEvent?.isOvernight ? "15:00" : "10:30"} aria-invalid={!!eventErrors.time} className={`h-10 text-sm font-semibold bg-background text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors ${eventErrors.time ? "border-red-500" : "border-border"}`} />
                       {eventErrors.time && <p className="text-[11px] font-semibold text-red-500">{eventErrors.time}</p>}
                     </div>
@@ -2165,14 +2165,14 @@ export function WorkspacePage() {
                         )} />
                       </div>
                       <Moon className={cn("h-3.5 w-3.5 transition-colors", editingEvent.isOvernight ? "text-brand" : "text-muted-foreground")} />
-                      <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Overnight</span>
+                      <span className="text-xs font-medium text-muted-foreground">Overnight</span>
                     </button>
                   )}
 
                   {/* Transfer type selector */}
                   {editingEvent?.type === "transfer" && (
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Transport Type</label>
+                      <label className="text-xs font-medium text-muted-foreground">Transport type</label>
                       <div className="flex gap-2">
                         {([
                           { value: "car", label: "Car", Icon: Car },
@@ -2187,7 +2187,7 @@ export function WorkspacePage() {
                             type="button"
                             onClick={() => setEditingEvent(prev => prev ? { ...prev, transferType: value } : null)}
                             className={cn(
-                              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all",
+                              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all",
                               (editingEvent.transferType || "car") === value
                                 ? "border-brand bg-brand/10 text-brand"
                                 : "border-border text-muted-foreground hover:border-brand/30 hover:text-brand/70"
@@ -2205,7 +2205,7 @@ export function WorkspacePage() {
                   {editingEvent?.type === "hotel" && !editingEvent?.isOvernight && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Check-out Time</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">Check-out time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="11:00" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
@@ -2215,11 +2215,11 @@ export function WorkspacePage() {
                   {(editingEvent?.type === "activity" || editingEvent?.type === "dining" || editingEvent?.type === "transfer") && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">End Time</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">End time</Label>
                         <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="14:00" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Duration</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
                         <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                       </div>
                     </div>
@@ -2227,7 +2227,7 @@ export function WorkspacePage() {
 
                   {/* Location - with Mapbox autocomplete */}
                   <div className="space-y-1.5">
-                    <label htmlFor="event-location" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Location / Address</label>
+                    <label htmlFor="event-location" className="text-xs font-medium text-muted-foreground">Location or address</label>
                     <LocationAutocomplete
                       id="event-location"
                       ariaLabel="Location"
@@ -2243,7 +2243,7 @@ export function WorkspacePage() {
                 {/* ── Details: everything optional, collapsed by default ── */}
                 <Collapsible className="border-t border-border">
                   <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Details</span>
+                    <span className="text-xs font-medium text-muted-foreground">Details</span>
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">
                         {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length || "Optional"}
@@ -2257,18 +2257,18 @@ export function WorkspacePage() {
                   {/* Supplier + Conf# */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Supplier / Provider</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Supplier</Label>
                       <Input value={editingEvent?.supplier || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, supplier: e.target.value } : null)} placeholder="e.g., Qatar Airways" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Confirmation #</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Confirmation number</Label>
                       <Input value={editingEvent?.confNumber || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, confNumber: e.target.value } : null)} placeholder="e.g., ABC-12345" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Price (Optional)</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Price</Label>
                     <Input value={editingEvent?.price || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, price: e.target.value } : null)} placeholder="e.g., 1,200 per person" className="h-10 text-sm font-semibold bg-background border-border text-foreground rounded-lg hover:border-brand/50 focus-visible:border-brand focus-visible:ring-0 transition-colors" />
                   </div>
 
@@ -2277,7 +2277,7 @@ export function WorkspacePage() {
                     <div className="space-y-4 pt-1">
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-secondary" />
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground">
                           {editingEvent.type === "flight" ? "Flight Details" : "Hotel Details"}
                         </span>
                         <div className="h-px flex-1 bg-secondary" />
@@ -2291,20 +2291,20 @@ export function WorkspacePage() {
                               { key: "gate", label: "Gate" },
                             ].map(f => (
                               <div key={f.key} className="space-y-1.5">
-                                <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{f.label}</Label>
+                                <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
                                 <Input value={((editingEvent as unknown as Record<string, string | undefined>)[f.key] ?? "") || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, [f.key]: e.target.value } : null)} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                               </div>
                             ))}
                             <div className="space-y-1.5">
-                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Arrival Time</Label>
+                              <Label className="text-xs font-medium text-muted-foreground">Arrival time</Label>
                               <Input value={editingEvent?.endTime || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, endTime: e.target.value } : null)} onBlur={e => { const f = formatTimeInput(e.target.value); if (f !== e.target.value) setEditingEvent(prev => prev ? { ...prev, endTime: f } : null); }} placeholder="e.g., 14:30" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Duration</Label>
+                              <Label className="text-xs font-medium text-muted-foreground">Duration</Label>
                               <Input value={editingEvent?.duration || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, duration: e.target.value } : null)} placeholder="e.g., 3h 30m" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                             <div className="col-span-2 space-y-1.5">
-                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Seat / Ticket Details</Label>
+                              <Label className="text-xs font-medium text-muted-foreground">Seat or ticket details</Label>
                               <Input value={editingEvent?.seatDetails || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, seatDetails: e.target.value } : null)} placeholder="e.g., 14A, 14B - Business Class" className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
@@ -2316,7 +2316,7 @@ export function WorkspacePage() {
                               const isValid = parsed && !isNaN(parsed.getTime());
                               return (
                                 <div key={f.key} className="space-y-1.5">
-                                  <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{f.label}</label>
+                                  <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
                                   <Popover>
                                     <PopoverTrigger className={cn(
                                       "w-full h-9 flex items-center gap-2 px-3 rounded-lg text-sm bg-background border border-border hover:border-brand/50 transition-colors text-left",
@@ -2340,7 +2340,7 @@ export function WorkspacePage() {
                               );
                             })}
                             <div className="space-y-1.5">
-                              <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Room Type</Label>
+                              <Label className="text-xs font-medium text-muted-foreground">Room type</Label>
                               <Input value={editingEvent?.roomType || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, roomType: e.target.value } : null)} className="h-10 text-sm bg-background border-border text-foreground rounded-lg focus-visible:border-brand focus-visible:ring-0" />
                             </div>
                           </>
@@ -2356,7 +2356,7 @@ export function WorkspacePage() {
               {/* ── Media: image, photos and documents, collapsed by default ── */}
               <Collapsible className="border-t border-border">
                 <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Media &amp; documents</span>
+                  <span className="text-xs font-medium text-muted-foreground">Media &amp; documents</span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
                       {(() => {
@@ -2383,7 +2383,7 @@ export function WorkspacePage() {
                       />
                     </div>
                     <button type="button" onClick={() => runImageSearch(imageSearch)}
-                      className="h-9 px-3 rounded-lg bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
+                      className="h-9 px-3 rounded-lg bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity shrink-0 flex items-center gap-1">
                       {isSearchingImages ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                     </button>
                     {imageSearch && (
@@ -2396,7 +2396,7 @@ export function WorkspacePage() {
                   <div className="flex items-center gap-1 mt-2">
                     {(["auto", "google", "unsplash", "pexels"] as const).map(s => (
                       <button key={s} type="button" onClick={() => { setPreferredImageSource(s); if (imageLastQuery) runImageSearch(imageLastQuery, 1, s); }}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground"}`}>
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${preferredImageSource === s ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground"}`}>
                         {s === "auto" ? "Auto" : s === "google" ? "Google" : s === "unsplash" ? "Unsplash" : "Pexels"}
                       </button>
                     ))}
@@ -2419,7 +2419,7 @@ export function WorkspacePage() {
                       </div>
                       <div className="absolute top-2 right-2 flex items-center gap-1.5">
                         {imageIsAuto && (
-                          <div className="flex items-center gap-1 bg-brand text-black text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg">
+                          <div className="flex items-center gap-1 bg-brand text-black text-[11px] font-medium px-2 py-0.5 rounded-lg">
                             <MagicWand className="h-2.5 w-2.5" /> Auto
                           </div>
                         )}
@@ -2444,7 +2444,7 @@ export function WorkspacePage() {
                   {isSearchingImages ? (
                     <div className="flex items-center justify-center h-24 gap-2 text-muted-foreground">
                       <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Searching...</span>
+                      <span className="text-xs font-medium">Searching...</span>
                     </div>
                   ) : imageResults.length > 0 ? (
                     <div className="space-y-2">
@@ -2460,11 +2460,11 @@ export function WorkspacePage() {
                       {(imageSearchSource === "unsplash" || imageSearchSource === "pexels") && imageLastQuery && (
                         <div className="flex items-center gap-1.5 pt-1">
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage)}
-                            className="flex-1 h-7 rounded-lg bg-secondary border border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
+                            className="flex-1 h-7 rounded-lg bg-secondary border border-border text-xs font-medium text-muted-foreground hover:text-brand hover:border-brand/40 transition-colors flex items-center justify-center gap-1">
                             <ArrowsClockwise className="h-3 w-3" /> Refresh
                           </button>
                           <button type="button" onClick={() => runImageSearch(imageLastQuery, imagePage + 1)}
-                            className="flex-1 h-7 rounded-lg bg-brand/10 border border-brand/40 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-brand/20 transition-colors flex items-center justify-center gap-1">
+                            className="flex-1 h-7 rounded-lg bg-brand/10 border border-brand/40 text-xs font-medium text-brand hover:bg-brand/20 transition-colors flex items-center justify-center gap-1">
                             Next <CaretRight className="h-3 w-3" />
                           </button>
                         </div>
@@ -2501,9 +2501,9 @@ export function WorkspacePage() {
                 {/* Media Upload */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Photos & Videos</label>
+                    <label className="text-xs font-medium text-muted-foreground">Photos & Videos</label>
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
-                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
+                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs font-medium cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Upload className="h-3 w-3" /> Upload
                     </button>
                     <input ref={mediaInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaUpload} />
@@ -2534,7 +2534,7 @@ export function WorkspacePage() {
                     <button type="button" onClick={() => mediaInputRef.current?.click()}
                       className="w-full h-10 rounded-lg border-2 border-dashed border-border flex items-center justify-center gap-2 text-muted-foreground hover:border-brand/50 hover:text-brand transition-colors group">
                       <ImageIcon2 className="h-4 w-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Add photos or videos</span>
+                      <span className="text-xs font-medium">Add photos or videos</span>
                     </button>
                   )}
                 </div>
@@ -2542,9 +2542,9 @@ export function WorkspacePage() {
                 {/* Documents / Vouchers */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2 sm:space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Documents / Vouchers</label>
+                    <label className="text-xs font-medium text-muted-foreground">Documents / Vouchers</label>
                     <button type="button" onClick={() => documentInputRef.current?.click()}
-                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
+                      className="h-7 px-3 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs font-medium cursor-pointer hover:bg-brand/20 transition-colors flex items-center gap-1.5">
                       <Paperclip className="h-3 w-3" /> Attach
                     </button>
                     <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,image/*" multiple className="hidden" onChange={handleDocumentUpload} />
@@ -2584,7 +2584,7 @@ export function WorkspacePage() {
                     <button type="button" onClick={() => documentInputRef.current?.click()}
                       className="w-full h-10 rounded-lg border-2 border-dashed border-border flex items-center justify-center gap-2 text-muted-foreground hover:border-brand/50 hover:text-brand transition-colors">
                       <Paperclip className="h-4 w-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Attach PDF, voucher, or booking confirmation</span>
+                      <span className="text-xs font-medium">Attach PDF, voucher, or booking confirmation</span>
                     </button>
                   )}
                 </div>
@@ -2592,13 +2592,13 @@ export function WorkspacePage() {
                 {/* People Assignment */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">People</label>
+                    <label className="text-xs font-medium text-muted-foreground">People</label>
                     <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
                       <button
                         type="button"
                         onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: undefined } : null)}
                         aria-pressed={!editingEvent?.assignedTo}
-                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           !editingEvent?.assignedTo
                             ? "bg-brand text-black shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
@@ -2610,7 +2610,7 @@ export function WorkspacePage() {
                         type="button"
                         onClick={() => setEditingEvent(prev => prev ? { ...prev, assignedTo: prev.assignedTo?.length ? prev.assignedTo : [] } : null)}
                         aria-pressed={Array.isArray(editingEvent?.assignedTo)}
-                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                           Array.isArray(editingEvent?.assignedTo)
                             ? "bg-brand text-black shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
@@ -2640,7 +2640,7 @@ export function WorkspacePage() {
                                     return { ...prev, assignedTo: next };
                                   });
                                 }}
-                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                className={`flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium border transition-all ${
                                   isAssigned
                                     ? "bg-brand/10 border-brand/30 text-brand"
                                     : "bg-background border-border text-muted-foreground hover:border-brand/30"
@@ -2670,7 +2670,7 @@ export function WorkspacePage() {
               {/* ── Description & notes: traveler-facing copy and internal notes ── */}
               <Collapsible className="border-t border-border">
                 <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Description &amp; notes</span>
+                  <span className="text-xs font-medium text-muted-foreground">Description &amp; notes</span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
                       {[editingEvent?.description, editingEvent?.notes].filter(v => v?.trim()).length
@@ -2697,13 +2697,13 @@ export function WorkspacePage() {
 
                 {/* Description (visible to travelers) */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Description (Visible to Travelers)</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Description (Visible to Travelers)</Label>
                   <Textarea value={editingEvent?.description || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, description: e.target.value } : null)} placeholder="Public-facing description travelers will see..." className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
 
                 {/* Notes */}
                 <div className="p-3 sm:p-4 border-t border-border bg-card space-y-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Agent Notes (Internal)</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Agent Notes (Internal)</Label>
                   <Textarea value={editingEvent?.notes || ""} onChange={e => setEditingEvent(prev => prev ? { ...prev, notes: e.target.value } : null)} className="rounded-lg h-14 sm:h-20 text-sm font-medium bg-background border-border text-foreground resize-none focus-visible:border-brand focus-visible:ring-0" />
                 </div>
               </div>
@@ -2764,7 +2764,7 @@ export function WorkspacePage() {
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon2 className="h-3.5 w-3.5 text-brand" />
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Cover Image</label>
+                  <label className="text-xs font-medium text-muted-foreground">Cover Image</label>
                 </div>
                 {editingTrip.image && (
                   <div className="h-36 rounded-xl overflow-hidden relative">
@@ -2790,7 +2790,7 @@ export function WorkspacePage() {
                     <Upload className="h-3.5 w-3.5" />
                   </button>
                   <button type="button" onClick={() => runTripImageSearch(tripImageSearch)}
-                    className="h-9 px-3 rounded-xl bg-brand text-black text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
+                    className="h-9 px-3 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1 shrink-0">
                     {isTripImageSearching ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <MagnifyingGlass className="h-3 w-3" />}
                   </button>
                   {tripImageResults.length > 0 && (
@@ -2814,7 +2814,7 @@ export function WorkspacePage() {
                   {isTripImageSearching ? (
                     <div className="col-span-2 sm:col-span-3 lg:col-span-5 flex items-center justify-center h-20 gap-2 text-muted-foreground">
                       <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
+                      <span className="text-xs font-medium">Searching…</span>
                     </div>
                   ) : tripImageResults.length > 0 ? (
                     tripImageResults.map((url, i) => (
@@ -2840,26 +2840,26 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <MapPin className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Trip Details</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground">Trip Details</h4>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Trip Name</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Trip Name</Label>
                     <Input value={editingTrip.name ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Kenya Safari 2025" className="h-10 text-sm bg-background border-border text-foreground rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Destination</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Destination</Label>
                       <Input value={editingTrip.destination ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, destination: e.target.value }))} placeholder="e.g., Nairobi, Kenya" className="h-10 text-sm bg-background border-border text-foreground rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Attendees</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Attendees</Label>
                       <Input value={editingTrip.attendees ?? ""} onChange={e => setEditingTrip(prev => ({ ...prev, attendees: e.target.value }))} placeholder="e.g., 4 Travelers" className="h-10 text-sm bg-background border-border text-foreground rounded-xl focus-visible:border-brand focus-visible:ring-0" />
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Start Date</label>
+                      <label className="text-xs font-medium text-muted-foreground">Start Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-background border border-border text-foreground rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                           <span className={editingTrip.start ? "" : "text-muted-foreground"}>
@@ -2873,7 +2873,7 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">End Date</label>
+                      <label className="text-xs font-medium text-muted-foreground">End Date</label>
                       <Popover>
                         <PopoverTrigger className="w-full h-10 px-3 text-sm font-semibold bg-background border border-border text-foreground rounded-xl focus:outline-none focus:border-brand transition-colors flex items-center justify-between gap-2 text-left">
                           <span className={editingTrip.end ? "" : "text-muted-foreground"}>
@@ -2887,7 +2887,7 @@ export function WorkspacePage() {
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Currency</label>
+                      <label className="text-xs font-medium text-muted-foreground">Currency</label>
                       <select
                         value={editingTrip.currency ?? "USD"}
                         onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
@@ -2923,7 +2923,7 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Organizer / Agent</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground">Organizer / Agent</h4>
                 </div>
                 <div className="flex gap-5">
                   {/* Avatar preview */}
@@ -2949,7 +2949,7 @@ export function WorkspacePage() {
                       { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
                     ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string; span?: number }[]).map(f => (
                       <div key={f.key} className={`space-y-1 ${f.span === 2 ? "col-span-2" : ""}`}>
-                        <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{f.label}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
                         <Input
                           value={editingTrip.organizer?.[f.key] ?? ""}
                           onChange={e => setEditingTrip(prev => ({ ...prev, organizer: { ...(prev.organizer ?? { name: "" }), [f.key]: e.target.value } }))}
@@ -2967,7 +2967,7 @@ export function WorkspacePage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5 text-brand" />
-                    <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Information & Documents</h4>
+                    <h4 className="text-xs font-medium text-muted-foreground">Information & Documents</h4>
                     {(editingTrip.info?.length ?? 0) > 0 && (
                       <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{editingTrip.info!.length}</span>
                     )}
@@ -2978,7 +2978,7 @@ export function WorkspacePage() {
                       ...prev,
                       info: [...(prev.info ?? []), { id: Date.now().toString(), title: "", body: "" }],
                     }))}
-                    className="h-7 px-3 rounded-lg bg-brand/10 hover:bg-brand/20 text-[10px] font-bold uppercase tracking-wider text-brand transition-colors flex items-center gap-1"
+                    className="h-7 px-3 rounded-lg bg-brand/10 hover:bg-brand/20 text-xs font-medium text-brand transition-colors flex items-center gap-1"
                   >
                     <Plus className="h-3 w-3" /> Add Page
                   </button>
@@ -3065,7 +3065,7 @@ export function WorkspacePage() {
               <div className="pt-5 border-t border-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag className="h-3.5 w-3.5 text-brand" />
-                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Status</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground">Status</h4>
                 </div>
                 <div className="flex gap-2">
                   {(["Draft", "In Progress", "Published"] as const).map(s => (
@@ -3084,7 +3084,7 @@ export function WorkspacePage() {
               </div>
             </div>
             <DialogFooter className="px-8 py-5 border-t border-border flex items-center justify-between shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
+              <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
               <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>
           </form>
@@ -3115,7 +3115,7 @@ export function WorkspacePage() {
                 { key: "phone" as const, label: "Phone", placeholder: "e.g., +1 555 0123" },
               ] satisfies { key: keyof TripOrganizer; label: string; placeholder: string }[]).map(f => (
                 <div key={f.key} className="space-y-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{f.label}</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">{f.label}</Label>
                   <Input
                     value={editOrgData[f.key] ?? ""}
                     onChange={e => setEditOrgData(prev => ({ ...prev, [f.key]: e.target.value }))}
@@ -3126,7 +3126,7 @@ export function WorkspacePage() {
               ))}
             </div>
             <DialogFooter className="px-6 py-4 border-t border-border flex items-center justify-between">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
+              <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
@@ -3151,7 +3151,7 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => setEditInfoData(prev => [...prev, { id: Date.now().toString(), title: "", body: "" }])}
-                  className="h-9 px-3 rounded-xl bg-brand/10 hover:bg-brand/20 text-[10px] font-bold uppercase tracking-wider text-brand transition-colors flex items-center gap-1.5"
+                  className="h-9 px-3 rounded-xl bg-brand/10 hover:bg-brand/20 text-xs font-medium text-brand transition-colors flex items-center gap-1.5"
                 >
                   <Plus className="h-3 w-3" /> Add Page
                 </button>
@@ -3278,7 +3278,7 @@ export function WorkspacePage() {
                           <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-brand transition-colors">
                             <input type="file" multiple accept={TRIP_DOC_ACCEPT} onChange={e => { handleInfoPageDocFiles(Array.from(e.target.files || []), idx); e.target.value = ""; }} className="hidden" />
                             <Paperclip className="h-3 w-3" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Attach files</span>
+                            <span className="text-xs font-medium">Attach files</span>
                           </label>
                         </div>
                       </div>
@@ -3332,12 +3332,12 @@ export function WorkspacePage() {
                   className="w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-border hover:border-brand/40 bg-slate-50/50 dark:bg-[#080808] transition-all flex flex-col items-center gap-1.5"
                 >
                   <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Drop files here or click to upload</span>
+                  <span className="text-xs font-medium text-muted-foreground">Drop files here or click to upload</span>
                 </button>
               </div>
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-border flex items-center justify-between shrink-0">
-              <button type="button" className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
+              <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
               <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>

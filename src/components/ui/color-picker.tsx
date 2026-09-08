@@ -109,7 +109,7 @@ export function ColorPicker({
       <PopoverContent align="end" className="w-[248px] p-3 bg-card border-border">
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-2">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
               Presets
             </p>
             <div className="grid grid-cols-5 gap-1">
@@ -147,7 +147,7 @@ export function ColorPicker({
 
           {!isMono && (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Custom
               </p>
               <HexColorPicker

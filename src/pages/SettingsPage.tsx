@@ -303,7 +303,7 @@ export function SettingsPage() {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground truncate">
               Settings
             </h1>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground hidden md:inline">
+            <span className="text-xs font-medium text-muted-foreground hidden md:inline">
               Preferences & Data
             </span>
           </div>

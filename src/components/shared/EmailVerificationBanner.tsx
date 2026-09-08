@@ -57,7 +57,7 @@ export function EmailVerificationBanner() {
         <button
           onClick={handleCheck}
           disabled={checking}
-          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 dark:hover:bg-amber-500/15 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/10 hover:bg-amber-200 dark:hover:bg-amber-500/15 transition-colors disabled:opacity-50"
         >
           {checking ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <ArrowClockwise className="h-3 w-3" />}
           I verified
@@ -65,7 +65,7 @@ export function EmailVerificationBanner() {
         <button
           onClick={handleResend}
           disabled={sending || cooldown > 0}
-          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white bg-amber-700 dark:bg-amber-600 hover:bg-amber-800 dark:hover:bg-amber-500 transition-colors disabled:opacity-60"
+          className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium text-white bg-amber-700 dark:bg-amber-600 hover:bg-amber-800 dark:hover:bg-amber-500 transition-colors disabled:opacity-60"
         >
           {sending ? (
             <SpinnerGap className="h-3 w-3 animate-spin" />

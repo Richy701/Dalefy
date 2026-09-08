@@ -179,7 +179,7 @@ export function ReportsPage() {
           <button
             onClick={tab === "operations" ? handleExportCsv : handleExportComplianceCsv}
             disabled={exportDisabled}
-            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-brand hover:opacity-90 text-black text-[10px] font-black uppercase tracking-widest transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 h-11 px-4 sm:px-5 rounded-lg bg-brand hover:opacity-90 text-black text-xs font-medium transition-opacity shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label={tab === "operations" ? "Export trips as CSV" : "Export compliance as CSV"}
             title={exportDisabled ? "Nothing to export yet" : undefined}
           >

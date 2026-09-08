@@ -312,7 +312,7 @@ export function DestinationsPage() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -331,11 +331,11 @@ export function DestinationsPage() {
                   Destinations
                 </h1>
                 <div className="mt-3 sm:mt-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Your Travel Footprint</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Your Travel Footprint</p>
                   <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-foreground tabular-nums">
                     {destinations.length}
                   </span>
-                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/80 flex-wrap">
+                  <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-foreground/80 flex-wrap">
                     <MapPin className="h-3 w-3 text-brand" />
                     {destinations.length === 1 ? "Destination" : "Destinations"} · {regions.length - 1} {regions.length - 1 === 1 ? "Region" : "Regions"} · {destinations.reduce((s, d) => s + d.eventCount, 0)} Events
                   </p>
@@ -419,7 +419,7 @@ export function DestinationsPage() {
                     >
                       <CaretLeft className="h-4 w-4 text-muted-foreground" />
                     </button>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 min-w-[60px] text-center truncate">
+                    <span className="text-xs font-medium text-muted-foreground px-1 min-w-[60px] text-center truncate">
                       {mapPins[activeIdx]?.name?.split(",")[0] || `${activeIdx + 1}/${mapPins.length}`}
                     </span>
                     <button
@@ -445,7 +445,7 @@ export function DestinationsPage() {
             <div className="bg-card border border-border rounded-lg shadow-xl px-3 py-1.5 flex items-center gap-2">
               <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
               <span className="text-xs font-bold tracking-tight text-foreground">{hoveredPin.name}</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              <span className="text-[11px] font-medium text-muted-foreground">
                 {hoveredPin.tripCount} {hoveredPin.tripCount === 1 ? "trip" : "trips"}
               </span>
             </div>
@@ -460,7 +460,7 @@ export function DestinationsPage() {
                 key={r}
                 onClick={() => setFilter(r)}
                 aria-pressed={filter === r}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-card text-muted-foreground border border-border hover:border-brand/40"}`}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-medium transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-card text-muted-foreground border border-border hover:border-brand/40"}`}
               >
                 {r === "all" ? "All Regions" : r}
               </button>
@@ -525,13 +525,13 @@ export function DestinationsPage() {
                   <div className="flex items-center justify-between pt-4 border-t border-white/15">
                     <div className="flex items-center gap-1.5">
                       <LucideCalendar className="h-3 w-3 text-brand" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
+                      <span className="text-xs font-medium text-white/80">
                         {new Date(dest.nextVisit).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <MapPin className="h-3 w-3 text-white/70" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
+                      <span className="text-xs font-medium text-white/80">
                         {dest.tripCount} {dest.tripCount === 1 ? "Trip" : "Trips"}
                       </span>
                     </div>
@@ -539,7 +539,7 @@ export function DestinationsPage() {
                 </div>
                 {expandedDest === dest.name && dest.tripCount > 1 && (
                   <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm p-5 flex flex-col gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 mb-1">Open a trip</p>
+                    <p className="text-xs font-medium text-white/60 mb-1">Open a trip</p>
                     {dest.tripIds.map((id, i) => (
                       <button
                         key={id}
@@ -550,7 +550,7 @@ export function DestinationsPage() {
                         {dest.tripNames[i] ?? "Trip"}
                       </button>
                     ))}
-                    <button type="button" onClick={() => setExpandedDest(null)} className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/60 hover:text-white self-start">Cancel</button>
+                    <button type="button" onClick={() => setExpandedDest(null)} className="mt-1 text-xs font-medium text-white/60 hover:text-white self-start">Cancel</button>
                   </div>
                 )}
               </div>

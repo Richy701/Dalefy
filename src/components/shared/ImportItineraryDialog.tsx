@@ -1704,8 +1704,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 afterthought. */}
             <Tabs value={uploadTab} onValueChange={v => setUploadTab(v as "file" | "paste")}>
               <TabsList className="w-full">
-                <TabsTrigger value="file" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Upload a file</TabsTrigger>
-                <TabsTrigger value="paste" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Paste text</TabsTrigger>
+                <TabsTrigger value="file" className="flex-1 text-xs font-medium">Upload a file</TabsTrigger>
+                <TabsTrigger value="paste" className="flex-1 text-xs font-medium">Paste text</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -1879,7 +1879,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               className="w-64"
             />
             <p className="text-[11px] text-muted-foreground">This can take a minute for large itineraries.</p>
-            <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl h-9 px-4 text-xs font-medium text-muted-foreground">
               Close
             </Button>
           </div>
@@ -2041,7 +2041,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     onClick={() => setExcludedIds(prev =>
                       prev.size > 0 ? new Set() : new Set(parsed.events.map(e => e.id))
                     )}
-                    className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-brand"
+                    className="text-xs font-medium text-muted-foreground hover:text-brand"
                   >
                     {excludedIds.size > 0 ? "Select all" : "Select none"}
                   </Button>
@@ -2050,7 +2050,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 {eventsByDay.map(([date, dayEvents]) => (
                   <div key={date || "undated"} className="space-y-1.5">
                     <div className="flex items-center gap-2 px-0.5">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">
+                      <p className="text-xs font-medium text-foreground">
                         {dayLabel(date)}
                       </p>
                       <div className="h-px flex-1 bg-secondary dark:bg-border" />
@@ -2156,7 +2156,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                   <EmptyMedia variant="icon">
                     <WarningCircle className="h-5 w-5 text-amber-400" />
                   </EmptyMedia>
-                  <EmptyTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">No events detected</EmptyTitle>
+                  <EmptyTitle className="text-xs font-medium text-muted-foreground">No events detected</EmptyTitle>
                   <EmptyDescription className="text-[10px] max-w-[240px]">
                     The parser couldn't find recognisable events. The trip will be created as a blank draft.
                   </EmptyDescription>
@@ -2196,8 +2196,8 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               {isReimport && (
                 <Tabs value={importMode} onValueChange={v => setImportMode(v as "merge" | "replace")}>
                   <TabsList className="w-full">
-                    <TabsTrigger value="merge" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Add new items</TabsTrigger>
-                    <TabsTrigger value="replace" className="flex-1 text-[10px] font-bold uppercase tracking-wider">Replace everything</TabsTrigger>
+                    <TabsTrigger value="merge" className="flex-1 text-xs font-medium">Add new items</TabsTrigger>
+                    <TabsTrigger value="replace" className="flex-1 text-xs font-medium">Replace everything</TabsTrigger>
                   </TabsList>
                 </Tabs>
               )}

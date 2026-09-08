@@ -83,7 +83,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Share Trip</p>
+            <p className="text-xs font-medium text-muted-foreground">Share Trip</p>
             <p className="mt-0.5 text-sm font-bold tracking-tight text-foreground truncate">{tripName}</p>
           </div>
           <button
@@ -108,7 +108,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                     type="button"
                     onClick={() => void onPublish()}
                     disabled={publishing}
-                    className="mt-2 inline-flex items-center h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider disabled:opacity-60"
+                    className="mt-2 inline-flex items-center h-8 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium disabled:opacity-60"
                   >
                     {publishing ? "Publishing..." : "Publish now"}
                   </button>
@@ -200,7 +200,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
             {/* Stub: trip meta + QR */}
             <div className="px-4 pt-3 pb-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   Or scan
                 </p>
                 <h3 className="mt-1 text-sm font-bold tracking-tight text-foreground leading-tight line-clamp-2">

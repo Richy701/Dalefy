@@ -60,11 +60,11 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Live Hotel Search</p>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           <div className="col-span-2 sm:flex-[1.5] sm:min-w-[120px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Location</label>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>
             <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="Hotels in Dubai" autoComplete="off" className={inputCls} />
           </div>
           <div className="sm:flex-1 sm:min-w-[115px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Check-in</label>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Check-in</label>
             <Popover>
               <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
                 <span className={`truncate ${checkin ? "" : "text-muted-foreground"}`}>
@@ -78,7 +78,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             </Popover>
           </div>
           <div className="sm:flex-1 sm:min-w-[115px]">
-            <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">Check-out</label>
+            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Check-out</label>
             <Popover>
               <PopoverTrigger className={`${inputCls} flex items-center justify-between gap-2 text-left whitespace-nowrap overflow-hidden`}>
                 <span className={`truncate ${checkout ? "" : "text-muted-foreground"}`}>
@@ -95,7 +95,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
             type="button"
             onClick={search}
             disabled={loading || !query || !checkin || !checkout}
-            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:bg-brand/80 disabled:opacity-40 text-black text-[11px] sm:text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            className="h-11 sm:h-9 px-4 rounded-lg bg-brand hover:bg-brand/80 disabled:opacity-40 text-black text-[11px] sm:text-xs font-medium transition-colors flex items-center justify-center gap-1.5 shrink-0"
           >
             {loading ? <SpinnerGap className="h-4 w-4 sm:h-3 sm:w-3 animate-spin" /> : <Bed className="h-4 w-4 sm:h-3 sm:w-3" />}
             Search

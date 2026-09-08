@@ -196,7 +196,7 @@ export function AcceptInvitePage() {
                 >
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
-                <div className="flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center justify-center gap-4 text-xs font-medium">
                   <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-muted-foreground hover:text-foreground">
                     Not now
                   </button>

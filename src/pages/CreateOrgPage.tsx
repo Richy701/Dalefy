@@ -346,7 +346,7 @@ export function CreateOrgPage() {
                     <div className="flex-1 space-y-2">
                       <label className={`flex items-center justify-center gap-2.5 h-12 rounded-xl bg-card border border-dashed border-slate-300 border-border hover:border-brand/50 dark:hover:border-brand/30 transition-colors ${uploadingLogo ? "opacity-60 cursor-wait" : "cursor-pointer"}`}>
                         <Upload className="h-4 w-4 text-muted-foreground" weight="regular" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground">
                           {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
                         </span>
                         <input
@@ -399,7 +399,7 @@ export function CreateOrgPage() {
                       <button
                         type="button"
                         onClick={() => setBrandColor(BRAND.accentColor)}
-                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-brand transition-colors cursor-pointer shrink-0"
+                        className="text-xs font-medium text-muted-foreground hover:text-brand transition-colors cursor-pointer shrink-0"
                       >
                         Reset
                       </button>
@@ -411,7 +411,7 @@ export function CreateOrgPage() {
                 <div className="relative bg-background border border-border rounded-xl overflow-hidden">
                   <div className="px-5 pt-3.5 pb-3 flex items-center gap-2" style={{ backgroundColor: `${brandColor}10`, borderBottom: `1px solid ${brandColor}20` }}>
                     <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} weight="bold" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: brandColor }}>
+                    <span className="text-xs font-medium" style={{ color: brandColor }}>
                       Client Preview
                     </span>
                   </div>
