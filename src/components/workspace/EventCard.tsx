@@ -168,17 +168,18 @@ export const EventCard = memo(function EventCard({ event, onClick, onDuplicate, 
         <CardMenu onClick={onClick} onDuplicate={onDuplicate} onDelete={onDelete} />
       </div>
 
+      {/* Legs keep the row's right gutter (menu + gap + padding), so their times sit under the time column */}
       {isFlight && (event.depAirport || event.arrAirport) && (
-        <div className="pl-[64px] pr-4 pb-3 -mt-1 space-y-1">
+        <div className="pl-[64px] pr-[60px] pb-3 -mt-1 space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <AirplaneTakeoff className={`h-3.5 w-3.5 ${cat.fg}`} />
-            <span className="truncate">{[event.depAirport, event.terminal ? `Terminal ${event.terminal.replace(/^T/i, "")}` : null].filter(Boolean).join(" · ")}</span>
-            {!placeholder && <span className="ml-auto tabular-nums shrink-0">{event.time.split(" ")[0]}{depTz ? ` ${depTz}` : ""}</span>}
+            <AirplaneTakeoff className={`h-3.5 w-3.5 shrink-0 ${cat.fg}`} />
+            <span className="truncate flex-1">{[event.depAirport, event.terminal ? `Terminal ${event.terminal.replace(/^T/i, "")}` : null, depTz || null].filter(Boolean).join(" · ")}</span>
+            {!placeholder && <span className="w-14 text-right tabular-nums shrink-0">{event.time.split(" ")[0]}</span>}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <AirplaneLanding className={`h-3.5 w-3.5 ${cat.fg}`} />
-            <span className="truncate">{[event.arrAirport, event.arrTerminal ? `Terminal ${event.arrTerminal.replace(/^T/i, "")}` : null].filter(Boolean).join(" · ")}</span>
-            {event.endTime && !isPlaceholderTime(event.endTime) && <span className="ml-auto tabular-nums shrink-0">{event.endTime.split(" ")[0]}{arrTz ? ` ${arrTz}` : ""}</span>}
+            <AirplaneLanding className={`h-3.5 w-3.5 shrink-0 ${cat.fg}`} />
+            <span className="truncate flex-1">{[event.arrAirport, event.arrTerminal ? `Terminal ${event.arrTerminal.replace(/^T/i, "")}` : null, arrTz || null].filter(Boolean).join(" · ")}</span>
+            {event.endTime && !isPlaceholderTime(event.endTime) && <span className="w-14 text-right tabular-nums shrink-0">{event.endTime.split(" ")[0]}</span>}
           </div>
         </div>
       )}

@@ -23,7 +23,6 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { STORAGE } from "@/config/storageKeys";
 import { MOCK_USERS } from "@/data/mock-users";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { BrandIllustration } from "@/components/shared/BrandIllustration";
 import { ComplianceDocSheet } from "@/components/shared/ComplianceDocSheet";
 import { fetchTripMembers, deleteAllTripMembers, deleteAppUser, removeUserFromTrip, renameAppUser, updateTripMemberRole, type TripMember, type TripMemberRole } from "@/services/firebaseTrips";
 import { isFirebaseConfigured } from "@/services/firebase";
@@ -659,12 +658,12 @@ export function TravelersPage() {
           <div className="max-w-[140px] sm:max-w-md w-full relative group">
             <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-travelers" className="sr-only">Search travelers</label>
-            <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search people, emails, documents" className="pl-9 sm:pl-12 h-10 sm:h-11 bg-card border-none rounded-full text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest" />
+            <input id="search-travelers" value={search} onChange={e => { setSearch(e.target.value); setHrPage(0); }} placeholder="Search people, emails, documents" className="pl-9 sm:pl-12 h-10 bg-card border-none rounded-lg text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm shadow-inner" />
           </div>
         ) : undefined}
         cta={!isViewer ? (
-          <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-lg bg-brand hover:opacity-90 text-black font-bold h-11 px-4 lg:px-6 gap-2 text-xs uppercase tracking-wider shadow-sm shrink-0">
-            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add traveler</span>
+          <Button onClick={() => { if (!demoGate()) setInviteOpen(true); }} className="rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold h-9 px-4 gap-1.5 text-sm shrink-0">
+            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add traveller</span>
           </Button>
         ) : undefined}
       />
@@ -673,44 +672,30 @@ export function TravelersPage() {
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 space-y-4 sm:space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-border">
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl lg:text-4xl font-bold tracking-tight text-foreground leading-none text-balance">Team Directory</h2>
-              <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">People & Documents</span>
-                <span className="text-muted-foreground/60">·</span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-brand">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  {travelers.length} {travelers.length === 1 ? "Member" : "Members"}
-                </span>
-                {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 && (
-                  <><span className="text-muted-foreground/60">·</span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                    {travelers.filter(t => t.status === "Active").length} on app
-                  </span></>
-                )}
-              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground leading-none">Travellers</h2>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {travelers.length} {travelers.length === 1 ? "member" : "members"}
+                {!isDemoUser && travelers.filter(t => t.status === "Active").length > 0 ? ` · ${travelers.filter(t => t.status === "Active").length} on the app` : ""}
+              </p>
             </div>
             <div className="shrink-0 overflow-x-auto scrollbar-hide">
-              <div className="inline-flex bg-secondary dark:bg-[#0c0c0c] p-1 rounded-xl border border-border gap-0">
+              <div className="inline-flex bg-secondary p-0.5 rounded-lg gap-0">
                 {(["travelers", "hr", "app-users"] as const).map(t => {
                   const active = tab === t;
                   return (
                     <button
                       key={t}
                       onClick={() => setTab(t)}
-                      className={`relative flex-none h-auto px-4 sm:px-7 py-2.5 sm:py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] transition-all duration-300 ${
-                        active
-                          ? "bg-brand text-black shadow-md shadow-brand/20"
-                          : "text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300"
+                      className={`relative flex-none h-8 px-4 rounded-md text-sm font-medium transition-colors ${
+                        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      {t === "travelers" ? "Team Overview" : t === "hr" ? "Documents" : (
+                      {t === "travelers" ? "Team" : t === "hr" ? "Documents" : (
                         <span className="flex items-center gap-1.5">
                           <DeviceMobile className="h-3 w-3" />
-                          App Users
+                          App users
                           {groupedAppUsers.length > 0 && (
-                            <span className={`ml-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-lg ${
-                              active ? "bg-black/15 text-black" : "bg-brand/15 text-brand"
-                            }`}>{groupedAppUsers.length}</span>
+                            <span className="ml-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground tabular-nums">{groupedAppUsers.length}</span>
                           )}
                         </span>
                       )}
@@ -723,32 +708,28 @@ export function TravelersPage() {
 
           {/* ───────── TRAVELERS TAB (TANSTACK TABLE) ───────── */}
           {tab === "travelers" && travelers.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 animate-fade-in">
-              <BrandIllustration src="/illustrations/illus-discussion.svg" className="w-72 h-72 object-contain mb-[-24px]" draggable={false} />
+            <div className="flex flex-col items-center justify-center py-20 gap-3 ">
               <div className="text-center space-y-1.5">
-                <p className="text-base font-bold tracking-tight text-foreground">No team members</p>
-                <p className="text-xs font-medium text-muted-foreground">Add your first traveler to get started</p>
+                <p className="text-lg font-semibold tracking-tight text-foreground">No team members</p>
+                <p className="text-sm text-muted-foreground">Add your first traveler to get started</p>
               </div>
               {!isViewer && (
                 <button
                   onClick={() => { if (!demoGate()) setInviteOpen(true); }}
-                  className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+                  className="h-9 px-4 rounded-lg bg-brand text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
-                  Add Traveler
+                  Add a traveller
                 </button>
               )}
             </div>
           )}
           {tab === "travelers" && travelers.length > 0 && (
-            <div className="animate-fade-in">
+            <div className="">
               {/* ── Mobile card layout (< sm) ── */}
               <div className="sm:hidden space-y-2.5">
                 {table.getRowModel().rows.length === 0 && (
                   <div className="flex flex-col items-center gap-3 py-16">
-                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-brand opacity-60" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No team members yet</p>
+                    <p className="text-sm font-medium text-muted-foreground">No team members yet</p>
                   </div>
                 )}
                 {table.getRowModel().rows.map(row => {
@@ -759,9 +740,9 @@ export function TravelersPage() {
                   return (
                     <div key={row.id} className="bg-card rounded-xl border border-border p-4 shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
+                        <div className="h-9 w-9 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs shrink-0 self-center">{user.initials}</div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold tracking-tight text-foreground truncate">{user.name}</div>
+                          <div className="text-sm font-medium text-foreground truncate">{user.name}</div>
                           <div className="text-[11px] text-muted-foreground truncate mt-0.5">{user.email || <span className="text-muted-foreground italic">No email</span>}</div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shrink-0 ${statusCfg.badge}`}>
@@ -789,7 +770,7 @@ export function TravelersPage() {
                                 onClick={() => openDocSheet(user.id, user.name, d)}
                                 title={`${d.name}: ${d.status}`}
                                 aria-label={`${d.name}: ${d.status}`}
-                                className={`h-[22px] px-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all hover:scale-110 hover:brightness-110 ${cfg.bg} ${cfg.color}`}
+                                className={`h-[22px] px-1.5 rounded text-[10px] font-semibold transition-opacity hover:opacity-80 ${cfg.bg} ${cfg.color}`}
                               >
                                 {abbr}
                               </button>
@@ -816,7 +797,7 @@ export function TravelersPage() {
                           <th
                             key={header.id}
                             onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                            className={`px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
+                            className={`px-6 py-3.5 text-xs font-medium text-muted-foreground ${header.id === "status" ? "text-right" : ""} ${canSort ? "cursor-pointer select-none hover:text-brand transition-colors" : ""}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -838,16 +819,13 @@ export function TravelersPage() {
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-border">
+                <tbody className="divide-y divide-border">
                   {table.getRowModel().rows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-20 text-center">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
-                            <User className="h-6 w-6 text-brand opacity-60" />
-                          </div>
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No team members yet</p>
-                          <p className="text-[11px] font-medium text-muted-foreground">Add your first traveler using the button above</p>
+                          <p className="text-sm font-medium text-muted-foreground">No team members yet</p>
+                          <p className="text-xs text-muted-foreground">Add your first traveler using the button above</p>
                         </div>
                       </td>
                     </tr>
@@ -858,12 +836,12 @@ export function TravelersPage() {
                     const signedCount = docs.filter(d => d.status === "Signed").length;
                     const statusCfg = STATUS_CONFIG[user.status] || STATUS_CONFIG["Offline"];
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-background/80 transition-colors group">
+                      <tr key={row.id} className="hover:bg-secondary/60 transition-colors group">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3.5">
-                            <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs shrink-0">{user.initials}</div>
+                            <div className="h-9 w-9 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs shrink-0 self-center">{user.initials}</div>
                             <div className="min-w-0">
-                              <div className="text-sm font-bold tracking-tight text-foreground truncate group-hover:text-brand transition-colors">{user.name}</div>
+                              <div className="text-sm font-medium text-foreground truncate group-hover:text-brand transition-colors">{user.name}</div>
                               <div className="text-[11px] text-muted-foreground truncate mt-0.5">{user.email || <span className="text-muted-foreground italic">No email</span>}</div>
                             </div>
                           </div>
@@ -874,11 +852,11 @@ export function TravelersPage() {
                         <td className="px-6 py-5">
                           {user.assignedTrips.length > 0 ? (
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-sm font-black tracking-tighter text-foreground tabular-nums">{user.assignedTrips.length}</span>
-                              <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
+                              <span className="text-sm font-semibold text-foreground tabular-nums">{user.assignedTrips.length}</span>
+                              <span className="text-xs text-muted-foreground truncate max-w-[180px]" title={user.assignedTrips.join(", ")}>{user.assignedTrips.join(", ")}</span>
                             </div>
                           ) : (
-                            <span className="text-sm font-black tracking-tighter text-muted-foreground tabular-nums">0</span>
+                            <span className="text-sm text-muted-foreground tabular-nums">0</span>
                           )}
                         </td>
                         <td className="px-6 py-5">
@@ -895,18 +873,18 @@ export function TravelersPage() {
                                     onClick={() => openDocSheet(user.id, user.name, d)}
                                     title={`${d.name}: ${d.status}`}
                                     aria-label={`${d.name}: ${d.status}`}
-                                    className={`h-[22px] px-1.5 rounded text-[9px] font-black uppercase tracking-wide transition-all hover:scale-110 hover:brightness-110 ${cfg.bg} ${cfg.color}`}
+                                    className={`h-[22px] px-1.5 rounded text-[10px] font-semibold transition-opacity hover:opacity-80 ${cfg.bg} ${cfg.color}`}
                                   >
                                     {abbr}
                                   </button>
                                 );
                               })}
                             </div>
-                            <span className="text-xs font-black tracking-tighter text-muted-foreground tabular-nums">{signedCount}<span className="text-muted-foreground">/{docs.length}</span></span>
+                            <span className="text-xs text-muted-foreground tabular-nums">{signedCount}<span className="text-muted-foreground">/{docs.length}</span></span>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider ${statusCfg.badge}`}>
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-md ${statusCfg.badge}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
                             {statusCfg.label}
                           </span>
@@ -920,8 +898,8 @@ export function TravelersPage() {
 
               {/* Pagination - only shown when data > 10 */}
               {table.getPageCount() > 1 && (
-                <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-slate-50/30 dark:bg-background">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="px-6 py-3 border-t border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
                     Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {filtered.length} members
                   </span>
                   <div className="flex items-center gap-1">
@@ -950,7 +928,7 @@ export function TravelersPage() {
               {/* Mobile pagination */}
               {table.getPageCount() > 1 && (
                 <div className="sm:hidden flex items-center justify-between mt-3 px-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
                   </span>
                   <div className="flex items-center gap-1">
@@ -978,49 +956,39 @@ export function TravelersPage() {
 
           {/* ───────── HR MANAGEMENT TAB ───────── */}
           {tab === "hr" && (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-8 ">
               {/* Stat cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {[
                   { label: "Signed", value: hrStats.signed.toString(), sub: hrStats.pending + hrStats.expired === 0 ? "All done" : `Of ${hrStats.total} required`, icon: <SealCheck className="h-4 w-4" />, accent: "text-emerald-600 dark:text-emerald-400" },
-                  { label: "Needs Signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-amber-600 dark:text-amber-400" },
+                  { label: "Needs signing", value: hrStats.pending.toString(), sub: "Waiting on someone", icon: <Clock className="h-4 w-4" />, accent: "text-amber-600 dark:text-amber-400" },
                   { label: "Expired", value: hrStats.expired.toString(), sub: "Needs renewal", icon: <SealWarning className="h-4 w-4" />, accent: "text-red-600 dark:text-red-400" },
-                  { label: "Up to Date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Up to date", value: `${hrStats.rate}%`, sub: "Across all members", icon: <ChartBar className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-                    <div className="p-5 flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{card.label}</span>
-                        <div className={`h-8 w-8 rounded-lg border border-border bg-background ${card.accent} flex items-center justify-center`}>
-                          {card.icon}
-                        </div>
-                      </div>
-                      <p className="text-4xl font-black tracking-tighter text-foreground leading-none">{card.value}</p>
-                      <p className="text-[11px] font-medium text-muted-foreground mt-4">{card.sub}</p>
-                    </div>
+                  <div key={card.label} className="rounded-xl border border-border bg-card shadow-sm px-5 py-4">
+                    <p className="text-xs text-muted-foreground">{card.label}</p>
+                    <p className={`text-3xl font-semibold tracking-tight leading-none mt-2 tabular-nums ${card.accent === "text-brand" ? "text-foreground" : card.accent}`}>{card.value}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{card.sub}</p>
                   </div>
                 ))}
               </div>
 
               {/* Upload button */}
               <div className="flex items-center justify-between">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">All Documents</p>
+                <p className="text-base font-semibold tracking-tight text-foreground">Documents by person</p>
                 <button
                   onClick={() => setUploadOpen(true)}
-                  className="flex items-center gap-2 h-9 px-4 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-brand/20"
+                  className="flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                 >
-                  <Upload className="h-3.5 w-3.5" /> Assign Document
+                  <Upload className="h-4 w-4" /> Assign a document
                 </button>
               </div>
 
               {filteredGroupedDocs.length === 0 ? (
                 <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-brand opacity-60" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No documents yet</p>
-                    <p className="text-[11px] font-medium text-muted-foreground">Add team members to track compliance</p>
+                    <p className="text-sm font-medium text-muted-foreground">No documents yet</p>
+                    <p className="text-xs text-muted-foreground">Add team members to track compliance</p>
                   </div>
                 </div>
               ) : (() => {
@@ -1047,10 +1015,10 @@ export function TravelersPage() {
                       <div key={userId} className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
                         {/* Person header */}
                         <div className="px-5 pt-5 pb-4 flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{initials}</div>
+                          <div className="h-9 w-9 rounded-full bg-secondary text-foreground flex items-center justify-center font-semibold text-xs shrink-0 self-center">{initials}</div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold tracking-tight text-foreground truncate">{userName}</p>
-                            <p className="text-[11px] font-medium text-muted-foreground">
+                            <p className="text-sm font-medium text-foreground truncate">{userName}</p>
+                            <p className="text-xs text-muted-foreground">
                               {allGood ? "All signed" : `${signed} of ${total} signed`}
                             </p>
                           </div>
@@ -1120,7 +1088,7 @@ export function TravelersPage() {
                 {/* HR Pagination */}
                 {hrTotalPages > 1 && (
                   <div className="flex items-center justify-between mt-4">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Page {safePage + 1} of {hrTotalPages} · {filteredGroupedDocs.length} people
                     </span>
                     <div className="flex items-center gap-1">
@@ -1151,24 +1119,17 @@ export function TravelersPage() {
 
           {/* ───────── APP USERS TAB ───────── */}
           {tab === "app-users" && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 ">
               {/* Stats row */}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 {[
-                  { label: "App Users", value: groupedAppUsers.length.toString(), icon: <DeviceMobile className="h-4 w-4" />, accent: "text-brand" },
-                  { label: "Total Joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
-                  { label: "Unique Trips", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDots className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "App users", value: groupedAppUsers.length.toString(), icon: <DeviceMobile className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Trip joins", value: appUsers.length.toString(), icon: <MapPin className="h-4 w-4" />, accent: "text-brand" },
+                  { label: "Trips joined", value: new Set(appUsers.map(m => m.trip_id)).size.toString(), icon: <CalendarDots className="h-4 w-4" />, accent: "text-brand" },
                 ].map(card => (
-                  <div key={card.label} className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-                    <div className="p-5 flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{card.label}</span>
-                        <div className={`h-8 w-8 rounded-lg border border-border bg-background ${card.accent} flex items-center justify-center`}>
-                          {card.icon}
-                        </div>
-                      </div>
-                      <p className="text-4xl font-black tracking-tighter text-foreground leading-none">{card.value}</p>
-                    </div>
+                  <div key={card.label} className="rounded-xl border border-border bg-card shadow-sm px-5 py-4">
+                    <p className="text-xs text-muted-foreground">{card.label}</p>
+                    <p className="text-3xl font-semibold tracking-tight leading-none mt-2 tabular-nums text-foreground">{card.value}</p>
                   </div>
                 ))}
               </div>
@@ -1176,7 +1137,7 @@ export function TravelersPage() {
               {/* Toolbar: sort, filter, actions */}
               {groupedAppUsers.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mr-auto">
+                  <p className="text-sm text-muted-foreground mr-auto">
                     {filteredAppUsers.length} User{filteredAppUsers.length === 1 ? "" : "s"}
                   </p>
 
@@ -1301,13 +1262,10 @@ export function TravelersPage() {
                   </div>
                 ) : paginatedAppUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center">
-                      <DeviceMobile className="h-6 w-6 text-brand opacity-60" />
-                    </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+                    <p className="text-sm font-medium text-muted-foreground">
                       {search || appUserTripFilter !== "all" ? "No matching users" : "No app users yet"}
                     </p>
-                    <p className="text-[11px] font-medium text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {search || appUserTripFilter !== "all" ? "Try a different search or filter" : "Users will appear here when they join a trip via the mobile app"}
                     </p>
                     {appUserTripFilter !== "all" && (
@@ -1348,7 +1306,7 @@ export function TravelersPage() {
                                   <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-bold tracking-tight text-foreground truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                                  <div className="text-sm font-medium text-foreground truncate"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                                   {appUser.email && <div className="text-[10px] text-muted-foreground truncate">{appUser.email}</div>}
                                   <div className="text-[11px] text-muted-foreground mt-0.5">{appUser.trips.length} trip{appUser.trips.length === 1 ? "" : "s"} · {new Date(latestJoin.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
                                 </div>
@@ -1376,7 +1334,7 @@ export function TravelersPage() {
                               <div className={`h-10 w-10 rounded-xl bg-brand text-black flex items-center justify-center font-black text-xs ${appUser.avatar ? "hidden" : ""}`}>{initials}</div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-bold tracking-tight text-foreground truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
+                              <div className="text-sm font-medium text-foreground truncate group-hover:text-brand transition-colors"><HighlightText text={appUser.name || "Unknown"} query={search} /></div>
                               <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
                                 {appUser.email ? (
                                   <><Envelope className="h-3 w-3" /> {appUser.email}</>
