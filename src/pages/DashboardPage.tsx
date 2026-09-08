@@ -995,7 +995,7 @@ export function DashboardPage() {
                             if (dayTrips?.length) {
                               return (
                                 <Tooltip>
-                                  <TooltipTrigger className="w-full h-full flex items-center justify-center">
+                                  <TooltipTrigger render={<span className="w-full h-full flex items-center justify-center" />}>
                                     {date.getDate()}
                                   </TooltipTrigger>
                                   <TooltipContent side="top">{dayTrips.map(t => t.tripName).join(" · ")}</TooltipContent>
