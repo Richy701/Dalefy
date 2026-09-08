@@ -27,13 +27,12 @@ import { daysUntil, tripFactLine, tripLengthDays, shortDay, destinationFlag } fr
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  CaretRight, CalendarDots,
+  CaretRight, CaretLeft, LinkSimple, CalendarDots,
   ShareNetwork, Bell, Plus, Scan,
   Check, WifiSlash,
   Camera, MapTrifold, Info,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
 import { NotificationSheet } from "@/components/NotificationSheet";
@@ -523,53 +522,62 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
                 <View style={styles.navSide} />
               </View>
 
-              <SegmentedControl
-                values={["PIN", "Scan", "Link"]}
-                selectedIndex={MODES.indexOf(entryMode)}
-                appearance={isDark ? "dark" : "light"}
-                onChange={(e) => {
-                  Haptics.selectionAsync();
-                  setCodeError(null);
-                  setDigits(["", "", "", "", "", ""]);
-                  setLinkValue("");
-                  setPreviewTrip(null);
-                  setEntryMode(MODES[e.nativeEvent.selectedSegmentIndex]);
-                }}
-                style={styles.segment}
-              />
+              {entryMode !== "pin" && (
+                <Pressable
+                  onPress={() => { Haptics.selectionAsync(); setCodeError(null); setLinkValue(""); setPreviewTrip(null); setEntryMode("pin"); }}
+                  hitSlop={8} accessibilityRole="button" accessibilityLabel="Enter a PIN instead"
+                  style={({ pressed }) => [styles.backLink, { opacity: pressed ? 0.5 : 1 }]}
+                >
+                  <CaretLeft size={14} color={C.tealText} weight="bold" />
+                  <Text style={styles.altLink}>Enter a PIN instead</Text>
+                </Pressable>
+              )}
 
               {/* PIN */}
               {entryMode === "pin" && (
                 <>
-                  <Animated.View style={[styles.group, shakeStyle]}>
-                    <View style={styles.groupRow}>
-                      <Text style={styles.rowLabel}>Trip PIN</Text>
-                      <TextInput
-                        ref={(r) => { for (let i = 0; i < 6; i++) pinRefs.current[i] = r; }}
-                        value={pinValue}
-                        onChangeText={handlePinChange}
-                        placeholder="ABC123"
-                        placeholderTextColor={C.textTertiary}
-                        keyboardType="default"
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        textContentType="oneTimeCode"
-                        maxLength={6}
-                        autoFocus
-                        editable={!resolving}
-                        returnKeyType="go"
-                        onSubmitEditing={() => { if (pinComplete) submitPin(pinValue); }}
-                        accessibilityLabel="Trip PIN"
-                        style={[styles.rowInput, styles.rowInputPin]}
-                      />
-                      <Pressable onPress={handlePaste} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paste PIN from clipboard" style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-                        <Text style={styles.rowAction}>Paste</Text>
-                      </Pressable>
-                    </View>
+                  <Text style={styles.pinTitle}>Enter your trip PIN</Text>
+                  <Animated.View style={[styles.pinBoxes, shakeStyle]}>
+                    {Array.from({ length: 6 }).map((_, i) => {
+                      const ch = pinValue[i] ?? "";
+                      const active = !resolving && i === Math.min(pinValue.length, 5) && !pinComplete;
+                      return (
+                        <Pressable
+                          key={i}
+                          onPress={() => pinRefs.current[0]?.focus()}
+                          style={[styles.pinBox, active && styles.pinBoxActive, ch ? styles.pinBoxFilled : null]}
+                          accessible={false}
+                        >
+                          <Text style={styles.pinBoxText}>{ch}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    <TextInput
+                      ref={(r) => { for (let i = 0; i < 6; i++) pinRefs.current[i] = r; }}
+                      value={pinValue}
+                      onChangeText={handlePinChange}
+                      keyboardType="default"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      textContentType="oneTimeCode"
+                      maxLength={6}
+                      autoFocus
+                      editable={!resolving}
+                      returnKeyType="go"
+                      onSubmitEditing={() => { if (pinComplete) submitPin(pinValue); }}
+                      accessibilityLabel="Trip PIN"
+                      caretHidden
+                      style={styles.pinHiddenInput}
+                    />
                   </Animated.View>
-                  <Text style={[styles.groupFooter, codeError ? { color: C.redText } : null]}>
-                    {codeError ?? (resolving ? "Finding your trip…" : previewTrip ? "Check this is the right trip, then join." : "Six letters and numbers. Your organiser will have sent it to you.")}
-                  </Text>
+                  <View style={styles.pinHintRow}>
+                    <Text style={[styles.groupFooter, styles.pinHint, codeError ? { color: C.redText } : null]}>
+                      {codeError ?? (resolving ? "Finding your trip…" : previewTrip ? "Check this is the right trip, then join." : "Six letters and numbers from your organiser.")}
+                    </Text>
+                    <Pressable onPress={handlePaste} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paste PIN from clipboard" style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+                      <Text style={styles.altLink}>Paste</Text>
+                    </Pressable>
+                  </View>
 
                   {previewTrip && (
                     <Animated.View entering={FadeInDown.duration(260)}>
@@ -608,6 +616,20 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
                       {resolving ? "Finding trip…" : previewTrip ? `Join ${previewTrip.name}` : "Join Trip"}
                     </Text>
                   </Pressable>
+
+                  {!previewTrip && (
+                    <View style={styles.altRow}>
+                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("qr"); }} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.altBtn, { opacity: pressed ? 0.5 : 1 }]}>
+                        <Scan size={16} color={C.tealText} weight="bold" />
+                        <Text style={styles.altLink}>Scan QR code</Text>
+                      </Pressable>
+                      <View style={styles.altDivider} />
+                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("link"); }} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.altBtn, { opacity: pressed ? 0.5 : 1 }]}>
+                        <LinkSimple size={16} color={C.tealText} weight="bold" />
+                        <Text style={styles.altLink}>Paste a link</Text>
+                      </Pressable>
+                    </View>
+                  )}
 
                   {!previewTrip && recentTrips.length > 0 && (
                     <View style={{ marginTop: S.xl }}>
@@ -789,7 +811,23 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     navTitle: {
       flex: 1, textAlign: "center", fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary,
     },
-    segment: { marginBottom: S.lg },
+    backLink: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "flex-start", marginBottom: S.md },
+    pinTitle: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, textAlign: "center", marginTop: S.xs, marginBottom: S.md },
+    pinBoxes: { flexDirection: "row", justifyContent: "center", gap: S.xs },
+    pinBox: {
+      width: 46, height: 58, borderRadius: R.lg, backgroundColor: C.elevated,
+      borderWidth: 1.5, borderColor: "transparent", alignItems: "center", justifyContent: "center",
+    },
+    pinBoxActive: { borderColor: C.teal },
+    pinBoxFilled: { backgroundColor: C.card, borderColor: C.border },
+    pinBoxText: { fontSize: T["2xl"], fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
+    pinHiddenInput: { position: "absolute", opacity: 0, width: 1, height: 1 },
+    pinHintRow: { flexDirection: "row", alignItems: "flex-start", gap: S.sm, paddingHorizontal: S.xs, marginTop: S.sm, marginBottom: S.lg },
+    pinHint: { flex: 1, paddingHorizontal: 0, marginTop: 0, marginBottom: 0 },
+    altRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.md, marginTop: S.md, marginBottom: S.lg },
+    altBtn: { flexDirection: "row", alignItems: "center", gap: S.xs2, paddingVertical: S.xs },
+    altDivider: { width: StyleSheet.hairlineWidth, height: 16, backgroundColor: C.border },
+    altLink: { fontSize: T.md, fontWeight: T.medium, color: C.tealText },
     group: {
       backgroundColor: C.elevated, borderRadius: R.sm, overflow: "hidden",
     },
