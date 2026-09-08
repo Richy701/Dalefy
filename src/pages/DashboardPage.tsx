@@ -560,10 +560,10 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => handleOpenTrip(upcomingCards[0])}
-                  className="relative sm:w-64 lg:w-80 h-44 sm:h-auto shrink-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="relative sm:w-64 lg:w-80 h-44 sm:h-auto shrink-0 text-left bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   aria-label={`Open ${upcomingCards[0].name}`}
                 >
-                  <img src={upcomingCards[0].image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  <img src={upcomingCards[0].image} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                 </button>
                 <div className="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center gap-4">
                   <div className="min-w-0">
@@ -653,7 +653,7 @@ export function DashboardPage() {
                           onClick={() => handleOpenTrip(trip)}
                           className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
-                          <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
+                          <img src={trip.image} alt="" decoding="async" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
                             <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">
                               {trip.name}
@@ -778,7 +778,7 @@ export function DashboardPage() {
                             data-compact-place className="text-left bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
-                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
+                            <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden bg-secondary">
                               {hasImg ? (
                                 <img src={ev.image} alt={ev.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               ) : (
@@ -1120,7 +1120,7 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden bg-secondary flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
                       <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
                       {/* Light wash for the top chips, then a dedicated scrim behind the
                           text block so legibility never depends on the photo. */}
@@ -1211,7 +1211,7 @@ export function DashboardPage() {
                       className="group bg-card border border-border shadow-sm rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
-                      <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
+                      <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden bg-secondary">
                         <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/10" />
                       </div>
@@ -1307,7 +1307,7 @@ export function DashboardPage() {
                       onClick={() => handleCreateFromTemplate(tpl)}
                       className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                     >
-                      <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
+                      <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">{tpl.name}</p>
                         <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
