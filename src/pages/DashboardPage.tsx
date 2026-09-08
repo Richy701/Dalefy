@@ -114,6 +114,44 @@ function getRelativeDay(dateStr: string) {
 }
 
 
+const DAY_BAR_CLASS: Record<string, string> = {
+  flight: "bg-cat-flight", hotel: "bg-cat-stay", dining: "bg-cat-meal", meal: "bg-cat-meal",
+  activity: "bg-cat-activity", transfer: "bg-cat-transfer",
+};
+
+/** Every day of the trip as a tile with a category bar, the same rail the traveller sees on their phone. */
+function DayRail({ trip }: { trip: Trip }) {
+  const days: { key: string; date: Date }[] = [];
+  const cursor = new Date(trip.start + "T00:00:00");
+  const end = new Date(trip.end + "T00:00:00");
+  while (cursor <= end && days.length < 21) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+    days.push({ key, date: new Date(cursor) });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const shown = days.slice(0, 14);
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs font-medium text-muted-foreground">{days.length} {days.length === 1 ? "day" : "days"} · {trip.events.length} events</p>
+      <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+        {shown.map(({ key, date }) => {
+          const evs = trip.events.filter(e => e.date === key);
+          return (
+            <div key={key} className="rounded-lg bg-card border border-border px-2 py-1.5 flex flex-col gap-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground leading-none">{date.toLocaleDateString("en-GB", { weekday: "short" })}</p>
+              <p className="text-base font-semibold tabular-nums text-foreground leading-none">{date.getDate()}</p>
+              <div className="h-1 rounded-full overflow-hidden flex gap-px bg-secondary">
+                {evs.map(e => <span key={e.id} className={`flex-1 ${DAY_BAR_CLASS[e.type] ?? "bg-cat-activity"}`} />)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {days.length > shown.length && <p className="text-[11px] text-muted-foreground">+{days.length - shown.length} more days</p>}
+    </div>
+  );
+}
+
 /** Own component so the 1-second countdown tick re-renders only this block, not the whole dashboard. */
 function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
   const countdown = useLiveCountdown(trip);
@@ -560,10 +598,10 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => handleOpenTrip(upcomingCards[0])}
-                  className="relative sm:w-64 lg:w-80 h-44 sm:h-auto shrink-0 text-left bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="sm:w-64 lg:w-80 shrink-0 text-left bg-secondary/60 border-b sm:border-b-0 sm:border-r border-border p-5 flex flex-col justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   aria-label={`Open ${upcomingCards[0].name}`}
                 >
-                  <img src={upcomingCards[0].image} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+                  <DayRail trip={upcomingCards[0]} />
                 </button>
                 <div className="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center gap-4">
                   <div className="min-w-0">
