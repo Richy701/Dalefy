@@ -298,11 +298,10 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
           >
             <View style={styles.itemRow}>
               {/* Left color accent bar for unread */}
-              {!n.read && <View style={[styles.accentBar, { backgroundColor: color }]} />}
 
               {/* Type icon */}
               <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-                <Icon size={18} color={color} weight="regular" />
+                <Icon size={18} color={color} weight="fill" />
               </View>
 
               <View style={styles.itemContent}>
@@ -313,6 +312,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
                   >
                     {n.message}
                   </Text>
+                  {!n.read && <View style={styles.unreadDot} />}
                   {n.time ? (
                     <Text style={styles.itemTime}>{n.time}</Text>
                   ) : null}
@@ -425,23 +425,16 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     itemPressed: {
       backgroundColor: C.elevated,
     },
-    accentBar: {
-      position: "absolute" as const,
-      left: 0,
-      top: 10,
-      bottom: 10,
-      width: 3,
-      borderRadius: 2,
-    },
+    unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.teal, marginRight: 6 },
     itemRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: S.sm,
     },
     iconWrap: {
-      width: 38,
-      height: 38,
-      borderRadius: R.md,
+      width: 36,
+      height: 36,
+      borderRadius: R.full,
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },

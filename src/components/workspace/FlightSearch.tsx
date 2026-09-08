@@ -106,7 +106,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
         {mode === "number" ? (
           <div className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[120px]">
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1">Flight Number</label>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">Flight number</label>
               <input value={flightNum} onChange={e => setFlightNum(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="EK 2" autoCapitalize="characters" autoComplete="off" inputMode="text" className={inputCls} />
             </div>
             <div className="flex-1 min-w-[140px]">
