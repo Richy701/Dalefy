@@ -2,11 +2,10 @@ import { useMemo, useState, useRef, useCallback } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Image,
-  ActionSheetIOS, Alert, Dimensions, ActivityIndicator,
+  ActionSheetIOS, Alert, ActivityIndicator,
 } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -22,11 +21,9 @@ import { useToast } from "@/context/ToastContext";
 import { fetchOrgByCode } from "@/services/firebaseBranding";
 import { T, R, S, F, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
-import { Illustration } from "@/components/Illustration";
 
 type Step = "welcome" | "agency" | "profile";
 
-const { width: SCREEN_W } = Dimensions.get("window");
 
 export default function WelcomeScreen() {
   const { C } = useTheme();
@@ -196,13 +193,6 @@ export default function WelcomeScreen() {
   if (step === "welcome") {
     return (
       <View style={styles.safe}>
-        {/* Background glow */}
-        <LinearGradient
-          colors={[`${C.teal}12`, "transparent"]}
-          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
-
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.welcomeContainer}>
             {/* Top — brand mark */}
@@ -210,10 +200,7 @@ export default function WelcomeScreen() {
               <Logo size={24} color={C.teal} />
             </Animated.View>
 
-            {/* Center — illustration */}
-            <Animated.View entering={FadeIn.duration(800).delay(200)} style={styles.welcomeCenter}>
-              <Illustration name="together" width={SCREEN_W * 0.65} height={SCREEN_W * 0.5} />
-            </Animated.View>
+            <View style={styles.welcomeCenter} />
 
             {/* Bottom — big type + CTA */}
             <View style={styles.welcomeBottom}>
@@ -254,11 +241,6 @@ export default function WelcomeScreen() {
   if (step === "agency") {
     return (
       <View style={styles.safe}>
-        <LinearGradient
-          colors={[`${C.teal}08`, "transparent"]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
-          style={StyleSheet.absoluteFill}
-        />
         <SafeAreaView style={{ flex: 1 }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -362,11 +344,6 @@ export default function WelcomeScreen() {
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <View style={styles.safe}>
-      <LinearGradient
-        colors={[`${C.teal}08`, "transparent"]}
-        start={{ x: 1, y: 0 }} end={{ x: 0, y: 0.6 }}
-        style={StyleSheet.absoluteFill}
-      />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -25,11 +25,11 @@ export function Pill({ label, icon, tone = "neutral", size = "md", bg, color, bo
   bordered?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const palette = {
     accent: { bg: C.teal, color: C.onAccent, border: undefined },
     neutral: { bg: C.elevated, color: C.textSecondary, border: undefined },
-    glass: { bg: C.glass, color: "#f4f4f5", border: C.glassBorder },
+    glass: { bg: C.glass, color: isDark ? "#f4f4f5" : C.textPrimary, border: C.glassBorder },
     custom: { bg: bg ?? C.elevated, color: color ?? C.textSecondary, border: undefined },
   }[tone];
   const compact = size === "sm";

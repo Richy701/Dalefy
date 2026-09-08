@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Envelope, Lock, User, ArrowRight, CaretLeft } from "phosphor-react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -198,11 +197,6 @@ export default function AuthScreen() {
   if (magicSent) {
     return (
       <View style={styles.safe}>
-        <LinearGradient
-          colors={[`${C.teal}12`, "transparent"]}
-          start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
         <SafeAreaView style={{ flex: 1, justifyContent: "center", paddingHorizontal: S.xl }}>
           <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: "center" }}>
             <Envelope size={56} color={C.teal} weight="thin" />
@@ -247,11 +241,6 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.safe}>
-      <LinearGradient
-        colors={[`${C.teal}08`, "transparent"]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
-        style={StyleSheet.absoluteFill}
-      />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -23,7 +23,6 @@ export const darkColors = {
   tealText: "#0bd2b5",
   tealDim: "rgba(11,210,181,0.1)",
   tealMid: "rgba(11,210,181,0.25)",
-  tealGlow: "rgba(11,210,181,0.15)",
 
   toggleTrack: "#3F3F46",
 
@@ -47,11 +46,18 @@ export const darkColors = {
   glass: "rgba(9,9,11,0.65)",
   glassBorder: "rgba(255,255,255,0.10)",
 
-  flight: "#0bd2b5",
-  hotel: "#a78bfa",
-  activity: "#f59e0b",
-  dining: "#fb7185",
-  transfer: "#60a5fa",
+  // Event categories — Apple Maps style: one glyph colour + one soft fill each.
+  // The accent (teal) is never a category colour, so it can mean "tap" or "live".
+  flight: "#6FA8F5",
+  hotel: "#B08CF0",
+  activity: "#F07AA3",
+  dining: "#F0975A",
+  transfer: "#A0AEC0",
+  flightSoft: "rgba(111,168,245,0.18)",
+  hotelSoft: "rgba(176,140,240,0.18)",
+  activitySoft: "rgba(240,122,163,0.18)",
+  diningSoft: "rgba(240,151,90,0.18)",
+  transferSoft: "rgba(160,174,192,0.18)",
 };
 
 export const lightColors = {
@@ -69,10 +75,9 @@ export const lightColors = {
   textDim: "#c5cad6",
 
   teal: "#0ab8a0",
-  tealText: "#0e7569",
+  tealText: "#007a68",
   tealDim: "rgba(10,184,160,0.12)",
   tealMid: "rgba(10,184,160,0.28)",
-  tealGlow: "rgba(10,184,160,0.18)",
 
   toggleTrack: "#D1D5DB",
 
@@ -94,11 +99,16 @@ export const lightColors = {
   glass: "rgba(255,255,255,0.72)",
   glassBorder: "rgba(0,0,0,0.10)",
 
-  flight: "#0ab8a0",
-  hotel: "#8b5cf6",
-  activity: "#d97706",
-  dining: "#e11d48",
-  transfer: "#3b82f6",
+  flight: "#2F80ED",
+  hotel: "#8E5CD9",
+  activity: "#E0447A",
+  dining: "#E8791D",
+  transfer: "#4A5568",
+  flightSoft: "rgba(47,128,237,0.14)",
+  hotelSoft: "rgba(142,92,217,0.14)",
+  activitySoft: "rgba(224,68,122,0.14)",
+  diningSoft: "rgba(232,121,29,0.14)",
+  transferSoft: "rgba(74,85,104,0.14)",
 };
 
 export type ThemeColors = typeof darkColors;
@@ -184,7 +194,18 @@ export function statusBg(status: string, C: ThemeColors = darkColors) {
 }
 
 export function eventColor(type: string, C: ThemeColors = darkColors): string {
-  return (C as any)[type] ?? C.teal;
+  return (C as any)[type] ?? C.activity;
+}
+
+export type EventCategory = "flight" | "hotel" | "activity" | "dining" | "transfer";
+const CATEGORIES: EventCategory[] = ["flight", "hotel", "activity", "dining", "transfer"];
+export const CATEGORY_LABEL: Record<EventCategory, string> = {
+  flight: "Flight", hotel: "Stay", activity: "Activity", dining: "Meal", transfer: "Transfer",
+};
+/** Glyph colour + soft fill for a category circle. Unknown types fall back to Activity. */
+export function categoryTone(type: string, C: ThemeColors): { fg: string; bg: string } {
+  const key = (CATEGORIES as string[]).includes(type) ? (type as EventCategory) : "activity";
+  return { fg: (C as any)[key], bg: (C as any)[`${key}Soft`] };
 }
 
 export type StatusTone = {
@@ -237,11 +258,42 @@ function hexToRgbTuple(hex: string): [number, number, number] {
   ];
 }
 
-/** Mix a hex color toward black by `amount` (0–1). Used to derive AA text colors from accents. */
-function darkenHex(hex: string, amount: number): string {
-  const [r, g, b] = hexToRgbTuple(hex);
-  const d = (v: number) => Math.round(v * (1 - amount));
-  return `#${[d(r), d(g), d(b)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+function relLuminance(r: number, g: number, b: number): number {
+  const f = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [f(0), f(8), f(4)].map((v) => Math.round(v * 255)) as [number, number, number];
+}
+
+/**
+ * Derive an AA-safe text shade (>= 4.5:1 on white) from an accent.
+ * Keeps hue, holds saturation high, and only lowers lightness, so the
+ * result reads as a darker version of the brand colour rather than a muddy one.
+ */
+function aaTextShade(hex: string): string {
+  const [r, g, b] = hexToRgbTuple(hex).map((v) => v / 255) as [number, number, number];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  const l0 = (max + min) / 2;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+  }
+  const s0 = d === 0 ? 0 : d / (1 - Math.abs(2 * l0 - 1));
+  const s = Math.max(s0, 0.9);
+  for (let l = Math.min(l0, 0.4); l >= 0.05; l -= 0.01) {
+    const [cr, cg, cb] = hslToRgb(h, s, l);
+    if ((1.05) / (relLuminance(cr, cg, cb) + 0.05) >= 4.5) {
+      return `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+    }
+  }
+  return "#000000";
 }
 
 export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean): ThemeColors {
@@ -261,10 +313,8 @@ export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
     ...base,
     teal: hex,
     // On light backgrounds a raw accent rarely passes AA as text — derive a darker shade.
-    tealText: isLight ? darkenHex(hex, 0.38) : hex,
+    tealText: isLight ? aaTextShade(hex) : hex,
     tealDim: `rgba(${r},${g},${b},0.1)`,
     tealMid: `rgba(${r},${g},${b},0.25)`,
-    tealGlow: `rgba(${r},${g},${b},0.15)`,
-    flight: hex,
   };
 }

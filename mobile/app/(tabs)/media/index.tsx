@@ -1,5 +1,4 @@
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
-import { Illustration } from "@/components/Illustration";
 import { CachedImage } from "@/components/CachedImage";
 import {
   View, Text, ScrollView, StyleSheet, Dimensions, FlatList,
@@ -1066,7 +1065,6 @@ export default function MediaScreen() {
       {/* ── Empty state (inline when no rows) ── */}
       {(tripsWithMedia.length === 0 || filteredTrips.length === 0) && (
         <View style={[styles.emptyWrap, { paddingTop: S["2xl"] * 2 }]}>
-          <Illustration name="wavy" width={260} height={170} />
           <EmptyState
             compact
             title={tripsWithMedia.length === 0 ? "Your memories\nbegin here" : "No photos yet"}
@@ -1100,7 +1098,6 @@ export default function MediaScreen() {
         ListHeaderComponent={
           <View>
             <ScreenTitle
-              color={C.tealText}
               right={trips.length > 0 ? (
                 <Pressable
                   style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}

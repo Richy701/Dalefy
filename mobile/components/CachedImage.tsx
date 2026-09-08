@@ -17,6 +17,7 @@ interface Props {
   accessibilityLabel?: string;
   blurhash?: string | null;
   contentPosition?: { top?: string; left?: string };
+  blurRadius?: number;
 }
 
 export function CachedImage({
@@ -27,6 +28,7 @@ export function CachedImage({
   accessibilityLabel,
   blurhash,
   contentPosition,
+  blurRadius,
 }: Props) {
   const [retries, setRetries] = useState(0);
   const maxRetries = 3;
@@ -54,6 +56,7 @@ export function CachedImage({
           style={style}
           placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
           placeholderContentFit="cover"
+          blurRadius={blurRadius}
           contentFit="cover"
         />
       );
@@ -69,6 +72,7 @@ export function CachedImage({
         style={style}
         placeholder={{ blurhash: blurhash ?? DEFAULT_BLURHASH }}
         placeholderContentFit="cover"
+        blurRadius={blurRadius}
         transition={transition}
         cachePolicy="memory-disk"
         contentFit="cover"

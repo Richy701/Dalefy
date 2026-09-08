@@ -175,7 +175,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       paddingHorizontal: S.xs,
       paddingVertical: S["2xs"],
       borderRadius: R.full,
-      backgroundColor: C.tealGlow,
+      backgroundColor: C.tealDim,
     },
     pillCount: {
       fontSize: T.xs,

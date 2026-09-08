@@ -257,7 +257,7 @@ export default function InfoScreen() {
                               accessibilityLabel={`Open attachment ${d.name}`}
                               style={({ pressed }) => [styles.attachmentRow, { opacity: pressed ? 0.7 : 1 }]}
                             >
-                              <Paperclip size={14} color={C.teal} weight="regular" />
+                              <Paperclip size={14} color={C.textTertiary} weight="regular" />
                               <Text style={styles.attachmentName} numberOfLines={1}>{d.name}</Text>
                               <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                             </Pressable>

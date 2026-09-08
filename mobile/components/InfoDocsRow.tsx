@@ -23,7 +23,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
       accessibilityLabel={`Information and documents, ${count} items`}
     >
       <View style={s.iconBox}>
-        <FileText size={15} color={C.teal} weight="regular" />
+        <FileText size={15} color={C.textTertiary} weight="regular" />
       </View>
       <View style={s.center}>
         <MicroLabel color={C.textSecondary}>Information & documents</MicroLabel>

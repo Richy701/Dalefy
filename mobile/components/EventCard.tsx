@@ -263,7 +263,7 @@ function HotelCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeColors
             style={[StyleSheet.absoluteFill, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
           />
           <View style={cs.photoOverlay}>
-            <Pill tone="glass" icon={<Bed size={11} color={C.teal} weight="regular" />} label={ev.isOvernight ? "OVERNIGHT" : "STAY"} />
+            <Pill tone="glass" icon={<Bed size={11} color={C.tealText} weight="regular" />} label={ev.isOvernight ? "OVERNIGHT" : "STAY"} />
             {!ev.isOvernight && ev.time && (
               <Pill tone="glass" label={ev.time} />
             )}
@@ -366,7 +366,7 @@ function ActivityCard({ ev, C, tripId, onPress }: { ev: TravelEvent; C: ThemeCol
             style={[StyleSheet.absoluteFill, { borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }]}
           />
           <View style={cs.photoOverlay}>
-            <Pill tone="glass" icon={<Icon size={11} color={C.teal} weight="regular" />} label={label.toUpperCase()} />
+            <Pill tone="glass" icon={<Icon size={11} color={C.tealText} weight="regular" />} label={label.toUpperCase()} />
             {timeStr && (
               <Pill tone="glass" label={timeStr} />
             )}

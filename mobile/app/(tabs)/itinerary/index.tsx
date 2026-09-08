@@ -5,7 +5,6 @@ import {
   StyleSheet, RefreshControl, Share,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
-import { Illustration } from "@/components/Illustration";
 import { useRouter } from "expo-router";
 import {
   MapPin, CaretRight,
@@ -199,7 +198,6 @@ export default function ScheduleScreen() {
       <View style={[styles.safe, { backgroundColor: C.bg }]}>
         <ScreenTitle>Schedule</ScreenTitle>
         <View style={styles.emptyState}>
-          <Illustration name="sitting" width={260} height={160} />
           <EmptyState
             compact
             title="No schedule yet"

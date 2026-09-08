@@ -67,8 +67,8 @@ export default function DocumentScreen() {
         headerBackButtonDisplayMode: "minimal",
         headerTransparent: Platform.OS === "ios",
         headerBlurEffect: isDark ? "dark" : "light",
-        headerTintColor: C.teal,
-        headerTitleStyle: { color: C.teal, fontWeight: "700", fontSize: 16 },
+        headerTintColor: C.textPrimary,
+        headerTitleStyle: { color: C.textPrimary, fontWeight: "700", fontSize: 16 },
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
         headerRight: () => (
