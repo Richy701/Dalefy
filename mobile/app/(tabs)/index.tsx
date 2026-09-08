@@ -137,93 +137,61 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
   const nights = Math.max(0, Math.ceil((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000));
   const startDate = parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const endDate = parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const welcomeText = trip.destination
-    ? `Welcome to ${trip.destination}`
-    : "You're in.";
 
+  const flag = destinationFlag(trip.destination);
   return (
     <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.lg }}>
-      <View style={{
-        width: "100%", borderRadius: R["2xl"], overflow: "hidden",
-        backgroundColor: C.card,
-      }}>
-        {/* Hero image — fades up from blur (opacity + scale) */}
-        <View style={{ height: 240, overflow: "hidden", backgroundColor: C.elevated }}>
-          <Animated.View style={[{ width: "100%", height: "100%" }, imgStyle]}>
-            <CachedImage uri={trip.image} style={{ width: "100%", height: "100%" }} />
+      <View style={{ width: "100%", borderRadius: R.xl, overflow: "hidden", backgroundColor: C.card }}>
+        {/* Photo dissolves into the card, same treatment as the Home hero */}
+        <View style={{ height: 220, backgroundColor: C.elevated }}>
+          <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
+            <MaskedView
+              style={StyleSheet.absoluteFill}
+              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
+            >
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} />
+            </MaskedView>
           </Animated.View>
-          <LinearGradient
-            colors={["#00000008", "#00000040", "#000000e8"]}
-            locations={[0, 0.4, 1]}
-            style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
-          />
-
-          {/* Centered checkmark — scales in with bounce */}
-          <Animated.View style={[{
-            position: "absolute", top: 0, bottom: 0, left: 0, right: 0,
-            alignItems: "center", justifyContent: "center",
-          }, checkAnim]}>
-            <View style={{
-              width: 64, height: 64, borderRadius: 32,
-              backgroundColor: C.teal,
-              alignItems: "center", justifyContent: "center",
-            }}>
-              <Check size={32} color={C.onAccent} weight="bold" />
-            </View>
-          </Animated.View>
-
-          {/* Bottom overlay — trip name + destination */}
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: S.md }}>
-            {trip.destination && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                <MapPin size={10} color={C.teal} weight="fill" />
-                <Text style={{
-                  fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, color: "rgba(255,255,255,0.7)",
-                  letterSpacing: 1, textTransform: "uppercase",
-                }}>{trip.destination}</Text>
-              </View>
-            )}
-            <Text style={{
-              fontSize: T["2xl"], fontWeight: "800", color: "#fff",
-              letterSpacing: -0.3,
-            }} numberOfLines={2}>{trip.name}</Text>
-          </View>
         </View>
 
-        {/* Copy + metadata pills */}
-        <View style={{ padding: S.md, gap: S.sm }}>
-          <Animated.View style={copyStyle}>
-            <Text style={{ fontSize: T.sm, fontWeight: "600", color: C.tealText }}>
-              {welcomeText}
+        <View style={{ paddingHorizontal: S.md, paddingBottom: S.md, marginTop: -S.lg, gap: S.sm }}>
+          <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs }, checkAnim]}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.teal, alignItems: "center", justifyContent: "center" }}>
+              <Check size={13} color={C.onAccent} weight="bold" />
+            </View>
+            <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>You're in</Text>
+          </Animated.View>
+
+          <Animated.View style={[{ gap: 3 }, copyStyle]}>
+            <Text style={{ fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={2}>{trip.name}</Text>
+            {trip.destination ? (
+              <Text style={{ fontSize: T.base, color: C.textSecondary }} numberOfLines={1}>{flag ? `${flag}  ` : ""}{trip.destination}</Text>
+            ) : null}
+            <Text style={{ fontSize: T.sm, color: C.textTertiary }} numberOfLines={1}>
+              {startDate} – {endDate} · {nights} night{nights !== 1 ? "s" : ""}
             </Text>
           </Animated.View>
 
-          <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs, flexWrap: "wrap" }, pillsStyle]}>
-            <Pill
-              tone="neutral"
-              icon={<CalendarDots size={11} color={C.textTertiary} weight="regular" />}
-              label={`${startDate} – ${endDate}`}
-            />
-            <Pill
-              tone="neutral"
-              icon={<Clock size={11} color={C.textTertiary} weight="regular" />}
-              label={`${nights} night${nights !== 1 ? "s" : ""}`}
-            />
-          </Animated.View>
+          {trip.organizer?.name ? (
+            <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs, paddingTop: S.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pillsStyle]}>
+              <Avatar size={24} uri={trip.organizer.avatar} initials={trip.organizer.name.trim().charAt(0).toUpperCase()} />
+              <Text style={{ fontSize: T.sm, color: C.textSecondary }} numberOfLines={1}>Hosted by {trip.organizer.name}</Text>
+            </Animated.View>
+          ) : null}
         </View>
       </View>
 
       {/* CTA — appears after animation settles */}
-      <Animated.View style={[{ marginTop: S.lg }, ctaStyle]}>
+      <Animated.View style={[{ marginTop: S.md }, ctaStyle]}>
         <ScalePress
           onPress={onContinue}
           style={{
-            height: 52, borderRadius: R.xl,
+            height: 50, borderRadius: R.lg,
             backgroundColor: C.teal,
-            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
           }}
         >
-          <Text style={{ fontSize: T.md, fontWeight: T.bold, color: C.onAccent }}>See itinerary</Text>
+          <Text style={{ fontSize: T.md, fontWeight: T.semibold, color: C.onAccent }}>See itinerary</Text>
           <CaretRight size={14} color={C.onAccent} weight="bold" />
         </ScalePress>
       </Animated.View>
