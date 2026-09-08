@@ -401,10 +401,10 @@ export function MediaPage() {
   const allFilteredSelected = filtered.length > 0 && filtered.every((m) => selected.has(m.id));
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
       <PageHeader
         left={
-          <h1 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-sm font-bold tracking-tight text-foreground">
             Media Library
           </h1>
         }
@@ -416,8 +416,8 @@ export function MediaPage() {
           <div className="flex flex-col items-center justify-center min-h-full gap-5 px-4 py-16">
             <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-40 h-40 object-contain opacity-90" draggable={false} />
             <div className="text-center space-y-1 max-w-xs">
-              <p className="text-sm font-bold tracking-tight text-slate-800 dark:text-white">No media yet</p>
-              <p className="text-xs text-slate-500 dark:text-muted-foreground">Photos and videos live on trips. Create one to start uploading.</p>
+              <p className="text-sm font-bold tracking-tight text-foreground">No media yet</p>
+              <p className="text-xs text-muted-foreground">Photos and videos live on trips. Create one to start uploading.</p>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
@@ -578,7 +578,7 @@ export function MediaPage() {
           className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 rounded-xl border transition-all ${
             isDragging
               ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
-              : "border-black/6 dark:border-border bg-white dark:bg-card shadow-sm dark:shadow-none"
+              : "border-border bg-card shadow-sm"
           }`}
         >
           {/* Trip picker + upload button row */}
@@ -587,7 +587,7 @@ export function MediaPage() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                className="group flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white"
+                className="group flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-background hover:bg-secondary transition-colors text-[11px] font-bold uppercase tracking-wider text-foreground"
               >
                 {selectedTrip ? (
                   <>
@@ -597,9 +597,9 @@ export function MediaPage() {
                     <span className="truncate max-w-[180px]">{selectedTrip.name}</span>
                   </>
                 ) : (
-                  <span className="text-slate-500 dark:text-muted-foreground">Select trip</span>
+                  <span className="text-muted-foreground">Select trip</span>
                 )}
-                <CaretDown className="h-3 w-3 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
+                <CaretDown className="h-3 w-3 text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64">
                 {trips.map((t) => (
@@ -613,7 +613,7 @@ export function MediaPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-muted-foreground">{t.media?.length ?? 0} files</p>
+                      <p className="text-[10px] text-muted-foreground">{t.media?.length ?? 0} files</p>
                     </div>
                     {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                   </DropdownMenuItem>
@@ -636,7 +636,7 @@ export function MediaPage() {
           {/* Upload progress - mobile */}
           {uploading && (
             <div className="sm:hidden flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-slate-100 dark:bg-secondary rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                 <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
@@ -647,13 +647,13 @@ export function MediaPage() {
           <div className="flex-1 min-w-0 hidden sm:block">
             {uploading ? (
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-secondary rounded-full overflow-hidden">
+                <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-brand rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand shrink-0">Uploading…</span>
               </div>
             ) : (
-              <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground truncate">
+              <p className="text-[11px] font-medium text-muted-foreground truncate">
                 {isDragging ? "Drop files here…" : "Drag & drop or click upload"}
               </p>
             )}
@@ -685,7 +685,7 @@ export function MediaPage() {
                 className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
                   activeTripFilter === "all"
                     ? "bg-brand text-black border-transparent"
-                    : "bg-white dark:bg-card border-black/6 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-brand/40"
+                    : "bg-card border-border text-muted-foreground hover:border-brand/40"
                 }`}
               >
                 All · {allItems.length}
@@ -698,7 +698,7 @@ export function MediaPage() {
                   className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
                       ? "bg-brand text-black border-transparent"
-                      : "bg-white dark:bg-card border-black/6 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-brand/40"
+                      : "bg-card border-border text-muted-foreground hover:border-brand/40"
                   }`}
                 >
                   {t.name} · {t.media!.length}
@@ -710,7 +710,7 @@ export function MediaPage() {
 
           <div className="flex items-center gap-2 shrink-0">
             {/* Type toggle */}
-            <div className="flex items-center gap-1 bg-white dark:bg-card p-1 rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none">
+            <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
               {([
                 { key: "all" as MediaFilter, label: "All", icon: <Images className="h-3.5 w-3.5" /> },
                 { key: "image" as MediaFilter, label: "Photos", icon: <ImageIcon className="h-3.5 w-3.5" /> },
@@ -724,7 +724,7 @@ export function MediaPage() {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
                     mediaFilter === opt.key
                       ? "bg-brand text-black shadow-sm"
-                      : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"
+                      : "text-muted-foreground hover:hover:text-foreground"
                   }`}
                 >
                   {opt.icon}
@@ -741,7 +741,7 @@ export function MediaPage() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
                 selectMode
                   ? "bg-brand text-black border-transparent"
-                  : "bg-white dark:bg-card border-black/6 dark:border-border text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white shadow-sm dark:shadow-none"
+                  : "bg-card border-border text-muted-foreground hover:hover:text-foreground shadow-sm"
               }`}
             >
               <CheckSquare className="h-3.5 w-3.5" />
@@ -755,13 +755,13 @@ export function MediaPage() {
           <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border border-brand/20 bg-brand/5 dark:bg-brand/8">
             <button
               onClick={() => allFilteredSelected ? setSelected(new Set()) : selectAllFiltered()}
-              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-white hover:text-brand transition-colors"
+              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground hover:text-brand transition-colors"
             >
               {allFilteredSelected ? <MinusSquare className="h-4 w-4 text-brand" /> : <Square className="h-4 w-4" />}
               {allFilteredSelected ? "Deselect All" : "Select All"}
             </button>
 
-            <div className="h-4 w-px bg-slate-200 dark:bg-[#2a2a2a]" />
+            <div className="h-4 w-px bg-secondary dark:bg-[#2a2a2a]" />
 
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">
               {selected.size} selected
@@ -772,7 +772,7 @@ export function MediaPage() {
             <button
               onClick={handleBulkDownload}
               disabled={selected.size === 0}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-card border border-black/6 dark:border-border text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-white hover:border-brand/40 transition-colors disabled:opacity-30"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-card border border-border text-[10px] font-black uppercase tracking-[0.2em] text-foreground hover:border-brand/40 transition-colors disabled:opacity-30"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Download</span>
@@ -819,7 +819,7 @@ export function MediaPage() {
                         ) : someGroupSelected ? (
                           <MinusSquare className="h-5 w-5 text-brand" weight="fill" />
                         ) : (
-                          <Square className="h-5 w-5 text-slate-500 dark:text-muted-foreground" />
+                          <Square className="h-5 w-5 text-muted-foreground" />
                         )}
                       </button>
                     )}
@@ -827,8 +827,8 @@ export function MediaPage() {
                       <img src={group.tripImage} alt="" className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">{group.tripName}</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">
+                      <h3 className="text-sm font-bold tracking-tight text-foreground truncate">{group.tripName}</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
                         {group.items.filter(i => i.type === "image").length} photos · {group.items.filter(i => i.type === "video").length} videos
                       </p>
                     </div>
@@ -865,7 +865,7 @@ export function MediaPage() {
               className={`rounded-xl border transition-colors ${
                 isDragging
                   ? "border-brand bg-brand/5"
-                  : "border-black/6 dark:border-border bg-white dark:bg-card shadow-sm dark:shadow-none"
+                  : "border-border bg-card shadow-sm"
               }`}
             >
               <div
@@ -873,24 +873,24 @@ export function MediaPage() {
                 className="flex flex-col items-center text-center px-6 py-12 cursor-pointer"
               >
                 <div className={`h-11 w-11 rounded-xl flex items-center justify-center mb-4 transition-colors ${
-                  isDragging ? "bg-brand/15" : "bg-slate-100 dark:bg-secondary"
+                  isDragging ? "bg-brand/15" : "bg-secondary"
                 }`}>
-                  <Upload className={`h-5 w-5 ${isDragging ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`} />
+                  <Upload className={`h-5 w-5 ${isDragging ? "text-brand" : "text-muted-foreground"}`} />
                 </div>
-                <p className={`text-sm font-bold tracking-tight ${isDragging ? "text-brand" : "text-slate-800 dark:text-white"}`}>
+                <p className={`text-sm font-bold tracking-tight ${isDragging ? "text-brand" : "text-foreground"}`}>
                   {isDragging ? "Drop to upload" : "No photos yet"}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 max-w-xs">
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
                   Drag files here or click to browse. Images and videos up to 25 MB each.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 border-t border-black/6 dark:border-border px-3 py-3">
+              <div className="flex items-center gap-2 border-t border-border px-3 py-3">
               <div className="flex-1 min-w-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white bg-slate-50 dark:bg-secondary border-black/6 dark:border-border hover:border-brand/40 data-popup-open:border-brand/50"
+                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg border transition-colors text-[11px] font-bold uppercase tracking-wider text-foreground bg-secondary border-border hover:border-brand/40 data-popup-open:border-brand/50"
                   >
                     {selectedTrip ? (
                       <>
@@ -900,9 +900,9 @@ export function MediaPage() {
                         <span className="truncate flex-1 text-left">{selectedTrip.name}</span>
                       </>
                     ) : (
-                      <span className="text-slate-500 dark:text-muted-foreground flex-1 text-left">Select trip</span>
+                      <span className="text-muted-foreground flex-1 text-left">Select trip</span>
                     )}
-                    <CaretDown className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
+                    <CaretDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform group-data-popup-open:rotate-180" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-(--anchor-width)">
                     {trips.map((t) => (
@@ -916,7 +916,7 @@ export function MediaPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
-                          <p className="text-[10px] text-slate-500 dark:text-muted-foreground">{t.destination}</p>
+                          <p className="text-[10px] text-muted-foreground">{t.destination}</p>
                         </div>
                         {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
                       </DropdownMenuItem>
@@ -979,10 +979,10 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
 }) {
   return (
     <div
-      className={`group relative rounded-xl overflow-hidden bg-white dark:bg-card border shadow-sm dark:shadow-none hover:shadow-xl transition-all duration-300 ${
+      className={`group relative rounded-xl overflow-hidden bg-card border shadow-sm hover:shadow-xl transition-all duration-300 ${
         isSelected
           ? "border-brand ring-2 ring-brand/30"
-          : "border-black/6 dark:border-border hover:border-brand/30"
+          : "border-border hover:border-brand/30"
       }`}
       role={selectMode ? "checkbox" : undefined}
       aria-checked={selectMode ? isSelected : undefined}
@@ -991,7 +991,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
       onClick={selectMode ? () => onToggleSelect?.(item.id) : undefined}
       onKeyDown={selectMode ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleSelect?.(item.id); } } : undefined}
     >
-      <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-background">
+      <div className="relative aspect-4/3 overflow-hidden bg-secondary">
         {item.type === "image" ? (
           <img
             src={item.url}
@@ -1062,12 +1062,12 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
 
       {/* Footer with metadata */}
       <div className="px-2.5 py-2">
-        <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate leading-tight">{item.name}</p>
+        <p className="text-[10px] font-bold text-foreground truncate leading-tight">{item.name}</p>
         <div className="flex items-center justify-between mt-1">
           <p className="text-[9px] font-bold text-brand truncate uppercase tracking-tight">{item.tripName}</p>
           <div className="flex items-center gap-2 shrink-0">
-            {item.uploadedBy && <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">by {item.uploadedBy}</span>}
-            {item.uploadedAt && <span className="text-[9px] font-bold text-slate-500 dark:text-muted-foreground">{formatDate(item.uploadedAt)}</span>}
+            {item.uploadedBy && <span className="text-[9px] font-bold text-muted-foreground">by {item.uploadedBy}</span>}
+            {item.uploadedAt && <span className="text-[9px] font-bold text-muted-foreground">{formatDate(item.uploadedAt)}</span>}
           </div>
         </div>
       </div>

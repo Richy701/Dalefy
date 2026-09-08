@@ -284,18 +284,18 @@ export function DestinationsPage() {
 
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
       <PageHeader
         left={destinations.length > 0 ? (
           <div className="max-w-full sm:max-w-md w-full relative group">
-            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-500 dark:text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-destinations" className="sr-only">Search destinations</label>
             <input
               id="search-destinations"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search destinations or trips"
-              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-white dark:bg-card border-none rounded-full text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest"
+              className="pl-9 sm:pl-12 h-10 sm:h-11 bg-card border-none rounded-full text-foreground placeholder:text-slate-400 dark:placeholder:text-[#555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-sm font-semibold shadow-inner placeholder:uppercase placeholder:text-[11px] placeholder:font-bold placeholder:tracking-widest"
             />
           </div>
         ) : undefined}
@@ -307,8 +307,8 @@ export function DestinationsPage() {
           <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4">
             <BrandIllustration src="/illustrations/illus-movement.svg" className="w-72 h-72 object-contain translate-x-10" draggable={false} />
             <div className="text-center space-y-1.5">
-              <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No destinations yet</p>
-              <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create trips to populate your world map</p>
+              <p className="text-base font-bold tracking-tight text-foreground">No destinations yet</p>
+              <p className="text-xs font-medium text-muted-foreground">Create trips to populate your world map</p>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
@@ -322,20 +322,20 @@ export function DestinationsPage() {
         {/* ── Hero Banner ── */}
         <div className="px-3 sm:px-4 lg:px-8 pt-4 sm:pt-6 pb-2">
           {/* Banner - same style as dashboard */}
-          <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/15 via-brand/3 to-slate-50 dark:from-brand/15 dark:via-brand/3 dark:to-background border border-slate-200/50 dark:border-border">
+          <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/15 via-brand/3 to-slate-50 dark:from-brand/15 dark:via-brand/3 dark:to-background border border-slate-200/50 border-border">
             {/* Mobile: stacked layout / Desktop: side-by-side */}
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
               {/* Text content */}
               <div className="relative z-10 px-5 py-6 sm:px-6 sm:py-0 sm:max-w-[50%] flex flex-col justify-center lg:px-8">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground leading-none">
                   Destinations
                 </h1>
                 <div className="mt-3 sm:mt-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">Your Travel Footprint</p>
-                  <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Your Travel Footprint</p>
+                  <span className="block text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.85] tracking-tighter text-foreground tabular-nums">
                     {destinations.length}
                   </span>
-                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/80 flex-wrap">
+                  <p className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/80 flex-wrap">
                     <MapPin className="h-3 w-3 text-brand" />
                     {destinations.length === 1 ? "Destination" : "Destinations"} · {regions.length - 1} {regions.length - 1 === 1 ? "Region" : "Regions"} · {destinations.reduce((s, d) => s + d.eventCount, 0)} Events
                   </p>
@@ -408,25 +408,25 @@ export function DestinationsPage() {
                     onClick={recenter}
                     title="Show all destinations"
                     aria-label="Show all destinations"
-                    className="h-9 w-9 rounded-full flex items-center justify-center bg-white/90 dark:bg-card/90 backdrop-blur-sm border border-slate-200 dark:border-border shadow-lg hover:bg-slate-100 dark:hover:bg-secondary transition-colors"
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-card/90/90 backdrop-blur-sm border border-border shadow-lg hover:bg-secondary transition-colors"
                   >
-                    <Crosshair className="h-4 w-4 text-slate-600 dark:text-muted-foreground" />
+                    <Crosshair className="h-4 w-4 text-muted-foreground" />
                   </button>
-                  <div className="flex items-center gap-1 bg-white/90 dark:bg-card/90 backdrop-blur-sm rounded-full border border-slate-200 dark:border-border shadow-lg px-1 py-1">
+                  <div className="flex items-center gap-1 bg-card/90/90 backdrop-blur-sm rounded-full border border-border shadow-lg px-1 py-1">
                     <button
                       onClick={handlePrev}
-                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <CaretLeft className="h-4 w-4 text-slate-600 dark:text-muted-foreground" />
+                      <CaretLeft className="h-4 w-4 text-muted-foreground" />
                     </button>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-muted-foreground px-1 min-w-[60px] text-center truncate">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 min-w-[60px] text-center truncate">
                       {mapPins[activeIdx]?.name?.split(",")[0] || `${activeIdx + 1}/${mapPins.length}`}
                     </span>
                     <button
                       onClick={handleNext}
-                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
+                      className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-secondary active:bg-slate-200 dark:active:bg-[#222] transition-colors"
                     >
-                      <CaretRight className="h-4 w-4 text-slate-600 dark:text-muted-foreground" />
+                      <CaretRight className="h-4 w-4 text-muted-foreground" />
                     </button>
                   </div>
                 </div>
@@ -442,10 +442,10 @@ export function DestinationsPage() {
             className="fixed z-9999 pointer-events-none"
             style={{ left: mousePos.current.x + 14, top: mousePos.current.y - 12 }}
           >
-            <div className="bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-xl px-3 py-1.5 flex items-center gap-2">
+            <div className="bg-card border border-border rounded-lg shadow-xl px-3 py-1.5 flex items-center gap-2">
               <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
-              <span className="text-xs font-bold tracking-tight text-slate-900 dark:text-white">{hoveredPin.name}</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
+              <span className="text-xs font-bold tracking-tight text-foreground">{hoveredPin.name}</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                 {hoveredPin.tripCount} {hoveredPin.tripCount === 1 ? "trip" : "trips"}
               </span>
             </div>
@@ -460,7 +460,7 @@ export function DestinationsPage() {
                 key={r}
                 onClick={() => setFilter(r)}
                 aria-pressed={filter === r}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-white dark:bg-card text-slate-500 dark:text-muted-foreground border border-slate-200 dark:border-border hover:border-brand/40"}`}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-[background-color,border-color,color,box-shadow,transform] active:scale-95 focus-visible:ring-2 focus-visible:ring-brand/40 ${filter === r ? "bg-brand text-black" : "bg-card text-muted-foreground border border-border hover:border-brand/40"}`}
               >
                 {r === "all" ? "All Regions" : r}
               </button>

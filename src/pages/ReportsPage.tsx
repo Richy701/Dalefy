@@ -30,16 +30,16 @@ const STATUS_COLORS = { signed: "#34d399", pending: "#fbbf24", expired: "#f87171
 
 function StatCard({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-xl border border-black/6 dark:border-border bg-white dark:bg-card shadow-sm dark:shadow-none overflow-hidden">
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="p-4 lg:p-5 flex flex-col">
         <div className="flex items-center justify-between mb-5">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{label}</span>
-          <div className={`h-8 w-8 rounded-lg border border-black/6 dark:border-border bg-slate-50 dark:bg-background ${accent || "text-brand"} flex items-center justify-center`}>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+          <div className={`h-8 w-8 rounded-lg border border-border bg-background ${accent || "text-brand"} flex items-center justify-center`}>
             {icon}
           </div>
         </div>
-        <p className="text-3xl lg:text-4xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{value}</p>
-        <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-3">{sub}</p>
+        <p className="text-3xl lg:text-4xl font-black tracking-tighter leading-none text-foreground">{value}</p>
+        <p className="text-[11px] font-medium text-muted-foreground mt-3">{sub}</p>
       </div>
     </div>
   );
@@ -181,7 +181,7 @@ export function ReportsPage() {
   const exportDisabled = tab === "operations" ? trips.length === 0 : complianceData.travelers.length === 0;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background">
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
       <PageHeader
         cta={
           <button
@@ -200,12 +200,12 @@ export function ReportsPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="px-3 sm:px-4 lg:px-8 py-5 sm:py-7 flex flex-col min-h-full">
           {/* Title + tabs */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-black/6 dark:border-border">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-border">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-2">{BRAND.name}</p>
-              <h1 className="text-2xl lg:text-4xl font-bold tracking-tight leading-none text-slate-900 dark:text-white text-balance">Reports</h1>
+              <h1 className="text-2xl lg:text-4xl font-bold tracking-tight leading-none text-foreground text-balance">Reports</h1>
             </div>
-            <div role="tablist" className="flex items-center bg-slate-100 dark:bg-[#0c0c0c] p-1 rounded-xl border border-black/6 dark:border-border shrink-0">
+            <div role="tablist" className="flex items-center bg-secondary dark:bg-[#0c0c0c] p-1 rounded-xl border border-border shrink-0">
               {(["operations", "compliance"] as const).map(t => (
                 <button
                   key={t}
@@ -215,7 +215,7 @@ export function ReportsPage() {
                   className={`px-7 py-3 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
                     tab === t
                       ? "bg-brand text-black shadow-md shadow-brand/20"
-                      : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300"
+                      : "text-muted-foreground hover:text-slate-700 dark:hover:text-slate-300"
                   }`}
                 >
                   {t === "operations" ? "Overview" : "Documents"}
@@ -234,8 +234,8 @@ export function ReportsPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-sitting.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
-                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No data yet</p>
-                <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create trips to see your analytics</p>
+                <p className="text-base font-bold tracking-tight text-foreground">No data yet</p>
+                <p className="text-xs font-medium text-muted-foreground">Create trips to see your analytics</p>
               </div>
               <button
                 onClick={() => navigate("/dashboard")}
@@ -247,14 +247,14 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-8 animate-fade-in mt-8">
               {/* ── Hero Stats Strip ── */}
-              <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-6 lg:gap-12">
                   <div className="text-center lg:text-left shrink-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-1">Total Travel Days</p>
-                    <p className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{stats.totalDays}</p>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
+                    <p className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-none text-foreground">{stats.totalDays}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-2">Across {trips.length} {trips.length === 1 ? "trip" : "trips"}</p>
                   </div>
-                  <div className="hidden lg:block w-px h-20 bg-slate-200 dark:bg-secondary" />
+                  <div className="hidden lg:block w-px h-20 bg-secondary" />
                   <div className="flex-1 grid grid-cols-3 sm:flex sm:items-stretch gap-3 sm:gap-4 lg:gap-8 w-full">
                     {[
                       { label: "Active", value: stats.activeTrips.toString(), sub: "In progress", icon: <AirplaneTilt className="h-4 w-4" /> },
@@ -265,13 +265,13 @@ export function ReportsPage() {
                         <div className="text-center lg:text-left flex-1">
                           <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
                             <div className="h-7 w-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center">{kpi.icon}</div>
-                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">{kpi.label}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{kpi.label}</span>
                           </div>
-                          <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter leading-none text-slate-900 dark:text-white">{kpi.value}</p>
-                          <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-1.5">{kpi.sub}</p>
+                          <p className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter leading-none text-foreground">{kpi.value}</p>
+                          <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground mt-1.5">{kpi.sub}</p>
                         </div>
                         {i < arr.length - 1 && (
-                          <div className="hidden lg:block w-px self-stretch bg-slate-200 dark:bg-secondary" />
+                          <div className="hidden lg:block w-px self-stretch bg-secondary" />
                         )}
                       </div>
                     ))}
@@ -280,23 +280,23 @@ export function ReportsPage() {
               </div>
 
               {/* Trip Pipeline - full-width card with chart + breakdown side by side */}
-              <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                     <ChartBar className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Trip Pipeline</h3>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{stats.pipeline.total} {stats.pipeline.total === 1 ? "trip" : "trips"} by status</p>
+                    <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Trip Pipeline</h3>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{stats.pipeline.total} {stats.pipeline.total === 1 ? "trip" : "trips"} by status</p>
                   </div>
                 </div>
                 {stats.pipeline.total === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-black/6 dark:border-border">
+                  <div className="flex flex-col items-center justify-center py-14 w-full rounded-xl border-2 border-dashed border-border">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-5 w-5 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips in pipeline</p>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No trips in pipeline</p>
+                    <p className="text-[11px] font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">Create your first trip to see stats</p>
                   </div>
                 ) : (
                 <div className="space-y-5">
@@ -311,15 +311,15 @@ export function ReportsPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
-                            <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground hidden sm:inline">{s.desc}</span>
+                            <span className="text-xs font-extrabold uppercase tracking-tight text-foreground">{s.name}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">{s.desc}</span>
                           </div>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">{pct}%</span>
+                            <span className="text-lg font-black tracking-tighter text-foreground">{s.value}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">{pct}%</span>
                           </div>
                         </div>
-                        <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
+                        <div className="h-3 bg-secondary rounded-full overflow-hidden">
                           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color }} />
                         </div>
                       </div>
@@ -332,24 +332,24 @@ export function ReportsPage() {
               {/* ── Team Overview + Trips by Month - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Team Overview */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Users className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Team</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} ${all.length === 1 ? "member" : "members"}`; })()}</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Team</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{(() => { const all = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers]; return `${all.length} ${all.length === 1 ? "member" : "members"}`; })()}</p>
                     </div>
                   </div>
                   {(() => {
                     const allTravelers = [...(isDemoUser ? MOCK_USERS : []), ...customTravelers];
                     if (allTravelers.length === 0) return (
-                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/6 dark:border-border">
+                      <div className="h-52 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
                         <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                           <Users className="h-5 w-5 text-brand opacity-60" />
                         </div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No team members</p>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No team members</p>
                       </div>
                     );
                     const roleColors: Record<string, string> = { "Trip Manager": brandHex, Agent: "#38bdf8", Traveler: "#fbbf24", Admin: "#a78bfa", Other: "#64748b" };
@@ -362,10 +362,10 @@ export function ReportsPage() {
                           const hasIssue = reqDocs.some(d => d.status === "Pending" || d.status === "Expired");
                           const roleColor = roleColors[t.role || "Other"] || "#64748b";
                           return (
-                            <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-background transition-colors">
+                            <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-secondary transition-colors">
                               <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{t.name}</p>
+                                <p className="text-[11px] font-black uppercase tracking-wider text-foreground truncate">{t.name}</p>
                                 <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5" style={{ color: roleColor }}>{t.role || "Other"}</p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
@@ -374,7 +374,7 @@ export function ReportsPage() {
                                 ) : reqDocs.length > 0 ? (
                                   <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : null}
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground tabular-nums">{signedDocs}/{reqDocs.length}</span>
+                                <span className="text-[10px] font-bold text-muted-foreground tabular-nums">{signedDocs}/{reqDocs.length}</span>
                               </div>
                             </div>
                           );
@@ -390,23 +390,23 @@ export function ReportsPage() {
                 </div>
 
                 {/* Trips by Month */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6 flex flex-col">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 flex flex-col">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <LucideCalendar className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Trips by Month</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Departure schedule</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Trips by Month</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Departure schedule</p>
                     </div>
                   </div>
                   {stats.tripsByMonth.length === 0 ? (
-                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-black/6 dark:border-border">
+                    <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border">
                       <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                         <ChartBar className="h-5 w-5 text-brand opacity-60" />
                       </div>
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No data yet</p>
-                      <p className="text-[11px] font-bold text-slate-500 dark:text-muted-foreground mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No data yet</p>
+                      <p className="text-[11px] font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">Trips will appear here by month</p>
                     </div>
                   ) : (
                     <div className="flex-1 min-h-[200px]">
@@ -426,14 +426,14 @@ export function ReportsPage() {
               {/* ── Top Airlines + Travelers per Trip - 2 col ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Top Airlines */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <AirplaneTilt className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Top Airlines</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Most booked</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Top Airlines</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Most booked</p>
                     </div>
                   </div>
                   {stats.topAirlines.length > 0 ? (
@@ -442,18 +442,18 @@ export function ReportsPage() {
                         const maxCount = stats.topAirlines[0]?.count || 1;
                         const logoUrl = airlineLogoUrl(a.iata);
                         return (
-                          <div key={a.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-background">
+                          <div key={a.name} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-background">
                             <span className="text-lg font-black text-slate-200 dark:text-[#222] w-5 text-right tabular-nums leading-none shrink-0">{i + 1}</span>
-                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-black/6 dark:border-border">
+                            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-white border border-border">
                               {logoUrl ? (
                                 <img src={logoUrl} alt={a.name} className="h-full w-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; e.currentTarget.parentElement!.querySelector(".fallback")?.classList.remove("hidden"); }} />
                               ) : null}
                               <span className={`fallback text-xs font-black uppercase ${logoUrl ? "hidden" : ""}`} style={{ color: AIRLINE_COLORS[a.iata] || "#888" }}>{a.iata || a.name.slice(0, 2)}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">{a.name}</p>
+                              <p className="text-[11px] font-black uppercase tracking-wider text-foreground truncate">{a.name}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1 bg-slate-200 dark:bg-secondary rounded-full overflow-hidden">
+                                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
                                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(a.count / maxCount) * 100}%`, background: AIRLINE_COLORS[a.iata] || brandHex }} />
                                 </div>
                                 <span className="text-[11px] font-black tabular-nums text-brand shrink-0">{a.count}</span>
@@ -468,20 +468,20 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <AirplaneTilt className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No airline data</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">No airline data</p>
                     </div>
                   )}
                 </div>
 
                 {/* Travelers per Trip */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                       <Users className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Travelers per Trip</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Group sizes</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Travelers per Trip</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Group sizes</p>
                     </div>
                   </div>
                   {trips.length > 0 ? (
@@ -493,21 +493,21 @@ export function ReportsPage() {
                           <button
                             key={t.id}
                             onClick={() => navigate(`/trip/${t.id}`)}
-                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-background hover:bg-brand/5 dark:hover:bg-brand/5 transition-colors text-left group"
+                            className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl bg-background hover:bg-brand/5 dark:hover:bg-brand/5 transition-colors text-left group"
                           >
                             <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0">
                               <img src={t.image} alt={t.name} className="h-full w-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{t.name}</p>
+                              <p className="text-[11px] font-black uppercase tracking-wider text-foreground truncate group-hover:text-brand transition-colors">{t.name}</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1 bg-slate-200 dark:bg-secondary rounded-full overflow-hidden">
+                                <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
                                   <div className="h-full bg-brand rounded-full transition-all duration-700" style={{ width: `${maxPax > 0 ? (pax / maxPax) * 100 : 0}%` }} />
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <Users className="h-3 w-3 text-slate-500 dark:text-muted-foreground" />
+                              <Users className="h-3 w-3 text-muted-foreground" />
                               <span className="text-sm font-black tabular-nums text-brand">{pax || "-"}</span>
                             </div>
                           </button>
@@ -519,7 +519,7 @@ export function ReportsPage() {
                       <div className="h-10 w-10 rounded-xl bg-brand/5 flex items-center justify-center">
                         <Users className="h-5 w-5 text-brand/30" />
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">No trips yet</p>
                     </div>
                   )}
                 </div>
@@ -532,8 +532,8 @@ export function ReportsPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-3 mt-8">
               <BrandIllustration src="/illustrations/illus-together.svg" className="w-72 h-72 object-contain mb-[-32px]" draggable={false} />
               <div className="text-center space-y-1.5">
-                <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No team members</p>
-                <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Add travelers to track compliance</p>
+                <p className="text-base font-bold tracking-tight text-foreground">No team members</p>
+                <p className="text-xs font-medium text-muted-foreground">Add travelers to track compliance</p>
               </div>
               <button
                 onClick={() => navigate("/travelers")}
@@ -553,14 +553,14 @@ export function ReportsPage() {
               </div>
 
               {/* Overall Compliance - full-width hero with donut + breakdown bars */}
-              <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                     <SealCheck className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Document Status</h3>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{complianceData.rate}% up to date across all team members</p>
+                    <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Document Status</h3>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-0.5">{complianceData.rate}% up to date across all team members</p>
                   </div>
                 </div>
                 <div className="space-y-5">
@@ -576,16 +576,16 @@ export function ReportsPage() {
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18`, color: s.color }}>{s.icon}</div>
                             <div>
-                              <span className="text-xs font-extrabold uppercase tracking-tight text-slate-900 dark:text-white">{s.name}</span>
-                              <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground hidden sm:block">{s.desc}</p>
+                              <span className="text-xs font-extrabold uppercase tracking-tight text-foreground">{s.name}</span>
+                              <p className="text-[11px] font-medium text-muted-foreground hidden sm:block">{s.desc}</p>
                             </div>
                           </div>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white">{s.value}</span>
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground">{pct}%</span>
+                            <span className="text-lg font-black tracking-tighter text-foreground">{s.value}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">{pct}%</span>
                           </div>
                         </div>
-                        <div className="h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden">
+                        <div className="h-3 bg-secondary rounded-full overflow-hidden">
                           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: s.color }} />
                         </div>
                       </div>
@@ -595,14 +595,14 @@ export function ReportsPage() {
               </div>
 
               {/* By Document Type - full width */}
-              <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">By Document Type</h3>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Signed, pending and expired per type</p>
+                    <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">By Document Type</h3>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Signed, pending and expired per type</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -610,9 +610,9 @@ export function ReportsPage() {
                     const docTotal = doc.signed + doc.pending + doc.expired;
                     return (
                       <div key={doc.name} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white w-44 shrink-0 truncate">{doc.name}</span>
+                        <span className="text-xs font-bold text-foreground w-44 shrink-0 truncate">{doc.name}</span>
                         <div className="flex-1 flex items-center gap-2">
-                          <div className="flex-1 h-3 bg-slate-100 dark:bg-background rounded-full overflow-hidden flex">
+                          <div className="flex-1 h-3 bg-secondary rounded-full overflow-hidden flex">
                             {docTotal > 0 && (
                               <>
                                 <div className="h-full bg-emerald-400 transition-all duration-700" style={{ width: `${(doc.signed / docTotal) * 100}%` }} />
@@ -635,7 +635,7 @@ export function ReportsPage() {
                   {[{ l: "Signed", c: STATUS_COLORS.signed }, { l: "Pending", c: STATUS_COLORS.pending }, { l: "Expired", c: STATUS_COLORS.expired }].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ background: i.c }} />
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">{i.l}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{i.l}</span>
                     </div>
                   ))}
                 </div>
@@ -644,44 +644,44 @@ export function ReportsPage() {
               {/* Recent Activity + Members Needing Action - side by side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Activity */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Recent Activity</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Latest signed documents</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Recent Activity</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Latest signed documents</p>
                     </div>
                   </div>
                   <div className="space-y-1">
                     {complianceData.recentActivity.map((a, i) => (
-                      <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-background transition-colors">
+                      <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-secondary transition-colors">
                         <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
                           <CheckCircle className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{a.name}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">{a.doc}</div>
+                          <div className="text-xs font-bold text-foreground truncate">{a.name}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{a.doc}</div>
                         </div>
-                        <span className="text-xs font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider shrink-0">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                           {parseTripDate(a.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                         </span>
                       </div>
                     ))}
-                    {complianceData.recentActivity.length === 0 && <p className="text-xs text-slate-500 dark:text-muted-foreground py-4 text-center">No signed documents yet</p>}
+                    {complianceData.recentActivity.length === 0 && <p className="text-xs text-muted-foreground py-4 text-center">No signed documents yet</p>}
                   </div>
                 </div>
 
                 {/* Members Needing Action */}
-                <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+                <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
                       <Warning className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</h3>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Members with pending or expired docs</p>
+                      <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Needs Attention</h3>
+                      <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Members with pending or expired docs</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -695,11 +695,11 @@ export function ReportsPage() {
                       .sort((a, b) => b.issues - a.issues)
                       .slice(0, 6)
                       .map(t => (
-                        <div key={t.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-slate-50 dark:hover:bg-background transition-colors">
+                        <div key={t.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-secondary transition-colors">
                           <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{t.name}</div>
-                            <div className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">{t.role}</div>
+                            <div className="text-xs font-bold text-foreground truncate">{t.name}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">{t.role}</div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {t.pend > 0 && (
@@ -716,32 +716,32 @@ export function ReportsPage() {
                         </div>
                       ))}
                     {complianceData.travelers.every(t => t.compliance.every(d => d.status !== "Pending" && d.status !== "Expired")) && (
-                      <p className="text-xs text-slate-500 dark:text-muted-foreground py-4 text-center">All members are fully compliant</p>
+                      <p className="text-xs text-muted-foreground py-4 text-center">All members are fully compliant</p>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Team Compliance Grid / Heatmap */}
-              <div className="bg-white dark:bg-card rounded-xl border border-black/6 dark:border-border shadow-sm dark:shadow-none p-4 sm:p-6">
+              <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-9 w-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                     <Users className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">Team Compliance Grid</h3>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">Overview by traveler and document</p>
+                    <h3 className="text-sm font-bold tracking-tight text-foreground leading-none">Team Compliance Grid</h3>
+                    <p className="text-[11px] font-medium text-muted-foreground mt-0.5">Overview by traveler and document</p>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr>
-                        <th className="text-left py-3 pr-4 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground w-48">Member</th>
+                        <th className="text-left py-3 pr-4 text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground w-48">Member</th>
                         {["Passport", "Insurance", "Behaviour", "Conduct", "Risk"].map(h => (
-                          <th key={h} className="text-center py-3 px-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">{h}</th>
+                          <th key={h} className="text-center py-3 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">{h}</th>
                         ))}
-                        <th className="text-center py-3 px-3 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Status</th>
+                        <th className="text-center py-3 px-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -751,7 +751,7 @@ export function ReportsPage() {
                           Signed: <CheckCircle className="h-4 w-4 text-emerald-400" />,
                           Pending: <Clock className="h-4 w-4 text-amber-400" />,
                           Expired: <WarningCircle className="h-4 w-4 text-red-400" />,
-                          "Not Required": <div className="h-4 w-4 rounded-full bg-slate-200 dark:bg-secondary" />,
+                          "Not Required": <div className="h-4 w-4 rounded-full bg-secondary" />,
                         };
                         const allSigned = docNames.every(dn => {
                           const doc = t.compliance.find(d => d.name === dn);
@@ -759,13 +759,13 @@ export function ReportsPage() {
                         });
                         const hasExpired = docNames.some(dn => t.compliance.find(d => d.name === dn)?.status === "Expired");
                         return (
-                          <tr key={t.id} className="border-t border-black/4 dark:border-border hover:bg-slate-50/50 dark:hover:bg-background/50 transition-colors">
+                          <tr key={t.id} className="border-t border-black/4 border-border hover:bg-slate-50/50 dark:hover:bg-background/50 transition-colors">
                             <td className="py-4 pr-4">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-brand text-black flex items-center justify-center font-black text-[11px] shrink-0">{t.initials}</div>
                                 <div className="min-w-0">
-                                  <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">{t.name}</span>
-                                  <span className="text-[11px] text-slate-500 dark:text-muted-foreground">{t.role}</span>
+                                  <span className="text-xs font-bold text-foreground truncate block">{t.name}</span>
+                                  <span className="text-[11px] text-muted-foreground">{t.role}</span>
                                 </div>
                               </div>
                             </td>
@@ -796,11 +796,11 @@ export function ReportsPage() {
                     { l: "Signed", icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> },
                     { l: "Pending", icon: <Clock className="h-3.5 w-3.5 text-amber-400" /> },
                     { l: "Expired", icon: <WarningCircle className="h-3.5 w-3.5 text-red-400" /> },
-                    { l: "N/A", icon: <div className="h-3.5 w-3.5 rounded-full bg-slate-200 dark:bg-secondary" /> },
+                    { l: "N/A", icon: <div className="h-3.5 w-3.5 rounded-full bg-secondary" /> },
                   ].map(i => (
                     <div key={i.l} className="flex items-center gap-1.5">
                       {i.icon}
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">{i.l}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{i.l}</span>
                     </div>
                   ))}
                 </div>

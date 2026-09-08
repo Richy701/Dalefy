@@ -158,14 +158,14 @@ export function AcceptInvitePage() {
   const roleLabel = preview ? (ROLE_LABEL[preview.role] ?? preview.role) : "";
 
   return (
-    <div className="min-h-screen bg-white dark:bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-card flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center space-y-6">
         <Logo className="h-8 mx-auto text-brand" />
 
         {status === "loading" && (
           <div className="space-y-4">
             <SpinnerGap className="h-10 w-10 animate-spin text-brand mx-auto" />
-            <p className="text-sm font-bold tracking-tight text-slate-500 dark:text-muted-foreground">Loading invite...</p>
+            <p className="text-sm font-bold tracking-tight text-muted-foreground">Loading invite...</p>
           </div>
         )}
 
@@ -174,8 +174,8 @@ export function AcceptInvitePage() {
             <InviteCard preview={preview} inviter={inviter} roleLabel={roleLabel} />
             {status === "preview" ? (
               <>
-                <p className="text-sm text-slate-600 dark:text-muted-foreground">
-                  Sign in or create an account with <strong className="text-slate-900 dark:text-white">{preview.email}</strong> to accept.
+                <p className="text-sm text-muted-foreground">
+                  Sign in or create an account with <strong className="text-foreground">{preview.email}</strong> to accept.
                 </p>
                 <Button
                   onClick={handleSignIn}
@@ -186,8 +186,8 @@ export function AcceptInvitePage() {
               </>
             ) : (
               <>
-                <p className="text-sm text-slate-600 dark:text-muted-foreground">
-                  Accepting as <strong className="text-slate-900 dark:text-white">{user?.email}</strong>
+                <p className="text-sm text-muted-foreground">
+                  Accepting as <strong className="text-foreground">{user?.email}</strong>
                 </p>
                 <Button
                   onClick={handleAccept}
@@ -197,11 +197,11 @@ export function AcceptInvitePage() {
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
                 <div className="flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider">
-                  <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white">
+                  <button onClick={() => { clearPendingInvite(); navigate("/dashboard"); }} className="text-muted-foreground hover:text-foreground">
                     Not now
                   </button>
-                  <span className="text-slate-400 dark:text-muted-foreground">·</span>
-                  <button onClick={handleSwitchAccount} className="text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white">
+                  <span className="text-muted-foreground">·</span>
+                  <button onClick={handleSwitchAccount} className="text-muted-foreground hover:text-foreground">
                     Not you? Switch account
                   </button>
                 </div>
@@ -213,9 +213,9 @@ export function AcceptInvitePage() {
         {status === "unverified" && (
           <div className="space-y-4">
             <EnvelopeSimple className="h-12 w-12 text-brand mx-auto" weight="duotone" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Verify your email</h1>
-            <p className="text-sm text-slate-600 dark:text-muted-foreground">
-              To keep your team secure we need to confirm <strong className="text-slate-900 dark:text-white">{user?.email}</strong> is yours. Open the verification email we sent you, then continue.
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Verify your email</h1>
+            <p className="text-sm text-muted-foreground">
+              To keep your team secure we need to confirm <strong className="text-foreground">{user?.email}</strong> is yours. Open the verification email we sent you, then continue.
             </p>
             {note && <p className="text-xs text-brand font-semibold">{note}</p>}
             <Button
@@ -239,8 +239,8 @@ export function AcceptInvitePage() {
         {status === "wrong-account" && (
           <div className="space-y-4">
             <XCircle className="h-12 w-12 text-amber-500 mx-auto" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Different account</h1>
-            <p className="text-sm text-slate-600 dark:text-muted-foreground">{message}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Different account</h1>
+            <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={handleSwitchAccount}
               className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
@@ -260,8 +260,8 @@ export function AcceptInvitePage() {
         {status === "success" && (
           <div className="space-y-4">
             <CheckCircle className="h-12 w-12 text-brand mx-auto" weight="fill" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Welcome aboard</h1>
-            <p className="text-sm text-slate-600 dark:text-muted-foreground">{message}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome aboard</h1>
+            <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={() => navigate("/dashboard")}
               className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
@@ -274,8 +274,8 @@ export function AcceptInvitePage() {
         {status === "error" && (
           <div className="space-y-4">
             <XCircle className="h-12 w-12 text-red-500 mx-auto" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Oops</h1>
-            <p className="text-sm text-slate-600 dark:text-muted-foreground">{message}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Oops</h1>
+            <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={() => navigate("/")}
               variant="ghost"
@@ -292,7 +292,7 @@ export function AcceptInvitePage() {
 
 function InviteCard({ preview, inviter, roleLabel }: { preview: Preview; inviter: string; roleLabel: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-card p-6 text-left">
+    <div className="rounded-xl border border-border bg-secondary p-6 text-left">
       <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand mb-3">Team invitation</p>
       <div className="flex items-center gap-3 mb-4">
         {preview.logoUrl ? (
@@ -303,17 +303,17 @@ function InviteCard({ preview, inviter, roleLabel }: { preview: Preview; inviter
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">{preview.orgName || "Your team"}</h1>
-          <p className="text-xs text-slate-500 dark:text-muted-foreground">on Dalefy</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground truncate">{preview.orgName || "Your team"}</h1>
+          <p className="text-xs text-muted-foreground">on Dalefy</p>
         </div>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <dt className="text-slate-500 dark:text-muted-foreground">Invited by</dt>
-        <dd className="text-slate-900 dark:text-white font-semibold truncate">{inviter}</dd>
-        <dt className="text-slate-500 dark:text-muted-foreground">Role</dt>
-        <dd className="text-slate-900 dark:text-white font-semibold">{roleLabel}</dd>
-        <dt className="text-slate-500 dark:text-muted-foreground">Sent to</dt>
-        <dd className="text-slate-900 dark:text-white font-semibold truncate">{preview.maskedEmail || preview.email}</dd>
+        <dt className="text-muted-foreground">Invited by</dt>
+        <dd className="text-foreground font-semibold truncate">{inviter}</dd>
+        <dt className="text-muted-foreground">Role</dt>
+        <dd className="text-foreground font-semibold">{roleLabel}</dd>
+        <dt className="text-muted-foreground">Sent to</dt>
+        <dd className="text-foreground font-semibold truncate">{preview.maskedEmail || preview.email}</dd>
       </dl>
     </div>
   );

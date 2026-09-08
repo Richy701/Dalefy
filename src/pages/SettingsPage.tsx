@@ -44,24 +44,24 @@ function Section({ icon: Icon, title, description, children, id, wide }: Section
     <section
       id={id}
       className={cn(
-        "bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl overflow-hidden scroll-mt-20 mb-5 flex flex-col",
+        "bg-card border border-border rounded-xl overflow-hidden scroll-mt-20 mb-5 flex flex-col",
         wide && "lg:col-span-2",
       )}
     >
       <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-        <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-secondary flex items-center justify-center shrink-0">
-          <Icon className="h-4 w-4 text-slate-500 dark:text-muted-foreground" />
+        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+          <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white leading-none">
+          <h2 className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
             {title}
           </h2>
-          <p className="text-[13px] text-slate-500 dark:text-muted-foreground leading-snug mt-1.5">
+          <p className="text-[13px] text-muted-foreground leading-snug mt-1.5">
             {description}
           </p>
         </div>
       </div>
-      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-slate-100 dark:border-border [&>*]:grow">
+      <div className="flex-1 flex flex-col divide-y divide-slate-100 dark:divide-border border-t border-border [&>*]:grow">
         {children}
       </div>
     </section>
@@ -74,11 +74,11 @@ function Row({
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-3.5">
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-slate-900 dark:text-white">
+        <p className="text-[13px] font-medium text-foreground">
           {label}
         </p>
         {value && (
-          <p className="text-[12px] text-slate-500 dark:text-muted-foreground mt-0.5 truncate">
+          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
             {value}
           </p>
         )}
@@ -300,10 +300,10 @@ export function SettingsPage() {
       <PageHeader
         left={
           <div className="flex items-baseline gap-3 min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground truncate">
               Settings
             </h1>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground hidden md:inline">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground hidden md:inline">
               Preferences & Data
             </span>
           </div>
@@ -323,10 +323,10 @@ export function SettingsPage() {
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white truncate">
+                <p className="text-sm font-bold tracking-tight text-foreground truncate">
                   {user?.name ?? ""}
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-muted-foreground truncate">
+                <p className="text-[11px] text-muted-foreground truncate">
                   {user?.email || "No email"}
                 </p>
                 <p className="text-[13px] font-medium text-brand mt-1">
@@ -423,7 +423,7 @@ export function SettingsPage() {
                 action={
                   <div className="flex items-center gap-3">
                     {brandLogo ? (
-                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-slate-200 dark:border-border bg-white dark:bg-background p-0.5" />
+                      <img src={brandLogo} alt="" className="h-9 w-9 rounded-lg object-contain border border-border bg-card p-0.5" />
                     ) : (
                       <div className="h-9 w-9 rounded-lg flex items-center justify-center text-[11px] font-bold text-white" style={{ background: brandColor }}>
                         {(brandName || BRAND.name).charAt(0)}
@@ -441,7 +441,7 @@ export function SettingsPage() {
                     {brandLogo && (
                       <button
                         onClick={() => setBrandLogo("")}
-                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 text-[13px] font-medium text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors"
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 text-[13px] font-medium text-muted-foreground hover:text-red-400 transition-colors"
                       >
                         Remove
                       </button>
@@ -453,10 +453,10 @@ export function SettingsPage() {
               <div className="px-5 py-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6">
                   <div className="min-w-0">
-                    <label htmlFor="settings-agency-code" className="block text-[13px] font-medium text-slate-900 dark:text-white mb-0.5">
+                    <label htmlFor="settings-agency-code" className="block text-[13px] font-medium text-foreground mb-0.5">
                       Agency Code
                     </label>
-                    <p className="text-[11px] text-slate-500 dark:text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       Share this code with your travelers. They enter it when they first open the mobile app to connect to your agency.
                     </p>
                   </div>
@@ -540,10 +540,10 @@ export function SettingsPage() {
               />
               {/* Preview + Save */}
               <div className="px-5 py-4 space-y-3">
-                <p className="text-[13px] font-medium text-slate-500 dark:text-muted-foreground">Preview</p>
+                <p className="text-[13px] font-medium text-muted-foreground">Preview</p>
                 {/* A sample of the shared-page header, so the row reads as the
                     thing being previewed rather than a label stranded from Save. */}
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-background px-4 py-3">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background px-4 py-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {brandLogo ? (
                     <img src={brandLogo} alt="" className="h-6 w-6 rounded object-contain" />
@@ -552,9 +552,9 @@ export function SettingsPage() {
                       {(brandName || BRAND.name).charAt(0)}
                     </div>
                   )}
-                  <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{brandName || BRAND.name}</span>
-                  <span className="text-[11px] text-slate-400 dark:text-muted-foreground">·</span>
-                  <span className="text-[11px] text-slate-400 dark:text-muted-foreground">Powered by {BRAND.name}</span>
+                  <span className="text-[13px] font-semibold text-foreground">{brandName || BRAND.name}</span>
+                  <span className="text-[11px] text-muted-foreground">·</span>
+                  <span className="text-[11px] text-muted-foreground">Powered by {BRAND.name}</span>
                 </div>
                 </div>
                 <div className="flex justify-end">
@@ -597,7 +597,7 @@ export function SettingsPage() {
               action={
                 <button
                   onClick={toggleTheme}
-                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-slate-200 dark:border-border text-slate-600 dark:text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 h-9 w-9 rounded-xl bg-secondary hover:bg-slate-200 dark:hover:bg-secondary border border-border text-muted-foreground hover:text-brand flex items-center justify-center transition-colors"
                 >
                   {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </button>
@@ -687,14 +687,14 @@ export function SettingsPage() {
                   key={s.label}
                   className="flex items-center justify-between gap-3 py-2"
                 >
-                  <span className="text-[13px] font-medium text-slate-700 dark:text-foreground/80">
+                  <span className="text-[13px] font-medium text-foreground/80">
                     {s.label}
                   </span>
                   <div className="flex items-center gap-1">
                     {s.keys.map((k, j) => (
                       <kbd
                         key={j}
-                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border text-[10px] font-bold text-slate-600 dark:text-muted-foreground flex items-center justify-center"
+                        className="min-w-[24px] h-6 px-1.5 rounded-md bg-secondary border border-border text-[10px] font-bold text-muted-foreground flex items-center justify-center"
                       >
                         {k}
                       </kbd>
@@ -706,7 +706,7 @@ export function SettingsPage() {
           </Section>
 
           {/* ── Footer ── */}
-          <div className="lg:col-span-2 border-t border-slate-200 dark:border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-muted-foreground">
+          <div className="lg:col-span-2 border-t border-border pt-6 mt-2 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
             <span>{brand.name}</span>
             <span>v0.4.0 · Build {new Date().getFullYear()}</span>
           </div>

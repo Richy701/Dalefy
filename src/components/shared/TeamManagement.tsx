@@ -13,8 +13,8 @@ import type { OrgRole } from "@/types";
 const ROLE_CONFIG: Record<OrgRole, { icon: typeof Crown; label: string; color: string; blurb: string }> = {
   owner: { icon: Crown, label: "Owner", color: "text-amber-500", blurb: "Full control, including ownership transfer" },
   admin: { icon: Key, label: "Admin", color: "text-brand", blurb: "Manages trips, travelers, branding and the team" },
-  agent: { icon: UserGear, label: "Agent", color: "text-slate-600 dark:text-muted-foreground", blurb: "Builds and edits trips and manages travelers" },
-  viewer: { icon: Eye, label: "Viewer", color: "text-slate-500 dark:text-muted-foreground", blurb: "Views trips and itineraries only" },
+  agent: { icon: UserGear, label: "Agent", color: "text-muted-foreground", blurb: "Builds and edits trips and manages travelers" },
+  viewer: { icon: Eye, label: "Viewer", color: "text-muted-foreground", blurb: "Views trips and itineraries only" },
 };
 
 interface Member {
@@ -150,12 +150,12 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
             <Envelope className="h-4 w-4" weight="bold" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-900 dark:text-white">
+            <p className="text-xs font-bold text-foreground">
               {pendingInviteCount} pending {pendingInviteCount === 1 ? "invite" : "invites"}
             </p>
-            <p className="text-[10px] text-slate-500 dark:text-muted-foreground">Waiting to be accepted. Tap to resend or revoke.</p>
+            <p className="text-[10px] text-muted-foreground">Waiting to be accepted. Tap to resend or revoke.</p>
           </div>
-          <CaretDown className="h-3.5 w-3.5 -rotate-90 text-slate-500 dark:text-muted-foreground" />
+          <CaretDown className="h-3.5 w-3.5 -rotate-90 text-muted-foreground" />
         </button>
       )}
 
@@ -172,7 +172,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
         return (
           <div
             key={member.userId}
-            className="bg-white dark:bg-background border border-slate-200 dark:border-border rounded-xl overflow-hidden"
+            className="bg-card border border-border rounded-xl overflow-hidden"
           >
             <div className="flex items-center gap-3 p-3">
               <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-black text-xs shrink-0">
@@ -180,11 +180,11 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                <p className="text-xs font-bold text-foreground truncate">
                   {member.name}
-                  {isSelf && <span className="ml-1.5 font-semibold text-slate-500 dark:text-muted-foreground">(you)</span>}
+                  {isSelf && <span className="ml-1.5 font-semibold text-muted-foreground">(you)</span>}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-muted-foreground truncate">
+                <p className="text-[10px] text-muted-foreground truncate">
                   {member.email}{member.joinedAt ? ` · ${joinedLabel(member.joinedAt)}` : ""}
                 </p>
               </div>
@@ -193,13 +193,13 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     disabled={!!actionLoading}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[13px] font-mediumwider ${config.color} bg-slate-50 dark:bg-card border border-slate-200 dark:border-border hover:border-brand/30 transition-colors cursor-pointer disabled:opacity-50`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[13px] font-mediumwider ${config.color} bg-secondary border border-border hover:border-brand/30 transition-colors cursor-pointer disabled:opacity-50`}
                   >
                     {busy ? <SpinnerGap className="h-3 w-3 animate-spin" /> : <RoleIcon className="h-3 w-3" />}
                     {config.label}
                     <CaretDown className="h-3 w-3 opacity-40" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[180px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
+                  <DropdownMenuContent align="end" className="min-w-[180px] bg-card border border-border rounded-xl p-1">
                     {canManageRow && (["admin", "agent", "viewer"] as OrgRole[])
                       .filter(r => r !== member.role)
                       .map(r => {
@@ -216,7 +216,7 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
                           </DropdownMenuItem>
                         );
                       })}
-                    {canManageRow && <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />}
+                    {canManageRow && <DropdownMenuSeparator className="bg-secondary" />}
                     {canManageRow && isOwner && (
                       <DropdownMenuItem
                         onClick={() => setPending({ kind: "transfer", userId: member.userId })}
@@ -270,14 +270,14 @@ export function TeamManagement({ onInvite }: TeamManagementProps) {
       })}
 
       {members.length === 0 && !loading && (
-        <p className="text-xs text-slate-500 dark:text-muted-foreground px-1">No team members found.</p>
+        <p className="text-xs text-muted-foreground px-1">No team members found.</p>
       )}
 
       {/* Invite button */}
       {isAdmin && (
         <button
           onClick={onInvite}
-          className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-border rounded-xl text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-colors"
+          className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-brand hover:text-brand transition-colors"
         >
           <UserPlus className="h-4 w-4" />
           <span className="text-[13px] font-medium">Invite member</span>
@@ -316,7 +316,7 @@ function ConfirmStrip({ action, member, orgName, busy, onConfirm, onCancel }: {
     label = "Leave team";
   }
   const tones = {
-    neutral: { wrap: "bg-slate-50 dark:bg-card border-slate-200 dark:border-border", text: "text-slate-700 dark:text-foreground/80", btn: "bg-brand text-black hover:opacity-90" },
+    neutral: { wrap: "bg-secondary border-border", text: "text-foreground/80", btn: "bg-brand text-black hover:opacity-90" },
     warn: { wrap: "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30", text: "text-amber-700 dark:text-amber-400", btn: "bg-amber-500 hover:bg-amber-600 text-white" },
     danger: { wrap: "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30", text: "text-red-600 dark:text-red-400", btn: "bg-red-500 hover:bg-red-600 text-white" },
   }[tone];

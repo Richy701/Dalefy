@@ -32,7 +32,7 @@
      doing all the work. Every value below is contrast-verified against
      its foreground (WCAG AA 4.5:1 minimum for body text). */
   :root {
-    --background: 240 16.1% 93.9%; /* #EDEDF2 page — deep enough that white cards lift */
+    --background: 240 14.3% 97.3%; /* #F7F7F9 page */
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%; /* #FFFFFF */
     --card-foreground: 0 0% 3.9%;
@@ -40,16 +40,16 @@
     --popover-foreground: 0 0% 3.9%;
     --primary: 171 85% 43%; /* Cyber Teal #0bd2b5 */
     --primary-foreground: 0 0% 0%;
-    --secondary: 240 22.2% 96.5%; /* #F4F4F8 inset, sits on a white card */
+    --secondary: 240 12% 95.1%; /* #F1F1F4 raised */
     --secondary-foreground: 0 0% 9%;
-    --muted: 240 22.2% 96.5%;
+    --muted: 240 12% 95.1%;
     --muted-foreground: 219 9.3% 42%; /* #616875 — 5.6:1 card, 5.1:1 inset, 4.8:1 page */
-    --accent: 240 22.2% 96.5%;
+    --accent: 240 12% 95.1%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 15.8% 88.8%; /* #DEDEE7 */
-    --input: 240 15.8% 88.8%;
+    --border: 240 10.2% 90.4%; /* #E4E4E9 */
+    --input: 240 10.2% 90.4%;
     --ring: 171 85% 43%;
     --radius: 0.625rem;
     /* Third elevation tier, for surfaces raised above a card */
@@ -329,18 +329,6 @@ html[data-accent-fg="light"] .daf-sidebar-cal .cal-today { color: #fff !importan
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes landing-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-@keyframes landing-float-alt {
-  0%, 100% { transform: translateY(-10px); }
-  50% { transform: translateY(0); }
-}
-@keyframes landing-glow-pulse {
-  0%, 100% { box-shadow: 0 0 24px rgba(11,210,181,0.25); }
-  50% { box-shadow: 0 0 40px rgba(11,210,181,0.4); }
-}
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -402,33 +390,6 @@ html[data-accent-fg="light"] .daf-sidebar-cal .cal-today { color: #fff !importan
   100% { transform: scale(0.8); opacity: 0.3; }
 }
 
-
-/* Subtle noise texture overlay for dark backgrounds */
-.dark body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
-}
-
-/* Logo shimmer animation */
-.logo-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.logo-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
-}
 
 /* Marquee scrolling strip */
 @keyframes marquee {

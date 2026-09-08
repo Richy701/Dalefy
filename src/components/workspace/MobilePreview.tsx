@@ -490,10 +490,10 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
   return (
     <div className="flex flex-col h-full">
       {/* Controls bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-border shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <DeviceMobileCamera className="h-4 w-4 text-brand" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Mobile Preview</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">Mobile Preview</span>
           {viewAsName && (
             <span className="inline-flex items-center gap-1 h-5 px-2 rounded-md bg-brand/10 text-brand text-[9px] font-black uppercase tracking-[0.12em] truncate max-w-[120px]" title={`Showing what ${viewAsName} sees`}>
               <Users size={10} /> {viewAsName}
@@ -501,7 +501,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border p-0.5">
+          <div className="flex items-center rounded-lg bg-secondary border border-border p-0.5">
             {DEVICES.map(d => (
               <button
                 key={d.key}
@@ -509,7 +509,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 title={d.label}
                 aria-pressed={prefs.device === d.key}
                 onClick={() => updatePrefs({ device: d.key })}
-                className={`h-6 w-7 rounded-md flex items-center justify-center transition-colors ${prefs.device === d.key ? "bg-white dark:bg-card text-brand shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"}`}
+                className={`h-6 w-7 rounded-md flex items-center justify-center transition-colors ${prefs.device === d.key ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {d.key === "iphone" ? <AppleLogo size={13} weight="fill" /> : <AndroidLogo size={13} weight="fill" />}
               </button>
@@ -518,17 +518,17 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
           <Popover>
             <PopoverTrigger
               title="Preview settings"
-              className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors data-popup-open:text-brand"
+              className="h-7 w-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors data-popup-open:text-brand"
             >
               <SlidersHorizontal size={12} weight="bold" />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-0 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-slate-200 dark:border-border">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Preview settings</p>
+              <div className="px-4 py-2.5 border-b border-border">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Preview settings</p>
               </div>
               <div className="divide-y divide-slate-200 dark:divide-border">
                 <div className="px-4 py-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2.5">Finish</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2.5">Finish</p>
                   <div className="flex items-start gap-1">
                     {FINISHES[prefs.device].map(f => {
                       const active = prefs.finish[prefs.device] === f.key;
@@ -548,7 +548,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                               boxShadow: active ? "0 0 0 2px hsl(var(--popover)), 0 0 0 4px rgb(var(--brand-rgb))" : undefined,
                             }}
                           />
-                          <span className={`text-[9px] font-bold tracking-wide ${active ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-muted-foreground"}`}>
+                          <span className={`text-[9px] font-bold tracking-wide ${active ? "text-foreground" : "text-muted-foreground"}`}>
                             {f.label.split(" ").pop()}
                           </span>
                         </button>
@@ -558,26 +558,26 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 </div>
                 <div className="px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground flex items-center gap-1 shrink-0"><TextAa size={11} /> Text size</p>
-                    <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1 shrink-0"><TextAa size={11} /> Text size</p>
+                    <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-secondary p-0.5">
                       {TEXT_SCALES.map(t => (
                         <button
                           key={t.value}
                           type="button"
                           aria-pressed={prefs.textScale === t.value}
                           onClick={() => updatePrefs({ textScale: t.value })}
-                          className={`h-6 px-2 rounded-md text-[10px] font-bold transition-colors ${prefs.textScale === t.value ? "bg-white dark:bg-card text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"}`}
+                          className={`h-6 px-2 rounded-md text-[10px] font-bold transition-colors ${prefs.textScale === t.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                         >
                           {t.label}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Checks readability with larger accessibility text.</p>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">Checks readability with larger accessibility text.</p>
                 </div>
                 <div className="px-4 py-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
                     {prefs.today && (
                       <button
                         type="button"
@@ -588,17 +588,17 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center rounded-lg bg-slate-100 dark:bg-secondary p-0.5">
+                  <div className="flex items-center rounded-lg bg-secondary p-0.5">
                     <button
                       type="button"
                       aria-label="Previous day"
                       disabled={simPrevDisabled}
                       onClick={() => stepSim(-1)}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-slate-600 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
                     >
                       <CaretLeft size={12} weight="bold" />
                     </button>
-                    <span className={`flex-1 text-center text-[11px] font-bold ${prefs.today ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-muted-foreground"}`}>
+                    <span className={`flex-1 text-center text-[11px] font-bold ${prefs.today ? "text-foreground" : "text-muted-foreground"}`}>
                       {simLabel}
                     </span>
                     <button
@@ -606,25 +606,25 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                       aria-label="Next day"
                       disabled={simNextDisabled}
                       onClick={() => stepSim(1)}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-slate-600 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-foreground transition-colors disabled:opacity-30 disabled:pointer-events-none"
                     >
                       <CaretRight size={12} weight="bold" />
                     </button>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-500 dark:text-muted-foreground">Shows past days dimmed and the TODAY badge as travelers will see them.</p>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">Shows past days dimmed and the TODAY badge as travelers will see them.</p>
                 </div>
               </div>
             </PopoverContent>
           </Popover>
           <button
             onClick={() => setPreviewTheme(previewTheme === "dark" ? "light" : "dark")}
-            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
+            className="h-7 w-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors"
           >
             {previewTheme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
           </button>
           <button
             onClick={onClose}
-            className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-secondary border border-slate-200 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors"
+            className="h-7 w-7 rounded-lg bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors"
           >
             <X size={12} />
           </button>

@@ -446,7 +446,7 @@ export function DashboardPage() {
 
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 bg-slate-50 dark:bg-background relative"
+      className="flex flex-col flex-1 min-h-0 bg-background relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -460,7 +460,7 @@ export function DashboardPage() {
               <Upload className="h-7 w-7 text-brand" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Drop to Import</p>
+              <p className="text-xl font-bold tracking-tight text-foreground">Drop to Import</p>
               <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
             </div>
           </div>
@@ -470,9 +470,9 @@ export function DashboardPage() {
       <PageHeader
         left={
           <div className="max-w-full sm:max-w-xs w-full relative group flex items-center">
-            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-brand transition-colors pointer-events-none" />
             <label htmlFor="search-trips" className="sr-only">Search trips</label>
-            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-white dark:bg-card border-none rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
+            <input id="search-trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-9 sm:pl-10 h-10 bg-card border-none rounded-lg text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 w-full text-xs font-medium shadow-inner" />
           </div>
         }
         cta={
@@ -487,12 +487,12 @@ export function DashboardPage() {
         <div className="mx-4 mt-3 mb-0 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/6 px-5 py-3.5">
           <Compass className="h-5 w-5 text-brand shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-900 dark:text-white">Welcome to the demo</p>
-            <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">Browse trips, explore features - sign up to create your own.</p>
+            <p className="text-xs font-bold text-foreground">Welcome to the demo</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Browse trips, explore features - sign up to create your own.</p>
           </div>
           <button
             onClick={() => { setDemoBannerDismissed(true); sessionStorage.setItem("daf-demo-banner-dismissed", "1"); }}
-            className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-secondary transition-colors shrink-0"
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:hover:text-foreground hover:bg-secondary transition-colors shrink-0"
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />
@@ -505,7 +505,7 @@ export function DashboardPage() {
         {!tripsReady ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-4">
             <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">Loading trips</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Loading trips</p>
           </div>
         ) : trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
@@ -523,12 +523,12 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:border-brand/40 hover:text-brand transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-white/5 text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:border-brand/40 hover:text-brand transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
               Supports PDF · DOCX · PPTX · TXT
             </p>
           </div>
@@ -599,14 +599,14 @@ export function DashboardPage() {
 
           {/* ── Next Up - cross-trip agenda ── */}
           {nextEvents.length > 0 && (
-            <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+            <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden">
               <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <p className="text-lg font-semibold tracking-tight text-foreground leading-none">Next up</p>
                   <p className="text-xs text-muted-foreground mt-1">Across all your trips</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 dark:bg-secondary border-t border-slate-100 dark:border-border">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-secondary border-t border-border">
                 {nextEvents.map(({ event: ev, tripName, tripId }) => {
                   return (
                     <button
@@ -614,7 +614,7 @@ export function DashboardPage() {
                       type="button"
                       onClick={() => navigate(`/trip/${tripId}?event=${ev.id}`)}
                       data-compact-cell
-                      className="bg-white dark:bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
+                      className="bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                     >
                       <div className="flex items-center gap-2 mb-2.5">
                         <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
@@ -624,13 +624,13 @@ export function DashboardPage() {
                         {ev.title}
                       </p>
                       {ev.location && (
-                        <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground truncate mt-1 flex items-center gap-1">
+                        <p className="text-[10px] font-medium text-muted-foreground truncate mt-1 flex items-center gap-1">
                           <MapPin className="h-2.5 w-2.5 shrink-0" />{ev.location}
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-2.5 gap-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground truncate">{tripName}</p>
-                        {ev.time && <span className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
+                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground truncate">{tripName}</p>
+                        {ev.time && <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
                       </div>
                     </button>
                   );
@@ -659,32 +659,32 @@ export function DashboardPage() {
                         <button
                           key={trip.id}
                           onClick={() => handleOpenTrip(trip)}
-                          className="group bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                          className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/40 hover:shadow-lg hover:shadow-brand/6 transition-[border-color,box-shadow] duration-200 cursor-pointer"
                         >
                           <img src={trip.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
-                            <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
+                            <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">
                               {trip.name}
                             </p>
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               <span className="flex items-center gap-1 whitespace-nowrap min-w-0"><MapPin className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{trip.destination || "-"}</span></span>
-                              <span className="text-slate-400 dark:text-muted-foreground">·</span>
+                              <span className="text-muted-foreground">·</span>
                               <span className="flex items-center gap-1 whitespace-nowrap"><LucideCalendar className="h-2.5 w-2.5 shrink-0" />{format(parseTripDate(trip.start), "MMM d")}</span>
                               {trip.paxCount && (
                                 <>
-                                  <span className="text-slate-400 dark:text-muted-foreground">·</span>
+                                  <span className="text-muted-foreground">·</span>
                                   <span className="flex items-center gap-1 whitespace-nowrap"><Users className="h-2.5 w-2.5 shrink-0" />{trip.paxCount}</span>
                                 </>
                               )}
                             </div>
                           </div>
-                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="bg-white dark:bg-card border-2 border-dashed border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground">
+                  <div className="bg-card border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
                     <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
@@ -699,7 +699,7 @@ export function DashboardPage() {
                     <h2 className="text-lg font-semibold tracking-tight text-foreground">
                       For your {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]} trip
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">Key events on your itinerary</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Key events on your itinerary</p>
                   </div>
 
                   {spotlightPlaces.length > 0 ? (
@@ -734,13 +734,13 @@ export function DashboardPage() {
                           ev.type === "flight" && (ev.airline || ev.flightNum || ev.duration) ? (
                             <div className="flex items-center gap-2 flex-wrap">
                               {(ev.airline || ev.flightNum) && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
                                   <AirplaneTilt className="h-3 w-3 text-brand" weight="regular" />
                                   {[ev.airline, ev.flightNum].filter(Boolean).join(" · ")}
                                 </span>
                               )}
                               {ev.duration && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
                                   <Clock className="h-3 w-3" weight="regular" />
                                   {ev.duration}
                                 </span>
@@ -749,13 +749,13 @@ export function DashboardPage() {
                           ) : ev.type === "hotel" && (ev.roomType || ev.checkin || ev.checkout) ? (
                             <div className="flex items-center gap-2 flex-wrap">
                               {ev.roomType && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-[#ddd]">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/80 dark:text-[#ddd]">
                                   <Bed className="h-3 w-3 text-brand" weight="regular" />
                                   {ev.roomType}
                                 </span>
                               )}
                               {(ev.checkin || ev.checkout) && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
                                   {ev.checkin || "-"}
                                   <ArrowRight className="h-2.5 w-2.5" weight="bold" />
                                   {ev.checkout || "-"}
@@ -771,7 +771,7 @@ export function DashboardPage() {
                                 </span>
                               )}
                               {ev.endTime && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-muted-foreground">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
                                   <Clock className="h-3 w-3" weight="regular" />
                                   ends {ev.endTime}
                                 </span>
@@ -783,7 +783,7 @@ export function DashboardPage() {
                           <button
                             key={ev.id}
                             onClick={() => handleOpenTrip(spotlightTrip!, ev.id)}
-                            data-compact-place className="text-left bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
+                            data-compact-place className="text-left bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col sm:flex-row flex-1 hover:border-brand/30 hover:shadow-lg hover:shadow-brand/5 transition-[border-color,box-shadow] duration-200 group"
                           >
                             {/* Top/Left: image */}
                             <div data-compact-place-img className="h-28 sm:h-auto sm:w-1/3 sm:max-w-[240px] sm:min-h-[120px] shrink-0 relative overflow-hidden">
@@ -806,17 +806,17 @@ export function DashboardPage() {
                                     {typeLabel}
                                   </div>
                                   {(hasRealTime || monthDayLabel) && (
-                                    <span className="sm:hidden text-[10px] font-bold text-slate-500 dark:text-muted-foreground uppercase tracking-wider shrink-0">
+                                    <span className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                                       {timeParts ? timeParts.join(" ") : monthDayLabel}
                                     </span>
                                   )}
                                 </div>
-                                <p className="mt-1.5 text-sm font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1">
+                                <p className="mt-1.5 text-sm font-black tracking-tight text-foreground leading-tight line-clamp-1">
                                   {ev.title}
                                 </p>
 
                                 {ev.location && (
-                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-muted-foreground min-w-0">
+                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground min-w-0">
                                     <MapPin className="h-3 w-3 shrink-0" weight="regular" />
                                     <span className="truncate">{ev.location}</span>
                                   </div>
@@ -846,19 +846,19 @@ export function DashboardPage() {
 
                             {/* Right: when block - weekday, big time, date (desktop only, shown inline on mobile) */}
                             {(timeParts || eventDate) && (
-                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-slate-100 dark:border-border">
+                              <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-border">
                                 {weekdayLabel && (
-                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">
+                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                                     {weekdayLabel}
                                   </span>
                                 )}
                                 {timeParts ? (
                                   <>
-                                    <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white leading-none tabular-nums mt-0.5">
+                                    <span className="text-2xl font-black tracking-tighter text-foreground leading-none tabular-nums mt-0.5">
                                       {timeParts[0]}
                                     </span>
                                     {timeParts[1] && (
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                         {timeParts[1]}
                                       </span>
                                     )}
@@ -866,7 +866,7 @@ export function DashboardPage() {
                                 ) : null}
                                 {monthDayLabel && (
                                   <span className={cn(
-                                    "text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground",
+                                    "text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
                                     timeParts ? "mt-1" : "mt-0.5",
                                   )}>
                                     {monthDayLabel}
@@ -881,7 +881,7 @@ export function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => handleOpenTrip(spotlightTrip)}
-                      className="mt-4 bg-white dark:bg-card rounded-xl border border-dashed border-black/6 dark:border-transparent flex items-center justify-center py-10 text-slate-500 dark:text-muted-foreground cursor-pointer hover:border-brand/40 transition-colors group"
+                      className="mt-4 bg-card rounded-xl border border-dashed border-border flex items-center justify-center py-10 text-muted-foreground cursor-pointer hover:border-brand/40 transition-colors group"
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
@@ -899,12 +899,12 @@ export function DashboardPage() {
 
               {/* Needs Attention */}
               {attentionItems.length > 0 && (
-                <div className="bg-white dark:bg-card border border-amber-200/50 dark:border-amber-500/10 shadow-sm dark:shadow-none rounded-xl overflow-hidden">
+                <div className="bg-card border border-amber-200/50 dark:border-amber-500/10 shadow-sm rounded-xl overflow-hidden">
                   <div data-compact-card-head className="flex items-center gap-2.5 px-5 pt-5 pb-3">
                     <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
                     <div>
-                      <p className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-none">Needs Attention</p>
-                      <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
+                      <p className="text-base font-black tracking-tight text-foreground leading-none">Needs Attention</p>
+                      <p className="text-xs text-muted-foreground mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
                     </div>
                   </div>
                   <div className="px-3 pb-4 space-y-1">
@@ -920,10 +920,10 @@ export function DashboardPage() {
                           item.severity === "warn" ? "bg-amber-500" : "bg-slate-400 dark:bg-muted-foreground/60"
                         )} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">{item.tripName}</p>
-                          <p className="text-[10px] font-medium text-slate-500 dark:text-muted-foreground mt-0.5">{item.message}</p>
+                          <p className="text-xs font-bold text-foreground truncate group-hover:text-brand transition-colors">{item.tripName}</p>
+                          <p className="text-[10px] font-medium text-muted-foreground mt-0.5">{item.message}</p>
                         </div>
-                        <ArrowUpRight className="h-3 w-3 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                        <ArrowUpRight className="h-3 w-3 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -969,9 +969,9 @@ export function DashboardPage() {
                 };
 
                 return (
-                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden flex-1 flex flex-col">
+                  <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex-1 flex flex-col">
                     <div className="px-4 pt-4 pb-1 flex items-center justify-between">
-                      <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none">Calendar</p>
+                      <p className="text-sm font-black tracking-tight text-foreground leading-none">Calendar</p>
                       <button
                         onClick={() => setCalMonth(new Date())}
                         className="text-[10px] font-bold uppercase tracking-wider text-brand hover:text-brand/80 transition-colors"
@@ -1029,12 +1029,12 @@ export function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
-                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500 dark:text-muted-foreground" />
-                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-slate-900 dark:text-white" />
+                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <input aria-label="Search trips" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="pl-8 h-9 bg-card border border-border shadow-sm rounded-lg text-xs font-medium w-28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 text-foreground" />
                 </div>
-<div className="flex gap-1 bg-white dark:bg-card p-1 rounded-xl border border-black/6 dark:border-transparent shadow-sm dark:shadow-none">
-                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-primary-foreground shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><GridFour className="h-4 w-4" /></button>
-                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-primary-foreground shadow-md" : "text-slate-500 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-white"}`}><List className="h-4 w-4" /></button>
+<div className="flex gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
+                  <button aria-label="Grid view" onClick={() => setDisplayMode("grid")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${displayMode === "grid" ? "bg-brand text-primary-foreground shadow-md" : "text-muted-foreground hover:hover:text-foreground"}`}><GridFour className="h-4 w-4" /></button>
+                  <button aria-label="List view" onClick={() => setDisplayMode("list")} className={`h-9 w-9 rounded-xl flex items-center justify-center transition-[background-color,color] ${displayMode === "list" ? "bg-brand text-primary-foreground shadow-md" : "text-muted-foreground hover:hover:text-foreground"}`}><List className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -1062,9 +1062,9 @@ export function DashboardPage() {
                           <DropdownMenuTrigger aria-label={`Actions for ${trip.name}`} className="h-8 w-8 rounded-lg bg-black/55 backdrop-blur text-white/80 hover:text-white transition-colors flex items-center justify-center cursor-pointer">
                             <DotsThreeVertical className="h-4 w-4" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
+                          <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
+                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as template</DropdownMenuItem>
                             {(!isOrgMember || canDeleteTrip) && (
                               <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-medium text-[13px] text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                             )}
@@ -1108,20 +1108,20 @@ export function DashboardPage() {
                     </div>
                   );
                 })}
-                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-slate-200 dark:border-border flex flex-col items-center justify-center py-12 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[280px]">
+                <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} aria-label="Create new trip" className="group bg-linear-to-br from-slate-50 via-white to-slate-50 dark:from-card dark:via-card dark:to-background rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center py-12 text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer min-h-[280px]">
                   <div className="h-14 w-14 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-brand/15 transition-all duration-300"><Plus className="h-6 w-6" /></div>
                   <p className="text-[13px] font-semibold">New trip</p>
-                  <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">Plan your next adventure</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Plan your next adventure</p>
                 </button>
               </div>
             ) : (
               <div data-compact-list className="flex flex-col gap-3">
                 {filteredTrips.length === 0 && (
-                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent rounded-xl flex flex-col items-center justify-center py-20">
+                  <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center py-20">
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground">No trips yet</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No trips yet</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
@@ -1137,7 +1137,7 @@ export function DashboardPage() {
                       data-compact-table-row
                       onClick={() => handleOpenTrip(trip)}
                       {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))}
-                      className="group bg-white dark:bg-card border border-black/6 dark:border-border shadow-sm dark:shadow-none rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
+                      className="group bg-card border border-border shadow-sm rounded-xl overflow-hidden flex items-stretch cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:border-brand/40 hover:shadow-md transition-[border-color,box-shadow] duration-200"
                     >
                       {/* Image */}
                       <div data-compact-thumb className="w-28 sm:w-36 shrink-0 relative overflow-hidden">
@@ -1148,7 +1148,7 @@ export function DashboardPage() {
                       {/* Content */}
                       <div data-compact-table-content className="flex-1 min-w-0 p-3 sm:p-4 flex flex-col justify-center gap-1.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-[14px] font-semibold tracking-tight text-slate-900 dark:text-white leading-tight truncate group-hover:text-brand transition-colors">
+                          <p className="text-[14px] font-semibold tracking-tight text-foreground leading-tight truncate group-hover:text-brand transition-colors">
                             {trip.name}
                           </p>
                           <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] ${
@@ -1156,7 +1156,7 @@ export function DashboardPage() {
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                               : trip.status === "Published"
                               ? "bg-brand/10 text-brand"
-                              : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-muted-foreground"
+                              : "bg-secondary dark:bg-white/5 text-muted-foreground"
                           }`}>
                             <span className={`h-1 w-1 rounded-full ${
                               isActive ? "bg-emerald-500 dark:bg-emerald-400"
@@ -1191,18 +1191,18 @@ export function DashboardPage() {
                         )}
                         <div onClick={e => e.stopPropagation()} className="flex items-center gap-1.5">
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center justify-center cursor-pointer">
+                            <DropdownMenuTrigger className="h-8 w-8 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors flex items-center justify-center cursor-pointer">
                               <DotsThreeVertical className="h-3.5 w-3.5" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-white dark:bg-card border border-black/6 dark:border-transparent text-slate-900 dark:text-white rounded-xl shadow-2xl p-1" align="end">
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-slate-700 dark:text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
+                            <DropdownMenuContent className="bg-card border border-border text-foreground rounded-xl shadow-2xl p-1" align="end">
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleDuplicateTrip(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-foreground/80"><Copy className="h-3.5 w-3.5" /> Duplicate</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { if (!demoGate()) handleSaveAsTemplate(trip); }} className="gap-2 p-2 rounded-lg font-bold text-xs hover:bg-brand/10 text-foreground/80"><FloppyDisk className="h-3.5 w-3.5" /> Save as Template</DropdownMenuItem>
                               {(!isOrgMember || canDeleteTrip) && (
                                 <DropdownMenuItem onClick={() => { if (!demoGate()) setDeletingTripId(trip.id); }} className="gap-2 p-2 rounded-lg font-bold text-xs text-destructive hover:bg-destructive/10"><Trash className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors" />
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors" />
                         </div>
                       </div>
                     </div>
@@ -1211,7 +1211,7 @@ export function DashboardPage() {
                 {filteredTrips.length > 0 && (
                   <button
                     onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                    className="group bg-white dark:bg-card border border-dashed border-slate-200 dark:border-border rounded-xl flex items-center gap-3 px-4 py-2.5 text-slate-500 dark:text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
+                    className="group bg-card border border-dashed border-border rounded-xl flex items-center gap-3 px-4 py-2.5 text-muted-foreground hover:border-brand hover:text-brand transition-[border-color,color] cursor-pointer"
                   >
                     <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
@@ -1226,7 +1226,7 @@ export function DashboardPage() {
             {templates.length > 0 && (
               <div className="mt-6">
                 <div data-compact-section-head className="flex items-center gap-3 mb-3">
-                  <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Templates</h3>
+                  <h3 className="text-lg font-black tracking-tight text-foreground">Templates</h3>
                   <span className="text-[10px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-lg">{templates.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -1234,17 +1234,17 @@ export function DashboardPage() {
                     <button
                       key={tpl.id}
                       onClick={() => handleCreateFromTemplate(tpl)}
-                      className="group bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
+                      className="group bg-card border border-border shadow-sm rounded-xl p-3 flex items-center gap-3 text-left hover:border-brand/50 hover:shadow-md transition-[border-color,box-shadow] duration-200 cursor-pointer"
                     >
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">{tpl.name}</p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                        <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">{tpl.name}</p>
+                        <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
                           <span className="flex items-center gap-1"><Stack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
                         </div>
                       </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -1259,15 +1259,15 @@ export function DashboardPage() {
       <Drawer.Root open={isNewTripOpen} onOpenChange={setIsNewTripOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-white dark:bg-card border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
-            <div className="mx-auto w-12 h-1 rounded-full bg-slate-200 dark:bg-secondary mt-4 shrink-0" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-xl bg-card border-t border-transparent dark:border-transparent max-h-[90vh] focus:outline-none">
+            <div className="mx-auto w-12 h-1 rounded-full bg-secondary mt-4 shrink-0" />
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">New Trip</Drawer.Title>
-                  <p className="text-[13px] text-slate-500 dark:text-muted-foreground mt-1">Only the title, client and dates are required.</p>
+                  <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">New Trip</Drawer.Title>
+                  <p className="text-[13px] text-muted-foreground mt-1">Only the title, client and dates are required.</p>
                 </div>
-                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors">
+                <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1276,33 +1276,33 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => { setIsNewTripOpen(false); setImportOpen(true); }}
-                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-black/6 dark:border-transparent bg-slate-50 dark:bg-background hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
+                className="w-full mb-8 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border bg-background hover:border-brand/60 hover:bg-brand/5 transition-colors group text-left"
               >
                 <div className="h-9 w-9 rounded-xl bg-brand/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors shrink-0">
                   <Upload className="h-4 w-4 text-brand" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-700 dark:text-white">Import from a file instead</p>
-                  <p className="text-[11px] text-slate-500 dark:text-muted-foreground mt-0.5">PDF, Word, PowerPoint or text, and we'll fill this in for you</p>
+                  <p className="text-[13px] font-semibold text-foreground">Import from a file instead</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">PDF, Word, PowerPoint or text, and we'll fill this in for you</p>
                 </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
+                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
               </button>
 
               <form onSubmit={handleCreateTripSubmit} className="space-y-6 max-w-2xl mx-auto">
                 {/* Title */}
                 <div className="space-y-2">
-                  <Label htmlFor="nt-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Itinerary title</Label>
+                  <Label htmlFor="nt-title" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Itinerary title</Label>
                   <Input id="nt-title" required name="trip-title" autoComplete="off" value={newTripData.name} onChange={e => setNewTripData({ ...newTripData, name: e.target.value })} placeholder="Name the trip, e.g. Kenya Safari 2026"
                     className="w-full text-lg font-semibold tracking-tight" />
                 </div>
 
                 {/* Trip Type */}
                 <div className="space-y-2">
-                  <span id="nt-type-label" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Trip type</span>
+                  <span id="nt-type-label" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Trip type</span>
                   <div className="flex flex-wrap gap-2" role="group" aria-labelledby="nt-type-label">
                     {["Leisure", "FAM Trip", "Honeymoon", "Corporate", "Adventure", "Group", "Cruise"].map(t => (
                       <button key={t} type="button" aria-pressed={newTripData.tripType === t} onClick={() => setNewTripData({ ...newTripData, tripType: newTripData.tripType === t ? "" : t })}
-                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border ${newTripData.tripType === t ? "bg-brand text-primary-foreground border-brand shadow-lg shadow-brand/20" : "bg-slate-50 dark:bg-background border-black/6 dark:border-transparent text-slate-500 dark:text-muted-foreground hover:border-brand/40"}`}>
+                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border ${newTripData.tripType === t ? "bg-brand text-primary-foreground border-brand shadow-lg shadow-brand/20" : "bg-background border-border text-muted-foreground hover:border-brand/40"}`}>
                         {t}
                       </button>
                     ))}
@@ -1312,12 +1312,12 @@ export function DashboardPage() {
                 {/* Destination + Pax */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <Label htmlFor="nt-destination" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</Label>
+                    <Label htmlFor="nt-destination" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><MapPin className="h-3 w-3" /> Destination</Label>
                     <Input id="nt-destination" name="destination" autoComplete="off" value={newTripData.destination} onChange={e => setNewTripData({ ...newTripData, destination: e.target.value })} placeholder="Where are they going?"
                       className="w-full" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nt-pax" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Travelers</Label>
+                    <Label htmlFor="nt-pax" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Travelers</Label>
                     <Input id="nt-pax" type="number" min="1" name="pax-count" autoComplete="off" value={newTripData.paxCount} onChange={e => setNewTripData({ ...newTripData, paxCount: e.target.value })} placeholder="How many"
                       className="w-full" />
                   </div>
@@ -1325,7 +1325,7 @@ export function DashboardPage() {
 
                 {/* Group */}
                 <div className="space-y-2">
-                  <Label htmlFor="nt-group" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / client</Label>
+                  <Label htmlFor="nt-group" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><Briefcase className="h-3 w-3" /> Group / client</Label>
                   <Input id="nt-group" required name="attendees" autoComplete="organization" value={newTripData.attendees} onChange={e => setNewTripData({ ...newTripData, attendees: e.target.value })} placeholder="Who is this trip for?"
                     className="w-full" />
                 </div>
@@ -1333,41 +1333,41 @@ export function DashboardPage() {
                 {/* Travel Dates - inline to avoid Popover/Drawer z-index conflict */}
                 <div className="space-y-3" id="nt-dates">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><LucideCalendar className="h-3 w-3" /> Travel dates</span>
                     {newTripData.dateRange?.from && newTripData.dateRange?.to && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-brand">
                           {format(newTripData.dateRange.from, "MMM d")} – {format(newTripData.dateRange.to, "MMM d, yyyy")}
                         </span>
-                        <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-slate-500 dark:text-muted-foreground hover:text-red-400 transition-colors">Clear</button>
+                        <button type="button" onClick={() => setNewTripData({ ...newTripData, dateRange: undefined })} className="text-[10px] font-bold text-muted-foreground hover:text-red-400 transition-colors">Clear</button>
                       </div>
                     )}
                   </div>
-                  <div className={`rounded-xl border bg-slate-50 dark:bg-background w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 dark:border-border"}`}>
+                  <div className={`rounded-xl border bg-background w-full ${newTripDateError ? "border-red-500" : "border-slate-200/80 border-border"}`}>
                     <Calendar mode="range" defaultMonth={newTripData.dateRange?.from ?? new Date()} selected={newTripData.dateRange} onSelect={range => { setNewTripData({ ...newTripData, dateRange: range }); if (range?.from && range?.to) setNewTripDateError(null); }} numberOfMonths={1} className="w-full" />
                   </div>
                   {newTripDateError
                     ? <p className="text-[11px] font-semibold text-red-500">{newTripDateError}</p>
-                    : <p className="text-[11px] text-slate-500 dark:text-muted-foreground">Pick the first and last day of the trip.</p>}
+                    : <p className="text-[11px] text-muted-foreground">Pick the first and last day of the trip.</p>}
                 </div>
 
                 {/* ── Optional extras ── */}
-                <Collapsible className="rounded-xl border border-slate-200/80 dark:border-border overflow-hidden">
-                  <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-background transition-colors group/nt">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">Budget &amp; cover image</span>
+                <Collapsible className="rounded-xl border border-slate-200/80 border-border overflow-hidden">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-secondary transition-colors group/nt">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Budget &amp; cover image</span>
                     <span className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {[newTripData.budget, newTripData.image?.startsWith("http") ? "img" : ""].filter(Boolean).length
                           ? `${[newTripData.budget, newTripData.image?.startsWith("http") ? "img" : ""].filter(Boolean).length} set`
                           : "Optional"}
                       </span>
-                      <CaretDown className="h-3.5 w-3.5 text-slate-400 dark:text-muted-foreground transition-transform group-data-[panel-open]/nt:rotate-180" />
+                      <CaretDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[panel-open]/nt:rotate-180" />
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="p-4 pt-1 space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="nt-budget" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total budget</Label>
+                  <Label htmlFor="nt-budget" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2"><CurrencyDollar className="h-3 w-3" /> Total budget</Label>
                   <div className="flex gap-2">
                     <Input
                       id="nt-budget"
@@ -1394,7 +1394,7 @@ export function DashboardPage() {
 
                 {/* Cover Image */}
                 <div className="space-y-3">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground flex items-center gap-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground flex items-center gap-2">
                     <ImageIcon className="h-3 w-3" /> Cover image
                   </Label>
                   {/* Preview */}
@@ -1407,7 +1407,7 @@ export function DashboardPage() {
                   {/* Search bar */}
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 dark:text-muted-foreground pointer-events-none" />
+                      <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                       <Input
                         value={coverSearch}
                         onChange={e => setCoverSearch(e.target.value)}
@@ -1424,25 +1424,25 @@ export function DashboardPage() {
                     {coverResults.length > 0 && (
                       <>
                         <button type="button" aria-label="Refresh" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage)} disabled={isCoverSearching}
-                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <ArrowClockwise className={`h-3.5 w-3.5 ${isCoverSearching ? "animate-spin" : ""}`} />
                         </button>
                         <button type="button" aria-label="Next page" onClick={() => runCoverSearch(coverLastQuery || coverSearch, coverPage + 1)} disabled={isCoverSearching}
-                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
+                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-brand transition-colors shrink-0 disabled:opacity-40">
                           <CaretRight className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setCoverResults([]); setCoverSearch(""); setCoverPage(1); setCoverLastQuery(""); }}
-                          className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-secondary border border-slate-200/80 dark:border-border flex items-center justify-center text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white transition-colors shrink-0">
+                          className="h-9 w-9 rounded-xl bg-secondary border border-slate-200/80 border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0">
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
                     )}
                   </div>
-                  {coverNotice && <p className="text-[11px] text-slate-500 dark:text-muted-foreground">{coverNotice}</p>}
+                  {coverNotice && <p className="text-[11px] text-muted-foreground">{coverNotice}</p>}
                   {/* Thumbnail grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {isCoverSearching ? (
-                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-slate-500 dark:text-muted-foreground">
+                      <div className="col-span-2 sm:col-span-4 flex items-center justify-center h-20 gap-2 text-muted-foreground">
                         <SpinnerGap className="h-4 w-4 animate-spin text-brand" />
                         <span className="text-xs font-bold uppercase tracking-wider">Searching…</span>
                       </div>
@@ -1473,7 +1473,7 @@ export function DashboardPage() {
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setIsNewTripOpen(false)}
-                    className="flex-1 h-10 rounded-xl bg-slate-50 dark:bg-background border border-transparent dark:border-transparent text-slate-500 dark:text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white hover:border-black/10 dark:hover:border-white/10 transition-all">
+                    className="flex-1 h-10 rounded-xl bg-background border border-transparent dark:border-transparent text-muted-foreground text-xs font-black uppercase tracking-wider hover:text-foreground hover:border-black/10 dark:hover:border-white/10 transition-all">
                     Cancel
                   </button>
                   <button type="submit"

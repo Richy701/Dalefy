@@ -30,7 +30,7 @@ export function PageHeader({ left, cta }: PageHeaderProps) {
         <button
           aria-label="Toggle theme"
           onClick={toggleTheme}
-          className="h-10 w-10 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-500 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors flex items-center justify-center"
+          className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:text-brand hover:bg-secondary transition-colors flex items-center justify-center"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>

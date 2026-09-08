@@ -91,25 +91,25 @@ export function ColorPicker({
       <PopoverTrigger
         aria-label={`Accent colour: ${isMono ? "Monochrome" : nameFor(displayValue)}. Change it`}
         className={cn(
-          "flex items-center gap-2.5 h-10 pl-2 pr-3 rounded-lg bg-white dark:bg-background border border-slate-200 dark:border-border hover:border-slate-300 dark:hover:border-input transition-colors cursor-pointer",
+          "flex items-center gap-2.5 h-10 pl-2 pr-3 rounded-lg bg-card border border-border hover:border-slate-300 dark:hover:border-input transition-colors cursor-pointer",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1",
           className
         )}
       >
-        <span className="h-6 w-6 rounded-md shrink-0 border border-slate-200 dark:border-border overflow-hidden">
+        <span className="h-6 w-6 rounded-md shrink-0 border border-border overflow-hidden">
           {isMono
             ? <MonoSwatch radius="rounded-md" />
             : <span className="block h-full w-full" style={{ backgroundColor: displayValue }} />}
         </span>
-        <span className="text-[13px] font-medium text-slate-700 dark:text-foreground/80">
+        <span className="text-[13px] font-medium text-foreground/80">
           {isMono ? "Monochrome" : nameFor(displayValue)}
         </span>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-[248px] p-3 bg-white dark:bg-card border-slate-200 dark:border-border">
+      <PopoverContent align="end" className="w-[248px] p-3 bg-card border-border">
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground mb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-2">
               Presets
             </p>
             <div className="grid grid-cols-5 gap-1">
@@ -125,7 +125,7 @@ export function ColorPicker({
                     aria-pressed={isActive}
                     title={nameFor(preset)}
                     // 40px hit area around a 24px swatch keeps the target reachable
-                    className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-secondary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+                    className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
                   >
                     <span
                       className={cn(
@@ -133,7 +133,7 @@ export function ColorPicker({
                         // a neutral ring stays visible even when the accent itself is mono
                         isActive
                           ? "border-foreground ring-2 ring-foreground/30 scale-105"
-                          : "border-slate-200 dark:border-border",
+                          : "border-border",
                       )}
                       style={isMonoPreset ? undefined : { backgroundColor: preset }}
                     >
@@ -146,8 +146,8 @@ export function ColorPicker({
           </div>
 
           {!isMono && (
-            <div className="flex flex-col gap-2 border-t border-slate-100 dark:border-border pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-muted-foreground">
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 Custom
               </p>
               <HexColorPicker
@@ -169,7 +169,7 @@ export function ColorPicker({
                 <p
                   className={cn(
                     "text-[11px] leading-snug",
-                    legibility.ok ? "text-slate-500 dark:text-muted-foreground" : "text-amber-600 dark:text-amber-400",
+                    legibility.ok ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400",
                   )}
                 >
                   {legibility.ok

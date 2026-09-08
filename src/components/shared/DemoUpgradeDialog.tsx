@@ -21,15 +21,15 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm bg-white dark:bg-card rounded-xl border border-slate-200 dark:border-border p-6 shadow-2xl">
+      <DialogContent className="max-w-sm bg-card rounded-xl border border-border p-6 shadow-2xl">
         <DialogHeader className="space-y-4 text-center items-center">
           <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto">
             <Lock className="h-6 w-6 text-brand" />
           </div>
-          <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <DialogTitle className="text-xl font-extrabold tracking-tight text-foreground">
             Demo Mode
           </DialogTitle>
-          <DialogDescription className="text-slate-500 dark:text-muted-foreground text-sm leading-relaxed">
+          <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
             You're exploring the demo. This action needs a real team account. Sign in with your invited account to continue.
           </DialogDescription>
         </DialogHeader>
@@ -43,7 +43,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="w-full rounded-xl h-10 px-6 font-bold text-slate-500 dark:text-muted-foreground hover:bg-slate-100 dark:hover:bg-secondary"
+            className="w-full rounded-xl h-10 px-6 font-bold text-muted-foreground hover:bg-secondary"
           >
             Keep Exploring
           </Button>

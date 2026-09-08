@@ -26,8 +26,8 @@ function PageErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold tracking-wide text-slate-900 dark:text-white">Something went wrong</h2>
-        <p className="text-sm text-slate-500 dark:text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
+        <h2 className="text-lg font-bold tracking-wide text-foreground">Something went wrong</h2>
+        <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
         <button
           onClick={resetErrorBoundary}
           className="h-10 px-6 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
@@ -62,10 +62,10 @@ export function AppLayout() {
     <TooltipProvider>
       <SidebarProvider
         defaultOpen={true}
-        className="font-sans antialiased text-slate-900 dark:text-white selection:bg-brand/30"
+        className="font-sans antialiased text-foreground selection:bg-brand/30"
       >
         <AppSidebar />
-        <SidebarInset className="bg-slate-50 dark:bg-background h-dvh overflow-hidden flex flex-col">
+        <SidebarInset className="bg-background h-dvh overflow-hidden flex flex-col">
           <EmailVerificationBanner />
           <div className="flex-1 flex flex-col overflow-hidden">
             <ErrorBoundary FallbackComponent={PageErrorFallback}>

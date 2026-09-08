@@ -157,7 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Logo className="h-5 w-5 text-sidebar-foreground shrink-0" />
               )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right" className="min-w-[220px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
+            <DropdownMenuContent align="start" side="right" className="min-w-[220px] bg-card border border-border rounded-xl p-1">
               {orgs.map(o => (
                 <DropdownMenuItem
                   key={o.id}
@@ -179,7 +179,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {brand.logoUrl ? (
                   <img src={brand.logoUrl} alt="" className="h-8 w-8 rounded-xl object-contain shrink-0" />
                 ) : (
-                  <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                  <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0">
                     <Logo className="text-black h-[18px] w-[18px]" />
                   </div>
                 )}
@@ -193,7 +193,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
                 <CaretUpDown className="h-3.5 w-3.5 text-sidebar-muted-foreground shrink-0" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl p-1">
+            <DropdownMenuContent align="start" className="min-w-[220px] bg-card border border-border rounded-xl p-1">
               {orgs.map(o => (
                 <DropdownMenuItem
                   key={o.id}
@@ -223,7 +223,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {brand.logoUrl ? (
                 <img src={brand.logoUrl} alt="" className="h-8 w-8 rounded-xl object-contain shrink-0" />
               ) : (
-                <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0 logo-shimmer">
+                <div className="h-8 w-8 bg-brand rounded-xl flex items-center justify-center shrink-0">
                   <Logo className="text-black h-[18px] w-[18px]" />
                 </div>
               )}

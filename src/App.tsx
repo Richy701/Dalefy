@@ -57,10 +57,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthLoadingScreen() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background flex flex-col items-center justify-center gap-6">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
       <div className="flex items-center gap-3">
         <Logo className="h-10 w-10 text-brand" />
-        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <span className="text-2xl font-bold tracking-tight text-foreground">
           {BRAND.name}
         </span>
       </div>
@@ -69,7 +69,7 @@ function AuthLoadingScreen() {
         <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:150ms]" />
         <div className="h-1.5 w-1.5 rounded-full bg-brand animate-bounce [animation-delay:300ms]" />
       </div>
-      <p className="text-sm text-slate-500 dark:text-muted-foreground">Loading your workspace</p>
+      <p className="text-sm text-muted-foreground">Loading your workspace</p>
     </div>
   );
 }
@@ -122,14 +122,12 @@ function AppToaster() {
       theme={theme}
       toastOptions={{
         style: {
-          background: "#111111",
-          border: "1px solid #1f1f1f",
-          color: "#ffffff",
+          background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border))",
+          color: "hsl(var(--foreground))",
           fontFamily: "inherit",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.05em",
-          textTransform: "uppercase",
+          fontSize: "13px",
+          fontWeight: 500,
         },
       }}
     />
@@ -138,15 +136,15 @@ function AppToaster() {
 
 function AppErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="text-center max-w-md space-y-6">
         <div className="h-16 w-16 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto">
           <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">App Error</h1>
-        <p className="text-sm text-slate-500 dark:text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">App Error</h1>
+        <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
         <button
           onClick={resetErrorBoundary}
           className="h-12 px-8 rounded-xl bg-brand text-black text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-xl shadow-brand/20"
