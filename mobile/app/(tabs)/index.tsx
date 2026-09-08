@@ -6,7 +6,7 @@ import {
 import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
+  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withSpring, withDelay, withTiming,
   Easing, FadeInDown,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
@@ -1071,6 +1071,15 @@ export default function HomeScreen() {
   }, [heroTrip]);
 
   const fmtDay = shortDay;
+  // Pulling past the top stretches the photo from its top edge instead of dragging it off the status bar
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y; });
+  const heroH = HERO_H + insets.top;
+  const heroStretch = useAnimatedStyle(() => {
+    const y = scrollY.value;
+    if (y >= 0) return { transform: [{ translateY: 0 }, { scale: 1 }] };
+    return { transform: [{ translateY: y / 2 }, { scale: 1 - y / heroH }] };
+  });
   const factLine = tripFactLine;
 
   // Ground the photo fades into: the page colour, thinner in light mode so the photo keeps
@@ -1085,12 +1094,14 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + S.xs }]}
         keyboardShouldPersistTaps="handled"
         bounces={true}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} style={{ zIndex: 5 }} />}
       >
         {/* ── The photo, blurred, sits behind the whole page; a scrim rises to the page colour ── */}
         {ready && heroTrip ? (
@@ -1127,6 +1138,7 @@ export default function HomeScreen() {
             >
               <View style={[styles.hero, { height: HERO_H + insets.top }]}>
                 {/* Sharp photo dissolves into the blurred wash beneath it, so there is no edge */}
+                <Animated.View style={[StyleSheet.absoluteFill, heroStretch]}>
                 <MaskedView
                   style={StyleSheet.absoluteFill}
                   maskElement={
@@ -1136,6 +1148,7 @@ export default function HomeScreen() {
                   <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} />
                 </MaskedView>
                 <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} />
+                </Animated.View>
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
                   <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{heroTrip.name}</Text>
@@ -1300,7 +1313,7 @@ export default function HomeScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -1313,7 +1326,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     section: { marginTop: S.lg },
 
     // ── Cover ──
-    hero: { overflow: "hidden", justifyContent: "flex-end" },
+    hero: { justifyContent: "flex-end" },
     heroBody: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
     heroShadow: isDark ? {
       textShadowColor: "rgba(0,0,0,0.6)",
