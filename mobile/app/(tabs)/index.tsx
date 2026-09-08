@@ -37,7 +37,6 @@ import * as Clipboard from "expo-clipboard";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
-import { ScrollHost } from "@/components/ScrollHost";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -1086,7 +1085,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScrollHost>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: Platform.OS === "ios" ? S["2xl"] : TAB_BAR_HEIGHT + S.lg }]}
@@ -1303,7 +1301,6 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
-      </ScrollHost>
     </View>
   );
 }
