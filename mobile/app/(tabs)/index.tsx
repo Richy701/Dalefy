@@ -24,7 +24,7 @@ import MaskedView from "@react-native-masked-view/masked-view";
 import * as Haptics from "expo-haptics";
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
-import { daysUntil, tripFactLine, shortDay } from "@/shared/tripSummary";
+import { daysUntil, tripFactLine, tripLengthDays, shortDay, destinationFlag } from "@/shared/tripSummary";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
@@ -37,6 +37,7 @@ import * as Clipboard from "expo-clipboard";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
+import { ScrollHost } from "@/components/ScrollHost";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -45,7 +46,6 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
-import { StatusIndicator } from "@/components/StatusIndicator";
 
 const ON_RED = "#fff";
 const HERO_H = 300;
@@ -927,6 +927,8 @@ function TripRow({ trip }: { trip: Trip }) {
   const days    = daysUntil(trip.start);
   const isPast  = daysUntil(trip.end) < 0;
   const isActive = days <= 0 && !isPast;
+  const flag = destinationFlag(trip.destination);
+  const dateRange = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   const renderRightActions = useCallback(() => (
     <View style={{ flexDirection: "row" }}>
@@ -979,28 +981,16 @@ function TripRow({ trip }: { trip: Trip }) {
         <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
       )}
       <View style={styles.rowBody}>
+        <Text style={styles.rowName} numberOfLines={1}>{trip.name}</Text>
         {trip.destination ? (
-          <Text style={styles.rowDest}>{trip.destination.toUpperCase()}</Text>
-        ) : null}
-        <Text style={styles.rowName} numberOfLines={2}>{trip.name}</Text>
-        <View style={styles.rowDateRow}>
-          <CalendarDots size={9} color={C.textTertiary} weight="regular" />
-          <Text style={styles.rowDate} numberOfLines={1}>
-            {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            {" – "}
-            {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          <Text style={styles.rowDest} numberOfLines={1}>
+            {flag ? `${flag}  ` : ""}{trip.destination}
           </Text>
-        </View>
+        ) : null}
+        <Text style={[styles.rowFact, isActive && { color: C.tealText }]} numberOfLines={1}>
+          {isPast ? `${dateRange} · ${tripLengthDays(trip)} days` : tripFactLine(trip)}
+        </Text>
       </View>
-      {!isPast && days > 0 ? (
-        <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`${days}d`} />
-      ) : isPast ? (
-        <Pill tone="neutral" label="Past" />
-      ) : isActive ? (
-        <Pill tone="accent" icon={<StatusIndicator state="live" size={5} color={C.onAccent} />} label="Active" />
-      ) : (
-        <Pill tone="neutral" label={trip.status} />
-      )}
       <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center", marginLeft: 2 }} />
     </ScalePress>
     </Link>
@@ -1096,9 +1086,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.safe}>
+      <ScrollHost>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: Platform.OS === "ios" ? S["2xl"] : TAB_BAR_HEIGHT + S.lg }]}
         keyboardShouldPersistTaps="handled"
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
@@ -1312,6 +1303,7 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      </ScrollHost>
     </View>
   );
 }
@@ -1390,20 +1382,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: S.sm },
     rowDivider: {
       height: StyleSheet.hairlineWidth, backgroundColor: C.border,
-      marginLeft: S.md + 72 + S.md,
+      marginLeft: S.md + 60 + S.md,
     },
-    rowThumb: { width: 72, height: 72, borderRadius: R.xl, backgroundColor: C.elevated },
-    rowBody: { flex: 1 },
-    rowDest: {
-      fontSize: T.xs, fontFamily: F.bold, lineHeight: 14, includeFontPadding: false, color: C.tealText,
-      letterSpacing: 1, textTransform: "uppercase", marginBottom: 2,
-    },
-    rowName: {
-      fontSize: T.base, fontWeight: T.bold,
-      color: C.textPrimary, marginBottom: 3,
-    },
-    rowDateRow: { flexDirection: "row", alignItems: "center", gap: 5, flex: 1 },
-    rowDate: { fontSize: T.sm, color: C.textTertiary, fontWeight: T.medium, flexShrink: 1 },
+    rowThumb: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.elevated },
+    rowBody: { flex: 1, gap: 2 },
+    rowName: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
+    rowDest: { fontSize: T.sm, color: C.textSecondary },
+    rowFact: { fontSize: T.sm, color: C.textTertiary },
     photoStrip: { gap: S.sm2, paddingHorizontal: S.md, paddingBottom: S.md },
     latestPhoto: {
       width: 104, height: 138, borderRadius: R.sm,
