@@ -57,7 +57,7 @@ export function HotelSearch({ onSelect, defaultCheckin, defaultCheckout }: Props
   return (
     <div className="border-b border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Live Hotel Search</p>
+        <p className="text-sm font-semibold text-foreground mb-2">Live Hotel Search</p>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           <div className="col-span-2 sm:flex-[1.5] sm:min-w-[120px]">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>

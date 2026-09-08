@@ -90,7 +90,7 @@ export function FlightSearch({ onSelect, defaultDate }: Props) {
     <div className="border-b border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand">Flight Search</p>
+          <p className="text-sm font-semibold text-foreground">Look up a flight</p>
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
             <button type="button" onClick={() => setMode("number")} className={tabCls(mode === "number")}>
               <Hash className="h-2.5 w-2.5" />

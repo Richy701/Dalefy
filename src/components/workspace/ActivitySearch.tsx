@@ -48,7 +48,7 @@ export function ActivitySearch({ onSelect, defaultLocation }: Props) {
   return (
     <div className="border-b border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Activity Search</p>
+        <p className="text-sm font-semibold text-foreground mb-2">Find an activity</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>

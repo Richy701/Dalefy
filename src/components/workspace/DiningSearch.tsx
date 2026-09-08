@@ -48,7 +48,7 @@ export function DiningSearch({ onSelect, defaultLocation }: Props) {
   return (
     <div className="border-b border-border">
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-2">Restaurant Search</p>
+        <p className="text-sm font-semibold text-foreground mb-2">Restaurant Search</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <label className="text-[11px] font-medium text-muted-foreground block mb-1">Location</label>

@@ -69,7 +69,7 @@ import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
 import { parseTripDate, parseEventDateTime } from "@/lib/dates";
 import { tripFactLine, shortDay } from "@/lib/tripSummary";
-import { CATEGORY_CLASS } from "@/components/ui/category-dot";
+import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
@@ -2022,7 +2022,7 @@ export function WorkspacePage() {
             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                  {editingEvent?.title ? "Edit Travel Event" : "Add Event to Itinerary"}
+                  {editingEvent?.title ? "Edit event" : "New event"}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">Anything left blank can be filled in later.</p>
               </div>
@@ -2048,7 +2048,7 @@ export function WorkspacePage() {
             <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
               <div>
                 {/* Category tabs */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-border">
+                <div className="flex flex-wrap gap-2 px-4 sm:px-6 pt-4 pb-1">
                   {([
                     { id: "flight", label: "Flight", icon: AirplaneTilt },
                     { id: "hotel", label: "Hotel", icon: Bed },
@@ -2057,9 +2057,10 @@ export function WorkspacePage() {
                     { id: "transfer", label: "Transfer", icon: Car },
                   ] as const).map(cat => (
                     <button key={cat.id} type="button" onClick={() => setEditingEvent(prev => prev ? { ...prev, type: cat.id } : null)}
-                      className={`flex flex-col items-center justify-center py-2.5 gap-1.5 border-b-2 transition-all ${editingEvent?.type === cat.id ? "border-brand bg-brand/5 text-brand" : "border-transparent text-muted-foreground hover:text-slate-600 dark:hover:text-muted-foreground hover:bg-secondary"}`}>
-                      <cat.icon className="h-5 w-5" />
-                      <span className="text-[11px] font-semibold">{cat.label}</span>
+                      aria-pressed={editingEvent?.type === cat.id}
+                      className={`flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-lg border transition-colors ${editingEvent?.type === cat.id ? "border-foreground/30 bg-secondary text-foreground" : "border-border text-muted-foreground hover:bg-secondary/60 hover:text-foreground"}`}>
+                      <CategoryDot type={cat.id} size="sm" />
+                      <span className="text-sm font-medium">{cat.label}</span>
                     </button>
                   ))}
                 </div>
@@ -2100,7 +2101,7 @@ export function WorkspacePage() {
                 )}
 
                 <div className="px-4 sm:px-6 pt-4 pb-1">
-                  <span className="text-xs font-medium text-muted-foreground">Essentials</span>
+                  <span className="text-sm font-semibold text-foreground">Essentials</span>
                 </div>
                 <div className="px-4 sm:px-6 pb-5 pt-1 space-y-5">
                   {/* Title - large underline style */}
@@ -2244,7 +2245,7 @@ export function WorkspacePage() {
                 {/* ── Details: everything optional, collapsed by default ── */}
                 <Collapsible className="border-t border-border">
                   <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                    <span className="text-xs font-medium text-muted-foreground">Details</span>
+                    <span className="text-sm font-semibold text-foreground">Details</span>
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] text-muted-foreground">
                         {[editingEvent?.supplier, editingEvent?.confNumber, editingEvent?.price].filter(Boolean).length || "Optional"}
@@ -2357,7 +2358,7 @@ export function WorkspacePage() {
               {/* ── Media: image, photos and documents, collapsed by default ── */}
               <Collapsible className="border-t border-border">
                 <CollapsibleTrigger className="w-full flex items-center justify-between px-4 sm:px-6 py-3.5 text-left hover:bg-secondary transition-colors group/sec">
-                  <span className="text-xs font-medium text-muted-foreground">Media &amp; documents</span>
+                  <span className="text-sm font-semibold text-foreground">Media &amp; documents</span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground">
                       {(() => {
