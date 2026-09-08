@@ -1481,12 +1481,12 @@ export function TravelersPage() {
                     {/* Quick stats */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-secondary border border-border">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Trips</p>
-                        <p className="text-2xl font-black tracking-tighter text-foreground mt-1">{panelUser.trips.length}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground">Trips</p>
+                        <p className="text-2xl font-semibold tracking-tighter text-foreground mt-1">{panelUser.trips.length}</p>
                       </div>
                       <div className="p-3.5 rounded-xl bg-secondary border border-border">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Role</p>
-                        <p className="text-2xl font-black tracking-tighter text-foreground mt-1 capitalize">
+                        <p className="text-[11px] font-medium text-muted-foreground">Role</p>
+                        <p className="text-2xl font-semibold tracking-tighter text-foreground mt-1 capitalize">
                           {panelUser.trips.some(t => t.role === "leader") ? "Leader" : "Traveler"}
                         </p>
                       </div>
@@ -1504,14 +1504,14 @@ export function TravelersPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-foreground truncate">{t.name}</p>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5">
+                                <p className="text-[11px] font-medium text-muted-foreground mt-0.5">
                                   Joined {new Date(t.joinedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   onClick={() => handleToggleRole(panelUser.deviceId, t.id, t.role)}
-                                  className={`h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
+                                  className={`h-8 px-3 rounded-lg text-[11px] font-medium transition-all flex items-center gap-1.5 ${
                                     t.role === "leader"
                                       ? "bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30 hover:bg-amber-500/25"
                                       : "bg-card text-muted-foreground ring-1 ring-slate-200 dark:ring-[#333] hover:ring-brand/40 hover:text-brand"
@@ -1552,7 +1552,7 @@ export function TravelersPage() {
                               {i === 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                             </div>
                             <div className="ml-1">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                              <p className="text-[11px] font-medium text-muted-foreground">
                                 {new Date(t.joinedAt).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })}
                               </p>
                               <p className="text-xs font-bold text-foreground mt-0.5">
@@ -1637,7 +1637,7 @@ export function TravelersPage() {
               <form onSubmit={handleAddTraveler} className="space-y-6 max-w-lg mx-auto">
                 {/* Name */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  <Label className="text-xs font-medium text-muted-foreground">
                     <User className="h-3 w-3" /> Full Name
                   </Label>
                   <Input
@@ -1651,7 +1651,7 @@ export function TravelersPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  <Label className="text-xs font-medium text-muted-foreground">
                     <Envelope className="h-3 w-3" /> Email Address
                   </Label>
                   <Input
@@ -1666,7 +1666,7 @@ export function TravelersPage() {
 
                 {/* Role */}
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  <Label className="text-xs font-medium text-muted-foreground">
                     <Briefcase className="h-3 w-3" /> Role
                   </Label>
                   <Input
@@ -1753,7 +1753,7 @@ export function TravelersPage() {
                   <Label className="text-xs font-medium text-muted-foreground">Assign To</Label>
                   <button
                     onClick={() => setUploadAssignees(prev => prev.length === travelers.length ? [] : travelers.map(t => t.id))}
-                    className="text-[10px] font-bold text-brand uppercase tracking-wider hover:opacity-70 transition-opacity"
+                    className="text-[11px] font-medium text-brand hover:opacity-70 transition-opacity"
                   >
                     {uploadAssignees.length === travelers.length ? "Deselect All" : "Select All"}
                   </button>

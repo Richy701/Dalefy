@@ -495,7 +495,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
           <DeviceMobileCamera className="h-4 w-4 text-brand" />
           <span className="text-xs font-medium text-foreground">Mobile Preview</span>
           {viewAsName && (
-            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-md bg-brand/10 text-brand text-[9px] font-black uppercase tracking-[0.12em] truncate max-w-[120px]" title={`Showing what ${viewAsName} sees`}>
+            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-md bg-brand/10 text-brand text-[11px] font-medium truncate max-w-[120px]" title={`Showing what ${viewAsName} sees`}>
               <Users size={10} /> {viewAsName}
             </span>
           )}
@@ -524,11 +524,11 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-0 overflow-hidden">
               <div className="px-4 py-2.5 border-b border-border">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Preview settings</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Preview settings</p>
               </div>
               <div className="divide-y divide-slate-200 dark:divide-border">
                 <div className="px-4 py-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2.5">Finish</p>
+                  <p className="text-[11px] font-medium text-muted-foreground mb-2.5">Finish</p>
                   <div className="flex items-start gap-1">
                     {FINISHES[prefs.device].map(f => {
                       const active = prefs.finish[prefs.device] === f.key;
@@ -558,7 +558,7 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 </div>
                 <div className="px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1 shrink-0"><TextAa size={11} /> Text size</p>
+                    <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 shrink-0"><TextAa size={11} /> Text size</p>
                     <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-secondary p-0.5">
                       {TEXT_SCALES.map(t => (
                         <button
@@ -577,12 +577,12 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 </div>
                 <div className="px-4 py-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
+                    <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1"><CalendarDot size={11} /> Simulate today</p>
                     {prefs.today && (
                       <button
                         type="button"
                         onClick={() => updatePrefs({ today: null })}
-                        className="text-[9px] font-bold uppercase tracking-[0.12em] text-brand hover:underline"
+                        className="text-[11px] font-medium text-brand hover:underline"
                       >
                         Reset
                       </button>

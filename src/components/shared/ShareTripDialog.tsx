@@ -131,17 +131,17 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                   <AirplaneTilt className="h-3 w-3" style={{ color: accentFg }} weight="bold" />
                 </div>
               )}
-              <span className="text-[11px] font-black uppercase tracking-[0.18em] text-brand truncate">
+              <span className="text-xs font-medium text-brand truncate">
                 {brand.name}
               </span>
-              <span className="ml-auto text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground shrink-0">
+              <span className="ml-auto text-[11px] font-medium text-muted-foreground shrink-0">
                 Trip Pass
               </span>
             </div>
 
             {/* Hero: the PIN */}
             <div className="px-4 pt-5 pb-4 flex flex-col items-center gap-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
+              <p className="text-[11px] font-medium text-muted-foreground">
                 Trip PIN
               </p>
               <button
@@ -175,7 +175,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 onClick={() => shortCode && copy("pin", shortCode, "Trip PIN")}
                 disabled={!shortCode}
                 className={[
-                  "inline-flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-[0.18em] transition-colors disabled:opacity-60",
+                  "inline-flex items-center gap-2 h-9 px-4 rounded-lg text-xs font-medium transition-colors disabled:opacity-60",
                   pinCopied
                     ? "bg-brand"
                     : "bg-secondary text-foreground hover:bg-brand/15 hover:text-brand",
@@ -209,7 +209,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
                 {trip?.destination && (
                   <div className="mt-2 flex items-center gap-1.5 min-w-0">
                     <MapPin className="h-3 w-3 shrink-0 text-brand" weight="bold" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/80 truncate">
+                    <span className="text-xs font-medium text-foreground/80 truncate">
                       {trip.destination}
                     </span>
                   </div>
@@ -282,7 +282,7 @@ function LinkRow({ icon: Icon, label, value, copied, onCopy }: LinkRowProps) {
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="text-[11px] font-medium text-muted-foreground">
           {label}
         </p>
         <p className="text-[12px] font-mono text-foreground truncate">

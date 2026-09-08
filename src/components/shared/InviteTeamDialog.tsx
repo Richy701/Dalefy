@@ -46,7 +46,7 @@ const ROLE_BADGE: Record<string, string> = {
 function RoleBadge({ role }: { role: string }) {
   const Icon = ROLE_ICON[role] ?? Eye;
   return (
-    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded-md border text-[9px] font-bold uppercase tracking-wider ${ROLE_BADGE[role] ?? ROLE_BADGE.viewer}`}>
+    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded-md border text-[11px] font-medium ${ROLE_BADGE[role] ?? ROLE_BADGE.viewer}`}>
       <Icon className="h-3 w-3" weight="bold" />
       {ROLE_LABEL[role] ?? role}
     </span>
@@ -191,7 +191,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
   };
 
   const orgName = currentOrg?.name || "your team";
-  const sectionLabel = "text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground";
+  const sectionLabel = "text-[11px] font-medium text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
@@ -200,7 +200,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
       >
         {/* Header */}
         <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-4 text-left space-y-1 border-b border-slate-200/80 dark:border-[#161616] shrink-0">
-          <DialogTitle className="text-[22px] leading-none font-black tracking-tight text-foreground">
+          <DialogTitle className="text-[22px] leading-none font-semibold tracking-tight text-foreground">
             Invite to {orgName}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -258,7 +258,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                       role="radio"
                       aria-checked={active}
                       onClick={() => setRole(r)}
-                      className={`flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-medium transition-all ${
                         active
                           ? "bg-white dark:bg-[#1c1c1c] text-foreground shadow-sm"
                           : "text-muted-foreground hover:text-slate-800 dark:hover:text-foreground/80"
@@ -302,7 +302,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
                 >
                   <Link className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="text-[10px] font-mono text-muted-foreground truncate flex-1">{lastInvite.link}</span>
-                  <span className={`text-[9px] font-bold uppercase tracking-[0.15em] shrink-0 ${copiedId === "last" ? "text-brand" : "text-muted-foreground"}`}>
+                  <span className={`text-[11px] font-medium shrink-0 ${copiedId === "last" ? "text-brand" : "text-muted-foreground"}`}>
                     {copiedId === "last" ? "Copied" : "Copy link"}
                   </span>
                 </button>
@@ -420,7 +420,7 @@ export function InviteTeamDialog({ open, onOpenChange }: InviteTeamDialogProps) 
           <button
             type="button"
             onClick={() => { handleClose(); navigate("/settings"); }}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <GearSix className="h-3.5 w-3.5" /> Manage roles in Settings
           </button>

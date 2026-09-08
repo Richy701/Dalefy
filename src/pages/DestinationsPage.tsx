@@ -327,7 +327,7 @@ export function DestinationsPage() {
             <div className="flex flex-col sm:flex-row sm:items-stretch sm:h-[420px] lg:h-[520px]">
               {/* Text content */}
               <div className="relative z-10 px-5 py-6 sm:px-6 sm:py-0 sm:max-w-[50%] flex flex-col justify-center lg:px-8">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground leading-none">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-foreground leading-none">
                   Destinations
                 </h1>
                 <div className="mt-3 sm:mt-5">
@@ -490,9 +490,9 @@ export function DestinationsPage() {
                 </div>
                 <div className="relative z-10 flex items-start justify-between p-6">
                   {dest.region !== "Unknown" && (
-                    <span className="rounded-lg px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-black/50 text-white border border-white/15">{dest.region}</span>
+                    <span className="rounded-lg px-3 py-1 text-xs font-medium bg-black/50 text-white border border-white/15">{dest.region}</span>
                   )}
-                  <span className="ml-auto bg-black/50 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
+                  <span className="ml-auto bg-black/50 text-white text-xs font-medium px-3 py-1 rounded-lg border border-white/15">{dest.eventCount} Events</span>
                 </div>
                 <div className="relative z-10 mt-auto p-6">
                   <h3 className="text-3xl font-bold tracking-tight leading-none text-white drop-shadow-2xl mb-4">{dest.name}</h3>

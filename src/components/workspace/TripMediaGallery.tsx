@@ -175,7 +175,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-brand">
+            <p className="text-xs font-medium text-brand">
               UPLOADING...
             </p>
           </>
@@ -211,7 +211,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
             </p>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-brand transition-colors flex items-center gap-1.5"
+              className="text-xs font-medium text-muted-foreground hover:text-brand transition-colors flex items-center gap-1.5"
             >
               <Upload className="h-3 w-3" /> ADD MORE
             </button>
@@ -275,7 +275,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
                     {/* Type pill */}
                     <div className="absolute top-2 left-2">
                       <div
-                        className={`h-5 px-2 rounded-lg flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm ${
+                        className={`h-5 px-2 rounded-lg flex items-center gap-1 text-[11px] font-medium backdrop-blur-sm ${
                           item.type === "video"
                             ? "bg-pink-500/80 text-white"
                             : "bg-black/50 text-white/90"
@@ -317,7 +317,7 @@ export function TripMediaGallery({ tripId, media, onUpdate, uploaderName }: Prop
         !uploading && (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <ImageIcon className="h-12 w-12 mb-3 opacity-20" />
-            <p className="text-xs font-black uppercase tracking-[0.3em]">
+            <p className="text-xs font-medium">
               NO MEDIA YET
             </p>
             <p className="text-[11px] mt-1 opacity-70">

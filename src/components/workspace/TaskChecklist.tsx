@@ -72,8 +72,8 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">TASKS</span>
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-medium text-brand">TASKS</span>
+          <span className="text-[11px] font-medium text-muted-foreground">
             {completed}/{total}
           </span>
         </div>
@@ -126,18 +126,18 @@ export function TaskChecklist({ tasks, onUpdate, travelers }: TaskChecklistProps
                   {task.category && (
                     <span className="flex items-center gap-1">
                       <span className={`h-1.5 w-1.5 rounded-full ${getCategoryColor(task.category)}`} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="text-[11px] font-medium text-muted-foreground">
                         {CATEGORIES.find(c => c.value === task.category)?.label}
                       </span>
                     </span>
                   )}
                   {task.assignee && (
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       {travelers?.find(t => t.id === task.assignee)?.name?.split(" ")[0] || task.assignee}
                     </span>
                   )}
                   {task.dueDate && (
-                    <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                    <span className={`text-[11px] font-medium ${
                       isOverdue ? "text-red-500" : "text-muted-foreground"
                     }`}>
                       {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}

@@ -269,7 +269,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                       onClick={() => toggleTraveler(t.id)}
                       aria-label={`${selected ? "Deselect" : "Select"} ${t.name}`}
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer border",
+                        "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer border",
                         selected
                           ? "border-transparent shadow-sm"
                           : "bg-white dark:bg-[#161616] text-muted-foreground border-border hover:border-slate-300 dark:hover:border-[#333]"
@@ -349,7 +349,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             {/* Primary: Open in email client */}
             <Button
               onClick={openInEmailClient}
-              className="w-full rounded-xl text-xs font-bold uppercase tracking-widest h-10 gap-2.5 transition-all duration-150 hover:opacity-90"
+              className="w-full rounded-xl text-xs font-medium h-10 gap-2.5 transition-all duration-150 hover:opacity-90"
               style={{ background: accentColor, color: accentFg }}
             >
               <EnvelopeSimple className="h-4 w-4" weight="bold" />
@@ -369,7 +369,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copyEmails}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-border gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-medium h-10 px-4 border-border gap-2 transition-all duration-150"
                 >
                   {copiedEmail ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Users className="h-3.5 w-3.5" />}
                   {copiedEmail ? "Copied!" : "1. Copy Emails"}
@@ -377,7 +377,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copySubject}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-border gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-medium h-10 px-4 border-border gap-2 transition-all duration-150"
                 >
                   {copiedSubject ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <FileText className="h-3.5 w-3.5" />}
                   {copiedSubject ? "Copied!" : "2. Copy Subject"}
@@ -385,7 +385,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 <Button
                   onClick={copyContent}
                   variant="outline"
-                  className="rounded-xl text-xs font-bold uppercase tracking-widest h-10 px-4 border-border gap-2 transition-all duration-150"
+                  className="rounded-xl text-xs font-medium h-10 px-4 border-border gap-2 transition-all duration-150"
                 >
                   {copiedContent ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   {copiedContent ? "Copied!" : "3. Copy Content"}

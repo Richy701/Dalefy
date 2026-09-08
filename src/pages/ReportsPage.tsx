@@ -569,9 +569,9 @@ export function ReportsPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0 w-32 justify-end">
-                            <span className="text-xs font-black tracking-tighter text-emerald-400">{doc.signed}</span>
-                            <span className="text-xs font-black tracking-tighter text-amber-400">{doc.pending}</span>
-                            <span className="text-xs font-black tracking-tighter text-red-400">{doc.expired}</span>
+                            <span className="text-xs font-semibold tracking-tighter text-emerald-400">{doc.signed}</span>
+                            <span className="text-xs font-semibold tracking-tighter text-amber-400">{doc.pending}</span>
+                            <span className="text-xs font-semibold tracking-tighter text-red-400">{doc.expired}</span>
                           </div>
                         </div>
                       </div>

@@ -530,7 +530,7 @@ export function WorkspacePage() {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <p className="text-xl font-extrabold tracking-tight text-foreground">Trip not found</p>
+          <p className="text-xl font-semibold tracking-tight text-foreground">Trip not found</p>
           <Button onClick={() => navigate("/dashboard")} className="bg-brand text-black font-bold rounded-xl">Back to Dashboard</Button>
         </div>
       </div>
@@ -1344,7 +1344,7 @@ export function WorkspacePage() {
         {/* Day sidebar */}
         <aside className="w-64 border-r border-border bg-card flex flex-col hidden lg:flex shadow-sm relative z-30">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">Days</span>
+            <span className="text-xs font-medium text-muted-foreground">Days</span>
             {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-7 w-7 rounded-md border-border text-foreground hover:bg-secondary"><Plus className="h-3.5 w-3.5" /></Button>}
           </div>
           <ScrollArea className="flex-1">
@@ -1422,7 +1422,7 @@ export function WorkspacePage() {
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
                 {trip.destination && (
-                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-white/80 mb-1.5">{trip.destination}</p>
+                  <p className="text-xs font-medium text-white/80 mb-1.5">{trip.destination}</p>
                 )}
                 <h3 className="text-3xl lg:text-4xl font-bold tracking-tight leading-tight text-white mb-2">{trip.name}</h3>
                 <p className="text-base font-medium text-white/90">{tripFactLine(trip)}{trip.attendees ? ` · ${trip.attendees}` : ""}</p>
@@ -1434,7 +1434,7 @@ export function WorkspacePage() {
             {viewAsTraveler && (
               <div className="mx-3 sm:mx-4 lg:mx-10 mt-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/20">
                 <Users className="h-4 w-4 text-brand shrink-0" />
-                <p className="text-[11px] font-bold uppercase tracking-wider text-brand flex-1">
+                <p className="text-xs font-medium text-brand flex-1">
                   Viewing as {viewAsTraveler.name} - showing {groupedEvents.reduce((n, [, evs]) => n + evs.length, 0)} events
                 </p>
                 <button onClick={() => setViewAsId(null)} className="text-xs font-medium text-brand/70 hover:text-brand transition-colors flex items-center gap-1">
@@ -1537,7 +1537,7 @@ export function WorkspacePage() {
                               <span className="text-[9px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-lg">{(trip.info?.length || 0) + (trip.documents?.length || 0)}</span>
                               <button onClick={handleOpenEditInfo} className="ml-auto h-8 px-3 rounded-lg bg-secondary border border-border flex items-center gap-1.5 text-muted-foreground hover:text-brand hover:border-brand/30 opacity-0 group-hover/info:opacity-100 transition-all">
                                 <Pencil className="h-3 w-3" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Edit</span>
+                                <span className="text-[11px] font-medium">Edit</span>
                               </button>
                             </div>
 
@@ -1557,7 +1557,7 @@ export function WorkspacePage() {
                                         <p className="text-sm font-bold text-foreground">
                                           {item.title || "Untitled"}
                                           {item.leaderOnly && (
-                                            <span className="inline-flex items-center gap-1 ml-2 text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded align-middle">
+                                            <span className="inline-flex items-center gap-1 ml-2 text-[11px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded align-middle">
                                               <EyeSlash className="h-2.5 w-2.5" /> Leader only
                                             </span>
                                           )}
@@ -1595,7 +1595,7 @@ export function WorkspacePage() {
                                 {trip.info && trip.info.length > 0 && (
                                   <div className="flex items-center gap-3 mb-3">
                                     <div className="h-px flex-1 bg-secondary" />
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Documents</span>
+                                    <span className="text-[11px] font-medium text-muted-foreground">Documents</span>
                                     <div className="h-px flex-1 bg-secondary" />
                                   </div>
                                 )}
@@ -1729,12 +1729,12 @@ export function WorkspacePage() {
                               setBulkEmails(init);
                               setBulkEmailMode(true);
                             }}
-                            className="text-[10px] font-bold text-brand uppercase tracking-wider hover:underline"
+                            className="text-[11px] font-medium text-brand hover:underline"
                           >
                             Edit All Emails
                           </button>
                         )}
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{tripTravelers.length} assigned</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{tripTravelers.length} assigned</span>
                       </div>
                     </div>
 
@@ -1830,7 +1830,7 @@ export function WorkspacePage() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {eventCount > 0 && (
-                                  <span className="text-[10px] font-bold text-brand/60 uppercase tracking-wider hidden sm:inline">
+                                  <span className="text-[11px] font-medium text-brand/60 hidden sm:inline">
                                     {eventCount} tagged
                                   </span>
                                 )}
@@ -2472,22 +2472,22 @@ export function WorkspacePage() {
                         </div>
                       )}
                       {imageSearchSource === "local" && (
-                        <p className="text-[9px] text-muted-foreground/70 font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-muted-foreground/70 font-medium text-center pt-1">
                           Suggested images · APIs unavailable
                         </p>
                       )}
                       {imageSearchSource === "google" && (
-                        <p className="text-[9px] text-brand/60 font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-brand/60 font-medium text-center pt-1">
                           Google Image Search
                         </p>
                       )}
                       {imageSearchSource === "unsplash" && (
-                        <p className="text-[9px] text-muted-foreground/70 font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-muted-foreground/70 font-medium text-center pt-1">
                           Unsplash
                         </p>
                       )}
                       {imageSearchSource === "pexels" && (
-                        <p className="text-[9px] text-muted-foreground/70 font-bold uppercase tracking-widest text-center pt-1">
+                        <p className="text-[9px] text-muted-foreground/70 font-medium text-center pt-1">
                           Pexels
                         </p>
                       )}
@@ -2495,7 +2495,7 @@ export function WorkspacePage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-center">
                       <MagnifyingGlass className="h-5 w-5 text-muted-foreground" />
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Type to search images</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">Type to search images</p>
                     </div>
                   )}
                 </div>
@@ -2757,7 +2757,7 @@ export function WorkspacePage() {
         <DialogContent className="max-w-2xl bg-card rounded-xl border border-border shadow-2xl overflow-hidden p-0 flex flex-col max-h-[calc(100dvh-2rem)]">
           <form onSubmit={handleSaveTrip} className="flex flex-col min-h-0 flex-1">
             <DialogHeader className="px-8 pt-8 pb-5 border-b border-border shrink-0">
-              <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground">Edit Trip</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Edit Trip</DialogTitle>
               <p className="text-xs text-muted-foreground font-medium mt-1">Configure trip details, organizer, and traveler information</p>
             </DialogHeader>
             <div className="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto">
@@ -2831,7 +2831,7 @@ export function WorkspacePage() {
                         className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${editingTrip.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                         <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
                         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
-                        <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
+                        <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-medium text-white">{label}</span>
                       </button>
                     ))
                   )}
@@ -3067,7 +3067,7 @@ export function WorkspacePage() {
                 <div className="flex gap-2">
                   {(["Draft", "In Progress", "Published"] as const).map(s => (
                     <button key={s} type="button" onClick={() => setEditingTrip(prev => ({ ...prev, status: s }))}
-                      className={`flex-1 h-11 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex-1 h-11 rounded-xl text-xs font-medium transition-all ${
                         editingTrip.status === s
                           ? s === "Published" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
                             : s === "In Progress" ? "bg-brand text-primary-foreground shadow-lg shadow-brand/20"
@@ -3082,7 +3082,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-8 py-5 border-t border-border flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditTripOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save Changes</Button>
+              <Button type="submit" className="h-11 px-10 rounded-xl bg-brand hover:opacity-90 text-slate-900 dark:text-black font-medium text-xs shadow-lg shadow-brand/20">Save Changes</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3098,7 +3098,7 @@ export function WorkspacePage() {
                   <Users className="h-4 w-4 text-brand" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-extrabold tracking-tight text-foreground">Organizer</DialogTitle>
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Organizer</DialogTitle>
                   <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Trip contact person visible to travelers</p>
                 </div>
               </div>
@@ -3124,7 +3124,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-6 py-4 border-t border-border flex items-center justify-between">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditOrgOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -3141,7 +3141,7 @@ export function WorkspacePage() {
                     <FileText className="h-4 w-4 text-brand" />
                   </div>
                   <div>
-                    <DialogTitle className="text-lg font-extrabold tracking-tight text-foreground">Information</DialogTitle>
+                    <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">Information</DialogTitle>
                     <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pages visible to travelers</p>
                   </div>
                 </div>
@@ -3288,7 +3288,7 @@ export function WorkspacePage() {
               <div className="mt-6">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-px flex-1 bg-secondary" />
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Documents</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Documents</span>
                   <div className="h-px flex-1 bg-secondary" />
                 </div>
                 {trip.documents && trip.documents.length > 0 && (
@@ -3335,7 +3335,7 @@ export function WorkspacePage() {
             </div>
             <DialogFooter className="px-5 sm:px-6 py-4 border-t border-border flex items-center justify-between shrink-0">
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2" onClick={() => setEditInfoOpen(false)}>Cancel</button>
-              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-bold uppercase tracking-wider text-xs shadow-lg shadow-brand/20">Save</Button>
+              <Button type="submit" className="h-10 px-8 rounded-xl bg-brand hover:opacity-90 text-black font-medium text-xs shadow-lg shadow-brand/20">Save</Button>
             </DialogFooter>
           </form>
         </DialogContent>

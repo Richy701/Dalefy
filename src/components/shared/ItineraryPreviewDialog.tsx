@@ -87,7 +87,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
 
         {/* Title block */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8">
-          <h2 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
+          <h2 className="text-xl sm:text-3xl font-semibold tracking-tight text-white leading-[1.05] mb-2 sm:mb-3">
             {trip.name}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -127,12 +127,12 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-3">
               <Info className="h-3.5 w-3.5 text-brand" />
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
+              <span className="text-[11px] font-medium text-brand">Trip Information</span>
             </div>
             <div className={cn("grid gap-3", forPrint ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
               {travelerInfo.map(item => (
                 <div key={item.id} className={cn("rounded-xl p-3 sm:p-4 border", forPrint ? "bg-secondary border-slate-100" : "bg-background border-border")}>
-                  <p className={cn("text-xs font-bold uppercase tracking-tight mb-1", forPrint ? "text-slate-900" : "text-foreground")}>{item.title}</p>
+                  <p className={cn("text-xs font-medium mb-1", forPrint ? "text-slate-900" : "text-foreground")}>{item.title}</p>
                   <p className={cn("text-[11px] leading-relaxed whitespace-pre-wrap", forPrint ? "text-muted-foreground" : "text-muted-foreground")}><Linkify text={item.body} /></p>
                 </div>
               ))}
@@ -147,7 +147,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           {/* Event count */}
           <div className="flex items-center gap-2 mb-5 sm:mb-6">
             <Compass className="h-4 w-4 text-brand" />
-            <span className={cn("text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em]", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
+            <span className={cn("text-[10px] sm:text-xs font-medium", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
               {trip.events.length} event{trip.events.length !== 1 ? "s" : ""} · {grouped.length} day{grouped.length !== 1 ? "s" : ""}
               {totalDocs > 0 && <> · {totalDocs} document{totalDocs !== 1 ? "s" : ""}</>}
             </span>
@@ -156,7 +156,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
           {grouped.length === 0 ? (
             <div className={cn("border border-dashed rounded-xl flex flex-col items-center justify-center py-12 sm:py-16", forPrint ? "bg-white border-border text-muted-foreground" : "bg-card border-border text-muted-foreground")}>
               <Compass className="h-7 w-7 mb-3 opacity-40" />
-              <p className="text-xs font-bold uppercase tracking-widest">No events yet</p>
+              <p className="text-xs font-medium">No events yet</p>
               <p className={cn("text-[10px] mt-1", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>Add events in the workspace to see them here</p>
             </div>
           ) : (
@@ -176,7 +176,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
                         </span>
                       </div>
                       <div>
-                        <p className={cn("text-xs sm:text-sm font-bold uppercase tracking-tight", forPrint ? "text-slate-900" : "text-foreground")}>
+                        <p className={cn("text-xs sm:text-sm font-medium", forPrint ? "text-slate-900" : "text-foreground")}>
                           Day {dayIdx + 1} · {d.toLocaleDateString("en-US", { weekday: "long" })}
                         </p>
                         <p className={cn("text-[10px] sm:text-[11px]", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
@@ -199,7 +199,7 @@ export function ItineraryPreviewContent({ trip, forPrint, onClose }: ItineraryPr
 
           {/* Footer */}
           <div className={cn("mt-8 sm:mt-10 pt-5 sm:pt-6 border-t text-center", forPrint ? "border-border" : "border-border")}>
-            <p className={cn("text-[9px] font-bold uppercase tracking-[0.35em]", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
+            <p className={cn("text-[11px] font-medium", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>
               Powered by {brand.platformName}
             </p>
           </div>
@@ -261,7 +261,7 @@ function MetaChip({ icon: Icon, label, value, forPrint }: { icon: React.Componen
     <div className="flex items-center gap-2">
       <Icon className={cn("h-3 w-3 shrink-0", forPrint ? "text-muted-foreground" : "text-muted-foreground")} />
       <div className="min-w-0">
-        <p className={cn("text-[8px] font-bold uppercase tracking-[0.2em]", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>{label}</p>
+        <p className={cn("text-[8px] font-medium", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>{label}</p>
         <p className={cn("text-[10px] sm:text-[11px] font-semibold truncate", forPrint ? "text-foreground/80" : "text-foreground/80")}>{value}</p>
       </div>
     </div>
@@ -283,7 +283,7 @@ function PreviewEventCard({ ev, forPrint, tripTz }: { ev: TravelEvent; forPrint?
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <p className={cn("text-[9px] font-bold uppercase tracking-[0.15em] mb-0.5", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>{typeLabel}</p>
+          <p className={cn("text-[11px] font-medium mb-0.5", forPrint ? "text-muted-foreground" : "text-muted-foreground")}>{typeLabel}</p>
           <p className={cn("text-[13px] sm:text-sm font-bold leading-snug", forPrint ? "text-slate-900" : "text-foreground")}>{ev.title}</p>
 
           {/* Description */}

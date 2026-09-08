@@ -333,7 +333,7 @@ export function SettingsPage() {
                   {user?.role ?? ""}
                 </p>
               </div>
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
+              <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-brand bg-brand/10 border border-brand/20 rounded-full px-2.5 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                 {user?.status ?? "Active"}
               </div>

@@ -462,7 +462,7 @@ export function DashboardPage() {
             </div>
             <div className="text-center space-y-2">
               <p className="text-xl font-bold tracking-tight text-foreground">Drop to Import</p>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand/70">PDF · DOCX · PPTX · TXT</p>
+              <p className="text-xs font-medium text-brand/70">PDF · DOCX · PPTX · TXT</p>
             </div>
           </div>
         </div>
@@ -524,7 +524,7 @@ export function DashboardPage() {
         {!tripsReady ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-4">
             <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Loading trips</p>
+            <p className="text-xs font-medium text-muted-foreground">Loading trips</p>
           </div>
         ) : trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
@@ -535,14 +535,14 @@ export function DashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand text-primary-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand text-primary-foreground px-5 py-2.5 text-xs font-medium hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" /> New Trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-white/5 text-muted-foreground px-5 py-2.5 text-xs font-black uppercase tracking-[0.2em] hover:border-brand/40 hover:text-brand transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-white/5 text-muted-foreground px-5 py-2.5 text-xs font-medium hover:border-brand/40 hover:text-brand transition-colors"
               >
                 <Upload className="h-3.5 w-3.5" /> Import
               </button>
@@ -569,7 +569,7 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center gap-4">
                   <div className="min-w-0">
                     {upcomingCards[0].destination && (
-                      <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1">{upcomingCards[0].destination}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">{upcomingCards[0].destination}</p>
                     )}
                     <button type="button" onClick={() => handleOpenTrip(upcomingCards[0])} className="text-left text-2xl lg:text-3xl font-bold tracking-tight text-foreground leading-tight hover:text-brand transition-colors truncate max-w-full">
                       {upcomingCards[0].name}
@@ -622,7 +622,7 @@ export function DashboardPage() {
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-2.5 gap-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground truncate">{tripName}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground truncate">{tripName}</p>
                         {ev.time && <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">{ev.time}</span>}
                       </div>
                     </button>
@@ -656,7 +656,7 @@ export function DashboardPage() {
                         >
                           <img src={trip.image} alt="" decoding="async" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0 group-hover:scale-105 transition-transform duration-500" />
                           <div className="text-left flex-1 min-w-0">
-                            <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">
+                            <p className="text-sm font-semibold tracking-tight text-foreground leading-none truncate">
                               {trip.name}
                             </p>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs font-medium text-muted-foreground">
@@ -679,7 +679,7 @@ export function DashboardPage() {
                 ) : (
                   <div className="bg-card border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <LucideCalendar className="h-7 w-7 mb-3 opacity-40" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No upcoming trips</p>
+                    <p className="text-xs font-medium">No upcoming trips</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="mt-3 text-[10px] font-bold text-brand hover:underline">Create one →</button>
                   </div>
                 )}
@@ -799,12 +799,12 @@ export function DashboardPage() {
                                     {typeLabel}
                                   </div>
                                   {(hasRealTime || monthDayLabel) && (
-                                    <span className="sm:hidden text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                                    <span className="sm:hidden text-[11px] font-medium text-muted-foreground shrink-0">
                                       {timeParts ? timeParts.join(" ") : monthDayLabel}
                                     </span>
                                   )}
                                 </div>
-                                <p className="mt-1.5 text-sm font-black tracking-tight text-foreground leading-tight line-clamp-1">
+                                <p className="mt-1.5 text-sm font-semibold tracking-tight text-foreground leading-tight line-clamp-1">
                                   {ev.title}
                                 </p>
 
@@ -823,12 +823,12 @@ export function DashboardPage() {
                               {(ev.status || ev.confNumber) && (
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {ev.status && (
-                                    <span className={cn("text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-lg border", cfg.bg, cfg.text, "border-current/20")}>
+                                    <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-lg border", cfg.bg, cfg.text, "border-current/20")}>
                                       {ev.status}
                                     </span>
                                   )}
                                   {ev.confNumber && (
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-lg bg-brand/10 text-brand border border-brand/20">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-brand/10 text-brand border border-brand/20">
                                       <Hash className="h-2.5 w-2.5" weight="bold" />
                                       {ev.confNumber}
                                     </span>
@@ -841,13 +841,13 @@ export function DashboardPage() {
                             {(timeParts || eventDate) && (
                               <div className="hidden sm:flex shrink-0 flex-col items-center justify-center gap-0.5 px-5 w-28 border-l border-border">
                                 {weekdayLabel && (
-                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                                  <span className="text-[11px] font-medium text-muted-foreground">
                                     {weekdayLabel}
                                   </span>
                                 )}
                                 {timeParts ? (
                                   <>
-                                    <span className="text-2xl font-black tracking-tighter text-foreground leading-none tabular-nums mt-0.5">
+                                    <span className="text-2xl font-semibold tracking-tighter text-foreground leading-none tabular-nums mt-0.5">
                                       {timeParts[0]}
                                     </span>
                                     {timeParts[1] && (
@@ -859,7 +859,7 @@ export function DashboardPage() {
                                 ) : null}
                                 {monthDayLabel && (
                                   <span className={cn(
-                                    "text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
+                                    "text-[11px] font-medium text-muted-foreground",
                                     timeParts ? "mt-1" : "mt-0.5",
                                   )}>
                                     {monthDayLabel}
@@ -878,7 +878,7 @@ export function DashboardPage() {
                     >
                       <div className="text-center">
                         <Compass className="h-6 w-6 mx-auto mb-2 opacity-30 group-hover:text-brand transition-colors" />
-                        <p className="text-xs font-bold uppercase tracking-widest">Open trip to add events</p>
+                        <p className="text-xs font-medium">Open trip to add events</p>
                       </div>
                     </div>
                   )}
@@ -1146,7 +1146,7 @@ export function DashboardPage() {
 
                       {/* Top row: status + countdown */}
                       <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
                           {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                           {isActive ? "Active" : trip.status}
                         </span>
@@ -1193,7 +1193,7 @@ export function DashboardPage() {
                     <div className="h-12 w-12 rounded-xl bg-brand/10 flex items-center justify-center mb-3">
                       <AirplaneTilt className="h-6 w-6 text-brand opacity-60" />
                     </div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">No trips yet</p>
+                    <p className="text-xs font-medium text-muted-foreground">No trips yet</p>
                     <button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} className="text-[11px] font-bold text-brand hover:underline mt-2">Create your first trip →</button>
                   </div>
                 )}
@@ -1288,7 +1288,7 @@ export function DashboardPage() {
                     <div className="h-9 w-9 rounded-xl bg-brand/6 dark:bg-brand/8 border border-brand/10 flex items-center justify-center shrink-0 group-hover:bg-brand/15 transition-colors">
                       <Plus className="h-4 w-4" />
                     </div>
-                    <span className="text-xs font-medium">New Trip</span>
+                    <span className="text-xs font-medium">New trip</span>
                   </button>
                 )}
               </div>
@@ -1298,7 +1298,7 @@ export function DashboardPage() {
             {templates.length > 0 && (
               <div className="mt-6">
                 <div data-compact-section-head className="flex items-center gap-3 mb-3">
-                  <h3 className="text-lg font-black tracking-tight text-foreground">Templates</h3>
+                  <h3 className="text-lg font-semibold tracking-tight text-foreground">Templates</h3>
                   <span className="text-[10px] font-bold text-brand bg-brand/10 px-2.5 py-1 rounded-lg">{templates.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -1310,7 +1310,7 @@ export function DashboardPage() {
                     >
                       <img src={tpl.image} alt="" className="h-12 w-12 rounded-xl bg-secondary object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black tracking-tight text-foreground leading-none truncate">{tpl.name}</p>
+                        <p className="text-sm font-semibold tracking-tight text-foreground leading-none truncate">{tpl.name}</p>
                         <div className="flex items-center gap-2 mt-1.5 text-xs font-medium text-muted-foreground">
                           {tpl.destination && <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{tpl.destination}</span>}
                           <span className="flex items-center gap-1"><Stack className="h-2.5 w-2.5" />{tpl.events.length} events</span>
@@ -1336,7 +1336,7 @@ export function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-10">
               <div className="pt-6 pb-6 flex items-start justify-between">
                 <div>
-                  <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">New Trip</Drawer.Title>
+                  <Drawer.Title className="text-2xl font-bold tracking-tight text-foreground">New trip</Drawer.Title>
                   <p className="text-[13px] text-muted-foreground mt-1">Only the title, client and dates are required.</p>
                 </div>
                 <button onClick={() => setIsNewTripOpen(false)} className="h-10 w-10 rounded-xl bg-secondary border border-transparent dark:border-transparent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
@@ -1529,7 +1529,7 @@ export function DashboardPage() {
                           className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-[1.03] ${newTripData.image === url ? "border-brand shadow-lg shadow-brand/30 scale-[1.03]" : "border-transparent hover:border-brand/50"}`}>
                           <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy" />
                           <div className="absolute inset-0 bg-linear-to-t from-black/60 to-black/10" />
-                          <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-white">{label}</span>
+                          <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-medium text-white">{label}</span>
                         </button>
                       ))
                     )}

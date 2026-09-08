@@ -5,8 +5,8 @@ function DockButton({ icon, label, onClick }: { icon: React.ReactNode; label: st
   return (
     <button onClick={onClick} aria-label={`Add ${label}`} className="group flex flex-col items-center justify-center gap-0.5 h-12 min-w-[52px] px-1.5 sm:h-11 sm:px-3 rounded-xl hover:bg-brand/10 active:bg-brand/15 active:scale-95 transition-[background-color,transform] duration-200 relative shrink-0 focus-visible:ring-2 focus-visible:ring-brand/40">
       <div className="text-muted-foreground group-hover:text-brand group-active:text-brand transition-[transform,color] duration-150 group-hover:scale-110">{icon}</div>
-      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-brand leading-none">{label}</span>
-      <span className="absolute -top-10 bg-card text-brand border border-border text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-150 translate-y-2 group-hover:translate-y-0 whitespace-nowrap shadow-2xl pointer-events-none hidden sm:block">
+      <span className="text-[8px] sm:text-[11px] font-medium text-muted-foreground group-hover:text-brand leading-none">{label}</span>
+      <span className="absolute -top-10 bg-card text-brand border border-border text-xs font-medium px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-150 translate-y-2 group-hover:translate-y-0 whitespace-nowrap shadow-2xl pointer-events-none hidden sm:block">
         ADD {label}
       </span>
     </button>

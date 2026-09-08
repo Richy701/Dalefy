@@ -1678,16 +1678,16 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4rem)] flex flex-col overflow-hidden bg-card rounded-xl border border-border p-5 sm:p-6 shadow-2xl">
         <DialogHeader className="space-y-2 mb-5 sm:mb-6 text-left">
-          <DialogTitle className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            {step === "done" ? "Import Complete" : isReimport ? "Re-import Itinerary" : "Import Itinerary"}
+          <DialogTitle className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+            {step === "done" ? "Import complete" : isReimport ? "Re-import itinerary" : "Import itinerary"}
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground font-medium uppercase text-xs tracking-[0.2em]">
+          <DialogDescription className="text-sm text-muted-foreground">
             {step === "upload" && (isReimport ? "Add to or replace this trip" : "Turn a document into a trip")}
             {step === "extracting" && "Reading document..."}
             {step === "review" && <>
               {`${parsed?.events.length ?? 0} events${(parsed?.extractedMedia.length ?? 0) > 0 ? ` + ${parsed!.extractedMedia.length} media` : ""} found - edit or deselect anything wrong`}
               {parserUsed && (
-                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
+                <span title={parserUsed === "ai" ? "Parsed with AI for best accuracy" : "Parsed on this device (AI unavailable), double-check the details"} className={`ml-2 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium ${parserUsed === "ai" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-500"}`}>
                   {parserUsed === "ai" ? "AI parsed" : "Basic parser, check details"}
                 </span>
               )}
@@ -1895,7 +1895,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
               <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-linear-to-r from-brand/6 to-transparent">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand/70">Ready to import</p>
+                  <p className="text-[11px] font-medium text-brand/70">Ready to import</p>
                 </div>
                 <button onClick={() => { setStep("upload"); setHasPaste(rawText.trim().length > 0); }} className="text-[10px] font-semibold text-muted-foreground hover:text-brand transition-colors">
                   ← Back
@@ -1907,7 +1907,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 {editingHeader ? (
                   <div className="space-y-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="import-trip-name" className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Trip name</Label>
+                      <Label htmlFor="import-trip-name" className="text-[11px] font-medium text-muted-foreground">Trip name</Label>
                       <Input
                         id="import-trip-name"
                         value={parsed.name}
@@ -1917,7 +1917,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="import-trip-dest" className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Destination</Label>
+                      <Label htmlFor="import-trip-dest" className="text-[11px] font-medium text-muted-foreground">Destination</Label>
                       <Input
                         id="import-trip-dest"
                         value={parsed.destination}
@@ -1927,11 +1927,11 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="import-trip-start" className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Start</Label>
+                        <Label htmlFor="import-trip-start" className="text-[11px] font-medium text-muted-foreground">Start</Label>
                         <Input id="import-trip-start" type="date" value={parsed.start} onChange={e => setParsed(p => p ? { ...p, start: e.target.value } : null)} className="w-full" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="import-trip-end" className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">End</Label>
+                        <Label htmlFor="import-trip-end" className="text-[11px] font-medium text-muted-foreground">End</Label>
                         <Input id="import-trip-end" type="date" value={parsed.end} onChange={e => setParsed(p => p ? { ...p, end: e.target.value } : null)} className="w-full" />
                       </div>
                     </div>
@@ -1940,7 +1940,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground leading-tight">
+                      <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground leading-tight">
                         {parsed.name}
                       </h3>
                       <Button
@@ -2032,7 +2032,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {parsed.events.length > 0 ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                  <p className="text-[11px] font-medium text-muted-foreground">
                     {includedEvents.length} of {parsed.events.length} selected
                   </p>
                   <Button
@@ -2124,21 +2124,21 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
                           {editing && (
                             <div className="border-t border-border p-3 space-y-3">
                               <div className="space-y-1.5">
-                                <Label htmlFor={`ev-title-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Title</Label>
+                                <Label htmlFor={`ev-title-${ev.id}`} className="text-[11px] font-medium text-muted-foreground">Title</Label>
                                 <Input id={`ev-title-${ev.id}`} value={ev.title} onChange={e => patchEvent(ev.id, { title: e.target.value })} className="w-full font-bold" autoFocus />
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                  <Label htmlFor={`ev-date-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Date</Label>
+                                  <Label htmlFor={`ev-date-${ev.id}`} className="text-[11px] font-medium text-muted-foreground">Date</Label>
                                   <Input id={`ev-date-${ev.id}`} type="date" value={ev.date} onChange={e => patchEvent(ev.id, { date: e.target.value })} className="w-full" />
                                 </div>
                                 <div className="space-y-1.5">
-                                  <Label htmlFor={`ev-time-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Time</Label>
+                                  <Label htmlFor={`ev-time-${ev.id}`} className="text-[11px] font-medium text-muted-foreground">Time</Label>
                                   <Input id={`ev-time-${ev.id}`} value={ev.time} onChange={e => patchEvent(ev.id, { time: e.target.value })} placeholder="e.g. 10:30 AM" className="w-full" />
                                 </div>
                               </div>
                               <div className="space-y-1.5">
-                                <Label htmlFor={`ev-loc-${ev.id}`} className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Location</Label>
+                                <Label htmlFor={`ev-loc-${ev.id}`} className="text-[11px] font-medium text-muted-foreground">Location</Label>
                                 <Input id={`ev-loc-${ev.id}`} value={ev.location} onChange={e => patchEvent(ev.id, { location: e.target.value })} className="w-full" />
                               </div>
                               <Button size="sm" variant="outline" onClick={() => setEditingEventId(null)} className="uppercase tracking-wider text-[10px] font-bold">Done</Button>
@@ -2167,7 +2167,7 @@ export function ImportItineraryDialog({ open, onOpenChange, initialFile, existin
             {/* Extracted media preview */}
             {parsed.extractedMedia.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                <p className="text-[11px] font-medium text-muted-foreground">
                   Extracted Media ({parsed.extractedMedia.length})
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">

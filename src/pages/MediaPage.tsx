@@ -465,7 +465,7 @@ export function MediaPage() {
 
             <div className="relative px-4 sm:px-8 py-8 sm:py-10 flex flex-col justify-between min-h-[220px] sm:min-h-[260px]">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-brand mb-3">
+                <p className="text-[11px] font-medium text-brand mb-3">
                   {bannerTrip ? bannerTrip.destination : "Your Gallery"}
                 </p>
                 <h2 className="text-[2.5rem] font-black uppercase leading-none tracking-tight text-white">
@@ -486,19 +486,19 @@ export function MediaPage() {
                 <div className="flex items-center gap-6">
                   <div>
                     <p className="text-3xl font-black leading-none text-white">{bannerPhotos}</p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Photos</p>
+                    <p className="text-[11px] font-medium text-white/60 mt-1.5">Photos</p>
                   </div>
                   <div className="h-10 w-px bg-white/15" />
                   <div>
                     <p className="text-3xl font-black leading-none text-white">{bannerVideos}</p>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Videos</p>
+                    <p className="text-[11px] font-medium text-white/60 mt-1.5">Videos</p>
                   </div>
                   {!bannerTrip && (
                     <>
                       <div className="h-10 w-px bg-white/15" />
                       <div>
                         <p className="text-3xl font-black leading-none text-white">{trips.length}</p>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 mt-1.5">Trips</p>
+                        <p className="text-[11px] font-medium text-white/60 mt-1.5">Trips</p>
                       </div>
                     </>
                   )}
@@ -507,13 +507,13 @@ export function MediaPage() {
                 {bannerTrip ? (
                   <button
                     onClick={() => navigate(`/trip/${bannerTrip.id}`)}
-                    className="hidden sm:flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
+                    className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-white/80 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-4 py-2 hover:bg-white/20 transition-colors"
                   >
                     Open Trip
                     <ArrowUpRight className="h-3 w-3" />
                   </button>
                 ) : currentCarouselTrip ? (
-                  <div className="hidden sm:flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
+                  <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-white/70 bg-white/10 backdrop-blur-sm border border-white/15 rounded-lg px-3 py-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                     {currentCarouselTrip.name}
                   </div>
@@ -587,7 +587,7 @@ export function MediaPage() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                className="group flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-background hover:bg-secondary transition-colors text-[11px] font-bold uppercase tracking-wider text-foreground"
+                className="group flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-background hover:bg-secondary transition-colors text-xs font-medium text-foreground"
               >
                 {selectedTrip ? (
                   <>
@@ -612,7 +612,7 @@ export function MediaPage() {
                       <img src={t.image} alt="" className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
+                      <p className="text-xs font-medium truncate">{t.name}</p>
                       <p className="text-[10px] text-muted-foreground">{t.media?.length ?? 0} files</p>
                     </div>
                     {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
@@ -682,7 +682,7 @@ export function MediaPage() {
             >
               <button
                 onClick={() => setActiveTripFilter("all")}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border shrink-0 ${
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border shrink-0 ${
                   activeTripFilter === "all"
                     ? "bg-brand text-black border-transparent"
                     : "bg-card border-border text-muted-foreground hover:border-brand/40"
@@ -695,7 +695,7 @@ export function MediaPage() {
                   key={t.id}
                   onClick={() => setActiveTripFilter(activeTripFilter === t.id ? "all" : t.id)}
                   aria-pressed={activeTripFilter === t.id}
-                  className={`px-4 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors border flex items-center gap-1.5 shrink-0 ${
+                  className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border flex items-center gap-1.5 shrink-0 ${
                     activeTripFilter === t.id
                       ? "bg-brand text-black border-transparent"
                       : "bg-card border-border text-muted-foreground hover:border-brand/40"
@@ -890,7 +890,7 @@ export function MediaPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg border transition-colors text-[11px] font-bold uppercase tracking-wider text-foreground bg-secondary border-border hover:border-brand/40 data-popup-open:border-brand/50"
+                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg border transition-colors text-xs font-medium text-foreground bg-secondary border-border hover:border-brand/40 data-popup-open:border-brand/50"
                   >
                     {selectedTrip ? (
                       <>
@@ -915,7 +915,7 @@ export function MediaPage() {
                           <img src={t.image} alt="" className="h-full w-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-tight truncate">{t.name}</p>
+                          <p className="text-xs font-medium truncate">{t.name}</p>
                           <p className="text-[10px] text-muted-foreground">{t.destination}</p>
                         </div>
                         {t.id === uploadTripId && <div className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
@@ -1026,7 +1026,7 @@ function MediaCard({ item, lbIdx, onZoom, onDelete, selectMode, isSelected, onTo
 
         {/* Type badge - videos only; photos are self-evident */}
         {item.type === "video" && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[9px] font-black uppercase tracking-[0.2em] text-white/90 flex items-center gap-1">
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/50 backdrop-blur-sm text-[11px] font-medium text-white/90 flex items-center gap-1">
             <FilmStrip className="h-2.5 w-2.5" />
             Video
           </div>

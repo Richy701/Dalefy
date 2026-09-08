@@ -20,7 +20,7 @@ export function DaySection({ date, dayNumber, count, children, onAddEvent }: {
   return (
     <section>
       <div className="flex items-center gap-2 pb-2 pl-0 sm:pl-8">
-        <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {nice(weekday).slice(0, 3)}{dateInfo ? ` ${nice(dateInfo)}` : ""}
         </span>
         {dayNumber !== undefined && (

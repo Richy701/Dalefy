@@ -35,7 +35,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
     <Dialog open={open} onOpenChange={(o) => { if (!busy) { setError(null); onOpenChange(o); } }}>
       <DialogContent className="max-w-md bg-card rounded-xl border border-border p-6 shadow-2xl">
         <DialogHeader className="space-y-2 text-left">
-          <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground">{title}</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">{title}</DialogTitle>
           <DialogDescription className="text-muted-foreground text-sm">{description}</DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>}

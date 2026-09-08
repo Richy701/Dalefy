@@ -26,7 +26,7 @@ export function DemoUpgradeDialog({ open, onOpenChange }: DemoUpgradeDialogProps
           <div className="h-12 w-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center mx-auto">
             <Lock className="h-6 w-6 text-brand" />
           </div>
-          <DialogTitle className="text-xl font-extrabold tracking-tight text-foreground">
+          <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
             Demo Mode
           </DialogTitle>
           <DialogDescription className="text-muted-foreground text-sm leading-relaxed">

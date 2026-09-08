@@ -33,7 +33,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
           <Bell className="h-3.5 w-3.5 text-brand" />
         </div>
         <div className="flex-1 min-w-0 flex items-baseline gap-2">
-          <p className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground leading-none truncate">Notifications</p>
+          <p className="text-xs font-medium text-foreground leading-none truncate">Notifications</p>
           {unreadCount > 0 && (
             <span className="shrink-0 inline-flex items-center h-4 px-1.5 rounded-md bg-brand/10 text-brand text-[9px] font-black tabular-nums leading-none">
               {unreadCount}
@@ -80,7 +80,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
             <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center mb-3">
               <Bell className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground">All clear</p>
+            <p className="text-[11px] font-medium text-muted-foreground">All clear</p>
             <p className="text-[10px] font-bold text-muted-foreground mt-1">No notifications yet</p>
           </div>
         ) : (
@@ -108,7 +108,7 @@ function NotificationList({ onClose }: { onClose?: () => void }) {
                       </div>
                       <p className="text-[10px] text-muted-foreground truncate leading-tight">{n.detail}</p>
                     </div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 self-center">{relativeTime(n)}</p>
+                    <p className="text-[11px] font-medium text-muted-foreground shrink-0 self-center">{relativeTime(n)}</p>
                   </div>
                 </button>
               );

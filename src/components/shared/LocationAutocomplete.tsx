@@ -160,7 +160,7 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
           ))}
           {suggestions.length > 0 && (
             <div className="px-3 py-1.5 bg-background">
-              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Powered by Mapbox</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Powered by Mapbox</p>
             </div>
           )}
         </div>

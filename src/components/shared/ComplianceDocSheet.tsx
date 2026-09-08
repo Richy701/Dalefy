@@ -63,7 +63,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                 <Badge className={`text-xs font-black px-2.5 py-0.5 rounded-full border-none uppercase tracking-widest mb-2 ${statusCfg.bg} ${statusCfg.color}`}>
                   {doc.status}
                 </Badge>
-                <h2 className="text-2xl font-extrabold tracking-tight text-foreground leading-none">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground leading-none">
                   {doc.name}
                 </h2>
               </div>
@@ -71,7 +71,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-card border border-border">
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-muted-foreground mb-0.5">For</span>
-                <span className="text-xs font-black text-foreground uppercase tracking-tight">{travelerName}</span>
+                <span className="text-xs font-medium text-foreground">{travelerName}</span>
               </div>
               <div className="h-8 w-px bg-secondary" />
               <div className="flex flex-col text-right">
@@ -99,7 +99,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
                         <div className="absolute left-0 top-0 h-6 w-6 rounded-lg bg-secondary border border-border flex items-center justify-center text-xs font-black text-brand group-hover:bg-brand group-hover:text-black transition-[background-color,color] duration-150">
                           {i + 1}
                         </div>
-                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-foreground mb-2 pt-1">
+                        <h4 className="text-xs font-medium text-foreground mb-2 pt-1">
                           {section.heading.split(". ")[1] || section.heading}
                         </h4>
                         <p className="text-[12px] text-muted-foreground leading-relaxed">
@@ -112,7 +112,7 @@ export function ComplianceDocSheet({ open, onOpenChange, doc, travelerName, onSi
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Info className="h-10 w-10 text-slate-200 dark:text-[#1a1a1a] mb-4" />
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">No content available</p>
+                  <p className="text-xs text-muted-foreground font-medium">No content available</p>
                 </div>
               )}
 

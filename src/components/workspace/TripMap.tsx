@@ -356,7 +356,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
           <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mx-auto border border-border">
             {resolving ? <SpinnerGap className="h-6 w-6 text-brand animate-spin" /> : <MapPin className="h-6 w-6 text-muted-foreground" />}
           </div>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             {resolving ? "Locating events" : hasLocations ? "Couldn't place these locations" : "No locations yet"}
           </p>
           {!resolving && (
@@ -529,9 +529,9 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-brand" style={{ boxShadow: `0 0 6px ${ACCENT}` }} />
-                <span className="text-[11px] font-extrabold uppercase tracking-tight text-brand">Route</span>
+                <span className="text-xs font-medium text-brand">Route</span>
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
+              <span className="text-xs font-medium text-muted-foreground">{points.length} {points.length === 1 ? "stop" : "stops"}</span>
             </div>
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5">
               {points.map((pt, i) => {
@@ -571,7 +571,7 @@ export const TripMap = memo(function TripMap({ theme, trip }: TripMapProps) {
                           DAY {pt.day}
                         </span>
                         <span
-                          className="text-[11px] font-extrabold uppercase tracking-tight whitespace-nowrap leading-none"
+                          className="text-xs font-medium whitespace-nowrap leading-none"
                           style={{ color: isDark ? "#e5e5e5" : "#1e293b" }}
                         >
                           {pt.label}

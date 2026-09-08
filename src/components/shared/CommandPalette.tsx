@@ -78,7 +78,7 @@ export function CommandPalette({ onNewTrip, onInvite }: CommandPaletteProps) {
         </div>
 
         <Command.List className="max-h-[360px] overflow-y-auto p-2 scrollbar-hide">
-          <Command.Empty className="py-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">
+          <Command.Empty className="py-10 text-center text-xs font-medium text-muted-foreground">
             Nothing matches. Try a page, an action or a trip name.
           </Command.Empty>
 
