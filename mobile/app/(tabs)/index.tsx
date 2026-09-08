@@ -7,6 +7,7 @@ import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withSpring, withDelay, withTiming,
+  type SharedValue,
   Easing, FadeInDown,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
@@ -304,10 +305,12 @@ function QRScanPane({ C, styles, onScanned }: {
 }
 
 // ── Greeting Hero ─────────────────────────────────────────────────────────────
-function GreetingHero({ nextTrip, isActive, onPress }: {
+function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
   nextTrip: Trip | undefined;
   isActive: boolean;
   onPress: (t: Trip) => void;
+  /** Page scroll offset; the bar stays pinned to the top while the page is pulled past it */
+  scrollY?: SharedValue<number>;
 }) {
   const { C, isDark } = useTheme();
   const { unreadCount } = useNotifications();
@@ -472,11 +475,15 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
   const tripDates = (t: Trip) => `${fmtDay(t.start)} – ${fmtDay(t.end)}`;
   const recentTrips = [...joinedTrips].sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
   const canJoin = !!previewTrip && !resolving;
+  const pinTop = useAnimatedStyle(() => {
+    const y = scrollY?.value ?? 0;
+    return { transform: [{ translateY: y < 0 ? y : 0 }] };
+  });
 
   return (
     <View style={[styles.outer, { paddingTop: insets.top + S.xs }]} pointerEvents="box-none">
       {/* Top bar — avatar (left) · logo (center) · + and bell (right) */}
-      <View style={styles.topBar}>
+      <Animated.View style={[styles.topBar, pinTop]}>
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push("/(tabs)/profile")}
@@ -514,7 +521,7 @@ function GreetingHero({ nextTrip, isActive, onPress }: {
             )}
           </IconCircleButton>
         </View>
-      </View>
+      </Animated.View>
 
       <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
 
@@ -1121,6 +1128,7 @@ export default function HomeScreen() {
 
         {/* Top bar scrolls away with the cover; it also owns the join sheet */}
         <GreetingHero
+          scrollY={scrollY}
           nextTrip={heroTrip ?? undefined}
           isActive={isNextActive}
           onPress={(t) => router.push(`/trip/${t.id}`)}
