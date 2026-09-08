@@ -13,13 +13,11 @@ import Animated, {
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
-import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { DragHandle } from "@/components/ui/DragHandle";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
 import * as Haptics from "expo-haptics";
@@ -29,9 +27,9 @@ import { daysUntil, tripFactLine, tripLengthDays, shortDay, destinationFlag } fr
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  MapPin, CaretRight, CalendarDots,
+  CaretRight, CalendarDots,
   ShareNetwork, Bell, Plus, Scan,
-  Check, Clock, WifiSlash,
+  Check, WifiSlash,
   Camera, MapTrifold, Info,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
