@@ -266,3 +266,28 @@ export function resolveCoords(location: string): [number, number] | null {
 
   return null;
 }
+
+/**
+ * Stored event `locationCoords` are inconsistent: the web bulk geocoder writes [lat, lng]
+ * while the address picker writes [lng, lat]. Return [lng, lat] for Mapbox, picking the
+ * order that is valid and, when a reference point is given, closest to it.
+ */
+export function toLngLat(c?: [number, number] | null, near?: [number, number]): [number, number] | undefined {
+  if (!c || !Number.isFinite(c[0]) || !Number.isFinite(c[1])) return undefined;
+  const asIs: [number, number] = [c[0], c[1]];
+  const swapped: [number, number] = [c[1], c[0]];
+  const valid = (p: [number, number]) => Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
+  if (!valid(asIs)) return valid(swapped) ? swapped : undefined;
+  if (!valid(swapped)) return asIs;
+  if (!near) return asIs;
+  const d = (p: [number, number]) => (p[0] - near[0]) ** 2 + (p[1] - near[1]) ** 2;
+  return d(swapped) < d(asIs) ? swapped : asIs;
+}
+
+/** Geocoder result types that name an area, not a venue. A pin at one of these is noise. */
+export const AREA_PLACE_TYPES = new Set(["country", "region", "district", "postcode"]);
+
+/** True when a point sits on top of a reference point (default ~300 m), e.g. a country centroid. */
+export function isSamePoint(a: [number, number], b: [number, number], maxDeg = 0.003): boolean {
+  return Math.abs(a[0] - b[0]) < maxDeg && Math.abs(a[1] - b[1]) < maxDeg;
+}

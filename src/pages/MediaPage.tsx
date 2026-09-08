@@ -413,15 +413,15 @@ export function MediaPage() {
       <div className="flex-1 overflow-y-auto min-h-0">
 
         {trips.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-full gap-3 px-4 py-16">
-            <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-72 h-72 object-contain" draggable={false} />
-            <div className="text-center space-y-1.5">
-              <p className="text-base font-bold tracking-tight text-slate-800 dark:text-white">No media yet</p>
-              <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground">Create a trip first, then upload your photos and videos</p>
+          <div className="flex flex-col items-center justify-center min-h-full gap-5 px-4 py-16">
+            <BrandIllustration src="/illustrations/illus-wavy.svg" className="w-40 h-40 object-contain opacity-90" draggable={false} />
+            <div className="text-center space-y-1 max-w-xs">
+              <p className="text-sm font-bold tracking-tight text-slate-800 dark:text-white">No media yet</p>
+              <p className="text-xs text-slate-500 dark:text-muted-foreground">Photos and videos live on trips. Create one to start uploading.</p>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="h-10 px-6 rounded-lg bg-brand text-[#050505] text-xs font-black uppercase tracking-widest hover:opacity-90 transition-opacity"
+              className="h-9 px-5 rounded-lg bg-brand text-[#050505] text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity"
             >
               Create a Trip
             </button>
@@ -856,39 +856,41 @@ export function MediaPage() {
             </div>
           )
         ) : (
-          <div className="mx-auto max-w-2xl w-full space-y-3">
-            {/* Drop zone - clickable area for drag & drop / browse */}
+          <div className="mx-auto max-w-xl w-full">
+            {/* Single card: drop area on top, trip picker + upload in the footer */}
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
-              onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
-              className={`flex flex-col items-center justify-center py-24 sm:py-32 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+              className={`rounded-xl border transition-colors ${
                 isDragging
-                  ? "border-brand bg-brand/5 shadow-lg shadow-brand/10"
-                  : "border-black/8 dark:border-border bg-white/50 dark:bg-white/2 hover:border-brand/30 hover:bg-brand/2"
+                  ? "border-brand bg-brand/5"
+                  : "border-black/6 dark:border-border bg-white dark:bg-card shadow-sm dark:shadow-none"
               }`}
             >
-              <div className={`h-16 w-16 rounded-xl flex items-center justify-center mb-5 transition-colors ${
-                isDragging ? "bg-brand/15" : "bg-slate-100/80 dark:bg-white/4 border border-black/6 dark:border-border"
-              }`}>
-                <Upload className={`h-7 w-7 ${isDragging ? "text-brand" : "text-slate-400 dark:text-muted-foreground"}`} />
+              <div
+                onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
+                className="flex flex-col items-center text-center px-6 py-12 cursor-pointer"
+              >
+                <div className={`h-11 w-11 rounded-xl flex items-center justify-center mb-4 transition-colors ${
+                  isDragging ? "bg-brand/15" : "bg-slate-100 dark:bg-secondary"
+                }`}>
+                  <Upload className={`h-5 w-5 ${isDragging ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`} />
+                </div>
+                <p className={`text-sm font-bold tracking-tight ${isDragging ? "text-brand" : "text-slate-800 dark:text-white"}`}>
+                  {isDragging ? "Drop to upload" : "No photos yet"}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1 max-w-xs">
+                  Drag files here or click to browse. Images and videos up to 25 MB each.
+                </p>
               </div>
-              <p className={`text-base font-bold tracking-tight ${isDragging ? "text-brand" : "text-slate-700 dark:text-foreground/80"}`}>
-                {isDragging ? "Drop files here" : "Drop photos here"}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-muted-foreground mt-2">
-                or click to browse · images &amp; videos up to 25 MB each
-              </p>
-            </div>
 
-            {/* Trip picker + upload button - separate row below drop zone */}
-            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 border-t border-black/6 dark:border-border px-3 py-3">
               <div className="flex-1 min-w-0">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     aria-label={selectedTrip ? `Upload target: ${selectedTrip.name}` : "Choose a trip to upload to"}
-                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2.5 rounded-xl border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white bg-white dark:bg-card border-black/6 dark:border-border hover:border-brand/40 data-popup-open:border-brand/50 shadow-sm dark:shadow-none"
+                    className="group w-full flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-lg border transition-colors text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-white bg-slate-50 dark:bg-secondary border-black/6 dark:border-border hover:border-brand/40 data-popup-open:border-brand/50"
                   >
                     {selectedTrip ? (
                       <>
@@ -925,11 +927,12 @@ export function MediaPage() {
               <button
                 onClick={() => !uploading && fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 h-11 px-6 rounded-xl bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
+                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-brand text-black text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-opacity shrink-0 disabled:opacity-40"
               >
                 <Upload className="h-3.5 w-3.5" />
                 Upload
               </button>
+              </div>
             </div>
           </div>
         )}

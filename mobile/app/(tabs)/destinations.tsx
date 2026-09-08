@@ -22,6 +22,7 @@ import { ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
+import { toLngLat, isSamePoint, AREA_PLACE_TYPES } from "@/shared/coordinates";
 import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -42,7 +43,8 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
   let t = cleanTitle(title, type, transferType);
-  t = t.replace(/\s*[-–·:]\s*/g, " — ");
+  t = t.replace(/\s*\([^)]*\)\s*/g, " ").trim();
+  t = t.replace(/\s+[-–—·]\s+|:\s+/g, " — ");
   return t;
 }
 
@@ -63,7 +65,10 @@ async function geocodeLocation(loc: string, proximity?: [number, number]): Promi
     if (proximity) url += `&proximity=${proximity.join(",")}`;
     const res = await fetch(url);
     const json = await res.json();
-    const center = json.features?.[0]?.center as [number, number] | undefined;
+    const feat = json.features?.[0];
+    let center = feat?.center as [number, number] | undefined;
+    // Event lookups (with proximity) that only match a country/region are not a venue
+    if (proximity && center && (feat.place_type ?? []).some((t: string) => AREA_PLACE_TYPES.has(t))) center = undefined;
     geocodeCache[key] = center ?? null;
     return center ?? null;
   } catch {
@@ -205,16 +210,6 @@ async function fetchForecastWeather(destination: string, targetDate: string): Pr
   }
 }
 
-function tripStats(trip: Trip) {
-  const flights = trip.events.filter(e => e.type === "flight").length;
-  const hotels = trip.events.filter(e => e.type === "hotel").length;
-  const activities = trip.events.filter(e => e.type === "activity" || e.type === "dining").length;
-  const totalDays = Math.floor(
-    (new Date(trip.end + "T00:00:00").getTime() - new Date(trip.start + "T00:00:00").getTime()) / 86400000
-  ) + 1;
-  return { flights, hotels, activities, totalDays, totalEvents: trip.events.length };
-}
-
 
 function getNextEvent(events: TravelEvent[], tz?: string): { event: TravelEvent; minsUntil: number } | null {
   const { minutes: nowMins } = nowInTz(tz);
@@ -334,7 +329,9 @@ export default function TodayScreen() {
     }
     const directCoords: Record<string, [number, number]> = {};
     for (const ev of displayEvents) {
-      if (ev.locationCoords) directCoords[ev.id] = ev.locationCoords;
+      const stored = toLngLat(ev.locationCoords, destCenter);
+      // Stored coords equal to the destination centroid are a failed geocode, not a venue
+      if (stored && !isSamePoint(stored, destCenter)) directCoords[ev.id] = stored;
     }
     if (!cancelled) setEventCoords(prev => ({ ...prev, ...directCoords }));
 
@@ -403,9 +400,16 @@ export default function TodayScreen() {
     const sheetFraction = sheetIndex === 1 ? 0.8 : 0.4;
     const padBottom = screenHeight * sheetFraction + 20;
     const padTop = insets.top + 50;
-    if (markerCoords.length === 1) {
+    const lngs = markerCoords.map(c => c[0]);
+    const lats = markerCoords.map(c => c[1]);
+    const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
+    const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
+    // A single marker, or several sharing (almost) one point, gives fitBounds a zero-area box
+    // and sends the camera to an extreme zoom. Centre on the cluster at a sane zoom instead.
+    const MIN_SPAN = 0.003; // ~300 m
+    if (markerCoords.length === 1 || (ne[0] - sw[0] < MIN_SPAN && ne[1] - sw[1] < MIN_SPAN)) {
       cameraRef.current.setCamera({
-        centerCoordinate: markerCoords[0],
+        centerCoordinate: [(ne[0] + sw[0]) / 2, (ne[1] + sw[1]) / 2],
         zoomLevel: 15,
         pitch: 55,
         padding: { paddingTop: padTop, paddingBottom: padBottom, paddingLeft: 40, paddingRight: 40 },
@@ -414,10 +418,6 @@ export default function TodayScreen() {
       });
       return;
     }
-    const lngs = markerCoords.map(c => c[0]);
-    const lats = markerCoords.map(c => c[1]);
-    const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
-    const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
     cameraRef.current.fitBounds(
       ne, sw,
       [padTop, 40, padBottom, 40],
@@ -716,16 +716,6 @@ export default function TodayScreen() {
             ) : null}
           </View>
 
-          {/* Row C: Preview stats line */}
-          {isPreview && (() => {
-            const s = tripStats(displayTrip);
-            return (
-              <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.textTertiary, marginTop: S["2xs"] }}>
-                {s.flights} flights · {s.hotels} hotels · {s.totalEvents} events · {s.totalDays} days
-              </Text>
-            );
-          })()}
-
           {/* Row D: Traveler avatars */}
           {(displayTrip.travelers?.length ?? 0) > 0 && (
             <Pressable
@@ -871,7 +861,7 @@ export default function TodayScreen() {
                       >
                         <View style={[
                           styles.eventIconWrap,
-                          { backgroundColor: hasCoord ? `${evColor}20` : C.tealGlow },
+                          { backgroundColor: hasCoord ? `${evColor}20` : C.tealDim },
                         ]}>
                           {hasCoord ? (
                             <Text style={{ fontSize: T.sm, fontWeight: "800", color: evColor }}>{i + 1}</Text>
@@ -885,12 +875,9 @@ export default function TodayScreen() {
                           {normaliseTitle(ev.title, ev.type, ev.transferType)}
                         </Text>
                         {ev.location && (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
-                            <MapPin size={10} color={C.textTertiary} weight="regular" />
-                            <Text style={[styles.eventLocation, { color: C.textTertiary }]} numberOfLines={1}>
-                              {ev.location}
-                            </Text>
-                          </View>
+                          <Text style={[styles.eventLocation, { color: C.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                            {ev.location}
+                          </Text>
                         )}
                       </View>
                       <Text style={[styles.eventTime, { color: C.textTertiary }]}>{ev.time}</Text>

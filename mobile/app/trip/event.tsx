@@ -22,12 +22,15 @@ import { useTripRole } from "@/hooks/useTripRole";
 import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { T, R, S, F, shadow, statusTone, type ThemeColors } from "@/constants/theme";
-import { LOCATION_COORDS } from "@/shared/coordinates";
-import { useMemo, useCallback, useState } from "react";
+import { LOCATION_COORDS, toLngLat, isSamePoint } from "@/shared/coordinates";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { StatusIndicator } from "@/components/StatusIndicator";
+import { EventLocationMap } from "@/components/EventLocationMap";
+import { geocode } from "@/services/geocode";
+import { OrganizerCard } from "@/components/OrganizerCard";
 import { Pill } from "@/components/ui/Pill";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 
@@ -231,6 +234,13 @@ function getCountdown(dateStr: string, timeStr?: string): string | null {
   return `${mins}m`;
 }
 
+function formatGap(ms: number): string {
+  const hrs = Math.floor(ms / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+  if (hrs > 0) return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  return `${Math.max(1, mins)}m`;
+}
+
 function parseDuration(dur?: string): { h: number; m: number } | null {
   if (!dur) return null;
   const match = dur.match(/(\d+)\s*h\s*(?:(\d+)\s*m)?/i);
@@ -312,6 +322,27 @@ export default function EventDetailScreen() {
   const trip = trips.find(t => t.id === tripId);
   const ev = trip?.events.find(e => e.id === eventId);
 
+  // Resolve the event position as [lng, lat]. Stored coords have inconsistent order, so the
+  // trip destination (or, failing that, the geocoded address) is the reference to pick the right one.
+  // Nothing renders until this pass finishes, so the map never mounts at the wrong place.
+  const evLocation = ev?.location;
+  const tripDest = trip?.destination;
+  const [resolved, setResolved] = useState<{ ref: [number, number] | null; geo: [number, number] | null } | null>(null);
+  useEffect(() => {
+    setResolved(null);
+    let cancelled = false;
+    (async () => {
+      const dest = tripDest ? await geocode(tripDest) : null;
+      const near = dest ?? undefined;
+      const loc = evLocation ? await geocode(evLocation, near) : null;
+      if (cancelled) return;
+      const geo: [number, number] | null = loc ? [loc[1], loc[0]] : null;
+      const ref: [number, number] | null = dest ? [dest[1], dest[0]] : geo;
+      setResolved({ ref, geo });
+    })();
+    return () => { cancelled = true; };
+  }, [evLocation, tripDest]);
+
   if (!trip || !ev) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -337,7 +368,12 @@ export default function EventDetailScreen() {
   const isHotel = ev.type === "hotel";
 
   const sp = eventStatus(ev.status, C, ev.date);
-  const hasCoords = !!ev.locationCoords;
+  const storedLngLat = resolved ? toLngLat(ev.locationCoords, resolved.ref ?? undefined) : undefined;
+  const storedIsCentroid = !!(storedLngLat && resolved?.ref && isSamePoint(storedLngLat, resolved.ref));
+  const locationCoords = resolved
+    ? ((storedIsCentroid ? undefined : storedLngLat) ?? resolved.geo ?? undefined)
+    : undefined;
+  const hasCoords = !!locationCoords;
   const hasDocs = (ev.documents?.length ?? 0) > 0;
   const showActionBar = hasCoords || hasDocs;
 
@@ -357,6 +393,27 @@ export default function EventDetailScreen() {
   if (ev.price) detailRows.push({ icon: Hash, label: "Price", value: ev.price });
   if (isLeader && ev.supplier) detailRows.push({ icon: Users, label: "Supplier", value: ev.supplier });
   if (isLeader && ev.confNumber) detailRows.push({ icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: copyConf });
+
+  // Live timing: "Starts in" within 24h, "Ends in" while underway (needs an end time)
+  const nowMs = Date.now();
+  const startAt = ev.date ? parseEventDateTime(ev.date, ev.time).getTime() : NaN;
+  const endAt = ev.date && ev.endTime ? parseEventDateTime(ev.endDate || ev.date, ev.endTime).getTime() : NaN;
+  const startsIn = !isNaN(startAt) && startAt > nowMs && startAt - nowMs < 24 * 3600000 ? formatGap(startAt - nowMs) : null;
+  const endsIn = !isNaN(startAt) && !isNaN(endAt) && nowMs >= startAt && nowMs < endAt ? formatGap(endAt - nowMs) : null;
+
+  // Neighbouring events on the same day
+  const dayEvents = trip.events
+    .filter(e => e.date === ev.date)
+    .sort((a, b) => parseEventDateTime(a.date, a.time).getTime() - parseEventDateTime(b.date, b.time).getTime());
+  const dayIdx = dayEvents.findIndex(e => e.id === ev.id);
+  const neighbours = [
+    { label: "Before", e: dayIdx > 0 ? dayEvents[dayIdx - 1] : null },
+    { label: "Up next", e: dayIdx >= 0 && dayIdx < dayEvents.length - 1 ? dayEvents[dayIdx + 1] : null },
+  ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
+  const goToEvent = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.replace({ pathname: "/trip/event", params: { tripId: trip.id, eventId: id } });
+  };
 
   return (
     <View style={styles.safe}>
@@ -387,7 +444,7 @@ export default function EventDetailScreen() {
       <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: showActionBar ? 80 : insets.bottom + 24, backgroundColor: C.bg }}
+        contentContainerStyle={{ paddingBottom: showActionBar ? 80 + insets.bottom : insets.bottom + 24, backgroundColor: C.bg }}
       >
         {/* Hero — photo only, no overlay text */}
         <View style={styles.heroWrap}>
@@ -442,7 +499,7 @@ export default function EventDetailScreen() {
               tone="custom"
               bg={C.card}
               color={C.textPrimary}
-              icon={<Calendar size={12} color={C.teal} weight="regular" />}
+              icon={<Calendar size={12} color={C.textTertiary} weight="regular" />}
               label={formatShortDate(ev.date)}
             />
           )}
@@ -451,8 +508,17 @@ export default function EventDetailScreen() {
               tone="custom"
               bg={C.card}
               color={C.textPrimary}
-              icon={<Clock size={12} color={C.teal} weight="regular" />}
+              icon={<Clock size={12} color={C.textTertiary} weight="regular" />}
               label={`${ev.time}${ev.endTime ? ` – ${ev.endTime}` : ""}`}
+            />
+          )}
+          {(endsIn || startsIn) && (
+            <Pill
+              tone="custom"
+              bg={C.tealDim}
+              color={C.tealText}
+              icon={<Timer size={12} color={C.textTertiary} weight="regular" />}
+              label={endsIn ? `Ends in ${endsIn}` : `Starts in ${startsIn}`}
             />
           )}
         </Animated.View>
@@ -461,19 +527,26 @@ export default function EventDetailScreen() {
         {ev.location && (
           <Animated.View entering={FadeInDown.delay(100).duration(300)}>
             <Pressable
-              onPress={() => openInMaps(ev.location, ev.locationCoords)}
+              onPress={() => openInMaps(ev.location, locationCoords)}
               accessibilityRole="button"
               accessibilityLabel="Open location in Maps"
               style={({ pressed }) => [styles.locationCard, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }, shadow("card", isDark)]}
             >
-              <View style={[styles.locationIcon, { backgroundColor: C.tealDim }]}>
-                <MapPin size={18} color={C.teal} weight="regular" />
+              <View style={{ borderRadius: R.xl, overflow: "hidden" }}>
+              {locationCoords && (
+                <EventLocationMap coords={locationCoords} accentColor={C.teal} isDark={isDark} />
+              )}
+              <View style={styles.locationRow}>
+                <View style={[styles.locationIcon, { backgroundColor: C.tealDim }]}>
+                  <MapPin size={18} color={C.textTertiary} weight="regular" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.locationLabel, { color: C.textTertiary }]}>Location</Text>
+                  <Text style={[styles.locationValue, { color: C.textPrimary }]} numberOfLines={3}>{ev.location}</Text>
+                </View>
+                <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ flexShrink: 0, alignSelf: "center" }} />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[styles.locationLabel, { color: C.textTertiary }]}>Location</Text>
-                <Text style={[styles.locationValue, { color: C.textPrimary }]} numberOfLines={3}>{ev.location}</Text>
               </View>
-              <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ flexShrink: 0, alignSelf: "center" }} />
             </Pressable>
           </Animated.View>
         )}
@@ -488,7 +561,7 @@ export default function EventDetailScreen() {
                   <Text style={[styles.checkValue, { color: C.textPrimary }]}>{ev.time}</Text>
                 </View>
               )}
-              {ev.time && ev.endTime && <ArrowRight size={16} color={C.teal} weight="regular" />}
+              {ev.time && ev.endTime && <ArrowRight size={16} color={C.textTertiary} weight="regular" />}
               {ev.endTime && (
                 <View style={{ flex: 1, alignItems: ev.time ? "flex-end" as const : "flex-start" as const }}>
                   <Text style={[styles.checkLabel, { color: C.textTertiary }]}>CHECK OUT</Text>
@@ -515,7 +588,7 @@ export default function EventDetailScreen() {
                     i < detailRows.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
-                  <RowIcon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
+                  <RowIcon size={16} color={C.textTertiary} weight="regular" style={{ marginTop: 2 }} />
                   <Text style={[styles.detailListLabel, { color: C.textTertiary, minWidth: 90 }]}>{row.label}</Text>
                   <Text style={[styles.detailListValue, { color: C.textPrimary, flex: 1 }]}>{row.value}</Text>
                   {row.onPress && <Copy size={12} color={C.textTertiary} weight="light" style={{ marginLeft: S.xs2 }} />}
@@ -560,7 +633,7 @@ export default function EventDetailScreen() {
                   ]}
                 >
                   <View style={[styles.docIcon, { backgroundColor: C.tealDim }]}>
-                    <FileText size={16} color={C.teal} weight="regular" />
+                    <FileText size={16} color={C.textTertiary} weight="regular" />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[styles.docName, { color: C.textPrimary }]} numberOfLines={1}>{parsed.label}</Text>
@@ -574,6 +647,43 @@ export default function EventDetailScreen() {
             })}
           </Animated.View>
         )}
+
+        {/* Before / up next on the same day */}
+        {neighbours.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(350).duration(300)} style={[styles.infoCard, { backgroundColor: C.card, padding: 0 }, shadow("card", isDark)]}>
+            {neighbours.map(({ label, e }, i) => (
+              <Pressable
+                key={e.id}
+                onPress={() => goToEvent(e.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${label}: ${cleanEventTitle(e.title, e.type, e.transferType)}`}
+                style={({ pressed }) => [
+                  styles.detailListRow,
+                  { alignItems: "center", backgroundColor: pressed ? C.elevated : "transparent" },
+                  i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
+                ]}
+              >
+                <Text style={[styles.detailListLabel, { color: C.textTertiary, minWidth: 90 }]}>{label}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={1}>
+                    {cleanEventTitle(e.title, e.type, e.transferType)}
+                  </Text>
+                  {e.time ? (
+                    <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, marginTop: 2 }}>{e.time}</Text>
+                  ) : null}
+                </View>
+                <CaretRight size={14} color={C.textTertiary} weight="regular" />
+              </Pressable>
+            ))}
+          </Animated.View>
+        )}
+
+        {/* Organiser contact */}
+        {trip.organizer && (
+          <Animated.View entering={FadeInDown.delay(400).duration(300)} style={{ marginTop: -S.sm, marginBottom: S.md }}>
+            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />
+          </Animated.View>
+        )}
       </ScrollView>
 
       {/* Action bar — data-driven */}
@@ -584,11 +694,11 @@ export default function EventDetailScreen() {
             style={styles.actionBarGradient}
             pointerEvents="none"
           />
-          <View style={styles.actionBarInner}>
+          <View style={[styles.actionBarInner, { paddingBottom: Math.max(insets.bottom, S.md) }]}>
             {hasCoords ? (
               <>
                 <Pressable
-                  onPress={() => openInMaps(ev.location, ev.locationCoords)}
+                  onPress={() => openInMaps(ev.location, locationCoords)}
                   accessibilityRole="button"
                   accessibilityLabel="Open in Maps"
                   style={({ pressed }) => [styles.primaryBtn, { backgroundColor: C.teal, opacity: pressed ? 0.85 : 1, flex: 1 }]}
@@ -603,7 +713,7 @@ export default function EventDetailScreen() {
                     accessibilityLabel="View documents"
                     style={({ pressed }) => [styles.secondaryBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
                   >
-                    <FileText size={18} color={C.teal} weight="regular" />
+                    <FileText size={18} color={C.textTertiary} weight="regular" />
                   </Pressable>
                 )}
               </>
@@ -1001,7 +1111,7 @@ function FlightDetailScreen({
                     i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                   ]}
                 >
-                  <item.icon size={16} color={C.teal} weight="regular" style={{ marginTop: 2 }} />
+                  <item.icon size={16} color={C.textTertiary} weight="regular" style={{ marginTop: 2 }} />
                   <Text style={[fs.detailLabel, { color: C.textTertiary, flex: 1 }]}>{item.label}</Text>
                   {item.value ? (
                     <Text style={[fs.detailValue, { color: C.textPrimary, textAlign: "right" }]}>{item.value}</Text>
@@ -1024,7 +1134,7 @@ function FlightDetailScreen({
                     style={({ pressed }) => [fs.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
                   >
                     <View style={[fs.docIcon, { backgroundColor: C.tealDim }]}>
-                      <FileText size={14} color={C.teal} weight="regular" />
+                      <FileText size={14} color={C.textTertiary} weight="regular" />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
@@ -1152,9 +1262,12 @@ function makeStyles(C: ThemeColors) {
     },
 
     locationCard: {
-      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
       marginHorizontal: S.md, marginBottom: S.md,
-      padding: S.md, borderRadius: R.xl,
+      borderRadius: R.xl,
+    },
+    locationRow: {
+      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
+      padding: S.md,
     },
     locationIcon: {
       width: 32, height: 32, borderRadius: R.md,
