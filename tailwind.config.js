@@ -29,6 +29,14 @@ export default {
           DEFAULT: "hsl(var(--sand) / <alpha-value>)",
           foreground: "hsl(var(--sand-foreground) / <alpha-value>)",
         },
+        // Event categories: bg-cat-flight/15 for the circle, text-cat-flight for the glyph
+        cat: {
+          flight: "hsl(var(--cat-flight) / <alpha-value>)",
+          stay: "hsl(var(--cat-stay) / <alpha-value>)",
+          meal: "hsl(var(--cat-meal) / <alpha-value>)",
+          activity: "hsl(var(--cat-activity) / <alpha-value>)",
+          transfer: "hsl(var(--cat-transfer) / <alpha-value>)",
+        },
         brand: {
           DEFAULT: "rgb(var(--brand-rgb) / <alpha-value>)",
           50: "hsl(var(--brand-50) / <alpha-value>)",

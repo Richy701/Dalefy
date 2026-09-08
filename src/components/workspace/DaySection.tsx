@@ -1,37 +1,44 @@
 import { Plus } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
-export function DaySection({ date, dayNumber, children, onAddEvent }: { date: string; dayNumber?: number; children: ReactNode; onAddEvent: () => void }) {
-  // date arrives as "MONDAY, JUNE 15" - split into weekday + rest
+/**
+ * One day of the itinerary: a quiet header, then the rows in one card.
+ * `date` arrives as "MONDAY, JUNE 15"; it is shown as "Mon, June 15".
+ */
+export function DaySection({ date, dayNumber, count, children, onAddEvent }: {
+  date: string;
+  dayNumber?: number;
+  count?: number;
+  children: ReactNode;
+  onAddEvent: () => void;
+}) {
   const commaIdx = date.indexOf(",");
   const weekday = commaIdx > -1 ? date.slice(0, commaIdx) : date;
   const dateInfo = commaIdx > -1 ? date.slice(commaIdx + 1).trim() : "";
+  const nice = (s: string) => s.toLowerCase().replace(/(^|\s)\S/g, ch => ch.toUpperCase());
 
   return (
-    <div className="space-y-5">
-      {/* Day header */}
-      <div className="pt-2 pb-4">
-        <div className="flex items-end justify-between">
-          <div className="flex items-baseline gap-2.5 flex-wrap">
-            {dayNumber !== undefined && (
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 dark:text-muted-foreground leading-none tabular-nums">Day {dayNumber}</span>
-            )}
-            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">{weekday}</span>
-            <span className="text-lg font-bold tracking-tight text-brand leading-none">{dateInfo}</span>
-          </div>
-
-          <button
-            onClick={onAddEvent}
-            className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest text-brand bg-brand/5 hover:bg-brand hover:text-black border border-brand/15 transition-all"
-          >
-            <Plus className="h-3 w-3" /> Add
-          </button>
-        </div>
-
-        <div className="mt-3 h-px w-full bg-slate-200 dark:bg-secondary" />
+    <section>
+      <div className="flex items-center gap-2 pb-2 pl-0 sm:pl-8">
+        <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+          {nice(weekday).slice(0, 3)}{dateInfo ? ` ${nice(dateInfo)}` : ""}
+        </span>
+        {dayNumber !== undefined && (
+          <span className="text-xs text-muted-foreground/70 tabular-nums">· Day {dayNumber}</span>
+        )}
+        <span className="flex-1" />
+        {count !== undefined && (
+          <span className="text-xs text-muted-foreground tabular-nums">{count} {count === 1 ? "event" : "events"}</span>
+        )}
+        <button
+          type="button"
+          onClick={onAddEvent}
+          className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-medium text-brand hover:bg-brand/10 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" weight="bold" /> Add
+        </button>
       </div>
-
-      <div className="space-y-5">{children}</div>
-    </div>
+      {children}
+    </section>
   );
 }

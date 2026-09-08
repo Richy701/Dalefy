@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   Plus, MagnifyingGlass, AirplaneTilt, Calendar as LucideCalendar, Trash, ArrowUpRight,
   DotsThreeVertical, GridFour, List, Users,
-  MapPin, CurrencyDollar, Briefcase, Bed, Compass, Globe,
+  MapPin, CurrencyDollar, Briefcase, Bed, Compass,
   X, Upload, SpinnerGap, ArrowClockwise, CaretRight,
   Clock, Hash, Tag, ArrowRight, Copy, Stack, FloppyDisk, Warning, CaretDown
 } from "@phosphor-icons/react";
@@ -33,7 +33,6 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import { useTripStats } from "@/hooks/useTripStats";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDemo } from "@/hooks/useDemo";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -43,15 +42,16 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
-import { BrandIllustration } from "@/components/shared/BrandIllustration";
+import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
+import { tripFactLine, shortDay } from "@/lib/tripSummary";
 
 
 const EVENT_COLORS = {
-  activity: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.activity },
-  hotel:    { bg: "bg-sand/10", text: "text-sand", Icon: EVENT_ICONS.hotel },
-  dining:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.dining },
-  flight:   { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.flight },
-  transfer: { bg: "bg-brand/10", text: "text-brand", Icon: EVENT_ICONS.transfer },
+  activity: { bg: CATEGORY_CLASS.activity.bg, text: CATEGORY_CLASS.activity.fg, Icon: EVENT_ICONS.activity },
+  hotel:    { bg: CATEGORY_CLASS.hotel.bg, text: CATEGORY_CLASS.hotel.fg, Icon: EVENT_ICONS.hotel },
+  dining:   { bg: CATEGORY_CLASS.dining.bg, text: CATEGORY_CLASS.dining.fg, Icon: EVENT_ICONS.dining },
+  flight:   { bg: CATEGORY_CLASS.flight.bg, text: CATEGORY_CLASS.flight.fg, Icon: EVENT_ICONS.flight },
+  transfer: { bg: CATEGORY_CLASS.transfer.bg, text: CATEGORY_CLASS.transfer.fg, Icon: EVENT_ICONS.transfer },
 };
 
 
@@ -102,10 +102,6 @@ function useLiveCountdown(trip: Trip | undefined) {
     total: diff,
   };
 }
-function tripDuration(start: string, end: string) {
-  return Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000));
-}
-
 function getRelativeDay(dateStr: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -125,9 +121,7 @@ function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
   if (countdown.total > 0) {
     return (
       <button onClick={onOpen} className="group mt-5 block text-left">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-2">
-          Next Trip
-        </p>
+        <p className="text-xs font-medium text-muted-foreground mb-1.5">Departs in</p>
         <div data-compact-countdown className="flex items-center gap-1.5 sm:gap-2">
           {[
             { value: countdown.days, label: "DAYS" },
@@ -137,39 +131,32 @@ function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
           ].map((u, i) => (
             <div key={u.label} className="flex items-center">
               <div className="flex flex-col items-center min-w-[40px] sm:min-w-[52px] lg:min-w-[60px]">
-                <span className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-slate-900 dark:text-white tabular-nums">
+                <span className="text-[28px] sm:text-[34px] font-semibold leading-none tracking-tight text-foreground tabular-nums">
                   <NumberFlow value={u.value} format={{ minimumIntegerDigits: 2 }} />
                 </span>
-                <span className="text-[7px] sm:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mt-0.5">
-                  {u.label}
+                <span className="text-[10px] text-muted-foreground mt-0.5">
+                  {u.label.toLowerCase()}
                 </span>
               </div>
               {i < 3 && (
-                <span className="text-xl sm:text-2xl font-black text-brand/60 mx-0.5 -mt-2.5 sm:-mt-3 select-none">:</span>
+                <span className="text-xl font-semibold text-muted-foreground/50 mx-0.5 -mt-3 select-none">:</span>
               )}
             </div>
           ))}
         </div>
-        <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-brand/80 group-hover:text-brand transition-colors">
-          <AirplaneTilt className="h-3 w-3" />
-          {trip.destination || trip.name}
-          <ArrowUpRight className="h-2.5 w-2.5 opacity-40" />
+        <p className="mt-2 flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
+          Open itinerary <ArrowUpRight className="h-3.5 w-3.5" />
         </p>
       </button>
     );
   }
   return (
     <button onClick={onOpen} className="group mt-5 block text-left">
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand mb-2">
-        Currently Travelling
+      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <span className="h-2 w-2 rounded-full bg-brand" /> Travelling now
       </p>
-      <p className="text-[32px] sm:text-[42px] lg:text-[50px] font-black leading-none tracking-tighter text-brand">
-        NOW
-      </p>
-      <p className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/80 group-hover:text-brand transition-colors">
-        <MapPin className="h-3 w-3 text-brand" />
-        {trip.destination || trip.name}
-        <ArrowUpRight className="h-3 w-3" />
+      <p className="mt-1 flex items-center gap-1 text-sm font-medium text-brand group-hover:underline">
+        Open today's plan <ArrowUpRight className="h-3.5 w-3.5" />
       </p>
     </button>
   );
@@ -191,13 +178,12 @@ function buttonA11y(label: string, onActivate: () => void) {
 export function DashboardPage() {
   const { trips, ready: tripsReady, addTrip, deleteTrip } = useTrips();
   useTheme();
-  const { user } = useAuth();
+  useAuth();
   const { addNotification } = useNotifications();
   usePreferences();
   const { canDeleteTrip, isOrgMember, isViewer, canInviteMembers } = usePermissions();
   const { isDemo, demoGate, upgradeOpen, setUpgradeOpen } = useDemo();
   const [demoBannerDismissed, setDemoBannerDismissed] = useState(() => sessionStorage.getItem("daf-demo-banner-dismissed") === "1");
-  const stats = useTripStats(trips);
   const navigate = useNavigate();
 
   const [displayMode, setDisplayMode] = useState<DisplayMode>("grid");
@@ -241,13 +227,6 @@ export function DashboardPage() {
   const [isCoverSearching, setIsCoverSearching] = useState(false);
   const [coverPage, setCoverPage] = useState(1);
   const [coverLastQuery, setCoverLastQuery] = useState("");
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
-  const firstName = (() => {
-    const raw = user?.name?.split(" ")[0] || "Traveller";
-    return raw.charAt(0).toUpperCase() + raw.slice(1);
-  })();
 
   const filteredTrips = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -530,9 +509,9 @@ export function DashboardPage() {
           </div>
         ) : trips.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-full px-4 py-16 gap-5">
-            <BrandIllustration src="/illustrations/illus-riding.svg" className="w-72 h-72 object-contain" draggable={false} />
-            <p className="text-sm font-medium text-slate-500 dark:text-muted-foreground text-center max-w-xs leading-relaxed">
-              Plan your first adventure. Add it manually or import an itinerary.
+            <p className="text-xl font-semibold text-foreground">No trips yet</p>
+            <p className="text-sm text-muted-foreground text-center max-w-xs leading-relaxed -mt-3">
+              Add one by hand or import an itinerary document.
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -556,54 +535,66 @@ export function DashboardPage() {
         ) : (
         <div data-compact-section className="px-3 sm:px-4 lg:px-8 pt-6 sm:pt-8 pb-16 space-y-6 sm:space-y-8">
 
-          {/* ── Greeting Hero ── */}
-          <div data-compact-hero className="relative overflow-hidden rounded-xl bg-linear-to-br from-brand/10 via-brand/2 to-slate-50 dark:from-brand/10 dark:via-brand/2 dark:to-background border border-brand/8 dark:border-brand/6 shadow-[0_0_80px_-20px] shadow-brand/10 px-5 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16 min-h-[180px] sm:min-h-[220px] lg:min-h-[260px]">
-            <div className="relative z-10 max-w-[70%] sm:max-w-[55%]">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-none truncate">
-                {greeting}, {firstName}
-              </h1>
-              {upcomingCards[0] ? (
-                <NextTripHero trip={upcomingCards[0]} onOpen={() => handleOpenTrip(upcomingCards[0])} />
-              ) : (
-                <p className="mt-4 text-sm sm:text-base font-bold tracking-tight text-slate-500 dark:text-muted-foreground">
-                  Where to next?
-                </p>
-              )}
-            </div>
-            {/* Quick Actions - inline in hero */}
-            <div className="relative z-10 flex items-center gap-2 flex-wrap mt-6">
+          {/* ── Next departure ── */}
+          <div data-compact-hero className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
+            {upcomingCards[0] ? (
+              <div className="flex flex-col sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => handleOpenTrip(upcomingCards[0])}
+                  className="relative sm:w-64 lg:w-80 h-44 sm:h-auto shrink-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  aria-label={`Open ${upcomingCards[0].name}`}
+                >
+                  <img src={upcomingCards[0].image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                </button>
+                <div className="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center gap-4">
+                  <div className="min-w-0">
+                    {upcomingCards[0].destination && (
+                      <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1">{upcomingCards[0].destination}</p>
+                    )}
+                    <button type="button" onClick={() => handleOpenTrip(upcomingCards[0])} className="text-left text-2xl lg:text-3xl font-bold tracking-tight text-foreground leading-tight hover:text-brand transition-colors truncate max-w-full">
+                      {upcomingCards[0].name}
+                    </button>
+                    <p className="text-base font-medium text-foreground/90 mt-1">
+                      {tripFactLine(upcomingCards[0])}{upcomingCards[0].paxCount ? ` · ${upcomingCards[0].paxCount} travellers` : ""}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{shortDay(upcomingCards[0].start)} → {shortDay(upcomingCards[0].end)} · {upcomingCards[0].events.length} events</p>
+                  </div>
+                  <NextTripHero trip={upcomingCards[0]} onOpen={() => handleOpenTrip(upcomingCards[0])} />
+                </div>
+              </div>
+            ) : (
+              <div className="p-6">
+                <p className="text-xl font-bold tracking-tight text-foreground">No trips yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Create one or import an itinerary to get started.</p>
+              </div>
+            )}
+            <div className="flex items-center gap-2 flex-wrap px-5 sm:px-6 py-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
                 disabled={isViewer}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand text-black text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
               >
-                <Plus className="h-3 w-3" /> New Trip
+                <Plus className="h-4 w-4" weight="bold" /> New trip
               </button>
               <button
                 type="button"
                 onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
               >
-                <Upload className="h-3 w-3" /> Import
+                <Upload className="h-4 w-4" /> Import itinerary
               </button>
               {canInviteMembers && (
                 <button
                   type="button"
                   onClick={() => setInviteOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/80 dark:bg-white/6 backdrop-blur-sm border border-black/6 dark:border-white/8 text-slate-600 dark:text-white/70 text-[10px] font-bold uppercase tracking-[0.12em] hover:bg-brand/20 hover:text-brand hover:border-brand/30 transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                 >
-                  <Users className="h-3 w-3" /> Invite Team
+                  <Users className="h-4 w-4" /> Invite team
                 </button>
               )}
             </div>
-
-            <BrandIllustration
-              src="/illustrations/illus-together.svg"
-              aria-hidden="true"
-              draggable={false}
-              className="hidden sm:block absolute -right-4 bottom-6 h-44 lg:h-52 w-auto object-contain pointer-events-none select-none opacity-90"
-            />
           </div>
 
           {/* ── Next Up - cross-trip agenda ── */}
@@ -611,13 +602,12 @@ export function DashboardPage() {
             <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
               <div data-compact-card-head className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
-                  <p className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">Next Up</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">Across all your trips</p>
+                  <p className="text-lg font-semibold tracking-tight text-foreground leading-none">Next up</p>
+                  <p className="text-xs text-muted-foreground mt-1">Across all your trips</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 dark:bg-secondary border-t border-slate-100 dark:border-border">
                 {nextEvents.map(({ event: ev, tripName, tripId }) => {
-                  const cfg = EVENT_COLORS[ev.type as keyof typeof EVENT_COLORS] || EVENT_COLORS.activity;
                   return (
                     <button
                       key={ev.id}
@@ -627,12 +617,10 @@ export function DashboardPage() {
                       className="bg-white dark:bg-card px-4 py-4 text-left hover:bg-brand/3 dark:hover:bg-brand/4 transition-colors group"
                     >
                       <div className="flex items-center gap-2 mb-2.5">
-                        <div className={cn("h-5 w-5 rounded-md flex items-center justify-center shrink-0", cfg.bg)}>
-                          <cfg.Icon className={cn("h-2.5 w-2.5", cfg.text)} weight="bold" />
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-brand">{getRelativeDay(ev.date)}</span>
+                        <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
+                        <span className="text-xs font-medium text-brand">{getRelativeDay(ev.date)}</span>
                       </div>
-                      <p className="text-xs font-black tracking-tight text-slate-900 dark:text-white leading-tight line-clamp-1 group-hover:text-brand transition-colors">
+                      <p className="text-sm font-medium text-foreground leading-tight line-clamp-1 group-hover:text-brand transition-colors">
                         {ev.title}
                       </p>
                       {ev.location && (
@@ -660,8 +648,8 @@ export function DashboardPage() {
               {/* ── Upcoming Trip ── */}
               <section>
                 <div data-compact-section-head className="mb-4">
-                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">Upcoming Trips</h2>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">Your next departures</p>
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Upcoming trips</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Your next departures</p>
                 </div>
 
                 {upcomingCards.length > 0 ? (
@@ -708,10 +696,8 @@ export function DashboardPage() {
               {spotlightTrip && (
                 <section className="flex-1 flex flex-col min-h-0">
                   <div data-compact-section-head className="mb-1">
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-                      For your{" "}
-                      <span className="text-brand uppercase">{spotlightTrip.destination || spotlightTrip.name.split(" ")[0]}</span>
-                      {" "}Trip
+                    <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                      For your {spotlightTrip.destination || spotlightTrip.name.split(" ")[0]} trip
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-muted-foreground mt-0.5">Key events on your itinerary</p>
                   </div>
@@ -815,8 +801,8 @@ export function DashboardPage() {
                               {/* Top: type pill + title + inline time on mobile */}
                               <div className="min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-[0.2em]", cfg.bg, cfg.text)}>
-                                    <cfg.Icon className="h-2.5 w-2.5" weight="bold" />
+                                  <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                    <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" />
                                     {typeLabel}
                                   </div>
                                   {(hasRealTime || monthDayLabel) && (
@@ -944,171 +930,6 @@ export function DashboardPage() {
                 </div>
               )}
 
-              {/* At a Glance - stats card */}
-              <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
-                <div data-compact-card-head className="px-5 pt-5 pb-3">
-                  <p className="text-base font-bold tracking-tight text-slate-900 dark:text-white leading-none">At a Glance</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground mt-1">
-                    {stats.pipeline.total === 0
-                      ? "No trips yet"
-                      : `Across ${stats.pipeline.total} trip${stats.pipeline.total === 1 ? "" : "s"}`}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 px-3 pb-2">
-                  {[
-                    { icon: Globe, label: "Trips", value: stats.pipeline.total },
-                    { icon: LucideCalendar, label: "Travel Days", value: stats.totalDays },
-                    { icon: AirplaneTilt, label: "Flights", value: stats.insights.flightCount },
-                    { icon: Bed, label: "Hotels", value: stats.insights.hotelCount },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div
-                      key={label}
-                      data-compact-cell
-                      className="rounded-xl bg-slate-50 dark:bg-background px-3 py-3 group/stat hover:bg-brand/4 dark:hover:bg-brand/6 transition-colors"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Icon className="h-3.5 w-3.5 text-brand" weight="regular" />
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground">{label}</span>
-                      </div>
-                      <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-none tabular-nums">
-                        <NumberFlow value={value} />
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="px-5 pb-5 pt-2 space-y-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-muted-foreground mb-1">Pipeline</p>
-                  {[
-                    { label: "Published", count: stats.pipeline.published, color: "bg-brand" },
-                    { label: "Draft", count: stats.pipeline.draft, color: "bg-slate-300 dark:bg-muted-foreground/40" },
-                    { label: "Active", count: trips.filter(t => t.status === "In Progress" || (parseTripDate(t.start) <= new Date() && parseTripDate(t.end) >= new Date())).length, color: "bg-emerald-500" },
-                  ].map(({ label, count, color }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground w-[60px] shrink-0">{label}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-secondary overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full transition-all duration-700 ease-out", color)}
-                          // A zero count must render nothing; the 6% floor only keeps
-                          // a non-zero sliver visible.
-                          style={{ width: count > 0 && stats.pipeline.total > 0 ? `${Math.max(6, (count / stats.pipeline.total) * 100)}%` : "0%" }}
-                        />
-                      </div>
-                      <span className="text-[11px] font-semibold text-slate-900 dark:text-white w-5 text-right tabular-nums">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Spotlight trip - brand cinema card */}
-              {spotlightTrip && (() => {
-                const days   = tripDuration(spotlightTrip.start, spotlightTrip.end);
-                const agent  = spotlightTrip.attendees.split(",")[0]?.trim() || "Agent";
-                const pax    = spotlightTrip.paxCount || "-";
-                const dateRange = (() => {
-                  const s = parseTripDate(spotlightTrip.start);
-                  const e = parseTripDate(spotlightTrip.end);
-                  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-                  return `${s.toLocaleDateString("en-US", opts)} - ${e.toLocaleDateString("en-US", opts)}`;
-                })();
-                const statusStyle =
-                  spotlightTrip.status === "Published"  ? "bg-brand text-primary-foreground"
-                  : spotlightTrip.status === "In Progress" ? "bg-white/15 text-white backdrop-blur border border-emerald-400/40"
-                  : "bg-white/15 text-white/80 backdrop-blur border border-white/15";
-
-                return (
-                  <div className="bg-white dark:bg-card border border-black/6 dark:border-transparent shadow-sm dark:shadow-none rounded-xl overflow-hidden">
-                    {/* Full-bleed hero */}
-                    <div data-compact-spotlight-hero className="relative h-[200px]">
-                      <img src={spotlightTrip.image} alt={spotlightTrip.name} className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/40 to-black/90" />
-                      <div className="absolute inset-0 bg-linear-to-r from-black/20 to-transparent" />
-
-                      {/* Status + eyebrow */}
-                      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                        <span className="text-[10px] font-semibold tracking-[0.2em] text-brand uppercase">
-                          Spotlight
-                        </span>
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-lg text-[9px] font-bold tracking-[0.12em] uppercase inline-flex items-center gap-1",
-                          statusStyle
-                        )}>
-                          {spotlightTrip.status === "In Progress" ? (
-                            <>
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                              Active
-                            </>
-                          ) : spotlightTrip.status === "Published" ? "✓ Published"
-                            : "Draft"}
-                        </span>
-                      </div>
-
-                      {/* Title block */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <h3 className="font-bold tracking-tight text-white text-xl leading-[1.1] line-clamp-2">
-                          {spotlightTrip.name}
-                        </h3>
-                        {spotlightTrip.destination ? (
-                          <div className="flex items-center gap-1.5 mt-2">
-                            <MapPin className="h-3 w-3 text-brand" strokeWidth={2.2} />
-                            <span className="text-[12px] font-medium text-white/90">
-                              {spotlightTrip.destination}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* Agent + date range */}
-                    <div className="flex items-center justify-between px-5 pt-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-brand/15 text-brand flex items-center justify-center text-[10px] font-semibold">
-                          {agent.split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase()}
-                        </div>
-                        <span className="text-[12px] font-medium text-slate-700 dark:text-foreground/80">{agent}</span>
-                      </div>
-                      <span className="text-[11px] font-medium text-slate-500 dark:text-muted-foreground tabular-nums">
-                        {dateRange}
-                      </span>
-                    </div>
-
-                    {/* Stat row */}
-                    <div data-compact-stat-grid className="grid grid-cols-2 gap-2 px-3 sm:px-5 pt-4 pb-4">
-                      {[
-                        { icon: LucideCalendar, label: "Duration", value: `${days} day${days === 1 ? "" : "s"}` },
-                        { icon: Users,          label: "Pax",      value: pax },
-                      ].map(({ icon: Icon, label, value }) => (
-                        <div
-                          key={label}
-                          className="rounded-xl bg-slate-50 dark:bg-background border border-transparent dark:border-transparent px-3 py-2.5"
-                        >
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Icon className="h-3 w-3 text-brand" weight="regular" />
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-muted-foreground">
-                              {label}
-                            </span>
-                          </div>
-                          <p className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-none">
-                            {value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* CTA */}
-                    <div className="px-4 pb-4">
-                      <button
-                        onClick={() => handleOpenTrip(spotlightTrip)}
-                        className="w-full h-10 rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold text-[13px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand/20 hover:shadow-brand/30"
-                      >
-                        Open itinerary <ArrowUpRight className="h-3.5 w-3.5" weight="bold" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Travel Calendar */}
               {(() => {
                 const tripRanges = trips.map(t => ({
@@ -1203,8 +1024,8 @@ export function DashboardPage() {
           <section className="space-y-4">
             <div data-compact-section-head className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">All Trips</h3>
-                <span className="text-[10px] font-bold text-brand bg-brand/10 px-3 py-1.5 rounded-lg">{filteredTrips.length}</span>
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">All trips</h3>
+                <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-md tabular-nums">{filteredTrips.length}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="md:hidden relative">
@@ -1228,8 +1049,8 @@ export function DashboardPage() {
                   const isActive = trip.status === "In Progress";
                   const isUpcoming = daysLeft > 0;
                   return (
-                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 hover:shadow-xl hover:shadow-brand/8 transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
-                      <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
+                    <div key={trip.id} data-compact-trip-card {...buttonA11y(`Open trip ${trip.name}`, () => handleOpenTrip(trip))} className="group isolate relative rounded-xl overflow-hidden flex flex-col min-h-[280px] cursor-pointer ring-1 ring-slate-200 dark:ring-border hover:ring-brand/40 transition-shadow duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" style={{ WebkitMaskImage: "-webkit-radial-gradient(white, black)" }} onClick={() => handleOpenTrip(trip)}>
+                      <img src={trip.image} alt={trip.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
                       {/* Light wash for the top chips, then a dedicated scrim behind the
                           text block so legibility never depends on the photo. */}
                       <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/45 to-transparent" />
@@ -1254,7 +1075,7 @@ export function DashboardPage() {
                       {/* Top row: status + countdown */}
                       <div className="relative z-10 flex items-center gap-2 p-4 pr-12">
                         <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-1 rounded-md backdrop-blur-md ${isActive ? "bg-emerald-500/90 text-white" : "bg-black/45 text-white"}`}>
-                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />}
+                          {isActive && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                           {isActive ? "Active" : trip.status}
                         </span>
                         {isUpcoming && (
@@ -1338,7 +1159,7 @@ export function DashboardPage() {
                               : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-muted-foreground"
                           }`}>
                             <span className={`h-1 w-1 rounded-full ${
-                              isActive ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
+                              isActive ? "bg-emerald-500 dark:bg-emerald-400"
                               : trip.status === "Published" ? "bg-brand"
                               : "bg-slate-400 dark:bg-slate-500"
                             }`} />
@@ -1346,14 +1167,19 @@ export function DashboardPage() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-slate-500 dark:text-muted-foreground">
-                          {trip.destination && (
-                            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5 text-brand" />{trip.destination}</span>
-                          )}
-                          <span className="flex items-center gap-1"><LucideCalendar className="h-2.5 w-2.5 text-brand" />{tDateStr}</span>
-                          <span className="flex items-center gap-1"><Users className="h-2.5 w-2.5" />{trip.paxCount || trip.attendees.split(",").length}</span>
-                          <span className="flex items-center gap-1"><Compass className="h-2.5 w-2.5" />{trip.events.length} events</span>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {trip.destination && <span>{trip.destination}</span>}
+                          <span>{tDateStr}</span>
+                          <span>{trip.paxCount || trip.attendees.split(",").length} travellers</span>
+                          <span>{trip.events.length} events</span>
                         </div>
+                        {trip.events.length > 0 && (
+                          <div className="flex items-center gap-0.5 h-[3px] max-w-[240px]" aria-hidden>
+                            {trip.events.slice(0, 40).map(e => (
+                              <span key={e.id} className={`flex-1 h-[3px] rounded-full ${(CATEGORY_CLASS[e.type] ?? CATEGORY_CLASS.activity).fg.replace("text-", "bg-")}`} />
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Right: countdown + actions */}

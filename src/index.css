@@ -58,6 +58,12 @@
        teal accent can go back to meaning "live". 5.23:1 on white. */
     --sand: 35.2 86.7% 32.4%; /* #9A5F0B */
     --sand-foreground: 0 0% 100%;
+    /* Event categories — one hue each, Apple Maps style. Teal is never a category. */
+    --cat-flight: 215 84% 56%;   /* #2F80ED */
+    --cat-stay: 264 62% 61%;     /* #8E5CD9 */
+    --cat-meal: 27 82% 51%;      /* #E8791D */
+    --cat-activity: 339 72% 57%; /* #E0447A */
+    --cat-transfer: 218 17% 35%; /* #4A5568 */
     /* Sidebar (light) */
     /* Light mode reads page < sidebar < card, so the chrome lifts off the
        tinted page instead of sitting under it as a grey slab. */
@@ -96,6 +102,11 @@
     --surface-raised: 231.4 9.9% 13.9%;
     --sand: 35.5 79.1% 56.9%; /* #E8A13A — 8.10:1 on card */
     --sand-foreground: 36 62.5% 6.3%; /* #1A1206 */
+    --cat-flight: 214 87% 70%;   /* #6FA8F5 */
+    --cat-stay: 262 77% 75%;     /* #B08CF0 */
+    --cat-meal: 24 83% 65%;      /* #F0975A */
+    --cat-activity: 339 80% 71%; /* #F07AA3 */
+    --cat-transfer: 214 20% 69%; /* #A0AEC0 */
     /* Sidebar (dark) */
     /* Same relationship as light: page < sidebar < card. */
     --sidebar: 230 13.6% 8.6%; /* #131419 */

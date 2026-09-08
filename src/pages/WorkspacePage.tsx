@@ -67,6 +67,8 @@ import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { Linkify } from "@/lib/linkify";
 import { destinationTz } from "@/lib/timezone";
 import { parseTripDate, parseEventDateTime } from "@/lib/dates";
+import { tripFactLine, shortDay } from "@/lib/tripSummary";
+import { CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
@@ -1139,10 +1141,12 @@ export function WorkspacePage() {
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-background w-full relative overflow-hidden">
       {/* Header */}
-      <header className="h-16 bg-white dark:bg-card border-b border-slate-200 dark:border-border px-3 sm:px-4 lg:px-6 flex items-center gap-2 sticky top-0 z-50 shadow-xl">
-          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-10 w-10 rounded-xl bg-slate-50 dark:bg-background hover:bg-slate-100 dark:hover:bg-secondary active:scale-95 text-slate-900 dark:text-white border border-slate-200 dark:border-border transition-[colors,transform] shadow-sm shrink-0"><CaretLeft className="h-5 w-5" /></Button>
-          <div className="h-6 w-px bg-slate-200 dark:bg-secondary hidden sm:block" />
-          <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-none truncate min-w-0 hidden sm:block">{trip.name}</h2>
+      <header className="h-14 bg-card border-b border-border px-3 sm:px-4 lg:px-6 flex items-center gap-3 sticky top-0 z-50">
+          <Button variant="ghost" size="icon" aria-label="Go back to dashboard" onClick={() => navigate("/dashboard")} className="h-9 w-9 rounded-lg hover:bg-secondary text-foreground shrink-0"><CaretLeft className="h-5 w-5" /></Button>
+          <div className="min-w-0 hidden sm:block">
+            <h2 className="text-sm font-semibold text-foreground leading-tight truncate">{trip.name}</h2>
+            <p className="text-xs text-muted-foreground leading-tight truncate">{tripFactLine(trip)}</p>
+          </div>
 
         {/* Presence avatars */}
         {presenceUsers.length > 0 && (
@@ -1220,14 +1224,14 @@ export function WorkspacePage() {
           {/* Desktop toolbar: View (segmented) · Share · Trip · Notifications · Publish */}
           {(() => {
             const panelBtn = (active: boolean) =>
-              `h-8 px-2.5 lg:px-3 rounded-lg flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                active ? "bg-white dark:bg-[#1c1c1c] text-brand shadow-sm" : "text-slate-500 dark:text-muted-foreground hover:text-slate-900 dark:hover:text-white"
+              `h-8 px-2.5 rounded-md flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`;
-            const menuBtn = "hidden sm:flex h-10 px-3 lg:px-4 rounded-xl border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-600 dark:text-muted-foreground hover:text-brand hover:bg-slate-50 dark:hover:bg-background transition-colors text-xs font-bold uppercase tracking-widest items-center gap-2 cursor-pointer shadow-sm";
-            const item = "flex items-center gap-2.5 text-xs font-bold uppercase tracking-wider rounded-lg cursor-pointer";
+            const menuBtn = "hidden sm:flex h-9 px-3 rounded-lg border border-border bg-card text-foreground hover:bg-secondary transition-colors text-sm font-medium items-center gap-1.5 cursor-pointer";
+            const item = "flex items-center gap-2.5 text-sm rounded-lg cursor-pointer";
             return (
               <>
-                <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-1 rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-background">
+                <div role="group" aria-label="Side panels" className="hidden sm:flex items-center p-0.5 rounded-lg bg-secondary">
                   <button type="button" aria-pressed={showTasks} title="Tasks" onClick={() => { setShowTasks(!showTasks); if (!showTasks) { setShowMap(false); setShowMobilePreview(false); } }} className={panelBtn(showTasks)}>
                     <ListChecks className="h-4 w-4" /> <span className="hidden lg:inline">Tasks</span>
                   </button>
@@ -1241,11 +1245,11 @@ export function WorkspacePage() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger className={menuBtn} aria-label="Share and export">
-                    <ShareNetwork className="h-4 w-4" /> <span className="hidden lg:inline">Share</span> <CaretDown className="h-3 w-3 opacity-50" />
+                    <ShareNetwork className="h-4 w-4" /> <span className="hidden lg:inline">Share</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl p-1">
-                    <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-brand" /> Send to travelers</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-brand" /> Share link &amp; PIN</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSendEmail} className={item}><EnvelopeOpen className="h-4 w-4 text-muted-foreground" /> Send to travellers</DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareTrip} className={item}><ShareNetwork className="h-4 w-4 text-muted-foreground" /> Share link &amp; PIN</DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-slate-100 dark:bg-secondary" />
                     <DropdownMenuItem onClick={() => setPreviewOpen(true)} className={item}><Eye className="h-4 w-4" /> Preview itinerary</DropdownMenuItem>
                     <DropdownMenuItem onClick={handleExportPdf} disabled={exporting} className={item}>{exporting ? <SpinnerGap className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {exporting ? "Exporting..." : "Export PDF"}</DropdownMenuItem>
@@ -1254,7 +1258,7 @@ export function WorkspacePage() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger className={menuBtn} aria-label="Trip settings">
-                    <Pencil className="h-4 w-4" /> <span className="hidden lg:inline">Trip</span> <CaretDown className="h-3 w-3 opacity-50" />
+                    <DotsThreeVertical className="h-4 w-4" weight="bold" /><span className="sr-only">More</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-card border border-slate-200 dark:border-border shadow-2xl rounded-xl p-1">
                     <DropdownMenuItem onClick={handleOpenEditTrip} className={item}><Pencil className="h-4 w-4" /> Edit details</DropdownMenuItem>
@@ -1328,7 +1332,7 @@ export function WorkspacePage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-slate-900 dark:text-black font-bold h-10 w-10 sm:w-auto px-0 sm:px-4 lg:px-6 rounded-xl shadow-lg shadow-brand/20 transition-all text-xs uppercase tracking-widest sm:min-w-[100px] shrink-0 flex items-center justify-center">
+          <Button onClick={handlePublish} disabled={publishing} aria-label="Publish trip" className="relative bg-brand hover:bg-brand hover:opacity-90 text-black font-semibold h-9 w-9 sm:w-auto px-0 sm:px-4 rounded-lg transition-opacity text-sm sm:min-w-[96px] shrink-0 flex items-center justify-center">
             {publishing ? <SpinnerGap className="h-4 w-4 animate-spin" /> : (<><PaperPlaneTilt className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">Publish</span></>)}
           </Button>
         </div>
@@ -1338,9 +1342,9 @@ export function WorkspacePage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Day sidebar */}
         <aside className="w-64 border-r border-slate-200 dark:border-border bg-white dark:bg-card flex flex-col hidden lg:flex shadow-sm relative z-30">
-          <div className="p-5 border-b border-slate-200 dark:border-border flex items-center justify-between bg-slate-50/30 dark:bg-background/30">
-            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand">ITINERARY</span>
-            {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-8 w-8 rounded-md bg-white dark:bg-card border border-slate-200 dark:border-border hover:bg-brand hover:text-slate-900 dark:hover:text-black text-brand transition-colors shadow-sm"><Plus className="h-3.5 w-3.5" /></Button>}
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">Days</span>
+            {!isViewer && <Button variant="outline" size="icon" aria-label="Add event" onClick={() => handleAddEvent()} className="h-7 w-7 rounded-md border-border text-foreground hover:bg-secondary"><Plus className="h-3.5 w-3.5" /></Button>}
           </div>
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-1">
@@ -1348,10 +1352,6 @@ export function WorkspacePage() {
                 const flights = dayEvents.filter(e => e.type === "flight");
                 const hotels = dayEvents.filter(e => e.type === "hotel");
                 const highlight = (flights[0]?.title || hotels[0]?.title || dayEvents[0]?.title || "").replace(/\s*[—–]\s*/g, " - ");
-                const typeIcons = [
-                  ...new Set(dayEvents.map(e => e.type)),
-                ].slice(0, 4);
-                const TypeIcon = (t: string) => t === "flight" ? AirplaneTilt : t === "hotel" ? Bed : t === "dining" ? ForkKnife : t === "transfer" ? Car : Compass;
                 const isActive = i === activeDayIdx;
                 const dayPeers = presenceUsers.filter(p => p.activeDay === date);
                 return (
@@ -1362,11 +1362,11 @@ export function WorkspacePage() {
                       updateActivity(date);
                       document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }}
-                    className={`w-full text-left px-2.5 py-2 rounded-xl group relative transition-all duration-200 ${isActive ? "bg-brand/10 ring-1 ring-brand/25" : "hover:bg-slate-100 dark:hover:bg-white/3"}`}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg group relative transition-colors ${isActive ? "bg-secondary ring-1 ring-brand" : "hover:bg-secondary/60"}`}
                   >
                     <div className="flex items-center gap-2.5 relative z-10 leading-none">
                       <div className="relative shrink-0">
-                        <div className={`h-9 w-9 rounded-xl flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black shadow-md shadow-brand/25" : "bg-slate-100 dark:bg-secondary text-slate-500 dark:text-muted-foreground"}`}>
+                        <div className={`h-9 w-9 rounded-lg flex flex-col items-center justify-center transition-colors ${isActive ? "bg-brand text-black" : "bg-secondary text-muted-foreground"}`}>
                           <span className="text-[8px] font-bold uppercase leading-none">{parseTripDate(date).toLocaleDateString("en-US", { month: "short" })}</span>
                           <span className="text-sm font-black leading-none mt-0.5">{parseTripDate(date).getDate()}</span>
                         </div>
@@ -1377,21 +1377,20 @@ export function WorkspacePage() {
                         )}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-brand" : "text-slate-500 dark:text-muted-foreground"}`}>Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className={`text-[11px] font-bold truncate leading-none mt-0.5 ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-muted-foreground"}`}>{highlight}</span>
-                        <div className="flex items-center gap-1 mt-1">
-                          {typeIcons.map(t => {
-                            const IC = TypeIcon(t);
-                            return <IC key={t} className={`h-2.5 w-2.5 ${isActive ? "text-brand/60" : "opacity-30"}`} />;
-                          })}
+                        <span className="text-[11px] font-medium text-muted-foreground">Day {i + 1} · {parseTripDate(date).toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className={`text-xs font-medium truncate leading-tight mt-0.5 ${isActive ? "text-foreground" : "text-foreground/80"}`}>{highlight}</span>
+                        {/* the day's shape: one segment per event, in order, coloured by category */}
+                        <div className="flex items-center gap-0.5 mt-1.5 h-[3px]">
+                          {dayEvents.map(e => (
+                            <span key={e.id} className={`flex-1 h-[3px] rounded-full ${(CATEGORY_CLASS[e.type] ?? CATEGORY_CLASS.activity).fg.replace("text-", "bg-")}`} />
+                          ))}
                           {dayPeers.length > 0 && (
-                            <div className="flex -space-x-1 ml-auto">
+                            <div className="flex -space-x-1 ml-1.5">
                               {dayPeers.slice(0, 3).map(p => (
-                                <div key={p.userId} className="h-4 w-4 rounded-full bg-brand/15 border border-white dark:border-card flex items-center justify-center text-[6px] font-black text-brand uppercase">{p.initials.slice(0, 1)}</div>
+                                <div key={p.userId} className="h-3.5 w-3.5 rounded-full bg-secondary border border-card flex items-center justify-center text-[6px] font-bold text-foreground uppercase">{p.initials.slice(0, 1)}</div>
                               ))}
                             </div>
                           )}
-                          {dayPeers.length === 0 && dayEvents.length > 1 && <span className={`text-[8px] font-bold ml-auto ${isActive ? "text-brand/60" : "opacity-30"}`}>{dayEvents.length}</span>}
                         </div>
                       </div>
                     </div>
@@ -1406,47 +1405,27 @@ export function WorkspacePage() {
           <main ref={printRef} className={`flex-1 flex flex-col relative bg-slate-50 dark:bg-background overflow-y-auto transition-all duration-500 ${showMap || showTasks || showMobilePreview ? "lg:w-[60%]" : "w-full"}`}>
             {/* Trip banner */}
             <section data-workspace-hero className="relative h-auto min-h-[280px] sm:h-[340px] lg:h-[400px] w-full group overflow-hidden shrink-0">
-              <img src={trip.image} className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt={trip.name} />
+              <img src={trip.image} className="h-full w-full object-cover" alt={trip.name} />
               {/* Multi-layer gradient for depth */}
               <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
               <div className="absolute inset-0 bg-linear-to-r from-black/30 to-transparent" />
 
               {/* Top row: status + event count pill */}
               <div className="absolute top-4 sm:top-6 left-4 sm:left-6 lg:left-8 right-4 sm:right-6 lg:right-8 z-20 flex items-center justify-between">
-                <Badge className={`rounded-lg px-3 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg backdrop-blur-sm ${trip.status === "Published" ? "bg-brand text-black border-none" : trip.status === "In Progress" ? "bg-brand/15 text-brand border border-brand/40" : "bg-white/20 text-white border-none"}`}>
-                  {trip.status === "In Progress" ? "● ACTIVE" : trip.status === "Published" ? "✓ PUBLISHED" : "DRAFT"}
+                <Badge className={`rounded-md px-2.5 py-1 text-xs font-medium border-none ${trip.status === "Published" ? "bg-brand text-black" : trip.status === "In Progress" ? "bg-brand text-black" : "bg-white/20 text-white"}`}>
+                  {trip.status === "In Progress" ? "Active" : trip.status === "Published" ? "Published" : "Draft"}
                 </Badge>
-                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5">
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{trip.events.length} events</span>
-                  <span className="text-white/30">·</span>
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{groupedEvents.length} days</span>
-                </div>
+                <span className="text-xs font-medium text-white/80 tabular-nums">{trip.events.length} events · {groupedEvents.length} days</span>
               </div>
 
               {/* Bottom: trip identity */}
               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-8 z-20">
-                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.35em] text-brand mb-1.5 sm:mb-2">Itinerary</p>
-                <h3 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-none text-white drop-shadow-2xl mb-3 sm:mb-5">{trip.name}</h3>
-
-                {/* Stat chips */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5">
-                    <Users className="h-3 w-3 text-brand" />
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.attendees}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5">
-                    <CalendarDots className="h-3 w-3 text-brand" />
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">
-                      {parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </span>
-                  </div>
-                  {trip.destination && (
-                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5">
-                      <MapPin className="h-3 w-3 text-brand" />
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/90">{trip.destination}</span>
-                    </div>
-                  )}
-                </div>
+                {trip.destination && (
+                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-white/80 mb-1.5">{trip.destination}</p>
+                )}
+                <h3 className="text-3xl lg:text-4xl font-bold tracking-tight leading-tight text-white mb-2">{trip.name}</h3>
+                <p className="text-base font-medium text-white/90">{tripFactLine(trip)}{trip.attendees ? ` · ${trip.attendees}` : ""}</p>
+                <p className="text-sm text-white/70 mt-0.5">{shortDay(trip.start)} → {shortDay(trip.end)}</p>
               </div>
             </section>
 
@@ -1473,10 +1452,10 @@ export function WorkspacePage() {
                     <button
                       key={t}
                       onClick={() => setActiveTab(t)}
-                      className={`flex-none h-auto px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border transition-all flex items-center gap-2 ${
+                      className={`flex-none h-9 px-4 rounded-lg text-sm font-medium border transition-colors flex items-center gap-2 ${
                         active
-                          ? "bg-brand text-black border-transparent shadow-lg shadow-brand/20"
-                          : "bg-white dark:bg-card text-slate-500 dark:text-muted-foreground border-slate-200 dark:border-border hover:text-slate-900 dark:hover:text-white"
+                          ? "bg-foreground text-background border-transparent"
+                          : "bg-card text-muted-foreground border-border hover:text-foreground"
                       }`}
                     >
                       {t.toUpperCase()}
@@ -1675,14 +1654,14 @@ export function WorkspacePage() {
                     </div>
                   )}
 
-                  <div className="space-y-10 sm:space-y-16">
+                  <div className="space-y-8">
                     {groupedEvents.length > 0 ? (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                       {groupedEvents.map(([date, events], dayIdx) => (
                         <div key={date} id={`day-${date}`} className="scroll-mt-6">
-                          <DaySection dayNumber={dayIdx + 1} date={parseTripDate(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
+                          <DaySection dayNumber={dayIdx + 1} count={events.length} date={parseTripDate(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase()} onAddEvent={() => handleAddEvent()}>
                             <SortableContext items={events.map(e => e.id)} strategy={verticalListSortingStrategy}>
-                              <div className="grid grid-cols-1 gap-4 sm:gap-6 pl-0 sm:pl-8">
+                              <div className="ml-0 sm:ml-8 rounded-xl border border-border bg-card shadow-sm overflow-hidden divide-y divide-border">
                                 {events.map(event => (
                                   <SortableEventCard
                                     key={event.id}
@@ -2709,10 +2688,10 @@ export function WorkspacePage() {
                     type="button"
                     onClick={handleAiAssist}
                     disabled={aiAssistLoading || (!editingEvent?.title && !editingEvent?.location)}
-                    className="w-full h-9 rounded-lg bg-linear-to-r from-brand/10 to-purple-500/10 border border-brand/20 text-brand text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:from-brand/20 hover:to-purple-500/20 hover:border-brand/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full h-9 rounded-lg bg-secondary border border-border text-foreground text-sm font-medium flex items-center justify-center gap-2 hover:bg-secondary/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {aiAssistLoading ? <SpinnerGap className="h-3.5 w-3.5 animate-spin" /> : <MagicWand className="h-3.5 w-3.5" />}
-                    {aiAssistLoading ? "Generating..." : "AI Assist - Generate Description & Notes"}
+                    {aiAssistLoading ? <SpinnerGap className="h-4 w-4 animate-spin text-muted-foreground" /> : <MagicWand className="h-4 w-4 text-muted-foreground" />}
+                    {aiAssistLoading ? "Writing…" : "Write description and notes"}
                   </button>
                 </div>
 
