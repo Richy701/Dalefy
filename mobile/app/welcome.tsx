@@ -11,7 +11,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, CaretLeft, Camera, User, Buildings, Check, X } from "phosphor-react-native";
+import { ArrowRight, CaretLeft, Camera, User, Buildings, Check } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -19,7 +19,7 @@ import { useBrand } from "@/context/BrandContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { fetchOrgByCode } from "@/services/firebaseBranding";
-import { T, R, S, F, type ThemeColors } from "@/constants/theme";
+import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
 
 type Step = "welcome" | "agency" | "profile";
@@ -363,17 +363,28 @@ export default function WelcomeScreen() {
               </Pressable>
             </Animated.View>
           ) : (
-            <Animated.View entering={FadeIn.duration(300)} style={styles.topNav}>
+            <View style={styles.editNav}>
               <Pressable
                 onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-                style={({ pressed }) => [styles.topNavBtn, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [styles.editNavSide, { opacity: pressed ? 0.5 : 1 }]}
                 accessibilityRole="button"
-                accessibilityLabel="Close"
+                accessibilityLabel="Cancel"
                 hitSlop={8}
               >
-                <X size={18} color={C.textPrimary} weight="regular" />
+                <Text style={styles.editNavAction}>Cancel</Text>
               </Pressable>
-            </Animated.View>
+              <Text style={styles.editNavTitle}>Edit Profile</Text>
+              <Pressable
+                onPress={submit}
+                disabled={!canSubmit}
+                style={({ pressed }) => [styles.editNavSide, { alignItems: "flex-end", opacity: !canSubmit ? 0.35 : pressed ? 0.5 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Save"
+                hitSlop={8}
+              >
+                <Text style={[styles.editNavAction, { fontWeight: T.semibold }]}>Save</Text>
+              </Pressable>
+            </View>
           )}
 
           <ScrollView
@@ -394,7 +405,7 @@ export default function WelcomeScreen() {
             )}
 
             {/* Brand badge */}
-            {prefs.orgId ? (
+            {prefs.orgId && !isEdit ? (
               <Animated.View entering={FadeIn.duration(400)} style={styles.brandBadge}>
                 <View style={styles.brandBadgeIcon}>
                   {brand.logoUrl ? (
@@ -409,7 +420,7 @@ export default function WelcomeScreen() {
             ) : null}
 
             {/* Avatar */}
-            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.avatarSection}>
+            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S.md }]}>
               <Pressable
                 onPress={pickAvatar}
                 style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
@@ -427,34 +438,28 @@ export default function WelcomeScreen() {
                   <Camera size={11} color={C.onAccent} weight="bold" />
                 </View>
               </Pressable>
-              {!avatar && (
-                <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel="Add profile photo" style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
-                  <Text style={{ fontSize: T.xs, fontWeight: T.semibold, color: C.tealText }}>Add photo</Text>
+              {(!avatar || isEdit) && (
+                <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
+                  <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>{avatar ? "Change photo" : "Add photo"}</Text>
                 </Pressable>
               )}
             </Animated.View>
 
-            {/* Big heading */}
-            <Animated.Text
-              entering={FadeInUp.duration(400).delay(200)}
-              style={styles.stepTitle}
-            >
-              {isEdit ? "Edit your\nprofile" : "What should\nwe call you?"}
-            </Animated.Text>
-
-            <Animated.Text
-              entering={FadeInUp.duration(400).delay(300)}
-              style={styles.stepSub}
-            >
-              {isEdit
-                ? "Update your name and photo."
-                : "This is how you'll appear on shared trips."}
-            </Animated.Text>
+            {!isEdit && (
+              <>
+                <Animated.Text entering={FadeInUp.duration(400).delay(200)} style={styles.stepTitle}>
+                  {"What should\nwe call you?"}
+                </Animated.Text>
+                <Animated.Text entering={FadeInUp.duration(400).delay(300)} style={styles.stepSub}>
+                  This is how you'll appear on shared trips.
+                </Animated.Text>
+              </>
+            )}
 
             {/* Name input */}
             <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
-              <View style={styles.inputRow}>
-                <User size={18} color={C.textTertiary} weight="light" />
+              <View style={isEdit ? styles.groupRow : styles.inputRow}>
+                {isEdit ? <Text style={styles.groupLabel}>Name</Text> : <User size={18} color={C.textTertiary} weight="light" />}
                 <TextInput
                   ref={nameRef}
                   value={name}
@@ -470,10 +475,12 @@ export default function WelcomeScreen() {
                   style={styles.input}
                 />
               </View>
+              {isEdit && <Text style={styles.groupFooter}>This is how you appear to your organiser and the other travellers.</Text>}
             </Animated.View>
           </ScrollView>
 
-          {/* CTA */}
+          {/* CTA (onboarding only; edit mode saves from the nav row) */}
+          {!isEdit && (
           <Animated.View entering={FadeInUp.duration(300).delay(350)} style={styles.footer}>
             <Pressable
               onPress={submit}
@@ -487,13 +494,12 @@ export default function WelcomeScreen() {
               ]}
             >
               <Text style={[styles.ctaText, !canSubmit && { color: C.textTertiary }]}>
-                {isEdit ? "Save" : "Let's go"}
+                Let's go
               </Text>
-              {!isEdit && (
-                <ArrowRight size={16} color={canSubmit ? C.onAccent : C.textTertiary} weight="bold" />
-              )}
+              <ArrowRight size={16} color={canSubmit ? C.onAccent : C.textTertiary} weight="bold" />
             </Pressable>
           </Animated.View>
+          )}
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -517,9 +523,9 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.xl, paddingBottom: S.md,
     },
     heroTitle: {
-      fontSize: 42, fontFamily: F.extrabold,
+      fontSize: 38, fontWeight: T.bold,
       color: C.textPrimary,
-      letterSpacing: 0, lineHeight: 46,
+      letterSpacing: -0.5, lineHeight: 42,
       marginBottom: S.sm,
     },
     heroSub: {
@@ -557,9 +563,9 @@ function makeStyles(C: ThemeColors) {
       letterSpacing: 0.5,
     },
     stepTitle: {
-      fontSize: 36, fontFamily: F.extrabold,
+      fontSize: 32, fontWeight: T.bold,
       color: C.textPrimary,
-      letterSpacing: 0, lineHeight: 40,
+      letterSpacing: -0.4, lineHeight: 37,
       marginBottom: S.sm,
     },
     stepSub: {
@@ -586,6 +592,18 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.xs, fontWeight: T.bold, color: C.tealText,
       letterSpacing: 1, textTransform: "uppercase",
     },
+
+    // ── Edit mode nav + grouped row ──
+    editNav: { flexDirection: "row", alignItems: "center", height: 44, paddingHorizontal: S.md },
+    editNavSide: { width: 72, justifyContent: "center" },
+    editNavAction: { fontSize: T.lg, color: C.tealText },
+    editNavTitle: { flex: 1, textAlign: "center", fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary },
+    groupRow: {
+      flexDirection: "row", alignItems: "center", gap: S.sm, minHeight: 48,
+      backgroundColor: C.elevated, borderRadius: R.sm, paddingHorizontal: S.md,
+    },
+    groupLabel: { fontSize: T.lg, color: C.textPrimary, width: 84 },
+    groupFooter: { fontSize: 13, lineHeight: 18, color: C.textTertiary, paddingHorizontal: S.md, marginTop: S.xs },
 
     // ── Input ──
     inputWrap: { marginBottom: S.md },

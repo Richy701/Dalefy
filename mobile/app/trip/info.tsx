@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
-  CaretDown, CaretRight, Calendar, Clock, Check,
+  CaretRight, Calendar, Clock, Check,
   Warning, WarningCircle, ArrowSquareOut, Paperclip,
 } from "phosphor-react-native";
 import { useTrips } from "@/context/TripsContext";
@@ -171,43 +171,25 @@ export default function InfoScreen() {
                   }
                 }}
               >
-                <View style={[styles.section, idx === 0 && styles.sectionFirst]}>
-                  {/* Collapsed header row */}
-                  <Pressable
-                    onPress={() => toggle(item.id)}
-                    style={({ pressed }) => [styles.sectionHeader, { opacity: pressed ? 0.7 : 1 }]}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.title || "Information"}
-                    accessibilityState={{ expanded: isOpen }}
-                  >
-                    <Text style={styles.sectionTitle} numberOfLines={isOpen ? undefined : 2}>
-                      {item.title || "Information"}
-                    </Text>
-                    {item.source && (
-                      <View style={styles.sourceTag}>
-                        <Text style={styles.sourceTagText}>{item.source}</Text>
-                      </View>
-                    )}
-                    <View style={[styles.chevronWrap, isOpen && styles.chevronOpen]}>
-                      <CaretDown size={16} color={isOpen ? C.textPrimary : C.textTertiary} weight="regular" />
+                <View style={styles.section}>
+                  {/* Header: title, where it came from, and its status */}
+                  <View style={styles.sectionHeader}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.sectionTitle}>{item.title || "Information"}</Text>
+                      {item.source ? <Text style={styles.sourceText} numberOfLines={1}>From {item.source}</Text> : null}
                     </View>
-                  </Pressable>
+                    {sc && (
+                      <Pill
+                        tone="custom"
+                        bg={sc.tone.bg}
+                        color={sc.tone.text}
+                        icon={<sc.Icon size={12} color={sc.tone.color} weight="bold" />}
+                        label={sc.label}
+                      />
+                    )}
+                  </View>
 
-                  {/* Expanded content */}
-                  {isOpen && (
-                    <View style={styles.sectionBody}>
-
-                      {/* 1. Status badge */}
-                      {sc && (
-                        <Pill
-                          tone="custom"
-                          bg={sc.tone.bg}
-                          color={sc.tone.text}
-                          icon={<sc.Icon size={14} color={sc.tone.color} weight="bold" />}
-                          label={sc.label}
-                          style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: sc.tone.border, marginBottom: S.sm }}
-                        />
-                      )}
+                  <View style={styles.sectionBody}>
 
                       {/* 2. Action button */}
                       {item.actionUrl && (
@@ -236,14 +218,23 @@ export default function InfoScreen() {
                         </View>
                       ))}
 
-                      {/* 4. Body text */}
+                      {/* 4. Body text, clamped until opened */}
                       {item.body ? (
-                        <LinkedText
-                          text={item.body}
-                          style={styles.bodyText}
-                          linkColor={C.tealText}
-                          stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
-                        />
+                        <View>
+                          <View style={!isOpen && item.body.length > 220 ? { maxHeight: 88, overflow: "hidden" } : undefined}>
+                            <LinkedText
+                              text={item.body}
+                              style={styles.bodyText}
+                              linkColor={C.tealText}
+                              stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+                            />
+                          </View>
+                          {item.body.length > 220 && (
+                            <Pressable onPress={() => toggle(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={isOpen ? "Show less" : "Read more"} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginTop: S.xs })}>
+                              <Text style={styles.readMore}>{isOpen ? "Show less" : "Read more"}</Text>
+                            </Pressable>
+                          )}
+                        </View>
                       ) : null}
 
                       {/* 5. Attachments */}
@@ -265,8 +256,7 @@ export default function InfoScreen() {
                         </View>
                       )}
 
-                    </View>
-                  )}
+                  </View>
                 </View>
               </ContextMenu>
             );
@@ -284,52 +274,18 @@ function makeStyles(C: ThemeColors) {
     scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-    content: { marginTop: S.sm },
+    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.sm },
 
     section: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: C.border,
+      backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
     },
-    sectionFirst: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: C.border,
-    },
-
     sectionHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: S.md,
-      paddingVertical: S.md,
+      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
+      paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs,
     },
-    sectionTitle: {
-      flex: 1,
-      fontSize: T.base,
-      fontWeight: T.semibold,
-      color: C.textPrimary,
-      paddingRight: S.xs,
-    },
-    sourceTag: {
-      paddingHorizontal: S.xs2,
-      paddingVertical: 2,
-      borderRadius: R.sm,
-      backgroundColor: C.elevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.border,
-      marginRight: S.xs,
-    },
-    sourceTagText: {
-      fontFamily: F.bold,
-      lineHeight: 14, includeFontPadding: false,
-      fontSize: T["2xs"],
-      color: C.textSecondary,
-      textTransform: "uppercase",
-      letterSpacing: 1,
-    },
-    chevronWrap: {
-      width: 28, height: 28, borderRadius: R.full,
-      alignItems: "center", justifyContent: "center",
-    },
-    chevronOpen: { transform: [{ rotate: "180deg" }] },
+    sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
+    sourceText: { fontSize: T.sm, color: C.textTertiary, marginTop: 2 },
+    readMore: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
 
     sectionBody: {
       paddingHorizontal: S.md,

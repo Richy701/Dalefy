@@ -63,16 +63,22 @@ const COUNTRY_CODES: Record<string, string> = {
   iceland: "IS", norway: "NO", sweden: "SE", denmark: "DK", finland: "FI", cyprus: "CY", malta: "MT", madeira: "PT", tenerife: "ES", mallorca: "ES", ibiza: "ES",
 };
 
-/** Emoji flag for the destination's country, if we can tell which country it is. */
-export function destinationFlag(destination?: string): string | null {
+/** ISO country code for a destination string, if we can tell which country it is. */
+export function destinationCountry(destination?: string): string | null {
   if (!destination) return null;
   const parts = destination.toLowerCase().split(/[,&/·]+|\band\b/).map(s => s.trim()).filter(Boolean);
   // Prefer the last segment ("Chiang Mai & Phuket, Thailand" → "thailand"), then any segment
   for (const p of [...parts].reverse()) {
     const code = COUNTRY_CODES[p];
-    if (code) return code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+    if (code) return code;
   }
   return null;
+}
+
+/** Emoji flag for the destination's country, if we can tell which country it is. */
+export function destinationFlag(destination?: string): string | null {
+  const code = destinationCountry(destination);
+  return code ? code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0))) : null;
 }
 
 // ── Next event ───────────────────────────────────────────────────────────────

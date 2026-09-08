@@ -1,5 +1,6 @@
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { CachedImage } from "@/components/CachedImage";
+import { useRouter } from "expo-router";
 import {
   View, Text, ScrollView, StyleSheet, Dimensions, FlatList,
   Pressable, Alert, Platform, RefreshControl, Modal, Share, ActionSheetIOS,
@@ -700,7 +701,7 @@ export default function MediaScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(-1);
 
-  const [, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
   const PENDING_KEY = "daf-pending-media";
   const [pendingMedia, setPendingMediaRaw] = useState<Record<string, TripMedia[]>>({});
@@ -815,6 +816,12 @@ export default function MediaScreen() {
   }, [tripsWithMedia, resolvedTripFilter, mediaFilter]);
 
   const galleryRows = useMemo(() => buildGalleryRows(filteredTrips), [filteredTrips]);
+  const router = useRouter();
+  const emptyTrip = useMemo(() => {
+    if (resolvedTripFilter !== "all") return trips.find(t => t.id === resolvedTripFilter) ?? null;
+    const sorted = [...trips].sort((a, b) => a.start.localeCompare(b.start));
+    return sorted.find(t => parseTripDate(t.end) >= new Date()) ?? sorted[sorted.length - 1] ?? null;
+  }, [trips, resolvedTripFilter]);
 
   const getItemLayout = useCallback((_: any, index: number) => {
     let offset = 0;
@@ -926,12 +933,11 @@ export default function MediaScreen() {
 
       // 1. Show immediately using component-local state (subscription can't touch this)
       setPendingMedia(prev => ({ ...prev, [tripId]: [...(prev[tripId] ?? []), ...items] }));
-      setUploading(true);
-      toast(`Uploading 0/${items.length}…`);
+      setUploadProgress({ done: 0, total: items.length });
 
       // 2. Upload to cloud, then write directly to Firestore
       uploadTripMedia(items, tripId, (done, total) => {
-        toast(`Uploading ${done}/${total}…`);
+        setUploadProgress({ done, total });
       })
         .then(async (uploaded) => {
           // Fetch latest trip from Firestore to avoid overwriting media from other uploads
@@ -978,7 +984,7 @@ export default function MediaScreen() {
           toast(msg.includes("too large") ? msg : "Couldn't upload. Try again later");
         })
         .finally(() => {
-          setUploading(false);
+          setUploadProgress(null);
         });
     });
   }, [trips, updateTripLocal, setPendingMedia, toast]);
@@ -1062,31 +1068,64 @@ export default function MediaScreen() {
         </ScrollView>
       )}
 
-      {/* ── Empty state (inline when no rows) ── */}
-      {(tripsWithMedia.length === 0 || filteredTrips.length === 0) && (
-        <View style={[styles.emptyWrap, { paddingTop: S["2xl"] * 2 }]}>
-          <EmptyState
-            compact
-            title={tripsWithMedia.length === 0 ? "Your memories\nbegin here" : "No photos yet"}
-            message={tripsWithMedia.length === 0
-              ? "Upload photos and videos from your trips. They'll be organised by destination."
-              : "Be the first to upload a memory from this trip."}
-          />
-          {trips.length > 0 && (
-            <Pressable
-              style={({ pressed }) => [styles.uploadFab, { opacity: pressed ? 0.85 : 1 }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-              accessibilityRole="button"
-              accessibilityLabel="Upload photos"
-            >
-              <Camera size={16} color={C.onAccent} weight="bold" />
-              <Text style={styles.uploadFabText}>Upload photos</Text>
-            </Pressable>
-          )}
+      {/* ── Upload progress ── */}
+      {uploadProgress && (
+        <View style={styles.progressCard}>
+          <View style={styles.progressHead}>
+            <Text style={styles.progressText}>Uploading {Math.min(uploadProgress.done + 1, uploadProgress.total)} of {uploadProgress.total}</Text>
+            <Text style={styles.progressPct}>{Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.round((uploadProgress.done / Math.max(uploadProgress.total, 1)) * 100)}%` as any }]} />
+          </View>
         </View>
       )}
+
+      {/* ── Empty states ── */}
+      {trips.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            compact
+            title="No trips yet"
+            message="Join a trip and the group's photos will collect here, day by day."
+            cta={{ label: "Join a trip", onPress: () => { Haptics.selectionAsync(); router.push("/(tabs)?join=1"); } }}
+          />
+        </View>
+      ) : filteredTrips.length === 0 && mediaFilter !== "all" && tripsWithMedia.length > 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            compact
+            title={mediaFilter === "video" ? "No videos yet" : "No photos yet"}
+            message={`Nothing ${mediaFilter === "video" ? "filmed" : "photographed"} on this trip so far.`}
+            cta={{ label: "Show everything", onPress: () => { Haptics.selectionAsync(); setMediaFilter("all"); } }}
+          />
+        </View>
+      ) : (tripsWithMedia.length === 0 || filteredTrips.length === 0) && emptyTrip ? (
+        <View style={styles.emptyCard}>
+          <View style={styles.emptyPhoto}>
+            <CachedImage uri={emptyTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+            <LinearGradient colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.78)"]} locations={[0.3, 1]} style={StyleSheet.absoluteFill} />
+            <View style={styles.emptyPhotoBody}>
+              <Text style={styles.emptyPhotoEyebrow} numberOfLines={1}>{emptyTrip.name}</Text>
+              <Text style={styles.emptyPhotoTitle} numberOfLines={2}>No photos from {emptyTrip.destination || "this trip"} yet</Text>
+            </View>
+          </View>
+          <View style={styles.emptyBody}>
+            <Text style={styles.emptyText}>Anything you or the group add shows up here for everyone, newest first, sorted by day.</Text>
+            <Pressable
+              style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Add photos"
+            >
+              <Camera size={16} color={C.onAccent} weight="fill" />
+              <Text style={styles.emptyBtnText}>Add photos</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
-  ), [C, chipItems, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length]);
+  ), [C, chipItems, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, trips.length, emptyTrip, uploadProgress, router, handleUploadNew]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -1168,21 +1207,27 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.border, marginHorizontal: 2,
     },
 
-    // ── Upload FAB ──
-    uploadFab: {
-      flexDirection: "row", alignItems: "center", gap: S.xs2,
-      backgroundColor: C.teal, borderRadius: R.full,
-      paddingHorizontal: S.md, paddingVertical: 10,
-    },
-    uploadFabText: {
-      fontSize: T.sm, fontWeight: T.bold, color: C.onAccent,
-      letterSpacing: 0.3,
-    },
+    // ── Upload progress ──
+    progressCard: { marginHorizontal: S.md, marginBottom: S.md, padding: S.md, backgroundColor: C.card, borderRadius: R.lg, gap: S.xs },
+    progressHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    progressText: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary },
+    progressPct: { fontSize: T.sm, color: C.textTertiary, fontVariant: ["tabular-nums"] },
+    progressTrack: { height: 4, borderRadius: 2, backgroundColor: C.elevated, overflow: "hidden" },
+    progressFill: { height: 4, backgroundColor: C.teal },
 
     // ── Empty ──
-    emptyWrap: {
-      alignItems: "center", justifyContent: "center",
-      paddingHorizontal: S.xl, gap: S.sm,
+    emptyWrap: { paddingTop: S["2xl"], paddingHorizontal: S.md },
+    emptyCard: { marginHorizontal: S.md, marginTop: S.sm, backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden" },
+    emptyPhoto: { height: 170, backgroundColor: C.elevated, justifyContent: "flex-end" },
+    emptyPhotoBody: { padding: S.md, gap: 2 },
+    emptyPhotoEyebrow: { fontSize: T.xs, fontWeight: T.semibold, color: "rgba(255,255,255,0.8)", textTransform: "uppercase", letterSpacing: 0.5 },
+    emptyPhotoTitle: { fontSize: T.xl, fontWeight: T.bold, color: "#fff", letterSpacing: -0.2 },
+    emptyBody: { padding: S.md, gap: S.md },
+    emptyText: { fontSize: T.sm, color: C.textSecondary, lineHeight: 19 },
+    emptyBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
+      backgroundColor: C.teal, borderRadius: R.sm, height: 46,
     },
+    emptyBtnText: { fontSize: T.md, fontWeight: T.semibold, color: C.onAccent },
   });
 }

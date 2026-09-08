@@ -4,16 +4,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import {
-  MapPin, Airplane, Bed, Compass, ForkKnife, Car, Train, Bus, Boat, Anchor,
-  Clock, Sun, CaretRight, Crosshair,
-} from "phosphor-react-native";
+import { MapPin, Clock, Sun, CaretRight, Crosshair, Compass } from "phosphor-react-native";
+import { CategoryDot } from "@/components/ui/CategoryDot";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, R, S, shadow, eventColor, SCROLL_BOTTOM_PAD } from "@/constants/theme";
+import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
@@ -22,7 +20,7 @@ import { ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
-import { toLngLat, isSamePoint, AREA_PLACE_TYPES } from "@/shared/coordinates";
+import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
 import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -77,12 +75,6 @@ async function geocodeLocation(loc: string, proximity?: [number, number]): Promi
   }
 }
 
-const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: Airplane, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
-};
-const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
-  car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor,
-};
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -315,6 +307,18 @@ export default function TodayScreen() {
   const eventRowYs = useRef<Record<string, number>>({});
   const scheduleScrollRef = useRef<ScrollView>(null);
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
+  // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
+  const stayCoord = useMemo((): [number, number] | null => {
+    const nearDest = (c: [number, number]) => !destCenter || distanceKm(c, destCenter) < 200;
+    const todayHotel = displayEvents.find(e => e.type === "hotel" && eventCoords[e.id] && nearDest(eventCoords[e.id]));
+    if (todayHotel) return eventCoords[todayHotel.id];
+    for (const e of displayTrip?.events ?? []) {
+      if (e.type !== "hotel" || !e.locationCoords) continue;
+      const c = toLngLat(e.locationCoords, destCenter ?? undefined);
+      if (c && nearDest(c)) return c;
+    }
+    return null;
+  }, [displayEvents, eventCoords, displayTrip, destCenter]);
 
   useEffect(() => {
     if (!displayEvents.length || !destCenter) { setEventCoords({}); return; }
@@ -527,7 +531,7 @@ export default function TodayScreen() {
           </View>
           <View style={{ paddingTop: S["2xl"] }}>
             <EmptyState
-              icon={<Compass size={32} color={C.teal} weight="regular" />}
+              icon={<Compass size={32} color={C.textTertiary} weight="regular" />}
               title="No trips yet"
               message={"When you join a trip, your schedule\nand daily plans will appear here."}
               cta={{
@@ -631,9 +635,8 @@ export default function TodayScreen() {
         </MapboxGL.MapView>
       )}
 
-      {/* "Today" floating label + recenter button */}
-      <View style={{ position: "absolute", top: insets.top, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }} pointerEvents="box-none">
-        <Text style={[styles.screenTitle, !!destCenter && !!MapboxGL && { color: isDark ? "#fff" : "#000", textShadowColor: isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.8)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>Today</Text>
+      {/* Recenter button over the map */}
+      <View style={{ position: "absolute", top: insets.top, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }} pointerEvents="box-none">
         {markerCoords.length > 0 && (
           <Pressable
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fitToMarkers(); }}
@@ -672,6 +675,11 @@ export default function TodayScreen() {
         {/* ── Zone 1: Compact Header ── */}
         <FadeIn delay={0}>
         <View style={styles.headerSection}>
+          <Text style={[styles.scope, { color: C.textTertiary }]}>
+            {isPreview ? "Your first day" : "Today"}
+            {" · "}
+            {new Date((isPreview ? displayTrip.start : todayInTz(destTz)) + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+          </Text>
           {/* Row A: Trip name + badge */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
@@ -695,7 +703,7 @@ export default function TodayScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
             {displayTrip.destination && (
               <>
-                <MapPin size={10} color={C.teal} weight="fill" />
+                <MapPin size={10} color={C.textTertiary} weight="fill" />
                 <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{displayTrip.destination}</Text>
               </>
             )}
@@ -765,7 +773,6 @@ export default function TodayScreen() {
 
         {/* Compact NEXT UP banner (active trip only) */}
         {!isPreview && next && (() => {
-          const nextEvColor = eventColor(next.event.type, C);
           return (
             <FadeIn delay={60}>
             <ScalePress
@@ -784,8 +791,8 @@ export default function TodayScreen() {
                 ...shadow("card", isDark),
               }}
             >
-              <View style={{ width: 3, height: 28, borderRadius: 1.5, backgroundColor: nextEvColor, marginRight: S["2xs"] }} />
-              <MicroLabel color={C.tealText} style={{ marginRight: S["2xs"] }}>NEXT</MicroLabel>
+              <CategoryDot type={next.event.type} transferType={next.event.transferType} size={28} />
+              <MicroLabel color={C.textSecondary} style={{ marginRight: S["2xs"] }}>NEXT</MicroLabel>
               <Text style={{ fontSize: T.sm, fontWeight: "700", color: C.textPrimary, flex: 1 }} numberOfLines={1}>
                 {normaliseTitle(next.event.title, next.event.type, next.event.transferType)}
               </Text>
@@ -799,20 +806,11 @@ export default function TodayScreen() {
         {/* Section header */}
         <FadeIn delay={120}>
         <View style={styles.timelineSection}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-            <MicroLabel>
-              {isPreview ? "Your first day" : "Your schedule"}
-            </MicroLabel>
-            {isPreview ? (
-              <Text style={[styles.sectionCount, { color: C.textTertiary }]}>
-                {new Date(displayTrip.start + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-              </Text>
-            ) : (
-              <Text style={[styles.sectionCount, { color: C.textTertiary }]}>
-                {pastCount} of {displayEvents.length} done
-              </Text>
-            )}
-          </View>
+          {!isPreview && displayEvents.length > 0 && (
+            <Text style={[styles.sectionCount, { color: C.textTertiary, textAlign: "right", marginBottom: 2 }]}>
+              {pastCount} of {displayEvents.length} done
+            </Text>
+          )}
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginBottom: S.xs }} />
         </View>
         </FadeIn>
@@ -820,16 +818,14 @@ export default function TodayScreen() {
         {displayEvents.length > 0 ? (
           <View style={{ paddingHorizontal: S.md }}>
             {displayEvents.map((ev, i) => {
-              const Icon = ev.type === "transfer"
-                ? (TRANSFER_ICONS[ev.transferType || "car"] || Car)
-                : (TYPE_ICONS[ev.type] ?? Compass);
               const evMins = timeToMinutes(ev.time);
               const isPast = !isPreview && evMins < nowMins;
               const nextEvMins = i < displayEvents.length - 1 ? timeToMinutes(displayEvents[i + 1].time) : Infinity;
               const showNowLine = !isPreview && isPast && nextEvMins > nowMins;
 
               const hasCoord = !!eventCoords[ev.id];
-              const evColor = eventColor(ev.type, C);
+              const rawKm = hasCoord && stayCoord && ev.type !== "hotel" ? distanceKm(stayCoord, eventCoords[ev.id]) : null;
+              const km = rawKm != null && rawKm < 100 ? rawKm : null;
               const isHighlighted = highlightedEventId === ev.id;
 
               return (
@@ -859,23 +855,16 @@ export default function TodayScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Show event on map"
                       >
-                        <View style={[
-                          styles.eventIconWrap,
-                          { backgroundColor: hasCoord ? `${evColor}20` : C.tealDim },
-                        ]}>
-                          {hasCoord ? (
-                            <Text style={{ fontSize: T.sm, fontWeight: "800", color: evColor }}>{i + 1}</Text>
-                          ) : (
-                            <Icon size={16} color={C.teal} weight="regular" />
-                          )}
-                        </View>
+                        <CategoryDot type={ev.type} transferType={ev.transferType} size={32} />
                       </Pressable>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.eventTitle, { color: C.textPrimary }]} numberOfLines={2}>
                           {normaliseTitle(ev.title, ev.type, ev.transferType)}
                         </Text>
-                        {ev.location && (
+                        {(ev.location || km != null) && (
                           <Text style={[styles.eventLocation, { color: C.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                            {km != null ? <Text style={{ color: C.tealText, fontWeight: "600" }}>{formatDistance(km)}</Text> : null}
+                            {km != null && ev.location ? " · " : ""}
                             {ev.location}
                           </Text>
                         )}
@@ -910,7 +899,7 @@ export default function TodayScreen() {
         ) : (
           <EmptyState
             compact
-            icon={<Sun size={28} color={C.teal} weight="regular" />}
+            icon={<Sun size={28} color={C.textTertiary} weight="regular" />}
             title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
           />
         )}
@@ -923,11 +912,7 @@ export default function TodayScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    screenTitle: {
-      fontSize: 22, fontWeight: "800",
-      color: C.textPrimary, paddingHorizontal: S.md,
-      paddingVertical: S.sm2,
-    },
+    scope: { fontSize: T.sm, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
 
     // Header
     headerSection: {
@@ -944,10 +929,6 @@ function makeStyles(C: ThemeColors) {
     eventRow: {
       flexDirection: "row", alignItems: "center",
       paddingVertical: S.sm2, gap: S.sm,
-    },
-    eventIconWrap: {
-      width: 32, height: 32, borderRadius: 16,
-      alignItems: "center", justifyContent: "center",
     },
     eventTitle: { fontSize: T.base, fontWeight: "600" },
     eventTime: { fontSize: T.xs, fontWeight: "600" },

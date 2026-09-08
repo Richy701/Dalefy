@@ -21,7 +21,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { parseEventDateTime } from "@/shared/dates";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
-import { T, R, S, F, shadow, statusTone, type ThemeColors } from "@/constants/theme";
+import { T, R, S, F, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS, toLngLat, isSamePoint } from "@/shared/coordinates";
 import { useMemo, useCallback, useState, useEffect } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -32,9 +32,13 @@ import { EventLocationMap } from "@/components/EventLocationMap";
 import { geocode } from "@/services/geocode";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { Pill } from "@/components/ui/Pill";
+import { CategoryDot } from "@/components/ui/CategoryDot";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 
 // Airline logo plate stays white in both themes so carrier marks render as designed
+const HERO_H = 460;
+const PASS_OVERLAP = 120;
+const EV_HERO_H = 320;
 const LOGO_PLATE = "#fff";
 const LOGO_INK = "#111";
 
@@ -446,82 +450,35 @@ export default function EventDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: showActionBar ? 80 + insets.bottom : insets.bottom + 24, backgroundColor: C.bg }}
       >
-        {/* Hero — photo only, no overlay text */}
-        <View style={styles.heroWrap}>
+        {/* Hero: the event's photo, or the trip's, with the essentials on it */}
+        <View style={[styles.heroWrap, { height: EV_HERO_H + insets.top }]}>
           {ev.image ? (
-            <CachedImage uri={ev.image} style={styles.heroImage} contentPosition={{ top: "35%", left: "50%" }} />
+            <CachedImage uri={ev.image} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
+          ) : trip.image ? (
+            <CachedImage uri={trip.image} blurRadius={18} style={StyleSheet.absoluteFill} accessible={false} />
           ) : (
-            <View style={[styles.heroImage, { backgroundColor: C.card }]}>
-              <Icon size={56} color={C.tealDim} weight="thin" />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
+          )}
+          <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <LinearGradient colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.85)"]} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <View style={styles.heroBody}>
+            <View style={styles.heroTypeRow}>
+              <CategoryDot type={ev.type} transferType={ev.transferType} size={26} />
+              <Text style={styles.heroType}>{typeLabel}</Text>
+              {sp.state !== "upcoming" && (
+                <Pill tone="custom" bg={sp.bg} color={sp.text} size="sm" icon={<StatusIndicator state={sp.state} size={8} color={sp.color} />} label={sp.label} />
+              )}
             </View>
-          )}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.2)", "transparent"]}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.5)"]}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
+            <Text style={styles.heroTitle} numberOfLines={3}>{title}</Text>
+            <Text style={styles.heroFact} numberOfLines={2}>
+              {[
+                ev.date ? formatShortDate(ev.date) : null,
+                isHotel && ev.isOvernight ? null : ev.time && !/^tb[acd]$/i.test(ev.time) ? `${ev.time}${ev.endTime && !/^tb[acd]$/i.test(ev.endTime) ? ` – ${ev.endTime}` : ""}` : null,
+                endsIn ? `Ends in ${endsIn}` : startsIn ? `Starts in ${startsIn}` : null,
+              ].filter(Boolean).join(" · ")}
+            </Text>
+          </View>
         </View>
-
-        {/* Type badge + title — below the photo */}
-        <View style={styles.px}>
-          <Pill
-            tone="custom"
-            bg={C.tealDim}
-            color={C.tealText}
-            icon={<Icon size={11} color={C.teal} weight="bold" />}
-            label={typeLabel.toUpperCase()}
-            style={styles.typePill}
-          />
-          <Text style={[styles.titleBelow, { color: C.textPrimary }]} numberOfLines={3}>{title}</Text>
-        </View>
-
-        {/* Pill row: Status + Date + Time */}
-        <Animated.View entering={FadeInDown.delay(50).duration(300)} style={styles.chipWrap}>
-          <Pill
-            tone="custom"
-            bg={sp.bg}
-            color={sp.text}
-            icon={<StatusIndicator state={sp.state} size={10} color={sp.color} />}
-            label={sp.label}
-            style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: sp.border }}
-          />
-          {ev.date && (
-            <Pill
-              tone="custom"
-              bg={C.card}
-              color={C.textPrimary}
-              icon={<Calendar size={12} color={C.textTertiary} weight="regular" />}
-              label={formatShortDate(ev.date)}
-            />
-          )}
-          {!(isHotel && ev.isOvernight) && ev.time && (
-            <Pill
-              tone="custom"
-              bg={C.card}
-              color={C.textPrimary}
-              icon={<Clock size={12} color={C.textTertiary} weight="regular" />}
-              label={`${ev.time}${ev.endTime ? ` – ${ev.endTime}` : ""}`}
-            />
-          )}
-          {(endsIn || startsIn) && (
-            <Pill
-              tone="custom"
-              bg={C.tealDim}
-              color={C.tealText}
-              icon={<Timer size={12} color={C.textTertiary} weight="regular" />}
-              label={endsIn ? `Ends in ${endsIn}` : `Starts in ${startsIn}`}
-            />
-          )}
-        </Animated.View>
 
         {/* Location card */}
         {ev.location && (
@@ -534,15 +491,13 @@ export default function EventDetailScreen() {
             >
               <View style={{ borderRadius: R.xl, overflow: "hidden" }}>
               {locationCoords && (
-                <EventLocationMap coords={locationCoords} accentColor={C.teal} isDark={isDark} />
+                <EventLocationMap coords={locationCoords} accentColor={categoryTone(ev.type, C).fg} isDark={isDark} />
               )}
               <View style={styles.locationRow}>
-                <View style={[styles.locationIcon, { backgroundColor: C.tealDim }]}>
-                  <MapPin size={18} color={C.textTertiary} weight="regular" />
-                </View>
+                <MapPin size={18} color={C.textTertiary} weight="regular" style={{ marginTop: 1 }} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[styles.locationLabel, { color: C.textTertiary }]}>Location</Text>
                   <Text style={[styles.locationValue, { color: C.textPrimary }]} numberOfLines={3}>{ev.location}</Text>
+
                 </View>
                 <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ flexShrink: 0, alignSelf: "center" }} />
               </View>
@@ -663,15 +618,14 @@ export default function EventDetailScreen() {
                   i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                 ]}
               >
-                <Text style={[styles.detailListLabel, { color: C.textTertiary, minWidth: 90 }]}>{label}</Text>
+                <CategoryDot type={e.type} transferType={e.transferType} size={28} />
                 <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontSize: T.xs, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</Text>
                   <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={1}>
                     {cleanEventTitle(e.title, e.type, e.transferType)}
                   </Text>
-                  {e.time ? (
-                    <Text style={{ fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary, marginTop: 2 }}>{e.time}</Text>
-                  ) : null}
                 </View>
+                {e.time ? <Text style={{ fontSize: T.sm, color: C.tealText, fontWeight: T.medium, fontVariant: ["tabular-nums"] }}>{e.time}</Text> : null}
                 <CaretRight size={14} color={C.textTertiary} weight="regular" />
               </Pressable>
             ))}
@@ -743,7 +697,7 @@ function TbaText({ C }: { C: ThemeColors }) {
 }
 
 function FlightDetailScreen({
-  ev, C, isDark, isLeader, insets, safeBack,
+  ev, trip, C, isDark, isLeader, insets, safeBack,
 }: {
   ev: TravelEvent;
   trip: any;
@@ -833,6 +787,7 @@ function FlightDetailScreen({
   };
 
   const fs = useMemo(() => makeFlightStyles(C), [C]);
+  const flightColor = categoryTone("flight", C).fg;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -866,264 +821,169 @@ function FlightDetailScreen({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >
-          {/* 1. Map hero */}
-          <View style={{ position: "relative" }}>
+          {/* Hero: the route on a map, or the trip's photo when we don't know both airports */}
+          <View style={[fs.hero, { height: HERO_H + insets.top }]}>
             {hasMap && mapFrom && mapTo ? (
               <FlightRouteMap
                 from={mapFrom}
                 to={mapTo}
                 fromCode={depCode}
                 toCode={arrCode}
-                height={320}
-                accentColor={C.teal}
+                height={HERO_H + insets.top}
+                insetTop={insets.top + 44}
+                insetBottom={PASS_OVERLAP + 20}
+                accentColor={flightColor}
                 isDark={isDark}
               />
+            ) : trip?.image ? (
+              <CachedImage uri={trip.image} blurRadius={20} style={StyleSheet.absoluteFill} accessible={false} />
             ) : (
-              <View style={{ height: 320, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-                <AirplaneTilt size={48} color={C.textTertiary} weight="thin" />
-              </View>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
             )}
-
-            {/* Floating stats */}
-            {(distance || bearing !== null) && (
-              <View style={fs.mapStatsRow}>
-                {distance ? (
-                  <Pill tone="custom" bg={C.glass} color={C.textSecondary} label={`${distance.toLocaleString()} km`} />
-                ) : null}
-                {bearing !== null ? (
-                  <Pill tone="custom" bg={C.glass} color={C.textSecondary} label={`${Math.round(bearing)}° ${bearingLabel(bearing)}`} />
-                ) : null}
-              </View>
-            )}
+            <LinearGradient colors={[isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <LinearGradient colors={[`${C.bg}00`, C.bg]} locations={[0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
           </View>
 
           <View style={fs.body}>
-            {/* 2. Airline row */}
-            <Animated.View entering={FadeInDown.delay(20).duration(300)} style={fs.airlineRow}>
-              <View style={fs.airlineTile}>
-                {airlineIata && !logoError ? (
-                  <Image
-                    source={{ uri: `https://images.kiwi.com/airlines/64/${airlineIata}.png` }}
-                    style={fs.airlineLogo}
-                    onError={() => setLogoError(true)}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <Text style={fs.airlineIata}>
-                    {airlineIata || (ev.airline || "--").slice(0, 2).toUpperCase()}
-                  </Text>
-                )}
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[fs.airlineName, { color: C.textPrimary }]} numberOfLines={1}>
-                  {ev.airline || "Airline"}
-                </Text>
-                <Text style={[fs.flightNum, { color: C.textTertiary }]}>
-                  {ev.flightNum || "---"}
-                </Text>
-              </View>
-            </Animated.View>
-
-            {/* 3. Route header */}
-            <Animated.View entering={FadeInDown.delay(50).duration(300)}>
-              <Text style={[fs.routeTitle, { color: C.textPrimary }]}>
-                {depCity || depCode || "---"}
-                <Text style={{ color: C.tealText }}> → </Text>
-                {arrCity || arrCode || "---"}
-              </Text>
-              <Text style={[fs.routeSub, { color: C.textTertiary }]}>
-                {depCode || "---"} · {depAirportName || "---"}  →  {arrCode || "---"} · {arrAirportName || "---"}
-              </Text>
-            </Animated.View>
-
-            {/* 4. Status pills */}
-            <Animated.View entering={FadeInDown.delay(100).duration(300)} style={fs.pillRow}>
-              {ev.status && (
-                <Pill
-                  tone="custom"
-                  bg={tone.bg}
-                  color={tone.text}
-                  icon={
-                    <StatusIndicator
-                      state={
-                        statusLabel === "Cancelled" ? "destructive"
-                        : statusLabel === "Delayed" ? "warning"
-                        : statusLabel === "Landed" ? "completed"
-                        : "upcoming"
-                      }
-                      size={10}
-                      color={tone.color}
+            {/* The pass: one object with everything you need at the airport */}
+            <Animated.View entering={FadeInDown.delay(40).duration(320)} style={[fs.pass, { backgroundColor: C.card }, shadow("deep", isDark)]}>
+              <View style={fs.airlineRow}>
+                <View style={fs.airlineTile}>
+                  {airlineIata && !logoError ? (
+                    <Image
+                      source={{ uri: `https://images.kiwi.com/airlines/64/${airlineIata}.png` }}
+                      style={fs.airlineLogo}
+                      onError={() => setLogoError(true)}
+                      resizeMode="contain"
                     />
-                  }
-                  label={statusLabel}
-                />
-              )}
-              {countdown && (
-                <Pill
-                  tone="neutral"
-                  icon={<StatusIndicator state="upcoming" size={12} color={C.textSecondary} />}
-                  label={`Departs in ${countdown}`}
-                />
-              )}
-            </Animated.View>
+                  ) : (
+                    <Text style={fs.airlineIata}>
+                      {airlineIata || (ev.airline || "--").slice(0, 2).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[fs.airlineName, { color: C.textPrimary }]} numberOfLines={1}>
+                    {ev.airline || "Airline"}
+                  </Text>
+                  <Text style={[fs.flightNum, { color: C.textTertiary }]} numberOfLines={1}>
+                    {[ev.flightNum, live?.aircraft || ev.aircraft].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+                {ev.status ? (
+                  <Pill
+                    tone="custom"
+                    bg={tone.bg}
+                    color={tone.text}
+                    icon={
+                      <StatusIndicator
+                        state={
+                          statusLabel === "Cancelled" ? "destructive"
+                          : statusLabel === "Delayed" ? "warning"
+                          : statusLabel === "Landed" ? "completed"
+                          : "upcoming"
+                        }
+                        size={10}
+                        color={tone.color}
+                      />
+                    }
+                    label={statusLabel}
+                  />
+                ) : null}
+              </View>
 
-            {/* 5. Times card */}
-            <Animated.View entering={FadeInDown.delay(150).duration(300)} style={[fs.card, { backgroundColor: C.card }, shadow("card", isDark)]}>
-              <View style={fs.timesRow}>
-                {/* Departure */}
+              <View style={fs.routeRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[fs.bigTime, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
-                  {depTz && (
-                    <Text style={[fs.tzLabel, { color: C.textTertiary }]}>
-                      {depTz.abbr ? `${depTz.abbr} · ${depTz.offset}` : depTz.offset}
-                    </Text>
-                  )}
-                  <Text style={[fs.airportCode, { color: C.textTertiary }]}>{depCode || "---"}</Text>
-                  <Text style={[fs.airportName, { color: C.textTertiary }]} numberOfLines={1}>{depAirportName || "---"}</Text>
+                  <Text style={[fs.code, { color: C.textPrimary }]}>{depCode || "---"}</Text>
+                  <Text style={[fs.city, { color: C.textSecondary }]} numberOfLines={1}>{depCity || depAirportName || " "}</Text>
                 </View>
-
-                {/* Arc connector */}
-                <View style={fs.arcConnector}>
-                  <View style={fs.arcLineRow}>
-                    <View style={[fs.dashLine, { borderColor: C.border }]} />
-                    <AirplaneTilt size={16} color={C.teal} weight="fill" style={{ transform: [{ rotate: "45deg" }] }} />
-                    <View style={[fs.dashLine, { borderColor: C.border }]} />
+                <View style={fs.routeMid}>
+                  <View style={fs.routeLine}>
+                    <View style={[fs.routeDot, { backgroundColor: C.textTertiary }]} />
+                    <View style={[fs.routeRule, { backgroundColor: C.border }]} />
+                    <AirplaneTilt size={18} color={flightColor} weight="fill" style={{ transform: [{ rotate: "45deg" }] }} />
+                    <View style={[fs.routeRule, { backgroundColor: C.border }]} />
+                    <View style={[fs.routeDot, { backgroundColor: C.textTertiary }]} />
                   </View>
-                  {dur && (
-                    <Text style={[fs.durLabel, { color: C.textTertiary }]}>
-                      {dur.h}h{dur.m > 0 ? ` ${dur.m}m` : ""}
-                    </Text>
-                  )}
+                  <Text style={[fs.durLabel, { color: C.textTertiary }]} numberOfLines={1}>
+                    {[dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""}` : null, distance ? `${distance.toLocaleString()} km` : null].filter(Boolean).join(" · ") || " "}
+                  </Text>
                 </View>
-
-                {/* Arrival */}
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
+                  <Text style={[fs.code, { color: C.textPrimary }]}>{arrCode || "---"}</Text>
+                  <Text style={[fs.city, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{arrCity || arrAirportName || " "}</Text>
+                </View>
+              </View>
+
+              <View style={fs.timesRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Departs</Text>
+                  <Text style={[fs.time, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
+                  <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={1}>
+                    {[ev.date ? formatShortDate(ev.date) : null, depTz?.abbr || depTz?.offset].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, alignItems: "flex-end" }}>
+                  <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Arrives</Text>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 4 }}>
-                    <Text style={[fs.bigTime, { color: C.textPrimary }]}>{arrTime || "--:--"}</Text>
+                    <Text style={[fs.time, { color: C.textPrimary }]}>{arrTime || "--:--"}</Text>
                     {dayOffset > 0 && (
-                      <View style={[fs.plusOneBadge, { backgroundColor: C.tealDim }]}>
-                        <Text style={[fs.plusOneText, { color: C.tealText }]}>+{dayOffset}</Text>
+                      <View style={[fs.plusOneBadge, { backgroundColor: C.elevated }]}>
+                        <Text style={[fs.plusOneText, { color: C.textSecondary }]}>+{dayOffset}</Text>
                       </View>
                     )}
                   </View>
-                  {arrTz && (
-                    <Text style={[fs.tzLabel, { color: C.textTertiary }]}>
-                      {arrTz.abbr ? `${arrTz.abbr} · ${arrTz.offset}` : arrTz.offset}
-                    </Text>
-                  )}
-                  <Text style={[fs.airportCode, { color: C.textTertiary }]}>{arrCode || "---"}</Text>
-                  <Text style={[fs.airportName, { color: C.textTertiary }]} numberOfLines={1}>{arrAirportName || "---"}</Text>
+                  <Text style={[fs.timeMeta, { color: C.textTertiary, textAlign: "right" }]} numberOfLines={1}>
+                    {[arrivalDate ? formatShortDate(arrivalDate) : null, arrTz?.abbr || arrTz?.offset].filter(Boolean).join(" · ")}
+                  </Text>
                 </View>
               </View>
 
-              {/* Date row — departure & arrival */}
-              {ev.date && (
-                <View style={[fs.dateRow, { borderTopColor: C.border }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[fs.dateColLabel, { color: C.textTertiary }]}>DEPARTURE</Text>
-                    <Text style={[fs.dateText, { color: C.textTertiary }]}>{formatShortDate(ev.date)}</Text>
+              {/* perforation */}
+              <View style={fs.tear}>
+                <View style={[fs.notch, { backgroundColor: C.bg, left: -9 }]} />
+                <View style={[fs.tearLine, { borderColor: C.border }]} />
+                <View style={[fs.notch, { backgroundColor: C.bg, right: -9 }]} />
+              </View>
+
+              {/* stub */}
+              <View style={fs.stub}>
+                {[
+                  { label: "Terminal", value: (live?.terminal || ev.terminal || "").replace(/^T/i, "") || null },
+                  { label: "Gate", value: live?.gate || ev.gate || null },
+                  { label: "Seat", value: ev.seatDetails || null },
+                  { label: "Check-in", value: ev.checkin || null },
+                  { label: "Arrival terminal", value: (live?.arrTerminal || ev.arrTerminal || "").replace(/^T/i, "") || null },
+                  { label: "Baggage belt", value: live?.baggageBelt || ev.baggageBelt || null },
+                ].map(f => (
+                  <View key={f.label} style={fs.stubField}>
+                    <Text style={[fs.stubLabel, { color: C.textTertiary }]} numberOfLines={1}>{f.label}</Text>
+                    {f.value ? (
+                      <Text style={[fs.stubValue, { color: C.textPrimary }]} numberOfLines={1}>{f.value}</Text>
+                    ) : <TbaText C={C} />}
                   </View>
-                  <View style={{ flex: 1, alignItems: "flex-end" }}>
-                    <Text style={[fs.dateColLabel, { color: C.textTertiary }]}>ARRIVAL</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: S.xs2 }}>
-                      <Text style={[fs.dateText, { color: C.textTertiary }]}>
-                        {formatShortDate(arrivalDate)}
-                      </Text>
-                      {dayOffset > 0 && (
-                        <View style={[fs.plusOneBadge, { backgroundColor: C.tealDim }]}>
-                          <Text style={[fs.plusOneText, { color: C.tealText }]}>+{dayOffset}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              )}
-            </Animated.View>
-
-            {/* 6. Terminal pair */}
-            <Animated.View entering={FadeInDown.delay(200).duration(300)} style={fs.termRow}>
-              <View style={[fs.termCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
-                <View style={fs.termHeader}>
-                  <AirplaneTakeoff size={13} color={C.teal} weight="bold" />
-                  <Text style={[fs.termHeaderText, { color: C.textTertiary }]}>DEPARTURE</Text>
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Terminal</Text>
-                  {(live?.terminal || ev.terminal) ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{(live?.terminal || ev.terminal || "").replace(/^T/i, "")}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Gate</Text>
-                  {(live?.gate || ev.gate) ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.gate || ev.gate}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Check-in</Text>
-                  {ev.checkin ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{ev.checkin}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
+                ))}
               </View>
 
-              <View style={[fs.termCard, { backgroundColor: C.card }, shadow("card", isDark)]}>
-                <View style={fs.termHeader}>
-                  <AirplaneLanding size={13} color={C.teal} weight="bold" />
-                  <Text style={[fs.termHeaderText, { color: C.textTertiary }]}>ARRIVAL</Text>
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Terminal</Text>
-                  {(live?.arrTerminal || ev.arrTerminal) ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{(live?.arrTerminal || ev.arrTerminal || "").replace(/^T/i, "")}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Gate</Text>
-                  {(live?.arrGate || ev.arrGate) ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.arrGate || ev.arrGate}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
-                <View style={fs.termField}>
-                  <Text style={[fs.termFieldLabel, { color: C.textTertiary }]}>Belt</Text>
-                  {(live?.baggageBelt || ev.baggageBelt) ? (
-                    <Text style={[fs.termFieldValue, { color: C.textPrimary }]}>{live?.baggageBelt || ev.baggageBelt}</Text>
-                  ) : <TbaText C={C} />}
-                </View>
-              </View>
-            </Animated.View>
-
-            {/* 7. Details list */}
-            <Animated.View entering={FadeInDown.delay(250).duration(300)} style={[fs.card, { backgroundColor: C.card, padding: 0 }, shadow("card", isDark)]}>
-              {[
-                { icon: AirplaneTilt, label: "Aircraft", value: live?.aircraft || ev.aircraft || null },
-                distance ? { icon: Ruler, label: "Distance", value: `${distance.toLocaleString()} km` } : null,
-                isLeader && ev.confNumber ? { icon: Hash, label: "Booking ref", value: ev.confNumber, onPress: copyConf } : null,
-                ev.seatDetails ? { icon: Armchair, label: "Seat", value: ev.seatDetails } : null,
-              ].filter(Boolean).map((item: any, i, arr) => (
-                <Pressable
-                  key={i}
-                  onPress={item.onPress}
-                  accessibilityRole={item.onPress ? "button" : undefined}
-                  accessibilityLabel={item.onPress ? `Copy ${item.label}` : undefined}
-                  style={[
-                    fs.detailRow,
-                    i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
-                  ]}
-                >
-                  <item.icon size={16} color={C.textTertiary} weight="regular" style={{ marginTop: 2 }} />
-                  <Text style={[fs.detailLabel, { color: C.textTertiary, flex: 1 }]}>{item.label}</Text>
-                  {item.value ? (
-                    <Text style={[fs.detailValue, { color: C.textPrimary, textAlign: "right" }]}>{item.value}</Text>
-                  ) : <TbaText C={C} />}
-                  {item.onPress && <Copy size={12} color={C.textTertiary} weight="light" style={{ marginLeft: S.xs2 }} />}
+              {isLeader && ev.confNumber ? (
+                <Pressable onPress={copyConf} accessibilityRole="button" accessibilityLabel="Copy booking reference" style={({ pressed }) => [fs.refRow, { borderTopColor: C.border, opacity: pressed ? 0.6 : 1 }]}>
+                  <Text style={[fs.stubLabel, { color: C.textTertiary, flex: 1 }]}>Booking reference</Text>
+                  <Text style={[fs.stubValue, { color: C.textPrimary }]}>{ev.confNumber}</Text>
+                  <Copy size={14} color={C.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
                 </Pressable>
-              ))}
+              ) : null}
             </Animated.View>
+
+            {/* Countdown, when it is still ahead of us */}
+            {countdown ? (
+              <Animated.View entering={FadeInDown.delay(120).duration(300)} style={fs.countRow}>
+                <Text style={[fs.countText, { color: C.textSecondary }]}>Departs in <Text style={{ color: C.textPrimary, fontWeight: T.semibold }}>{countdown}</Text></Text>
+              </Animated.View>
+            ) : null}
 
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
-              <View>
+              <Animated.View entering={FadeInDown.delay(160).duration(300)}>
                 <MicroLabel style={{ marginBottom: S.xs }}>Documents</MicroLabel>
                 {ev.documents.map(doc => (
                   <Pressable
@@ -1133,17 +993,17 @@ function FlightDetailScreen({
                     accessibilityLabel={`Open document ${doc.name}`}
                     style={({ pressed }) => [fs.docRow, { backgroundColor: C.card, opacity: pressed ? 0.8 : 1 }]}
                   >
-                    <View style={[fs.docIcon, { backgroundColor: C.tealDim }]}>
-                      <FileText size={14} color={C.textTertiary} weight="regular" />
+                    <View style={[fs.docIcon, { backgroundColor: C.elevated }]}>
+                      <FileText size={16} color={C.textSecondary} weight="regular" />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={[{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
-                      <Text style={{ fontSize: T.xs, color: C.textTertiary }}>{Math.round(doc.size / 1024)} KB</Text>
+                      <Text style={[{ fontSize: T.md, fontWeight: T.medium, color: C.textPrimary }]} numberOfLines={1}>{doc.name}</Text>
+                      <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{Math.round(doc.size / 1024)} KB</Text>
                     </View>
                     <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
                   </Pressable>
                 ))}
-              </View>
+              </Animated.View>
             )}
           </View>
         </ScrollView>
@@ -1157,76 +1017,52 @@ function FlightDetailScreen({
 
 function makeFlightStyles(C: ThemeColors) {
   return StyleSheet.create({
-    mapStatsRow: {
-      position: "absolute", bottom: S.xs, left: S.md, right: S.md,
-      flexDirection: "row", justifyContent: "space-between",
-    },
+    hero: { overflow: "hidden", backgroundColor: C.elevated },
+    body: { paddingHorizontal: S.md, marginTop: -PASS_OVERLAP, gap: S.md },
 
-    body: { paddingHorizontal: S.md, paddingTop: S.lg, gap: S.md },
-
-    airlineRow: { flexDirection: "row", alignItems: "center", gap: S.sm },
+    pass: { borderRadius: R.lg, overflow: "visible" },
+    airlineRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingTop: S.md },
     airlineTile: {
-      width: 40, height: 40, borderRadius: R.md,
+      width: 40, height: 40, borderRadius: R.sm,
       backgroundColor: LOGO_PLATE,
       borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       alignItems: "center", justifyContent: "center",
     },
     airlineIata: { fontSize: T.xs, fontWeight: T.black, color: LOGO_INK, letterSpacing: 0.5 },
     airlineLogo: { width: 30, height: 30, borderRadius: 4 },
-    airlineName: { fontSize: T.sm, fontWeight: T.bold },
-    flightNum: { fontSize: T.xs, fontWeight: T.medium, letterSpacing: 0.3, marginTop: 1 },
+    airlineName: { fontSize: T.md, fontWeight: T.semibold },
+    flightNum: { fontSize: T.sm, marginTop: 1 },
 
-    routeTitle: { fontSize: 28, fontFamily: F.black, textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 34 },
-    routeSub: { fontSize: T.xs, fontWeight: T.medium, letterSpacing: 0.2, marginTop: 4 },
+    routeRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: S.md, paddingTop: S.lg },
+    code: { fontSize: 46, lineHeight: 50, fontWeight: T.bold, letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
+    city: { fontSize: T.sm, marginTop: 2 },
+    routeMid: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.xs, paddingTop: 18, width: 116 },
+    routeLine: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "stretch" },
+    routeRule: { flex: 1, height: 1 },
+    routeDot: { width: 5, height: 5, borderRadius: 2.5 },
+    durLabel: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6, fontVariant: ["tabular-nums"] },
 
-    pillRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs },
-
-    card: { borderRadius: R.xl, padding: S.md },
-
-    timesRow: { flexDirection: "row", alignItems: "flex-start" },
-    bigTime: {
-      fontSize: 32, fontWeight: T.bold, lineHeight: 36,
-      fontVariant: ["tabular-nums"], letterSpacing: -0.5,
-    },
-    tzLabel: { fontSize: T["2xs"], fontWeight: T.medium, letterSpacing: 0.5, marginTop: 4, fontVariant: ["tabular-nums"] },
-    airportCode: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6 },
-    airportName: { fontSize: T.xs, marginTop: 2 },
-    arcConnector: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.sm, paddingTop: 8 },
-    arcLineRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    dashLine: { width: 20, height: 0, borderTopWidth: 1, borderStyle: "dashed" },
-    durLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.3, marginTop: 6 },
-    plusOneBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginTop: 2 },
+    timesRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm },
+    timeLabel: { fontSize: T.xs, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    time: { fontSize: 30, lineHeight: 34, fontWeight: T.semibold, fontVariant: ["tabular-nums"], letterSpacing: -0.6 },
+    timeMeta: { fontSize: T.sm, marginTop: 2 },
+    plusOneBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
     plusOneText: { fontSize: T["2xs"], fontWeight: T.bold },
 
-    dateRow: {
-      flexDirection: "row", justifyContent: "space-between",
-      borderTopWidth: StyleSheet.hairlineWidth,
-      marginTop: S.md, paddingTop: S.sm,
-    },
-    dateText: { fontSize: T.xs, fontWeight: T.medium },
+    tear: { height: 18, justifyContent: "center", position: "relative", marginTop: S.xs },
+    tearLine: { marginHorizontal: S.md, borderTopWidth: 1, borderStyle: "dashed" },
+    notch: { position: "absolute", top: 0, width: 18, height: 18, borderRadius: 9 },
+    stub: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.md, rowGap: S.md },
+    stubField: { width: "33.33%", paddingRight: S.xs },
+    stubLabel: { fontSize: T.xs, marginBottom: 3 },
+    stubValue: { fontSize: T.xl, fontWeight: T.semibold, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
+    refRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth },
 
-    termRow: { flexDirection: "row", gap: S.sm },
-    termCard: { flex: 1, borderRadius: R.lg, padding: S.md },
-    termHeader: { flexDirection: "row", alignItems: "center", gap: S.xs2, marginBottom: S.sm },
-    termHeaderText: { fontSize: T["2xs"], fontWeight: T.black, letterSpacing: 1.2 },
-    termField: { marginBottom: S.xs },
-    termFieldLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 0.5, marginBottom: 2 },
-    termFieldValue: { fontSize: T.sm, fontWeight: T.bold },
+    countRow: { alignItems: "center" },
+    countText: { fontSize: T.md },
 
-    detailRow: {
-      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
-      paddingHorizontal: S.md, paddingVertical: S.sm,
-    },
-    detailLabel: { fontSize: T.sm, fontWeight: T.medium },
-    detailValue: { fontSize: T.sm, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
-
-    docRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm,
-      padding: S.md, borderRadius: R.lg, marginBottom: S["2xs"],
-    },
-    docIcon: { width: 40, height: 40, borderRadius: R.md, alignItems: "center", justifyContent: "center" },
-
-    dateColLabel: { fontSize: T["2xs"], fontWeight: T.bold, letterSpacing: 1, marginBottom: 4 },
+    docRow: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.md, borderRadius: R.lg, marginBottom: S["2xs"] },
+    docIcon: { width: 40, height: 40, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
   });
 }
 
@@ -1241,25 +1077,12 @@ function makeStyles(C: ThemeColors) {
     errorBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
     px: { paddingHorizontal: S.md, marginBottom: S.md },
 
-    heroWrap: { position: "relative", aspectRatio: 16 / 9, marginBottom: 0 },
-    heroImage: {
-      width: "100%", height: "100%",
-      alignItems: "center", justifyContent: "center",
-    },
-    typePill: {
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.tealMid,
-      marginTop: S.lg, marginBottom: S.sm,
-    },
-    titleBelow: {
-      fontSize: T["2xl"], fontWeight: T.bold,
-      letterSpacing: -0.3, lineHeight: 30,
-      marginBottom: S.md,
-    },
-
-    chipWrap: {
-      flexDirection: "row", flexWrap: "wrap", gap: S.xs,
-      paddingHorizontal: S.md, marginBottom: S.md,
-    },
+    heroWrap: { position: "relative", overflow: "hidden", justifyContent: "flex-end", marginBottom: S.md, backgroundColor: C.elevated },
+    heroBody: { paddingHorizontal: S.md, paddingBottom: S.md, gap: S.xs },
+    heroTypeRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    heroType: { fontSize: T.sm, fontWeight: T.semibold, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
+    heroTitle: { fontSize: 28, lineHeight: 32, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4 },
+    heroFact: { fontSize: T.base, fontWeight: T.medium, color: "rgba(255,255,255,0.85)" },
 
     locationCard: {
       marginHorizontal: S.md, marginBottom: S.md,
@@ -1269,12 +1092,8 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "flex-start", gap: S.sm,
       padding: S.md,
     },
-    locationIcon: {
-      width: 32, height: 32, borderRadius: R.md,
-      alignItems: "center", justifyContent: "center", flexShrink: 0,
-    },
-    locationLabel: { fontSize: T["2xs"], fontWeight: T.semibold, letterSpacing: 0.5, marginBottom: 2 },
-    locationValue: { fontSize: T.sm, fontWeight: T.semibold, lineHeight: 18 },
+    locationLabel: { fontSize: T.sm, fontWeight: T.semibold, marginTop: 4 },
+    locationValue: { fontSize: T.md, fontWeight: T.medium, lineHeight: 20 },
 
     checkCard: {
       flexDirection: "row", alignItems: "center", gap: S.sm,

@@ -15,6 +15,9 @@ interface Props {
   height?: number;
   accentColor?: string;
   isDark?: boolean;
+  /** Keep the route clear of overlays at the top and bottom of the map (px). */
+  insetTop?: number;
+  insetBottom?: number;
 }
 
 /** Great-circle arc between two [lng, lat] points. Returns [lng, lat][]. */
@@ -91,6 +94,8 @@ export function FlightRouteMap({
   fromCode,
   toCode,
   height = 320,
+  insetTop = 0,
+  insetBottom = 0,
   accentColor,
   isDark = true,
 }: Props) {
@@ -168,8 +173,8 @@ export function FlightRouteMap({
           ] as [number, number],
           paddingLeft: 60,
           paddingRight: 60,
-          paddingTop: 60,
-          paddingBottom: 60,
+          paddingTop: 60 + insetTop,
+          paddingBottom: 60 + insetBottom,
         },
       };
     }
@@ -179,8 +184,9 @@ export function FlightRouteMap({
     return {
       centerCoordinate: midPt,
       zoomLevel: zoom,
+      padding: { paddingTop: insetTop, paddingBottom: insetBottom, paddingLeft: 0, paddingRight: 0 },
     };
-  }, [from, to, arcCoords, valid]);
+  }, [from, to, arcCoords, valid, insetTop, insetBottom]);
 
   if (!MapboxGL || !valid) return <View style={{ height, backgroundColor: C.bg }} />;
 

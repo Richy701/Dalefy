@@ -218,7 +218,6 @@ export default function TripScreen() {
     );
   }
 
-  const GROUND = isDark ? `${C.bg}bf` : `${C.bg}b8`;
   const flag = destinationFlag(trip.destination);
   const travellers = trip.travelers ?? [];
   const parsedPax = parseInt(trip.paxCount || "", 10);
@@ -278,14 +277,14 @@ export default function TripScreen() {
       >
         {/* ── The photo, blurred, sits behind the whole page; a scrim rises to the page colour ── */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <CachedImage uri={trip.image} blurRadius={60} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
+          <CachedImage uri={trip.image} blurRadius={90} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
           <View style={StyleSheet.absoluteFill}>
             <LinearGradient
-              colors={[`${C.bg}1a`, `${C.bg}59`, GROUND]}
-              locations={[0, 0.5, 1]}
-              style={{ height: HERO_H + 320 }}
+              colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]}
+              locations={[0, 0.55, 1]}
+              style={{ height: HERO_H + 300 }}
             />
-            <View style={{ flex: 1, backgroundColor: GROUND }} />
+            <View style={{ flex: 1, backgroundColor: C.bg }} />
           </View>
         </View>
 
@@ -352,21 +351,28 @@ export default function TripScreen() {
             const d = parseTripDate(date);
             const isToday = date === today;
             const isPast = date < today;
-            const cats = [...new Set(events.map(e => e.type))].slice(0, 4);
+            // One segment per event, in time order, coloured by category: the day's shape at a glance
+            const segments = events.map(e => categoryTone(e.type, C).fg);
             return (
               <Pressable
                 key={date}
                 onPress={() => jumpToDay(date)}
                 accessibilityRole="button"
                 accessibilityLabel={`${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}, ${events.length} event${events.length === 1 ? "" : "s"}`}
-                style={({ pressed }) => [styles.stripDay, { opacity: pressed ? 0.6 : dimPast && isPast ? 0.55 : 1 }]}
+                style={({ pressed }) => [
+                  styles.stripDay,
+                  isToday && styles.stripDayToday,
+                  { opacity: pressed ? 0.6 : dimPast && isPast ? 0.55 : 1 },
+                ]}
               >
-                <Text style={styles.stripWeekday}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
-                <View style={[styles.stripNum, isToday && { backgroundColor: C.teal }]}>
-                  <Text style={[styles.stripNumText, isToday && { color: C.onAccent }]}>{d.getDate()}</Text>
-                </View>
-                <View style={styles.stripDots}>
-                  {cats.map(t => <View key={t} style={[styles.stripDot, { backgroundColor: categoryTone(t, C).fg }]} />)}
+                <Text style={[styles.stripWeekday, isToday && { color: C.tealText }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
+                <Text style={styles.stripNumText}>{d.getDate()}</Text>
+                <View style={styles.stripBar}>
+                  {segments.length === 0 ? (
+                    <View style={[styles.stripSeg, { backgroundColor: C.border }]} />
+                  ) : segments.map((color, i) => (
+                    <View key={i} style={[styles.stripSeg, { backgroundColor: color }]} />
+                  ))}
                 </View>
               </Pressable>
             );
@@ -664,14 +670,19 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     nextActionText: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
 
-    // Week strip
-    strip: { paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm, gap: S.xs2 },
-    stripDay: { width: 46, alignItems: "center", gap: 4 },
+    // Day rail
+    strip: { paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm, gap: S.xs, flexGrow: 1, justifyContent: "center" },
+    stripDay: {
+      width: 52, paddingTop: S.xs, paddingBottom: S.xs2, paddingHorizontal: S.xs2,
+      alignItems: "center", gap: 2,
+      backgroundColor: C.card, borderRadius: R.sm,
+      borderWidth: 1.5, borderColor: "transparent",
+    },
+    stripDayToday: { borderColor: C.teal },
     stripWeekday: { fontSize: T["2xs"], fontWeight: T.semibold, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 },
-    stripNum: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-    stripNumText: { fontSize: T.md, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
-    stripDots: { flexDirection: "row", gap: 3, height: 5 },
-    stripDot: { width: 5, height: 5, borderRadius: 2.5 },
+    stripNumText: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
+    stripBar: { flexDirection: "row", gap: 2, height: 3, alignSelf: "stretch", marginTop: 4, borderRadius: 1.5, overflow: "hidden" },
+    stripSeg: { flex: 1, height: 3, borderRadius: 1.5 },
 
     filterChip: { alignSelf: "flex-start", paddingVertical: S.xs, paddingHorizontal: S.sm2, borderRadius: R.sm },
     filterText: { fontSize: T.sm, fontWeight: T.semibold },

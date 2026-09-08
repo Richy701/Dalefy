@@ -1086,7 +1086,6 @@ export default function HomeScreen() {
 
   // Ground the photo fades into: the page colour, thinner in light mode so the photo keeps
   // showing through instead of washing out to white.
-  const GROUND = isDark ? `${C.bg}bf` : `${C.bg}b8`;
   const onGround = isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
     { label: "Itinerary", Icon: CalendarDots, go: () => router.push(`/trip/${heroTrip.id}`) },
@@ -1107,15 +1106,15 @@ export default function HomeScreen() {
         {/* ── The photo, blurred, sits behind the whole page; a scrim rises to the page colour ── */}
         {ready && heroTrip ? (
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <CachedImage uri={heroTrip.image} blurRadius={60} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
+            <CachedImage uri={heroTrip.image} blurRadius={90} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
             <View style={StyleSheet.absoluteFill}>
-              {/* Light where the sharp photo dissolves, so the colours match; calmer further down */}
+              {/* Barely there where the sharp photo dissolves, then solid page colour under the content */}
               <LinearGradient
-                colors={[`${C.bg}1a`, `${C.bg}59`, GROUND]}
-                locations={[0, 0.5, 1]}
-                style={{ height: HERO_H + insets.top + 320 }}
+                colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]}
+                locations={[0, 0.55, 1]}
+                style={{ height: HERO_H + insets.top + 300 }}
               />
-              <View style={{ flex: 1, backgroundColor: GROUND }} />
+              <View style={{ flex: 1, backgroundColor: C.bg }} />
             </View>
           </View>
         ) : null}

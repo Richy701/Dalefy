@@ -291,3 +291,18 @@ export const AREA_PLACE_TYPES = new Set(["country", "region", "district", "postc
 export function isSamePoint(a: [number, number], b: [number, number], maxDeg = 0.003): boolean {
   return Math.abs(a[0] - b[0]) < maxDeg && Math.abs(a[1] - b[1]) < maxDeg;
 }
+
+/** Great-circle distance in km between two [lng, lat] points. */
+export function distanceKm(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLng = toRad(b[0] - a[0]);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+export function formatDistance(km: number): string {
+  if (km < 0.1) return "Here";
+  if (km < 10) return `${km.toFixed(1)} km`;
+  return `${Math.round(km)} km`;
+}
