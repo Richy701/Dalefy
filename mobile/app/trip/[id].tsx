@@ -13,7 +13,7 @@ import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArro
 import { Image, Linking as RNLinking } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, shadow, categoryTone, type ThemeColors } from "@/constants/theme";
+import { T, R, S, shadow, type ThemeColors } from "@/constants/theme";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
 import { CategoryDot } from "@/components/ui/CategoryDot";
@@ -322,12 +322,12 @@ export default function TripScreen() {
               {travellers.length > 0 && (
                 <View style={styles.avatars}>
                   {travellers.slice(0, 5).map((t, i) => (
-                    <View key={t.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -8 }]}>
-                      <Avatar size={26} initials={t.initials} color={isDark ? "#fff" : C.textPrimary} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
+                    <View key={t.id} style={[styles.avatarSlot, i > 0 && { marginLeft: -6 }]}>
+                      <Avatar size={26} initials={t.initials} color="#fff" ringColor="rgba(0,0,0,0.28)" />
                     </View>
                   ))}
                   {travellerCount > 5 && (
-                    <View style={[styles.avatarSlot, styles.avatarMore, { marginLeft: -8 }]}>
+                    <View style={[styles.avatarSlot, styles.avatarMore, { marginLeft: -6 }]}>
                       <Text style={styles.avatarMoreText}>+{travellerCount - 5}</Text>
                     </View>
                   )}
@@ -341,7 +341,7 @@ export default function TripScreen() {
           </Animated.View>
         </View>
 
-        {/* ── Week strip: one cell per day, dots show what the day holds ── */}
+        {/* ── Week strip: one cell per day ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -351,8 +351,6 @@ export default function TripScreen() {
             const d = parseTripDate(date);
             const isToday = date === today;
             const isPast = date < today;
-            // One segment per event, in time order, coloured by category: the day's shape at a glance
-            const segments = events.map(e => categoryTone(e.type, C).fg);
             return (
               <Pressable
                 key={date}
@@ -367,13 +365,6 @@ export default function TripScreen() {
               >
                 <Text style={[styles.stripWeekday, isToday && { color: C.tealText }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
                 <Text style={styles.stripNumText}>{d.getDate()}</Text>
-                <View style={styles.stripBar}>
-                  {segments.length === 0 ? (
-                    <View style={[styles.stripSeg, { backgroundColor: C.border }]} />
-                  ) : segments.map((color, i) => (
-                    <View key={i} style={[styles.stripSeg, { backgroundColor: color }]} />
-                  ))}
-                </View>
               </Pressable>
             );
           })}
@@ -618,19 +609,20 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // Hero
     hero: { height: HERO_H, overflow: "hidden", justifyContent: "flex-end" },
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
-    heroShadow: isDark ? {
+    // The hero is always the dark photo treatment: white text on a dark scrim, in both themes
+    heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    } : {},
+    },
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: isDark ? "rgba(255,255,255,0.9)" : C.textPrimary,
+      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
@@ -638,14 +630,14 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     flag: { fontSize: 24, lineHeight: 30 },
     groupRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.sm },
     avatars: { flexDirection: "row", alignItems: "center" },
-    avatarSlot: { borderRadius: 13, backgroundColor: isDark ? "#3a3a40" : "#dcdce2" },
+    avatarSlot: { borderRadius: 13, backgroundColor: "rgba(255,255,255,0.22)" },
     avatarMore: {
       width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
-      backgroundColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.12)",
-      borderWidth: 2, borderColor: isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)",
+      backgroundColor: "rgba(255,255,255,0.12)",
+      borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
-    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary },
-    groupText: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.85)" : C.textSecondary, flexShrink: 1 },
+    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "#fff" },
+    groupText: { fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.85)", flexShrink: 1 },
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
     // Next up
@@ -681,8 +673,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     stripDayToday: { borderColor: C.teal },
     stripWeekday: { fontSize: T["2xs"], fontWeight: T.semibold, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 },
     stripNumText: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
-    stripBar: { flexDirection: "row", gap: 2, height: 3, alignSelf: "stretch", marginTop: 4, borderRadius: 1.5, overflow: "hidden" },
-    stripSeg: { flex: 1, height: 3, borderRadius: 1.5 },
 
     filterChip: { alignSelf: "flex-start", paddingVertical: S.xs, paddingHorizontal: S.sm2, borderRadius: R.sm },
     filterText: { fontSize: T.sm, fontWeight: T.semibold },

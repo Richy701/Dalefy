@@ -11,18 +11,24 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, CaretLeft, Camera, User, Buildings, Check } from "phosphor-react-native";
+import { ArrowRight, CaretLeft, Camera, User, Ticket, Check, CalendarBlank } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useBrand } from "@/context/BrandContext";
+import { useAuth } from "@/context/AuthContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { useToast } from "@/context/ToastContext";
 import { fetchOrgByCode } from "@/services/firebaseBranding";
+import { fetchTripByShortCode } from "@/services/firebaseTrips";
+import { parseTripDate } from "@/shared/dates";
+import type { Trip } from "@/shared/types";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
 
-type Step = "welcome" | "agency" | "profile";
+type Step = "code" | "profile";
+
+const fmtDay = (d: string) => parseTripDate(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 
 export default function WelcomeScreen() {
@@ -33,77 +39,112 @@ export default function WelcomeScreen() {
   const { preview } = useLocalSearchParams<{ preview?: string }>();
   const haptic = useHaptic();
   const { toast } = useToast();
+  const auth = useAuth();
   const isEdit = !!(prefs.name) && !preview;
 
-  const initialStep: Step = isEdit
-    ? "profile"
-    : preview
-      ? "welcome"
-      : prefs.orgId
-        ? "profile"
-        : "welcome";
+  // Name is only asked for when neither the profile nor the sign-in provider gave us one.
+  const rawProviderName = (auth.user?.name || "").trim();
+  const emailLocalPart = (auth.user?.email || "").split("@")[0];
+  const providerName = rawProviderName && rawProviderName !== emailLocalPart && rawProviderName !== "Traveler"
+    ? rawProviderName
+    : "";
+  const needsName = !prefs.name && !providerName;
+  const firstName = (() => {
+    const w = providerName.split(/\s+/)[0] || "";
+    return w ? w.charAt(0).toUpperCase() + w.slice(1) : "";
+  })();
 
-  const [step, setStep] = useState<Step>(initialStep);
-  const [agencyCode, setAgencyCode] = useState(prefs.orgSlug || "");
-  const [agencyLoading, setAgencyLoading] = useState(false);
-  const [agencyError, setAgencyError] = useState("");
-  const [agencySuccess, setAgencySuccess] = useState(false);
+  const [step, setStep] = useState<Step>(isEdit ? "profile" : "code");
+  const [code, setCode] = useState(prefs.orgSlug || "");
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError] = useState("");
+  const [matchedOrg, setMatchedOrg] = useState<string | null>(null);
+  const [matchedTrip, setMatchedTrip] = useState<Trip | null>(null);
 
-  const [name, setName] = useState(prefs.name);
-  const [avatar, setAvatar] = useState(prefs.avatar || "");
+  const [name, setName] = useState(prefs.name || providerName);
+  const [avatar, setAvatar] = useState(prefs.avatar || auth.user?.avatar || "");
   const uploadedUrlRef = useRef<string | null>(null);
   const [, setUploading] = useState(false);
-  const agencyRef = useRef<TextInput>(null);
+  const codeRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0;
 
-  const goToAgency = useCallback(() => {
+  const goBackToCode = useCallback(() => {
     haptic.selection();
-    setStep("agency");
+    setStep("code");
   }, [haptic]);
 
-  const goBackToAgency = useCallback(() => {
-    haptic.selection();
-    setStep("agency");
-  }, [haptic]);
+  // ── Finish ──
+  const finishOnboarding = useCallback((finalName: string, finalAvatar: string, trip: Trip | null) => {
+    setPref("name", finalName);
+    if (finalAvatar) setPref("avatar", finalAvatar);
+    haptic.medium();
+    if (trip) router.replace(`/shared/${trip.id}`);
+    else router.replace("/(tabs)");
+  }, [setPref, haptic, router]);
 
-  // ── Agency code ──
-  const validateAgency = async () => {
-    const code = agencyCode.trim().toLowerCase();
-    if (!code) {
-      setAgencyError("Enter your agency code");
+  const afterCode = useCallback((trip: Trip | null) => {
+    if (needsName) {
+      setStep("profile");
       return;
     }
-    setAgencyLoading(true);
-    setAgencyError("");
+    finishOnboarding(providerName, auth.user?.avatar || "", trip);
+  }, [needsName, finishOnboarding, providerName, auth.user?.avatar]);
+
+  // ── Agency code or trip PIN ──
+  const lookupCode = async () => {
+    const raw = code.trim();
+    if (!raw) {
+      setCodeError("Enter the code your agent gave you.");
+      return;
+    }
+    setCodeLoading(true);
+    setCodeError("");
+    setMatchedOrg(null);
+    setMatchedTrip(null);
     try {
       const { waitForAuth } = require("@/services/firebase");
       await waitForAuth();
-      const branding = await fetchOrgByCode(code);
-      if (!branding || !branding.organizationId) {
-        setAgencyError("Agency not found. Check the code and try again.");
-        setAgencyLoading(false);
+
+      const branding = await fetchOrgByCode(raw.toLowerCase());
+      if (branding?.organizationId) {
+        haptic.medium();
+        setPref("orgId", branding.organizationId);
+        setPref("orgSlug", raw.toLowerCase());
+        refreshBranding();
+        setMatchedOrg(branding.companyName || raw);
+        setTimeout(() => afterCode(null), 700);
         return;
       }
-      haptic.medium();
-      setPref("orgId", branding.organizationId);
-      setPref("orgSlug", code);
-      refreshBranding();
-      setAgencySuccess(true);
-      setTimeout(() => setStep("profile"), 800);
+
+      const pin = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      const trip = pin.length === 6 ? await fetchTripByShortCode(pin) : null;
+      if (trip) {
+        haptic.medium();
+        if (trip.organizationId) {
+          setPref("orgId", trip.organizationId);
+          refreshBranding();
+        }
+        setMatchedTrip(trip);
+        setTimeout(() => afterCode(trip), 900);
+        return;
+      }
+
+      haptic.warning();
+      setCodeError("That code doesn't match an agency or a trip. Check it with your organiser.");
     } catch {
-      setAgencyError("Something went wrong. Try again.");
+      setCodeError("Couldn't reach the server. Check your connection and try again.");
     } finally {
-      setAgencyLoading(false);
+      setCodeLoading(false);
     }
   };
 
-  const skipAgency = () => {
+  const skipCode = () => {
     haptic.selection();
-    setStep("profile");
+    afterCode(null);
   };
 
   // ── Avatar picker ──
@@ -169,76 +210,33 @@ export default function WelcomeScreen() {
     }
   };
 
-  // ── Submit ──
+  // ── Submit (profile step) ──
   const submit = async () => {
     if (!canSubmit) return;
     haptic.selection();
-    setPref("name", trimmed);
     const finalAvatar = uploadedUrlRef.current || avatar;
-    if (finalAvatar) setPref("avatar", finalAvatar);
 
-    if (isEdit) updateMemberProfile(trimmed, finalAvatar || null);
-
-    if (isEdit && router.canGoBack()) {
-      toast("Profile updated");
-      router.back();
-    } else {
-      router.replace("/(tabs)");
+    if (isEdit) {
+      setPref("name", trimmed);
+      if (finalAvatar) setPref("avatar", finalAvatar);
+      updateMemberProfile(trimmed, finalAvatar || null);
+      if (router.canGoBack()) {
+        toast("Profile updated");
+        router.back();
+      } else {
+        router.replace("/(tabs)");
+      }
+      return;
     }
+
+    finishOnboarding(trimmed, finalAvatar, matchedTrip);
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STEP 0 — Welcome splash
+  // STEP 1 — Agency code or trip PIN
   // ═══════════════════════════════════════════════════════════════════════════
-  if (step === "welcome") {
-    return (
-      <View style={styles.safe}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={styles.welcomeContainer}>
-            {/* Top — brand mark */}
-            <Animated.View entering={FadeIn.duration(600)} style={styles.welcomeTop}>
-              <Logo size={24} color={C.teal} />
-            </Animated.View>
-
-            <View style={styles.welcomeCenter} />
-
-            {/* Bottom — big type + CTA */}
-            <View style={styles.welcomeBottom}>
-              <Animated.Text
-                entering={FadeInUp.duration(300).delay(250)}
-                style={styles.heroTitle}
-              >
-                Your trips,{"\n"}organised
-              </Animated.Text>
-              <Animated.Text
-                entering={FadeInUp.duration(300).delay(300)}
-                style={styles.heroSub}
-              >
-                Flights, hotels, activities — everything in one place.
-              </Animated.Text>
-
-              <Animated.View entering={FadeInUp.duration(300).delay(350)}>
-                <Pressable
-                  onPress={goToAgency}
-                  accessibilityRole="button"
-                  accessibilityLabel="Get started"
-                  style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
-                >
-                  <Text style={styles.ctaText}>Get started</Text>
-                  <ArrowRight size={16} color={C.onAccent} weight="bold" />
-                </Pressable>
-              </Animated.View>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STEP 1 — Agency code
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (step === "agency") {
+  if (step === "code") {
+    const matched = !!(matchedOrg || matchedTrip);
     return (
       <View style={styles.safe}>
         <SafeAreaView style={{ flex: 1 }}>
@@ -251,86 +249,109 @@ export default function WelcomeScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Progress */}
-              <Animated.View entering={FadeIn.duration(300)} style={styles.progressRow}>
-                <View style={styles.progressBars}>
-                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
-                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
-                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
-                </View>
-                <Text style={styles.progressCount}>1 / 3</Text>
+              <Animated.View entering={FadeIn.duration(400)} style={{ marginBottom: S.xl }}>
+                <Logo size={22} color={C.textPrimary} />
               </Animated.View>
 
-              {/* Big heading */}
-              <Animated.Text
-                entering={FadeInUp.duration(400).delay(100)}
-                style={styles.stepTitle}
-              >
-                Connect to{"\n"}your agency
+              <Animated.Text entering={FadeInUp.duration(350).delay(100)} style={styles.stepTitle}>
+                Got a code from{"\n"}your agent?
               </Animated.Text>
 
-              <Animated.Text
-                entering={FadeInUp.duration(400).delay(200)}
-                style={styles.stepSub}
-              >
-                Your travel agent will have given you a code.
+              <Animated.Text entering={FadeInUp.duration(350).delay(160)} style={styles.stepSub}>
+                {firstName ? `Hi ${firstName}. ` : ""}Enter your agency code or a six-character trip PIN. You can also add trips later from Home.
               </Animated.Text>
 
-              {/* Input */}
-              <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
-                <View style={[styles.inputRow, agencyError ? { borderColor: C.red } : agencySuccess ? { borderColor: C.teal } : undefined]}>
-                  <Buildings size={18} color={C.textTertiary} weight="light" />
+              <Animated.View entering={FadeInUp.duration(350).delay(220)} style={styles.inputWrap}>
+                <View style={[styles.inputRow, codeError ? { borderColor: C.red } : matched ? { borderColor: C.teal } : undefined]}>
+                  <Ticket size={18} color={C.textTertiary} weight="regular" />
                   <TextInput
-                    ref={agencyRef}
-                    value={agencyCode}
-                    onChangeText={(t) => { setAgencyCode(t); setAgencyError(""); setAgencySuccess(false); }}
-                    placeholder="e.g. dalefy"
+                    ref={codeRef}
+                    value={code}
+                    onChangeText={(t) => { setCode(t); setCodeError(""); setMatchedOrg(null); setMatchedTrip(null); }}
+                    placeholder="Agency code or trip PIN"
                     placeholderTextColor={C.textTertiary}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    autoFocus
                     returnKeyType="go"
-                    onSubmitEditing={validateAgency}
+                    onSubmitEditing={lookupCode}
                     maxLength={60}
+                    editable={!codeLoading && !matched}
                     style={styles.input}
                   />
-                  {agencyLoading && <ActivityIndicator size="small" color={C.teal} />}
-                  {agencySuccess && (
+                  {codeLoading && <ActivityIndicator size="small" color={C.teal} />}
+                  {matched && (
                     <View style={[styles.checkBadge, { backgroundColor: C.teal }]}>
                       <Check size={12} color={C.onAccent} weight="bold" />
                     </View>
                   )}
                 </View>
-                {agencyError ? (
-                  <Text style={styles.errorText}>{agencyError}</Text>
+                {codeError ? (
+                  <Text style={styles.errorText}>{codeError}</Text>
                 ) : null}
               </Animated.View>
+
+              {matchedOrg ? (
+                <Animated.View entering={FadeInUp.duration(300)} style={styles.matchCard}>
+                  <View style={styles.matchIcon}>
+                    {brand.logoUrl ? (
+                      <Image source={{ uri: brand.logoUrl }} style={{ width: 20, height: 20, borderRadius: 4 }} />
+                    ) : (
+                      <Logo size={16} color={C.textPrimary} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.matchTitle} numberOfLines={1}>{matchedOrg}</Text>
+                    <Text style={styles.matchSub}>Connected to your agency</Text>
+                  </View>
+                </Animated.View>
+              ) : null}
+
+              {matchedTrip ? (
+                <Animated.View entering={FadeInUp.duration(300)} style={styles.matchCard}>
+                  <View style={styles.matchIcon}>
+                    <CalendarBlank size={18} color={C.textPrimary} weight="regular" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.matchTitle} numberOfLines={1}>{matchedTrip.name}</Text>
+                    <Text style={styles.matchSub}>
+                      {fmtDay(matchedTrip.start)} – {fmtDay(matchedTrip.end)}
+                      {matchedTrip.destination ? ` · ${matchedTrip.destination}` : ""}
+                    </Text>
+                  </View>
+                </Animated.View>
+              ) : null}
             </ScrollView>
 
-            {/* Footer */}
-            <Animated.View entering={FadeInUp.duration(300).delay(350)} style={styles.footer}>
+            <Animated.View entering={FadeInUp.duration(300).delay(280)} style={styles.footer}>
               <Pressable
-                onPress={validateAgency}
-                disabled={agencyLoading || !agencyCode.trim()}
+                onPress={lookupCode}
+                disabled={codeLoading || matched || !code.trim()}
                 accessibilityRole="button"
+                accessibilityLabel="Continue"
                 style={({ pressed }) => [
                   styles.cta,
-                  (agencyLoading || !agencyCode.trim()) && styles.ctaDisabled,
-                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                  !code.trim() && styles.ctaDisabled,
+                  pressed && !!code.trim() && { opacity: 0.9, transform: [{ scale: 0.985 }] },
                 ]}
               >
-                <Text style={[styles.ctaText, !agencyCode.trim() && { color: C.textTertiary }]}>
-                  {agencyLoading ? "Connecting…" : "Connect"}
-                </Text>
-                {!agencyLoading && (
-                  <ArrowRight
-                    size={16}
-                    color={agencyCode.trim() ? C.onAccent : C.textTertiary}
-                    weight="bold"
-                  />
+                {codeLoading ? (
+                  <ActivityIndicator size="small" color={C.onAccent} />
+                ) : (
+                  <>
+                    <Text style={[styles.ctaText, !code.trim() && { color: C.textTertiary }]}>Continue</Text>
+                    <ArrowRight size={16} color={code.trim() ? C.onAccent : C.textTertiary} weight="bold" />
+                  </>
                 )}
               </Pressable>
-              <Pressable onPress={skipAgency} accessibilityRole="button" accessibilityLabel="Skip agency code" style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}>
-                <Text style={styles.skipText}>I don't have a code</Text>
+              <Pressable
+                onPress={skipCode}
+                disabled={codeLoading || matched}
+                accessibilityRole="button"
+                accessibilityLabel="Skip for now"
+                style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
+              >
+                <Text style={styles.skipText}>I don't have a code yet</Text>
               </Pressable>
             </Animated.View>
           </KeyboardAvoidingView>
@@ -353,7 +374,7 @@ export default function WelcomeScreen() {
           {!isEdit ? (
             <Animated.View entering={FadeIn.duration(300)} style={styles.topNav}>
               <Pressable
-                onPress={goBackToAgency}
+                onPress={goBackToCode}
                 style={({ pressed }) => [styles.topNavBtn, pressed && { opacity: 0.7 }]}
                 accessibilityRole="button"
                 accessibilityLabel="Back"
@@ -392,35 +413,8 @@ export default function WelcomeScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Progress */}
-            {!isEdit && (
-              <Animated.View entering={FadeIn.duration(300)} style={styles.progressRow}>
-                <View style={styles.progressBars}>
-                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
-                  <View style={[styles.progressBar, { backgroundColor: C.teal }]} />
-                  <View style={[styles.progressBar, { backgroundColor: C.elevated }]} />
-                </View>
-                <Text style={styles.progressCount}>2 / 3</Text>
-              </Animated.View>
-            )}
-
-            {/* Brand badge */}
-            {prefs.orgId && !isEdit ? (
-              <Animated.View entering={FadeIn.duration(400)} style={styles.brandBadge}>
-                <View style={styles.brandBadgeIcon}>
-                  {brand.logoUrl ? (
-                    <Image source={{ uri: brand.logoUrl }} style={{ width: 14, height: 14, borderRadius: 3 }} />
-                  ) : (
-                    <Logo size={14} color={C.teal} />
-                  )}
-                </View>
-                <Text style={styles.brandBadgeText}>{brand.name}</Text>
-                <Check size={10} color={C.teal} weight="bold" />
-              </Animated.View>
-            ) : null}
-
             {/* Avatar */}
-            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S.md }]}>
+            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S.md }, !isEdit && { marginTop: S.md }]}>
               <Pressable
                 onPress={pickAvatar}
                 style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
@@ -451,7 +445,7 @@ export default function WelcomeScreen() {
                   {"What should\nwe call you?"}
                 </Animated.Text>
                 <Animated.Text entering={FadeInUp.duration(400).delay(300)} style={styles.stepSub}>
-                  This is how you'll appear on shared trips.
+                  This is how you'll appear to your organiser and the other travellers.
                 </Animated.Text>
               </>
             )}
@@ -459,7 +453,7 @@ export default function WelcomeScreen() {
             {/* Name input */}
             <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
               <View style={isEdit ? styles.groupRow : styles.inputRow}>
-                {isEdit ? <Text style={styles.groupLabel}>Name</Text> : <User size={18} color={C.textTertiary} weight="light" />}
+                {isEdit ? <Text style={styles.groupLabel}>Name</Text> : <User size={18} color={C.textTertiary} weight="regular" />}
                 <TextInput
                   ref={nameRef}
                   value={name}
@@ -510,30 +504,6 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
 
-    // ── Welcome splash ──
-    welcomeContainer: { flex: 1, justifyContent: "space-between" },
-    welcomeTop: {
-      paddingHorizontal: S.xl, paddingTop: S.lg,
-    },
-    welcomeCenter: {
-      alignItems: "center", justifyContent: "center",
-      flex: 1,
-    },
-    welcomeBottom: {
-      paddingHorizontal: S.xl, paddingBottom: S.md,
-    },
-    heroTitle: {
-      fontSize: 38, fontWeight: T.bold,
-      color: C.textPrimary,
-      letterSpacing: -0.5, lineHeight: 42,
-      marginBottom: S.sm,
-    },
-    heroSub: {
-      fontSize: T.base, color: C.textSecondary,
-      fontWeight: T.regular, lineHeight: T.base + 8,
-      marginBottom: S.xl,
-    },
-
     // ── Top nav ──
     topNav: {
       paddingHorizontal: S.lg, paddingTop: S.xs,
@@ -548,25 +518,11 @@ function makeStyles(C: ThemeColors) {
     stepScroll: {
       paddingHorizontal: S.lg, paddingTop: S.lg, flexGrow: 1,
     },
-    progressRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.xl,
-    },
-    progressBars: {
-      flexDirection: "row", flex: 1, gap: 4,
-    },
-    progressBar: {
-      flex: 1, height: 3, borderRadius: 1.5,
-    },
-    progressCount: {
-      fontSize: T.xs, fontWeight: T.medium, color: C.textTertiary,
-      fontVariant: ["tabular-nums"],
-      letterSpacing: 0.5,
-    },
     stepTitle: {
-      fontSize: 32, fontWeight: T.bold,
+      fontSize: 30, fontWeight: T.bold,
       color: C.textPrimary,
-      letterSpacing: -0.4, lineHeight: 37,
-      marginBottom: S.sm,
+      letterSpacing: -0.5, lineHeight: 35,
+      marginBottom: S.xs,
     },
     stepSub: {
       fontSize: T.base, color: C.textSecondary,
@@ -574,24 +530,20 @@ function makeStyles(C: ThemeColors) {
       marginBottom: S.xl,
     },
 
-    // ── Brand badge ──
-    brandBadge: {
-      flexDirection: "row", alignItems: "center", gap: S.xs,
-      alignSelf: "flex-start",
-      backgroundColor: C.tealDim,
-      borderRadius: R.full,
-      paddingHorizontal: S.sm, paddingVertical: S.xs2,
-      marginBottom: S.lg,
+    // ── Match card ──
+    matchCard: {
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      backgroundColor: C.card, borderRadius: R.lg,
+      borderWidth: 1, borderColor: C.border,
+      paddingHorizontal: S.md, paddingVertical: S.sm,
     },
-    brandBadgeIcon: {
-      width: 22, height: 22, borderRadius: R.sm,
-      backgroundColor: C.borderLight,
+    matchIcon: {
+      width: 36, height: 36, borderRadius: R.sm,
+      backgroundColor: C.elevated,
       alignItems: "center", justifyContent: "center",
     },
-    brandBadgeText: {
-      fontSize: T.xs, fontWeight: T.bold, color: C.tealText,
-      letterSpacing: 1, textTransform: "uppercase",
-    },
+    matchTitle: { fontSize: T.md, fontWeight: T.semibold, color: C.textPrimary },
+    matchSub: { fontSize: T.sm, color: C.textSecondary, marginTop: 2 },
 
     // ── Edit mode nav + grouped row ──
     editNav: { flexDirection: "row", alignItems: "center", height: 44, paddingHorizontal: S.md },
@@ -609,15 +561,15 @@ function makeStyles(C: ThemeColors) {
     inputWrap: { marginBottom: S.md },
     inputRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      height: 56,
+      height: 54,
       backgroundColor: C.card,
-      borderRadius: R.xl,
+      borderRadius: R.lg,
       paddingHorizontal: S.md,
-      borderWidth: 1, borderColor: C.borderLight,
+      borderWidth: 1, borderColor: C.border,
     },
     input: {
-      flex: 1, height: 56,
-      fontSize: T.lg, fontWeight: T.medium,
+      flex: 1, height: 54,
+      fontSize: T.lg,
       color: C.textPrimary,
     },
     checkBadge: {
@@ -651,9 +603,9 @@ function makeStyles(C: ThemeColors) {
 
     // ── Error / helper ──
     errorText: {
-      fontSize: T.xs, color: C.redText,
-      fontWeight: T.medium, marginTop: S.xs,
-      paddingHorizontal: S.xs,
+      fontSize: T.sm, color: C.redText,
+      fontWeight: T.medium, marginTop: S.sm,
+      paddingHorizontal: S["2xs"],
     },
 
     // ── Footer / CTA ──

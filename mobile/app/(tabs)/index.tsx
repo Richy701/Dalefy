@@ -38,6 +38,7 @@ import { Logo } from "@/components/Logo";
 import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
+import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constants/theme";
@@ -1105,6 +1106,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.safe}>
+      <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + S.xs }]}
@@ -1326,6 +1328,7 @@ export default function HomeScreen() {
           </View>
         )}
       </Animated.ScrollView>
+      </ScrollViewMarker>
     </View>
   );
 }

@@ -158,14 +158,14 @@ export function AcceptInvitePage() {
   const roleLabel = preview ? (ROLE_LABEL[preview.role] ?? preview.role) : "";
 
   return (
-    <div className="min-h-screen bg-card flex items-center justify-center p-6">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm text-center space-y-6">
-        <Logo className="h-8 mx-auto text-brand" />
+        <Logo className="h-7 w-7 mx-auto text-foreground" />
 
         {status === "loading" && (
           <div className="space-y-4">
-            <SpinnerGap className="h-10 w-10 animate-spin text-brand mx-auto" />
-            <p className="text-sm font-bold tracking-tight text-muted-foreground">Loading invite...</p>
+            <SpinnerGap className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">Loading invite...</p>
           </div>
         )}
 
@@ -179,7 +179,7 @@ export function AcceptInvitePage() {
                 </p>
                 <Button
                   onClick={handleSignIn}
-                  className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+                  className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
                 >
                   Sign in to accept
                 </Button>
@@ -192,7 +192,7 @@ export function AcceptInvitePage() {
                 <Button
                   onClick={handleAccept}
                   disabled={busy || status === "accepting"}
-                  className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+                  className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
                 >
                   {status === "accepting" ? <SpinnerGap className="h-5 w-5 animate-spin" /> : "Accept invitation"}
                 </Button>
@@ -212,16 +212,16 @@ export function AcceptInvitePage() {
 
         {status === "unverified" && (
           <div className="space-y-4">
-            <EnvelopeSimple className="h-12 w-12 text-brand mx-auto" weight="duotone" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Verify your email</h1>
+            <EnvelopeSimple className="h-10 w-10 text-foreground mx-auto" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Verify your email</h1>
             <p className="text-sm text-muted-foreground">
               To keep your team secure we need to confirm <strong className="text-foreground">{user?.email}</strong> is yours. Open the verification email we sent you, then continue.
             </p>
-            {note && <p className="text-xs text-brand font-semibold">{note}</p>}
+            {note && <p className="text-xs text-muted-foreground">{note}</p>}
             <Button
               onClick={handleAccept}
               disabled={busy}
-              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
             >
               I've verified, continue
             </Button>
@@ -229,7 +229,7 @@ export function AcceptInvitePage() {
               onClick={handleResendVerification}
               disabled={busy}
               variant="ghost"
-              className="w-full h-10 rounded-xl font-bold"
+              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
             >
               Resend verification email
             </Button>
@@ -238,19 +238,19 @@ export function AcceptInvitePage() {
 
         {status === "wrong-account" && (
           <div className="space-y-4">
-            <XCircle className="h-12 w-12 text-amber-500 mx-auto" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Different account</h1>
+            <XCircle className="h-10 w-10 text-amber-500 mx-auto" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Different account</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={handleSwitchAccount}
-              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
             >
               Sign out and switch account
             </Button>
             <Button
               onClick={() => { clearPendingInvite(); navigate("/dashboard"); }}
               variant="ghost"
-              className="w-full h-10 rounded-xl font-bold"
+              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
             >
               Stay signed in
             </Button>
@@ -259,12 +259,12 @@ export function AcceptInvitePage() {
 
         {status === "success" && (
           <div className="space-y-4">
-            <CheckCircle className="h-12 w-12 text-brand mx-auto" weight="fill" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome aboard</h1>
+            <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto" weight="fill" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome aboard</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={() => navigate("/dashboard")}
-              className="w-full h-10 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+              className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
             >
               Go to Dashboard
             </Button>
@@ -273,13 +273,13 @@ export function AcceptInvitePage() {
 
         {status === "error" && (
           <div className="space-y-4">
-            <XCircle className="h-12 w-12 text-red-500 mx-auto" />
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Oops</h1>
+            <XCircle className="h-10 w-10 text-red-400 mx-auto" />
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Something went wrong</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={() => navigate("/")}
               variant="ghost"
-              className="w-full h-10 rounded-xl font-bold"
+              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
             >
               Go Home
             </Button>
@@ -292,28 +292,28 @@ export function AcceptInvitePage() {
 
 function InviteCard({ preview, inviter, roleLabel }: { preview: Preview; inviter: string; roleLabel: string }) {
   return (
-    <div className="rounded-xl border border-border bg-secondary p-6 text-left">
-      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-brand mb-3">Team invitation</p>
+    <div className="rounded-xl border border-border bg-card p-6 text-left">
+      <p className="text-xs font-medium text-muted-foreground mb-3">Team invitation</p>
       <div className="flex items-center gap-3 mb-4">
         {preview.logoUrl ? (
           <img src={preview.logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain bg-white" />
         ) : (
-          <div className="h-10 w-10 rounded-xl bg-brand/15 flex items-center justify-center">
-            <UsersThree className="h-5 w-5 text-brand" weight="bold" />
+          <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center">
+            <UsersThree className="h-5 w-5 text-foreground" />
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-foreground truncate">{preview.orgName || "Your team"}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">{preview.orgName || "Your team"}</h1>
           <p className="text-xs text-muted-foreground">on Dalefy</p>
         </div>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-muted-foreground">Invited by</dt>
-        <dd className="text-foreground font-semibold truncate">{inviter}</dd>
+        <dd className="text-foreground font-medium truncate">{inviter}</dd>
         <dt className="text-muted-foreground">Role</dt>
-        <dd className="text-foreground font-semibold">{roleLabel}</dd>
+        <dd className="text-foreground font-medium">{roleLabel}</dd>
         <dt className="text-muted-foreground">Sent to</dt>
-        <dd className="text-foreground font-semibold truncate">{preview.maskedEmail || preview.email}</dd>
+        <dd className="text-foreground font-medium truncate">{preview.maskedEmail || preview.email}</dd>
       </dl>
     </div>
   );

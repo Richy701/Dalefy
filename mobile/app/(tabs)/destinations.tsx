@@ -3,13 +3,14 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { MapPin, Clock, Sun, CaretRight, Crosshair, Compass } from "phosphor-react-native";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
+import Animated from "react-native-reanimated";
+import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -22,6 +23,8 @@ import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
 import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
+import { PreTripSheetContent, PostTripSheetContent } from "@/components/TodayPreTrip";
+import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -221,19 +224,14 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
-  const sheetRef = useRef<BottomSheet>(null);
   const mapViewRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
-  // Collapsed shows the map; expanded stops where the content ends so a short day never leaves a blank sheet
-  const [sheetContentH, setSheetContentH] = useState(0);
   const { height: winH } = useWindowDimensions();
-  const snapPoints = useMemo(() => {
-    const collapsed = Math.round(winH * 0.42);
-    const expanded = Math.min(Math.round(winH * 0.82), sheetContentH + SCROLL_BOTTOM_PAD + 32);
-    return expanded > collapsed + 40 ? [collapsed, expanded] : [collapsed];
-  }, [winH, sheetContentH]);
+  // The map is a hero at the top of a normal page; the content scrolls up over it
+  const mapH = Math.round(winH * 0.46);
 
   const onRefresh = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     await reload();
     setRefreshing(false);
@@ -256,8 +254,10 @@ export default function TodayScreen() {
     return [...trips].sort((a, b) => b.end.localeCompare(a.end))[0] ?? null;
   }, [trips, activeTrip, upcomingTrip]);
 
-  const displayTrip = activeTrip ?? upcomingTrip;
+  const displayTrip = activeTrip ?? upcomingTrip ?? mostRecentTrip;
   const isPreview = !activeTrip && !!upcomingTrip;
+  // Before and after a trip the map is a backdrop: region view, no pins
+  const isLiveDay = !!activeTrip;
 
   const destTz = useMemo(() => getDestinationTz(displayTrip?.destination), [displayTrip?.destination]);
   const previewTrip = upcomingTrip ?? mostRecentTrip;
@@ -265,8 +265,9 @@ export default function TodayScreen() {
     if (activeTrip) return getTodayEvents(activeTrip);
     if (previewTrip) {
       return previewTrip.events
-        .filter(e => e.date === previewTrip.start)
-        .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+        .filter(e => e.type !== "flight" && (e.location || e.locationCoords))
+        .sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.time) - timeToMinutes(b.time))
+        .slice(0, 40);
     }
     return [];
   }, [activeTrip, previewTrip]);
@@ -309,10 +310,10 @@ export default function TodayScreen() {
 
   // ── Geocode event locations for map markers ──
   const [eventCoords, setEventCoords] = useState<Record<string, [number, number]>>({});
-  const [sheetIndex, setSheetIndex] = useState(0);
-  const { height: screenHeight } = useWindowDimensions();
   const eventRowYs = useRef<Record<string, number>>({});
+  const listY = useRef(0);
   const scheduleScrollRef = useRef<ScrollView>(null);
+  const { onScroll, barStyle } = useCollapsingHeader();
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
   const stayCoord = useMemo((): [number, number] | null => {
@@ -369,9 +370,11 @@ export default function TodayScreen() {
         const coord = eventCoords[ev.id];
         if (!coord) return null;
         if (destCenter) {
+          // A bad geocode lands in another country. Live days keep the city; overviews keep the region.
+          const limit = isLiveDay ? 2 : 12;
           const dlat = Math.abs(coord[1] - destCenter[1]);
           const dlng = Math.abs(coord[0] - destCenter[0]);
-          if (dlat > 2 || dlng > 2) return null;
+          if (dlat > limit || dlng > limit) return null;
         }
         return {
           type: "Feature" as const,
@@ -379,6 +382,7 @@ export default function TodayScreen() {
           properties: {
             id: ev.id,
             index: index + 1,
+            label: isLiveDay ? String(index + 1) : "",
             type: ev.type,
             title: normaliseTitle(ev.title, ev.type, ev.transferType),
             isPast: isPreview ? false : timeToMinutes(ev.time) < nowMins,
@@ -387,7 +391,7 @@ export default function TodayScreen() {
       })
       .filter(Boolean);
     return { type: "FeatureCollection" as const, features };
-  }, [displayEvents, eventCoords, nowMins, isPreview, destCenter]);
+  }, [displayEvents, eventCoords, nowMins, isPreview, destCenter, isLiveDay]);
 
   const markerCoords = useMemo(() =>
     markerFeatures.features.map((f: any) => f.geometry.coordinates as [number, number]),
@@ -400,17 +404,16 @@ export default function TodayScreen() {
       if (destCenter) {
         cameraRef.current.setCamera({
           centerCoordinate: destCenter,
-          zoomLevel: 14,
-          pitch: 55,
+          zoomLevel: isLiveDay ? 15 : 7,
+          pitch: isLiveDay ? 55 : 0,
           animationDuration: 1200,
           animationMode: "flyTo",
         });
       }
       return;
     }
-    const sheetFraction = sheetIndex === 1 ? 0.8 : 0.4;
-    const padBottom = screenHeight * sheetFraction + 20;
-    const padTop = insets.top + 50;
+    const padBottom = 56;
+    const padTop = insets.top + 56;
     const lngs = markerCoords.map(c => c[0]);
     const lats = markerCoords.map(c => c[1]);
     const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
@@ -422,7 +425,7 @@ export default function TodayScreen() {
       cameraRef.current.setCamera({
         centerCoordinate: [(ne[0] + sw[0]) / 2, (ne[1] + sw[1]) / 2],
         zoomLevel: 15,
-        pitch: 55,
+        pitch: isLiveDay ? 55 : 0,
         padding: { paddingTop: padTop, paddingBottom: padBottom, paddingLeft: 40, paddingRight: 40 },
         animationDuration: 1200,
         animationMode: "flyTo",
@@ -434,7 +437,7 @@ export default function TodayScreen() {
       [padTop, 40, padBottom, 40],
       1200
     );
-  }, [markerCoords, destCenter, sheetIndex, screenHeight, insets.top]);
+  }, [markerCoords, destCenter, insets.top, isLiveDay]);
 
   const homeCoord = destCenter;
   const snapBack = useCallback(() => {
@@ -443,18 +446,19 @@ export default function TodayScreen() {
     } else if (cameraRef.current && homeCoord) {
       cameraRef.current.setCamera({
         centerCoordinate: homeCoord,
-        zoomLevel: 14,
-        pitch: 55,
+        zoomLevel: isLiveDay ? 15 : 7,
+        pitch: isLiveDay ? 55 : 0,
         animationDuration: 1200,
         animationMode: "flyTo",
       });
     }
-  }, [homeCoord, markerCoords, fitToMarkers]);
+  }, [homeCoord, markerCoords, fitToMarkers, isLiveDay]);
 
   useEffect(() => {
     if (mapReady && markerCoords.length > 0) fitToMarkers();
   }, [mapReady, markerCoords.length > 0]);
 
+  // Recentre each time the tab is opened
   useFocusEffect(useCallback(() => { snapBack(); }, [snapBack]));
 
   const handleMarkerPress = useCallback((e: any) => {
@@ -462,24 +466,25 @@ export default function TodayScreen() {
     if (!feature?.properties?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const evId = feature.properties.id;
+    if (!isLiveDay) {
+      router.push({ pathname: "/trip/event", params: { tripId: displayTrip?.id ?? "", eventId: evId } });
+      return;
+    }
     setHighlightedEventId(evId);
     setTimeout(() => setHighlightedEventId(null), 800);
     const y = eventRowYs.current[evId];
     if (y != null && scheduleScrollRef.current) {
-      scheduleScrollRef.current.scrollTo({ y: Math.max(0, y - 80), animated: true });
+      scheduleScrollRef.current.scrollTo({ y: Math.max(0, mapH + listY.current + y - 120), animated: true });
     }
-    if (sheetRef.current) {
-      sheetRef.current.snapToIndex(0);
-    }
-  }, []);
+  }, [isLiveDay, displayTrip?.id, router, mapH]);
 
   const flyToEvent = useCallback((evId: string) => {
     const coord = eventCoords[evId];
     if (!coord || !cameraRef.current) return;
     cameraRef.current.setCamera({
       centerCoordinate: coord,
-      zoomLevel: 16,
-      pitch: 55,
+      zoomLevel: 16.5,
+      pitch: 60,
       animationDuration: 800,
       animationMode: "flyTo",
     });
@@ -520,6 +525,25 @@ export default function TodayScreen() {
     return () => clearInterval(id);
   }, [showLocalTime, destTz]);
 
+  const nextFlight = next?.event.type === "flight" ? next.event : null;
+  const { data: nextFlightLive } = useFlightLiveData(nextFlight?.flightNum, nextFlight?.date);
+  const hoursFromHome = useMemo(() => {
+    if (!showLocalTime || !destTz) return 0;
+    try {
+      const now = new Date();
+      const toMins = (tz: string) => {
+        const p = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "numeric", hour12: false }).formatToParts(now);
+        const h = parseInt(p.find(x => x.type === "hour")?.value ?? "0") % 24;
+        const m = parseInt(p.find(x => x.type === "minute")?.value ?? "0");
+        return h * 60 + m;
+      };
+      let diff = toMins(destTz) - toMins(deviceTz);
+      if (diff > 720) diff -= 1440;
+      if (diff < -720) diff += 1440;
+      return Math.round(diff / 30) / 2;
+    } catch { return 0; }
+  }, [showLocalTime, destTz, deviceTz]);
+
   // ── Traveler avatars ──
   const [showTravelerNames, setShowTravelerNames] = useState(false);
   const AVATAR_COLORS = useMemo(() => [C.teal, C.hotel, C.activity, C.dining, C.transfer, C.green], [C]);
@@ -554,7 +578,16 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* Full-screen Standard 3D map */}
+      <Animated.ScrollView
+        ref={scheduleScrollRef as any}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
+      >
+      {/* ── Map hero (3D street level on trip days, flat overview otherwise) ── */}
+      <View style={{ height: mapH, backgroundColor: C.elevated }}>
       {!!destCenter && !!MapboxGL && (
         <MapboxGL.MapView
           ref={mapViewRef}
@@ -580,7 +613,8 @@ export default function TodayScreen() {
               showPointOfInterestLabels: true,
               showTransitLabels: false,
               showPlaceLabels: true,
-              showRoadLabels: false,
+              showRoadLabels: isLiveDay,
+              showAdminBoundaries: isLiveDay,
               showPedestrianRoads: true,
               show3dObjects: true,
               show3dBuildings: true,
@@ -592,11 +626,14 @@ export default function TodayScreen() {
           />
           <MapboxGL.Camera
             ref={cameraRef}
-            zoomLevel={14}
+            zoomLevel={isLiveDay ? 15 : 7}
             centerCoordinate={homeCoord ?? destCenter}
-            pitch={55}
+            pitch={isLiveDay ? 55 : 0}
             animationDuration={0}
           />
+          {isLiveDay && (
+            <MapboxGL.UserLocation visible showsUserHeadingIndicator androidRenderMode="compass" />
+          )}
           {mapReady && markerFeatures.features.length > 0 && (
             <MapboxGL.ShapeSource
               id="today-event-markers"
@@ -610,6 +647,7 @@ export default function TodayScreen() {
                   circleRadius: 16,
                   circleColor: circleColorExpr,
                   circleOpacity: ["case", ["get", "isPast"], 0.06, 0.15],
+                  circleEmissiveStrength: 1,
                 }}
               />
               <MapboxGL.CircleLayer
@@ -618,6 +656,7 @@ export default function TodayScreen() {
                   circleRadius: 12,
                   circleColor: circleColorExpr,
                   circleOpacity: circleOpacityExpr,
+                  circleEmissiveStrength: 1,
                   circleStrokeWidth: 2.5,
                   circleStrokeColor: isDark ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.9)",
                   circleStrokeOpacity: circleOpacityExpr,
@@ -626,7 +665,7 @@ export default function TodayScreen() {
               <MapboxGL.SymbolLayer
                 id="event-marker-labels"
                 style={{
-                  textField: ["to-string", ["get", "index"]],
+                  textField: ["get", "label"],
                   textFont: ["DIN Pro Bold"],
                   textSize: 11,
                   textColor: "#fff",
@@ -635,6 +674,7 @@ export default function TodayScreen() {
                   textAllowOverlap: true,
                   textIgnorePlacement: true,
                   textOpacity: circleOpacityExpr,
+                  textEmissiveStrength: 1,
                 }}
               />
             </MapboxGL.ShapeSource>
@@ -643,7 +683,7 @@ export default function TodayScreen() {
       )}
 
       {/* Recenter button over the map */}
-      <View style={{ position: "absolute", top: insets.top, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }} pointerEvents="box-none">
+      <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }} pointerEvents="box-none">
         {markerCoords.length > 0 && (
           <Pressable
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fitToMarkers(); }}
@@ -663,23 +703,17 @@ export default function TodayScreen() {
           </Pressable>
         )}
       </View>
+      </View>
 
-      {/* Bottom sheet */}
-      <BottomSheet
-        ref={sheetRef}
-        index={0}
-        snapPoints={snapPoints}
-        backgroundStyle={{ backgroundColor: isDark ? C.card : C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl }}
-        handleIndicatorStyle={{ backgroundColor: C.border, width: 36, height: 4 }}
-        enableDynamicSizing={false}
-        onChange={setSheetIndex}
-      >
-        <BottomSheetScrollView
-          ref={scheduleScrollRef as any}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
-        >
-        <View onLayout={e => setSheetContentH(Math.round(e.nativeEvent.layout.height))}>
+      {/* ── Page content, lifted over the bottom edge of the map ── */}
+      <View style={{ marginTop: -R.xl, backgroundColor: C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, paddingTop: S.xs }}>
+        <View>
+        {!isLiveDay && upcomingTrip ? (
+          <PreTripSheetContent trip={upcomingTrip} />
+        ) : !isLiveDay && mostRecentTrip ? (
+          <PostTripSheetContent trip={mostRecentTrip} />
+        ) : (
+        <>
         {/* ── Zone 1: Compact Header ── */}
         <FadeIn delay={0}>
         <View style={styles.headerSection}>
@@ -727,7 +761,9 @@ export default function TodayScreen() {
               <>
                 <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
                 <Clock size={10} color={C.textTertiary} weight="bold" />
-                <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary }}>{localTimeStr}</Text>
+                <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary }}>
+                  {localTimeStr}{hoursFromHome !== 0 ? ` (${hoursFromHome > 0 ? "+" : ""}${hoursFromHome}h)` : ""}
+                </Text>
               </>
             ) : null}
           </View>
@@ -806,6 +842,15 @@ export default function TodayScreen() {
               </Text>
               <Text style={{ fontSize: T.xs, fontWeight: "800", color: C.tealText }}>{formatCountdown(next.minsUntil)}</Text>
             </ScalePress>
+            {nextFlightLive && (nextFlightLive.status || nextFlightLive.gate || nextFlightLive.terminal) ? (
+              <Text style={{ fontSize: T.sm, color: C.textSecondary, marginHorizontal: S.md, marginTop: S.xs2, paddingLeft: 28 + S.xs }} numberOfLines={1}>
+                {[
+                  nextFlightLive.status,
+                  nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "",
+                  nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : "",
+                ].filter(Boolean).join(" · ")}
+              </Text>
+            ) : null}
             </FadeIn>
           );
         })()}
@@ -824,7 +869,7 @@ export default function TodayScreen() {
         </FadeIn>
 
         {displayEvents.length > 0 ? (
-          <View style={{ paddingHorizontal: S.md }}>
+          <View style={{ paddingHorizontal: S.md }} onLayout={(e) => { listY.current = e.nativeEvent.layout.y; }}>
             {displayEvents.map((ev, i) => {
               const evMins = timeToMinutes(ev.time);
               const isPast = !isPreview && evMins < nowMins;
@@ -911,10 +956,12 @@ export default function TodayScreen() {
             title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
           />
         )}
+        </>
+        )}
         </View>
-
-        </BottomSheetScrollView>
-      </BottomSheet>
+      </View>
+      </Animated.ScrollView>
+      <CompactHeader title={isLiveDay ? "Today" : (upcomingTrip ? "Next trip" : "Last trip")} barStyle={barStyle} />
     </View>
   );
 }

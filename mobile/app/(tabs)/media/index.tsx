@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash,
-  VideoCamera, CaretRight, User,
+  VideoCamera, CaretRight, CaretDown, User,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -27,6 +27,7 @@ import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
+import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
 import { useToast } from "@/context/ToastContext";
 import { type ThemeColors, T, R, S, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import * as ImagePicker from "expo-image-picker";
@@ -788,21 +789,14 @@ export default function MediaScreen() {
 
   const tripsWithMedia = useMemo(() => mergedTrips.filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
 
-  // Auto-default the trip filter to the nearest active/upcoming trip so the
-  // gallery scopes to the current trip instead of mixing in past-trip photos.
-  // Uses ALL trips (not just those with media) so a new trip with no photos
-  // shows the empty/upload state rather than falling back to a past trip.
+  // Default to everything. Only a trip that is live right now narrows the
+  // gallery, so an upcoming trip with no photos never makes it look empty.
   const resolvedTripFilter = useMemo(() => {
     if (tripFilter !== null) return tripFilter;
     if (trips.length <= 1) return "all";
     const now = new Date();
     const active = trips.find(t => parseTripDate(t.start) <= now && parseTripDate(t.end) >= now);
-    if (active) return active.id;
-    const upcoming = [...trips]
-      .filter(t => parseTripDate(t.start) > now)
-      .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-    if (upcoming.length > 0) return upcoming[0].id;
-    return "all";
+    return active ? active.id : "all";
   }, [tripFilter, trips]);
 
   const filteredTrips = useMemo(() => {
@@ -1010,62 +1004,60 @@ export default function MediaScreen() {
     }
   }, [trips, handleUploadToTrip]);
 
-  const chipItems = useMemo(() => {
-    const items: { id: string; label: string; type: "trip" | "media" }[] = [];
-    const showTripChips = trips.length > 1 && tripsWithMedia.length > 0;
-    if (showTripChips) {
-      items.push({ id: "all", label: "All trips", type: "trip" });
-      for (const t of trips) {
-        items.push({ id: t.id, label: t.destination || t.name, type: "trip" });
-      }
-    }
-    items.push(
-      { id: "m-all", label: "All", type: "media" },
-      { id: "m-image", label: "Photos", type: "media" },
-      { id: "m-video", label: "Videos", type: "media" },
-    );
-    return items;
-  }, [trips, tripsWithMedia]);
+  const mediaChips = useMemo(() => ([
+    { id: "all" as const, label: "All" },
+    { id: "image" as const, label: "Photos" },
+    { id: "video" as const, label: "Videos" },
+  ]), []);
+
+  const tripMenuLabel = useMemo(() => {
+    if (resolvedTripFilter === "all") return "All trips";
+    const t = trips.find(x => x.id === resolvedTripFilter);
+    return t?.destination || t?.name || "All trips";
+  }, [resolvedTripFilter, trips]);
 
   const { onScroll, barStyle } = useCollapsingHeader();
 
   const listHeader = useMemo(() => (
     <View>
-      {/* ── Filter chips ── */}
+      {/* ── Filters ── */}
       {tripsWithMedia.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-        >
-          {chipItems.map((item, i) => {
-            const prevType = i > 0 ? chipItems[i - 1].type : item.type;
-            const showDivider = item.type !== prevType;
-            const active = item.type === "trip"
-              ? resolvedTripFilter === item.id
-              : mediaFilter === (item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
-
-            return (
-              <View key={item.id} style={{ flexDirection: "row", alignItems: "center", gap: S.xs2 }}>
-                {showDivider && <View style={styles.chipDivider} />}
-                <Pressable
-                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  accessibilityState={{ selected: active }}
-                  hitSlop={{ top: 12, bottom: 12 }}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    if (item.type === "trip") setTripFilter(item.id);
-                    else setMediaFilter(item.id === "m-all" ? "all" : item.id === "m-image" ? "image" : "video");
-                  }}
-                >
-                  <Pill label={item.label} tone={active ? "accent" : "neutral"} />
-                </Pressable>
+        <View style={styles.chipRow}>
+          {trips.length > 1 && (
+            <ContextMenu
+              dropdownMenuMode
+              title="Show photos from"
+              actions={[
+                { title: "All trips", selected: resolvedTripFilter === "all" },
+                ...trips.map(t => ({ title: t.destination || t.name, selected: resolvedTripFilter === t.id })),
+              ]}
+              onPress={(e: any) => {
+                const idx = e.nativeEvent.index as number;
+                Haptics.selectionAsync();
+                setTripFilter(idx === 0 ? "all" : trips[idx - 1]?.id ?? "all");
+              }}
+            >
+              <View style={styles.tripMenuBtn} accessibilityRole="button" accessibilityLabel={`Trip: ${tripMenuLabel}`}>
+                <Text style={styles.tripMenuText} numberOfLines={1}>{tripMenuLabel}</Text>
+                <CaretDown size={12} color={C.textSecondary} weight="bold" />
               </View>
-            );
-          })}
-        </ScrollView>
+            </ContextMenu>
+          )}
+          <View style={{ flex: 1 }} />
+          {mediaChips.map(chip => (
+            <Pressable
+              key={chip.id}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              accessibilityRole="button"
+              accessibilityLabel={chip.label}
+              accessibilityState={{ selected: mediaFilter === chip.id }}
+              hitSlop={{ top: 12, bottom: 12 }}
+              onPress={() => { Haptics.selectionAsync(); setMediaFilter(chip.id); }}
+            >
+              <Pill label={chip.label} tone={mediaFilter === chip.id ? "accent" : "neutral"} />
+            </Pressable>
+          ))}
+        </View>
       )}
 
       {/* ── Upload progress ── */}
@@ -1101,34 +1093,31 @@ export default function MediaScreen() {
           />
         </View>
       ) : (tripsWithMedia.length === 0 || filteredTrips.length === 0) && emptyTrip ? (
-        <View style={styles.emptyCard}>
-          <View style={styles.emptyPhoto}>
-            <CachedImage uri={emptyTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-            <LinearGradient colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.78)"]} locations={[0.3, 1]} style={StyleSheet.absoluteFill} />
-            <View style={styles.emptyPhotoBody}>
-              <Text style={styles.emptyPhotoEyebrow} numberOfLines={1}>{emptyTrip.name}</Text>
-              <Text style={styles.emptyPhotoTitle} numberOfLines={2}>No photos from {emptyTrip.destination || "this trip"} yet</Text>
-            </View>
-          </View>
-          <View style={styles.emptyBody}>
-            <Text style={styles.emptyText}>Anything you or the group add shows up here for everyone, newest first, sorted by day.</Text>
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            compact
+            icon={<Camera size={26} color={C.tealText} weight="regular" />}
+            title={`No photos from ${emptyTrip.destination || emptyTrip.name} yet`}
+            message="Anything you or the group add shows up here for everyone, newest first."
+            cta={{ label: "Add photos", onPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); } }}
+          />
+          {resolvedTripFilter !== "all" && tripsWithMedia.length > 0 && (
             <Pressable
-              style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.85 : 1 }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+              onPress={() => { Haptics.selectionAsync(); setTripFilter("all"); }}
               accessibilityRole="button"
-              accessibilityLabel="Add photos"
+              style={({ pressed }) => [{ alignSelf: "center", paddingVertical: S.xs }, pressed && { opacity: 0.6 }]}
             >
-              <Camera size={16} color={C.onAccent} weight="fill" />
-              <Text style={styles.emptyBtnText}>Add photos</Text>
+              <Text style={styles.emptyLink}>Show all trips</Text>
             </Pressable>
-          </View>
+          )}
         </View>
       ) : null}
     </View>
-  ), [C, chipItems, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, trips.length, emptyTrip, uploadProgress, router, handleUploadNew]);
+  ), [C, mediaChips, tripMenuLabel, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, uploadProgress, router, handleUploadNew]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.FlatList
         data={galleryRows}
         renderItem={renderGalleryRow}
@@ -1163,6 +1152,7 @@ export default function MediaScreen() {
         windowSize={7}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       />
+      </ScrollViewMarker>
 
       <CompactHeader title="Gallery" barStyle={barStyle} />
 
@@ -1199,13 +1189,14 @@ function makeStyles(C: ThemeColors) {
 
     // ── Filters ──
     chipRow: {
-      paddingHorizontal: S.md, gap: S.xs2,
-      paddingTop: S.sm, paddingBottom: S.md,
+      flexDirection: "row", alignItems: "center", gap: S.xs2,
+      paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.md,
     },
-    chipDivider: {
-      width: 1, height: 16,
-      backgroundColor: C.border, marginHorizontal: 2,
+    tripMenuBtn: {
+      flexDirection: "row", alignItems: "center", gap: S["2xs"],
+      maxWidth: 180, paddingVertical: 5, paddingRight: S.xs,
     },
+    tripMenuText: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, flexShrink: 1 },
 
     // ── Upload progress ──
     progressCard: { marginHorizontal: S.md, marginBottom: S.md, padding: S.md, backgroundColor: C.card, borderRadius: R.lg, gap: S.xs },
@@ -1216,18 +1207,7 @@ function makeStyles(C: ThemeColors) {
     progressFill: { height: 4, backgroundColor: C.teal },
 
     // ── Empty ──
-    emptyWrap: { paddingTop: S["2xl"], paddingHorizontal: S.md },
-    emptyCard: { marginHorizontal: S.md, marginTop: S.sm, backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden" },
-    emptyPhoto: { height: 170, backgroundColor: C.elevated, justifyContent: "flex-end" },
-    emptyPhotoBody: { padding: S.md, gap: 2 },
-    emptyPhotoEyebrow: { fontSize: T.xs, fontWeight: T.semibold, color: "rgba(255,255,255,0.8)", textTransform: "uppercase", letterSpacing: 0.5 },
-    emptyPhotoTitle: { fontSize: T.xl, fontWeight: T.bold, color: "#fff", letterSpacing: -0.2 },
-    emptyBody: { padding: S.md, gap: S.md },
-    emptyText: { fontSize: T.sm, color: C.textSecondary, lineHeight: 19 },
-    emptyBtn: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
-      backgroundColor: C.teal, borderRadius: R.sm, height: 46,
-    },
-    emptyBtnText: { fontSize: T.md, fontWeight: T.semibold, color: C.onAccent },
+    emptyWrap: { paddingTop: S.xl, paddingHorizontal: S.md },
+    emptyLink: { fontSize: T.sm, fontWeight: T.medium, color: C.tealText },
   });
 }

@@ -9,20 +9,22 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   CaretRight, Calendar, Clock, Check,
   Warning, WarningCircle, ArrowSquareOut, Paperclip,
+  Receipt, Bed, ListChecks, Info, Airplane, Bus, ForkKnife,
+  ShieldCheck, Phone, Ticket, Suitcase, FirstAid,
 } from "phosphor-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { T, R, S, F, statusTone, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Pill } from "@/components/ui/Pill";
 import { useMemo, useCallback, useState } from "react";
 import type { TripInfo } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 
 const URL_RE = /(https?:\/\/[^\s),]+)/g;
 
-function LinkedText({ text, style, linkColor, stripUrls }: { text: string; style: any; linkColor: string; stripUrls?: string[] }) {
+function LinkedText({ text, style, linkColor, stripUrls, numberOfLines }: { text: string; style: any; linkColor: string; stripUrls?: string[]; numberOfLines?: number }) {
   let cleaned = text;
   if (stripUrls) {
     for (const u of stripUrls) cleaned = cleaned.replace(u, "").trim();
@@ -32,7 +34,7 @@ function LinkedText({ text, style, linkColor, stripUrls }: { text: string; style
 
   const parts = cleaned.split(URL_RE);
   return (
-    <Text style={style} selectable>
+    <Text style={style} selectable numberOfLines={numberOfLines}>
       {parts.map((part, i) =>
         URL_RE.test(part) ? (
           <Text
@@ -51,6 +53,42 @@ function LinkedText({ text, style, linkColor, stripUrls }: { text: string; style
 }
 
 type InfoStatus = "overdue" | "urgent" | "upcoming" | "done" | null;
+
+/** Pick a leading icon from the item's title so each card has a subject at a glance. */
+function iconForTitle(title: string) {
+  const t = title.toLowerCase();
+  if (/cost|price|budget|payment|invoice|deposit|balance|£|\$|€/.test(t)) return Receipt;
+  if (/hotel|accommodation|room|resort|stay|lodge|camp/.test(t)) return Bed;
+  if (/outstanding|todo|to do|pending|action|checklist|remaining/.test(t)) return ListChecks;
+  if (/flight|airline|airport|baggage/.test(t)) return Airplane;
+  if (/transfer|transport|coach|bus|train|car/.test(t)) return Bus;
+  if (/dinner|lunch|breakfast|meal|dining|restaurant|food/.test(t)) return ForkKnife;
+  if (/visa|passport|insurance|entry|health|vaccin/.test(t)) return ShieldCheck;
+  if (/medical|emergency|doctor/.test(t)) return FirstAid;
+  if (/contact|phone|call|whatsapp/.test(t)) return Phone;
+  if (/ticket|entry|pass|booking/.test(t)) return Ticket;
+  if (/packing|pack|luggage|what to bring/.test(t)) return Suitcase;
+  return Info;
+}
+
+const FACT_RE = /([A-Za-z][^.,:;()\n]{2,48}?)\s*[:(]\s*((?:£|\$|€)\s?[\d,]+(?:\.\d{2})?)/g;
+
+/** Money amounts with the words that label them, so a cost paragraph gets a scannable row. */
+function extractFacts(body: string): { label: string; amount: string }[] {
+  const out: { label: string; amount: string }[] = [];
+  const seen = new Set<string>();
+  for (const m of body.matchAll(FACT_RE)) {
+    let label = m[1].replace(/^(and|or|plus|the|a|an|includes?)\s+/i, "").trim();
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    const amount = m[2].replace(/\s+/g, "");
+    const key = label.toLowerCase();
+    if (!label || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, amount });
+    if (out.length === 4) break;
+  }
+  return out;
+}
 
 function getStatus(item: TripInfo, now = new Date()): InfoStatus {
   if (item.completed) return "done";
@@ -155,6 +193,9 @@ export default function InfoScreen() {
             const isOpen = expandedId === item.id;
             const status = getStatus(item);
             const sc = statusConfig(status, item.deadline, C);
+            const LeadIcon = iconForTitle(item.title || "");
+            const facts = item.body ? extractFacts(item.body) : [];
+            const isLong = !!item.body && item.body.length > 220;
             return (
               <ContextMenu
                 key={item.id}
@@ -174,22 +215,36 @@ export default function InfoScreen() {
                 <View style={styles.section}>
                   {/* Header: title, where it came from, and its status */}
                   <View style={styles.sectionHeader}>
+                    <View style={styles.iconTile}>
+                      <LeadIcon size={18} color={C.textPrimary} weight="regular" />
+                    </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.sectionTitle}>{item.title || "Information"}</Text>
                       {item.source ? <Text style={styles.sourceText} numberOfLines={1}>From {item.source}</Text> : null}
                     </View>
-                    {sc && (
-                      <Pill
-                        tone="custom"
-                        bg={sc.tone.bg}
-                        color={sc.tone.text}
-                        icon={<sc.Icon size={12} color={sc.tone.color} weight="bold" />}
-                        label={sc.label}
-                      />
-                    )}
                   </View>
 
                   <View style={styles.sectionBody}>
+
+                      {/* 0. Deadline / completion as a plain date row */}
+                      {sc && (
+                        <View style={styles.metaRow}>
+                          <sc.Icon size={14} color={sc.tone.text} weight="bold" />
+                          <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text>
+                        </View>
+                      )}
+
+                      {/* 1. Key facts pulled from the body */}
+                      {facts.length > 0 && (
+                        <View style={styles.facts}>
+                          {facts.map(f => (
+                            <View key={f.label} style={styles.fact}>
+                              <Text style={styles.factAmount}>{f.amount}</Text>
+                              <Text style={styles.factLabel} numberOfLines={1}>{f.label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
 
                       {/* 2. Action button */}
                       {item.actionUrl && (
@@ -221,15 +276,19 @@ export default function InfoScreen() {
                       {/* 4. Body text, clamped until opened */}
                       {item.body ? (
                         <View>
-                          <View style={!isOpen && item.body.length > 220 ? { maxHeight: 88, overflow: "hidden" } : undefined}>
+                          <View>
                             <LinkedText
                               text={item.body}
                               style={styles.bodyText}
                               linkColor={C.tealText}
                               stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+                              numberOfLines={isLong && !isOpen ? 5 : undefined}
                             />
+                            {isLong && !isOpen && (
+                              <LinearGradient colors={[`${C.card}00`, C.card]} style={styles.bodyFade} pointerEvents="none" />
+                            )}
                           </View>
-                          {item.body.length > 220 && (
+                          {isLong && (
                             <Pressable onPress={() => toggle(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={isOpen ? "Show less" : "Read more"} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginTop: S.xs })}>
                               <Text style={styles.readMore}>{isOpen ? "Show less" : "Read more"}</Text>
                             </Pressable>
@@ -280,11 +339,28 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
     },
     sectionHeader: {
-      flexDirection: "row", alignItems: "flex-start", gap: S.sm,
-      paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs,
+      flexDirection: "row", alignItems: "center", gap: S.sm,
+      paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm,
+    },
+    iconTile: {
+      width: 36, height: 36, borderRadius: R.md,
+      backgroundColor: C.elevated,
+      alignItems: "center", justifyContent: "center",
     },
     sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     sourceText: { fontSize: T.sm, color: C.textTertiary, marginTop: 2 },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S.sm },
+    metaText: { fontSize: T.sm, fontWeight: T.semibold },
+    facts: {
+      flexDirection: "row", flexWrap: "wrap",
+      backgroundColor: C.elevated, borderRadius: R.lg,
+      paddingVertical: S.sm, paddingHorizontal: S.sm2,
+      marginBottom: S.sm, rowGap: S.sm,
+    },
+    fact: { width: "50%", paddingHorizontal: S.xs2 },
+    factAmount: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.2 },
+    factLabel: { fontSize: T.xs, color: C.textTertiary, marginTop: 1 },
+    bodyFade: { position: "absolute", left: 0, right: 0, bottom: S.sm, height: 28 },
     readMore: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
 
     sectionBody: {
@@ -329,9 +405,9 @@ function makeStyles(C: ThemeColors) {
     },
 
     bodyText: {
-      fontSize: T.sm,
+      fontSize: T.base,
       color: C.textSecondary,
-      lineHeight: 22,
+      lineHeight: 24,
       fontWeight: T.regular,
       marginBottom: S.sm,
     },

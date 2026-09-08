@@ -156,6 +156,7 @@ const IATA_AIRPORT: Record<string, string> = {
 };
 
 import { IATA_TZ } from "@/shared/timezones";
+import { airlineAccent } from "@/shared/airlines";
 
 function getTzLabel(iata: string, refDate: string): { abbr: string; offset: string } | null {
   const tz = IATA_TZ[iata];
@@ -787,7 +788,7 @@ function FlightDetailScreen({
   };
 
   const fs = useMemo(() => makeFlightStyles(C), [C]);
-  const flightColor = categoryTone("flight", C).fg;
+  const flightColor = airlineAccent(airlineIata, C.card, isDark) ?? categoryTone("flight", C).fg;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -899,11 +900,9 @@ function FlightDetailScreen({
                 </View>
                 <View style={fs.routeMid}>
                   <View style={fs.routeLine}>
-                    <View style={[fs.routeDot, { backgroundColor: C.textTertiary }]} />
                     <View style={[fs.routeRule, { backgroundColor: C.border }]} />
                     <AirplaneTilt size={18} color={flightColor} weight="fill" style={{ transform: [{ rotate: "45deg" }] }} />
                     <View style={[fs.routeRule, { backgroundColor: C.border }]} />
-                    <View style={[fs.routeDot, { backgroundColor: C.textTertiary }]} />
                   </View>
                   <Text style={[fs.durLabel, { color: C.textTertiary }]} numberOfLines={1}>
                     {[dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""}` : null, distance ? `${distance.toLocaleString()} km` : null].filter(Boolean).join(" · ") || " "}
@@ -941,9 +940,7 @@ function FlightDetailScreen({
 
               {/* perforation */}
               <View style={fs.tear}>
-                <View style={[fs.notch, { backgroundColor: C.bg, left: -9 }]} />
                 <View style={[fs.tearLine, { borderColor: C.border }]} />
-                <View style={[fs.notch, { backgroundColor: C.bg, right: -9 }]} />
               </View>
 
               {/* stub */}
@@ -1039,7 +1036,6 @@ function makeFlightStyles(C: ThemeColors) {
     routeMid: { alignItems: "center", justifyContent: "center", paddingHorizontal: S.xs, paddingTop: 18, width: 116 },
     routeLine: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "stretch" },
     routeRule: { flex: 1, height: 1 },
-    routeDot: { width: 5, height: 5, borderRadius: 2.5 },
     durLabel: { fontSize: T.xs, fontWeight: T.medium, marginTop: 6, fontVariant: ["tabular-nums"] },
 
     timesRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm },
@@ -1051,7 +1047,6 @@ function makeFlightStyles(C: ThemeColors) {
 
     tear: { height: 18, justifyContent: "center", position: "relative", marginTop: S.xs },
     tearLine: { marginHorizontal: S.md, borderTopWidth: 1, borderStyle: "dashed" },
-    notch: { position: "absolute", top: 0, width: 18, height: 18, borderRadius: 9 },
     stub: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.md, rowGap: S.md },
     stubField: { width: "33.33%", paddingRight: S.xs },
     stubLabel: { fontSize: T.xs, marginBottom: 3 },

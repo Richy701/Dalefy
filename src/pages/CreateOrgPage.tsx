@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import {
-  SpinnerGap, ArrowRight, Upload, X, Palette, Check,
-  Globe, MapPin, Calendar, AirplaneTilt,
-} from "@phosphor-icons/react";
+import { SpinnerGap, Upload, X, Palette } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,96 +16,13 @@ import { uploadLogo, updateBranding } from "@/services/firebaseBranding";
 
 type Step = 1 | 2;
 
-function StepIndicator({ current }: { current: Step }) {
-  const steps = [
-    { n: 1 as const, label: "Agency" },
-    { n: 2 as const, label: "Brand" },
-  ];
-  return (
-    <div className="flex items-center gap-2 mb-10">
-      {steps.map(({ n, label }, i) => {
-        const done = n < current;
-        const active = n === current;
-        return (
-          <div key={n} className="flex items-center gap-2 flex-1">
-            <div className="flex items-center gap-2.5 flex-1">
-              <div
-                className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all duration-300 ${
-                  done
-                    ? "bg-brand text-black"
-                    : active
-                      ? "bg-brand/15 text-brand ring-2 ring-brand/30"
-                      : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                {done ? <Check className="h-3.5 w-3.5" weight="bold" /> : n}
-              </div>
-              <span className={`text-[11px] font-bold uppercase tracking-[0.12em] hidden sm:inline transition-colors ${
-                active ? "text-brand" : done ? "text-muted-foreground" : "text-muted-foreground"
-              }`}>
-                {label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div className={`h-px flex-1 min-w-4 transition-colors duration-300 ${done ? "bg-brand/40" : "bg-secondary"}`} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 const inputClass =
-  "h-14 bg-background border-border rounded-xl text-base text-foreground font-medium placeholder:text-slate-300 dark:placeholder:text-[#444] focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
+  "h-11 rounded-xl bg-card border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-brand/20 focus-visible:border-brand transition-colors";
 
-// ── Brand Panel ─────────────────────────────────────────────────────────
+const primaryBtn =
+  "h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium gap-2 disabled:opacity-40";
 
-function BrandPanel() {
-  const features = [
-    { icon: Globe, label: "Team workspaces" },
-    { icon: MapPin, label: "Route maps" },
-    { icon: Calendar, label: "Day-by-day builder" },
-    { icon: AirplaneTilt, label: "Share via PIN" },
-  ];
-
-  return (
-    <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-col justify-between bg-slate-100/50 dark:bg-background border-r border-slate-200/60 border-border p-12 xl:p-16 relative overflow-hidden">
-      <div className="relative z-10">
-        <div className="flex items-center gap-3.5 mb-16">
-          <div className="h-11 w-11 bg-brand rounded-xl flex items-center justify-center shadow-lg shadow-brand/20">
-            <Logo className="text-black h-6 w-6" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-foreground">
-            {BRAND.nameUpper}
-          </span>
-        </div>
-
-        <h2 className="text-3xl xl:text-4xl font-bold tracking-tight text-foreground leading-[1.1] mb-4">
-          Almost there.<br />
-          <span className="text-brand">Set up your agency.</span>
-        </h2>
-        <p className="text-base text-foreground/80 leading-relaxed max-w-sm">
-          Your brand, your trips, your travelers. All in one place.
-        </p>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center gap-8">
-        <img src="/illustrations/connected-world.svg" alt="" className="w-full max-w-[320px] object-contain" />
-        <div className="space-y-4 w-full">
-          {features.map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-white/60 dark:bg-white/6 border border-slate-200/50 border-border flex items-center justify-center shrink-0">
-                <Icon className="h-4 w-4 text-brand" weight="regular" />
-              </div>
-              <span className="text-sm font-semibold text-foreground/80">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+const labelClass = "text-xs font-medium text-muted-foreground";
 
 // ── Main ─────────────────────────────────────────────────────────────────
 
@@ -145,9 +59,9 @@ export function CreateOrgPage() {
     return (
       <div className="min-h-dvh bg-background flex items-center justify-center p-6">
         <div className="w-full max-w-sm text-center space-y-6">
-          <Logo className="h-8 mx-auto text-brand" />
+          <Logo className="h-7 w-7 mx-auto text-foreground" />
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">You're not on a team yet</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">You're not on a team yet</h1>
             <p className="text-sm text-muted-foreground">
               {BRAND.name} is invitation only. Ask your agency admin to invite
               {user?.email ? <> <strong className="text-foreground">{user.email}</strong></> : " you"}, then open the link in that email.
@@ -156,14 +70,14 @@ export function CreateOrgPage() {
           <div className="space-y-2">
             <Button
               onClick={() => { refreshOrg(); navigate("/dashboard"); }}
-              className="w-full h-12 rounded-xl bg-brand hover:opacity-90 text-black font-bold"
+              className={`w-full ${primaryBtn}`}
             >
               I've been invited, check again
             </Button>
             <Button
               variant="ghost"
               onClick={() => { logout(); navigate("/login"); }}
-              className="w-full h-12 rounded-xl font-bold text-muted-foreground"
+              className="w-full h-11 rounded-xl text-sm font-medium text-muted-foreground"
             >
               Sign out
             </Button>
@@ -216,55 +130,43 @@ export function CreateOrgPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-background flex">
-      <BrandPanel />
+    <div className="min-h-dvh bg-background flex flex-col">
+      <header className="px-6 py-5 sm:px-8">
+        <div className="flex items-center gap-2.5">
+          <Logo className="h-5 w-5 text-foreground" />
+          <span className="text-sm font-semibold tracking-tight text-foreground">{BRAND.name}</span>
+        </div>
+      </header>
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative overflow-hidden">
-
-        <div className="w-full max-w-[480px] relative z-10">
-          {/* Mobile-only logo */}
-          <div className="text-center mb-10 lg:hidden">
-            <div className="h-14 w-14 bg-brand rounded-xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-brand/20">
-              <Logo className="text-black h-8 w-8" />
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1.5">
-              {BRAND.nameUpper}
-            </h1>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">
-              {step === 1 ? "One last step" : "Make it yours"}
-            </p>
-          </div>
-
-          <StepIndicator current={step} />
+      <main className="flex-1 flex items-center justify-center px-6 pb-16">
+        <div className="w-full max-w-[400px]">
+          <p className="text-xs font-medium text-muted-foreground mb-3">Step {step} of 2</p>
 
           {/* ── STEP 1: Agency Name ────────────────────────────── */}
           {step === 1 && (
             <>
-              <div className="flex justify-center mb-4">
-                <img src="/illustrations/navigation.svg" alt="" className="h-28 sm:h-36 object-contain" />
-              </div>
-
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground mb-2">
-                  Create Your Agency
-                </h2>
-                <p className="text-sm text-foreground/80">
-                  Give your workspace a name
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">
+                  Create your agency
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Give your workspace a name. Your trips and travellers will belong to it.
                 </p>
               </div>
 
               {error && (
-                <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-500/6 dark:bg-red-500/8 border border-red-500/15 dark:border-red-500/10">
-                  <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex-1">{error}</p>
-                </div>
+                <p role="alert" className="mb-6 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                  {error}
+                </p>
               )}
 
-              <form onSubmit={handleCreateOrg} className="space-y-6">
-                <div className="space-y-2.5">
-                  <Label className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    Agency / Company Name
+              <form onSubmit={handleCreateOrg} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="org-name" className={labelClass}>
+                    Agency name
                   </Label>
                   <Input
+                    id="org-name"
                     type="text"
                     required
                     autoFocus
@@ -274,11 +176,12 @@ export function CreateOrgPage() {
                     className={inputClass}
                   />
                 </div>
-                <div className="space-y-2.5">
-                  <Label className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    Agency Code
+                <div className="space-y-2">
+                  <Label htmlFor="org-code" className={labelClass}>
+                    Agency code
                   </Label>
                   <Input
+                    id="org-code"
                     type="text"
                     value={agencyCode}
                     onChange={e => setAgencyCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
@@ -287,15 +190,15 @@ export function CreateOrgPage() {
                     className={inputClass}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Travelers enter this code to connect their app to your agency.
+                    Travellers enter this code in the app to connect to your agency.
                   </p>
                 </div>
                 <Button
                   type="submit"
                   disabled={!canSubmit || loading}
-                  className="w-full h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed gap-2.5 transition-all duration-150"
+                  className={`w-full mt-1 ${primaryBtn}`}
                 >
-                  {loading ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="h-[18px] w-[18px]" /></>}
+                  {loading ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Continue"}
                 </Button>
               </form>
             </>
@@ -304,31 +207,27 @@ export function CreateOrgPage() {
           {/* ── STEP 2: Branding ───────────────────────────────── */}
           {step === 2 && (
             <>
-              <div className="flex justify-center mb-4">
-                <img src="/illustrations/sharing-ideas.svg" alt="" className="h-28 sm:h-36 object-contain" />
-              </div>
-
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground mb-2">
-                  Brand Your Agency
-                </h2>
-                <p className="text-sm text-foreground/80">
-                  This is what travelers see on shared trips
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">
+                  Brand your agency
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  This is what travellers see on shared trips. You can change it later in Settings.
                 </p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Logo upload */}
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Agency Logo</Label>
+                <div className="space-y-2">
+                  <Label className={labelClass}>Agency logo</Label>
                   <div className="flex items-center gap-5">
                     <div className="relative group">
                       {brandLogo ? (
                         <img src={brandLogo} alt="" className="h-20 w-20 rounded-xl object-contain border border-border bg-card p-2" />
                       ) : (
                         <div
-                          className="h-20 w-20 rounded-xl flex items-center justify-center text-2xl font-black text-white/90"
-                          style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
+                          className="h-20 w-20 rounded-xl flex items-center justify-center text-2xl font-semibold text-white/90"
+                          style={{ backgroundColor: brandColor }}
                         >
                           {(brandCompanyName || "A").charAt(0)}
                         </div>
@@ -344,10 +243,10 @@ export function CreateOrgPage() {
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <label className={`flex items-center justify-center gap-2.5 h-12 rounded-xl bg-card border border-dashed border-slate-300 border-border hover:border-brand/50 dark:hover:border-brand/30 transition-colors ${uploadingLogo ? "opacity-60 cursor-wait" : "cursor-pointer"}`}>
+                      <label className={`flex items-center justify-center gap-2.5 h-11 rounded-xl bg-card border border-dashed border-border hover:border-foreground/30 transition-colors ${uploadingLogo ? "opacity-60 cursor-wait" : "cursor-pointer"}`}>
                         <Upload className="h-4 w-4 text-muted-foreground" weight="regular" />
                         <span className="text-xs font-medium text-muted-foreground">
-                          {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload Logo"}
+                          {uploadingLogo ? "Processing..." : brandLogo ? "Change" : "Upload logo"}
                         </span>
                         <input
                           type="file"
@@ -373,15 +272,16 @@ export function CreateOrgPage() {
                           className="hidden"
                         />
                       </label>
-                      <p className="text-[11px] text-muted-foreground text-center">PNG, JPG, SVG - max 2 MB</p>
+                      <p className="text-xs text-muted-foreground text-center">PNG, JPG or SVG, up to 2 MB</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Display name */}
-                <div className="space-y-2.5">
-                  <Label className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Display Name</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="org-display" className={labelClass}>Display name</Label>
                   <Input
+                    id="org-display"
                     type="text"
                     value={brandCompanyName}
                     onChange={e => setBrandCompanyName(e.target.value)}
@@ -391,15 +291,15 @@ export function CreateOrgPage() {
                 </div>
 
                 {/* Brand color */}
-                <div className="space-y-2.5">
-                  <Label className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Brand Color</Label>
+                <div className="space-y-2">
+                  <Label className={labelClass}>Brand colour</Label>
                   <div className="flex items-center gap-3">
                     <ColorPicker value={brandColor} onChange={setBrandColor} className="flex-1" />
                     {brandColor !== BRAND.accentColor && (
                       <button
                         type="button"
                         onClick={() => setBrandColor(BRAND.accentColor)}
-                        className="text-xs font-medium text-muted-foreground hover:text-brand transition-colors cursor-pointer shrink-0"
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
                       >
                         Reset
                       </button>
@@ -408,11 +308,11 @@ export function CreateOrgPage() {
                 </div>
 
                 {/* Live preview */}
-                <div className="relative bg-background border border-border rounded-xl overflow-hidden">
-                  <div className="px-5 pt-3.5 pb-3 flex items-center gap-2" style={{ backgroundColor: `${brandColor}10`, borderBottom: `1px solid ${brandColor}20` }}>
-                    <Palette className="h-3.5 w-3.5" style={{ color: brandColor }} weight="bold" />
-                    <span className="text-xs font-medium" style={{ color: brandColor }}>
-                      Client Preview
+                <div className="relative bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-5 pt-3 pb-2.5 flex items-center gap-2 border-b border-border">
+                    <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Traveller preview
                     </span>
                   </div>
                   <div className="px-5 py-5 flex items-center gap-4">
@@ -420,14 +320,14 @@ export function CreateOrgPage() {
                       <img src={brandLogo} alt="" className="h-11 w-11 rounded-xl object-contain" />
                     ) : (
                       <div
-                        className="h-11 w-11 rounded-xl flex items-center justify-center text-sm font-black text-white/90"
-                        style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
+                        className="h-11 w-11 rounded-xl flex items-center justify-center text-sm font-semibold text-white/90"
+                        style={{ backgroundColor: brandColor }}
                       >
                         {(brandCompanyName || BRAND.name).charAt(0)}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-bold tracking-tight text-foreground truncate">
+                      <p className="text-base font-semibold tracking-tight text-foreground truncate">
                         {brandCompanyName || BRAND.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -443,7 +343,7 @@ export function CreateOrgPage() {
                     type="button"
                     onClick={() => navigate("/dashboard")}
                     variant="outline"
-                    className="h-14 rounded-xl border-border bg-card text-muted-foreground hover:bg-slate-50 dark:hover:bg-card hover:text-foreground font-bold uppercase tracking-wider text-xs px-6 transition-colors"
+                    className="h-11 rounded-xl border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground text-sm font-medium px-5"
                   >
                     Skip
                   </Button>
@@ -451,22 +351,17 @@ export function CreateOrgPage() {
                     type="button"
                     disabled={savingBrand}
                     onClick={handleFinishBranding}
-                    className="flex-1 h-14 rounded-xl bg-brand hover:brightness-110 active:scale-[0.98] text-black text-sm font-bold tracking-tight shadow-lg shadow-brand/25 gap-2.5 transition-all duration-150"
+                    className={`flex-1 ${primaryBtn}`}
                   >
-                    {savingBrand ? <SpinnerGap className="h-5 w-5 animate-spin" /> : <>Finish Setup <ArrowRight className="h-[18px] w-[18px]" /></>}
+                    {savingBrand ? <SpinnerGap className="h-4 w-4 animate-spin" /> : "Finish setup"}
                   </Button>
                 </div>
               </div>
             </>
           )}
 
-          <p className="text-center text-xs font-medium text-muted-foreground mt-8">
-            {step === 1
-              ? "Your trips and data will belong to this agency"
-              : "You can change these anytime in Settings"}
-          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

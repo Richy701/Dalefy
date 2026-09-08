@@ -21,6 +21,7 @@ import {
 import { T, R, S, shadow, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
+import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTrips } from "@/context/TripsContext";
@@ -114,6 +115,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={s.safe}>
+      <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.scroll}
@@ -412,6 +414,7 @@ export default function ProfileScreen() {
         </View>
 
       </Animated.ScrollView>
+      </ScrollViewMarker>
       <CompactHeader title="Profile" barStyle={barStyle} />
     </View>
   );
