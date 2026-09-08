@@ -114,44 +114,6 @@ function getRelativeDay(dateStr: string) {
 }
 
 
-const DAY_BAR_CLASS: Record<string, string> = {
-  flight: "bg-cat-flight", hotel: "bg-cat-stay", dining: "bg-cat-meal", meal: "bg-cat-meal",
-  activity: "bg-cat-activity", transfer: "bg-cat-transfer",
-};
-
-/** Every day of the trip as a tile with a category bar, the same rail the traveller sees on their phone. */
-function DayRail({ trip }: { trip: Trip }) {
-  const days: { key: string; date: Date }[] = [];
-  const cursor = new Date(trip.start + "T00:00:00");
-  const end = new Date(trip.end + "T00:00:00");
-  while (cursor <= end && days.length < 21) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-    days.push({ key, date: new Date(cursor) });
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  const shown = days.slice(0, 14);
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs font-medium text-muted-foreground">{days.length} {days.length === 1 ? "day" : "days"} · {trip.events.length} events</p>
-      <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-        {shown.map(({ key, date }) => {
-          const evs = trip.events.filter(e => e.date === key);
-          return (
-            <div key={key} className="rounded-lg bg-card border border-border px-2 py-1.5 flex flex-col gap-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground leading-none">{date.toLocaleDateString("en-GB", { weekday: "short" })}</p>
-              <p className="text-base font-semibold tabular-nums text-foreground leading-none">{date.getDate()}</p>
-              <div className="h-1 rounded-full overflow-hidden flex gap-px bg-secondary">
-                {evs.map(e => <span key={e.id} className={`flex-1 ${DAY_BAR_CLASS[e.type] ?? "bg-cat-activity"}`} />)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {days.length > shown.length && <p className="text-[11px] text-muted-foreground">+{days.length - shown.length} more days</p>}
-    </div>
-  );
-}
-
 /** Own component so the 1-second countdown tick re-renders only this block, not the whole dashboard. */
 function NextTripHero({ trip, onOpen }: { trip: Trip; onOpen: () => void }) {
   const countdown = useLiveCountdown(trip);
@@ -598,10 +560,10 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => handleOpenTrip(upcomingCards[0])}
-                  className="sm:w-64 lg:w-80 shrink-0 text-left bg-secondary/60 border-b sm:border-b-0 sm:border-r border-border p-5 flex flex-col justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="relative sm:w-64 lg:w-80 h-44 sm:h-auto shrink-0 text-left bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   aria-label={`Open ${upcomingCards[0].name}`}
                 >
-                  <DayRail trip={upcomingCards[0]} />
+                  <img src={upcomingCards[0].image} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                 </button>
                 <div className="flex-1 min-w-0 p-5 sm:p-6 flex flex-col justify-center gap-4">
                   <div className="min-w-0">
@@ -1051,31 +1013,42 @@ export function DashboardPage() {
                 );
               })()}
 
-              {/* Recent photos across every trip */}
+              {/* Upcoming flights across every trip */}
               {(() => {
-                const photos = trips
-                  .flatMap(t => (t.media ?? []).filter(m => m.type === "image" && m.url?.startsWith("https://")).map(m => ({ ...m, tripId: t.id, tripName: t.name })))
-                  .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-                  .slice(0, 6);
-                if (photos.length === 0) return null;
+                const todayKey = new Date().toISOString().slice(0, 10);
+                const flights = trips
+                  .flatMap(t => t.events.filter(e => e.type === "flight" && e.date && e.date >= todayKey).map(e => ({ ev: e, tripId: t.id, tripName: t.name })))
+                  .sort((a, b) => (a.ev.date + (a.ev.time || "")).localeCompare(b.ev.date + (b.ev.time || "")))
+                  .slice(0, 5);
+                if (flights.length === 0) return null;
                 return (
                   <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex-1 flex flex-col">
-                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                      <p className="text-base font-semibold tracking-tight text-foreground">Recent photos</p>
-                      <button type="button" onClick={() => navigate("/media")} className="text-xs font-medium text-brand hover:underline">See all</button>
+                    <div className="flex items-center justify-between px-5 pt-5 pb-2">
+                      <p className="text-base font-semibold tracking-tight text-foreground">Upcoming flights</p>
+                      <p className="text-xs text-muted-foreground">{flights.length} next</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5 px-5 pb-5 content-start">
-                      {photos.map(ph => (
-                        <button
-                          key={ph.id}
-                          type="button"
-                          onClick={() => navigate("/media")}
-                          title={ph.tripName}
-                          className="relative aspect-square rounded-md overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                          <img src={ph.url} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-                        </button>
-                      ))}
+                    <div className="flex flex-col pb-2">
+                      {flights.map(({ ev, tripId, tripName }) => {
+                        const route = ev.depAirport && ev.arrAirport ? `${ev.depAirport} → ${ev.arrAirport}` : ev.location || "";
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => navigate(`/trip/${tripId}`)}
+                            className="flex items-center gap-3 px-5 py-2.5 text-left hover:bg-secondary/60 transition-colors focus-visible:outline-none focus-visible:bg-secondary/60"
+                          >
+                            <CategoryDot type="flight" size="sm" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground truncate">{[ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{[route, tripName].filter(Boolean).join(" · ")}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-xs font-medium text-foreground tabular-nums">{shortDay(ev.date)}</p>
+                              {ev.time && !/^tb[acd]$/i.test(ev.time) && <p className="text-[11px] text-muted-foreground tabular-nums">{ev.time.split(" ")[0]}</p>}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
