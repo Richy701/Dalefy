@@ -43,7 +43,7 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
-import { tripFactLine, shortDay } from "@/lib/tripSummary";
+import { tripFactLine, shortDay, destinationCountry, destinationFlag } from "@/lib/tripSummary";
 
 
 const EVENT_COLORS = {
@@ -476,9 +476,27 @@ export function DashboardPage() {
           </div>
         }
         cta={
-          <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-bold h-11 px-4 lg:px-6 transition-opacity gap-2 text-xs uppercase tracking-wider shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">{isViewer ? "View Only" : "New Trip"}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+            >
+              <Upload className="h-4 w-4" /> Import
+            </button>
+            {canInviteMembers && (
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                <Users className="h-4 w-4" /> Invite
+              </button>
+            )}
+            <Button onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }} disabled={isViewer} className="rounded-lg bg-brand hover:opacity-90 text-primary-foreground font-semibold h-9 px-4 transition-opacity gap-1.5 text-sm shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+              <Plus className="h-4 w-4" weight="bold" /> <span className="hidden sm:inline">{isViewer ? "View only" : "New trip"}</span>
+            </Button>
+          </div>
         }
       />
 
@@ -569,32 +587,6 @@ export function DashboardPage() {
                 <p className="text-sm text-muted-foreground mt-1">Create one or import an itinerary to get started.</p>
               </div>
             )}
-            <div className="flex items-center gap-2 flex-wrap px-5 sm:px-6 py-3 border-t border-border">
-              <button
-                type="button"
-                onClick={() => { if (!demoGate()) setIsNewTripOpen(true); }}
-                disabled={isViewer}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand text-black text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
-              >
-                <Plus className="h-4 w-4" weight="bold" /> New trip
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-              >
-                <Upload className="h-4 w-4" /> Import itinerary
-              </button>
-              {canInviteMembers && (
-                <button
-                  type="button"
-                  onClick={() => setInviteOpen(true)}
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-                >
-                  <Users className="h-4 w-4" /> Invite team
-                </button>
-              )}
-            </div>
           </div>
 
           {/* ── Next Up - cross-trip agenda ── */}
@@ -896,6 +888,10 @@ export function DashboardPage() {
 
             {/* ══ RIGHT COLUMN ══ */}
             <div data-compact-sidebar className="flex flex-col gap-4">
+              <div data-compact-section-head className="mb-0">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Calendar</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Where your trips fall</p>
+              </div>
 
               {/* Needs Attention */}
               {attentionItems.length > 0 && (
@@ -903,7 +899,7 @@ export function DashboardPage() {
                   <div data-compact-card-head className="flex items-center gap-2.5 px-5 pt-5 pb-3">
                     <Warning className="h-4 w-4 text-amber-500 shrink-0" weight="fill" />
                     <div>
-                      <p className="text-base font-black tracking-tight text-foreground leading-none">Needs Attention</p>
+                      <p className="text-base font-semibold tracking-tight text-foreground leading-none">Needs attention</p>
                       <p className="text-xs text-muted-foreground mt-1">{attentionItems.length} trip{attentionItems.length !== 1 ? "s" : ""} to review</p>
                     </div>
                   </div>
@@ -969,17 +965,8 @@ export function DashboardPage() {
                 };
 
                 return (
-                  <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex-1 flex flex-col">
-                    <div className="px-4 pt-4 pb-1 flex items-center justify-between">
-                      <p className="text-sm font-black tracking-tight text-foreground leading-none">Calendar</p>
-                      <button
-                        onClick={() => setCalMonth(new Date())}
-                        className="text-[10px] font-bold uppercase tracking-wider text-brand hover:text-brand/80 transition-colors"
-                      >
-                        Today
-                      </button>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center px-1 pb-2 daf-sidebar-cal">
+                  <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex flex-col">
+                    <div className="flex flex-col px-3 py-2 daf-sidebar-cal">
                       <DayPicker
                         mode="single"
                         month={calMonth}
@@ -992,6 +979,15 @@ export function DashboardPage() {
                           today: "cal-today",
                         }}
                         onDayClick={handleDayClick}
+                        footer={
+                          calMonth.getMonth() !== new Date().getMonth() || calMonth.getFullYear() !== new Date().getFullYear() ? (
+                            <div className="flex justify-end px-1 pt-1">
+                              <button type="button" onClick={() => setCalMonth(new Date())} className="text-xs font-medium text-brand hover:underline">
+                                Back to this month
+                              </button>
+                            </div>
+                          ) : undefined
+                        }
                         components={{
                           DayContent: ({ date }) => {
                             const key = date.toISOString().split("T")[0];
@@ -1012,6 +1008,81 @@ export function DashboardPage() {
                           IconRight: () => <CaretRight className="h-3 w-3" />,
                         }}
                       />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Recent photos across every trip */}
+              {(() => {
+                const photos = trips
+                  .flatMap(t => (t.media ?? []).filter(m => m.type === "image" && m.url?.startsWith("https://")).map(m => ({ ...m, tripId: t.id, tripName: t.name })))
+                  .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+                  .slice(0, 6);
+                if (photos.length === 0) return null;
+                return (
+                  <div className="bg-card border border-border shadow-sm rounded-xl overflow-hidden flex-1 flex flex-col">
+                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                      <p className="text-base font-semibold tracking-tight text-foreground">Recent photos</p>
+                      <button type="button" onClick={() => navigate("/media")} className="text-xs font-medium text-brand hover:underline">See all</button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 px-5 pb-5 content-start">
+                      {photos.map(ph => (
+                        <button
+                          key={ph.id}
+                          type="button"
+                          onClick={() => navigate("/media")}
+                          title={ph.tripName}
+                          className="relative aspect-square rounded-md overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        >
+                          <img src={ph.url} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* One line of numbers, not a wall of tiles */}
+              {trips.length > 0 && (() => {
+                const now = new Date();
+                const flags = [...new Set(trips.map(t => destinationFlag(t.destination)).filter((f): f is string => !!f))];
+                const nextFlags = [...new Set(trips.filter(t => parseTripDate(t.start) > now).map(t => destinationFlag(t.destination)).filter((f): f is string => !!f))];
+                const beenFlags = flags.filter(f => !nextFlags.includes(f));
+                const countries = new Set(trips.map(t => destinationCountry(t.destination)).filter(Boolean)).size;
+                const travellers = trips.reduce((n, t) => n + (parseInt(t.paxCount || "", 10) || (t.travelers?.length ?? 0)), 0);
+                const flights = trips.reduce((n, t) => n + t.events.filter(e => e.type === "flight").length, 0);
+                const cells = [
+                  { n: trips.length, l: trips.length === 1 ? "trip" : "trips" },
+                  { n: travellers, l: "travellers" },
+                  { n: countries, l: countries === 1 ? "country" : "countries" },
+                  { n: flights, l: "flights" },
+                ];
+                return (
+                  <div className="bg-card border border-border shadow-sm rounded-xl px-5 py-5 flex flex-col gap-4">
+                    {(beenFlags.length > 0 || nextFlags.length > 0) && (
+                      <div className="flex items-end justify-between gap-4">
+                        {beenFlags.length > 0 && (
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground mb-1">Been to</p>
+                            <p className="text-[26px] leading-8 tracking-[0.06em]" aria-label={`${beenFlags.length} countries visited`}>{beenFlags.join(" ")}</p>
+                          </div>
+                        )}
+                        {nextFlags.length > 0 && (
+                          <div className="min-w-0 text-right shrink-0">
+                            <p className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground mb-1">Next</p>
+                            <p className="text-[26px] leading-8 tracking-[0.06em]" aria-label={`${nextFlags.length} upcoming countries`}>{nextFlags.join(" ")}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 gap-2">
+                    {cells.map(c => (
+                      <div key={c.l} className="min-w-0">
+                        <p className="text-xl font-semibold tracking-tight text-foreground tabular-nums leading-none">{c.n}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1 truncate">{c.l}</p>
+                      </div>
+                    ))}
                     </div>
                   </div>
                 );

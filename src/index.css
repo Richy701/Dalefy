@@ -245,16 +245,32 @@ html[data-compact="true"] [data-compact-place-body] { padding: 0.5rem !important
 }
 /* Trip days render as tinted ranges; only TODAY gets the solid accent.
    Solid runs turned into slabs with dark accents (mono/black). */
+/* Trip days: raised tile with a solid accent bar underneath, so the range reads
+   whatever the accent's lightness (a near-black accent at 10% was invisible). */
 .daf-sidebar-cal .cal-trip-day {
-  background: rgb(var(--brand-rgb) / 0.10) !important;
-  color: rgb(var(--brand-rgb)) !important;
-  font-weight: 700 !important;
+  position: relative;
+  background: hsl(var(--secondary)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+.daf-sidebar-cal .cal-trip-day::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: rgb(var(--brand-rgb));
 }
 .daf-sidebar-cal .cal-active-day {
-  background: rgb(var(--brand-rgb) / 0.22) !important;
-  color: rgb(var(--brand-rgb)) !important;
-  font-weight: 800 !important;
+  background: rgb(var(--brand-rgb) / 0.16) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 700 !important;
 }
+.daf-sidebar-cal .cal-today::after { display: none; }
 .daf-sidebar-cal .cal-today {
   background: rgb(var(--brand-rgb)) !important;
   color: #050505 !important;
