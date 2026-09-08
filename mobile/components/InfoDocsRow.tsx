@@ -1,10 +1,8 @@
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { FileText, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, R, S } from "@/constants/theme";
+import { type ThemeColors, R, S, T } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
-import { Pill } from "@/components/ui/Pill";
-import { MicroLabel } from "@/components/ui/MicroLabel";
 
 interface InfoDocsRowProps {
   count: number;
@@ -23,12 +21,12 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
       accessibilityLabel={`Information and documents, ${count} items`}
     >
       <View style={s.iconBox}>
-        <FileText size={15} color={C.textTertiary} weight="regular" />
+        <FileText size={16} color={C.textSecondary} weight="fill" />
       </View>
       <View style={s.center}>
-        <MicroLabel color={C.textSecondary}>Information & documents</MicroLabel>
+        <Text style={s.title}>Information & documents</Text>
+        <Text style={s.sub}>{count} {count === 1 ? "item" : "items"} from your organiser</Text>
       </View>
-      <Pill size="sm" tone="custom" bg={C.tealDim} color={C.tealText} label={String(count)} />
       <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
     </ScalePress>
   );
@@ -48,13 +46,15 @@ function makeStyles(C: ThemeColors) {
       borderRadius: R.xl,
     },
     iconBox: {
-      width: 38,
-      height: 38,
-      borderRadius: R.md,
-      backgroundColor: C.tealDim,
+      width: 36,
+      height: 36,
+      borderRadius: R.full,
+      backgroundColor: C.elevated,
       alignItems: "center",
       justifyContent: "center",
     },
-    center: { flex: 1 },
+    center: { flex: 1, gap: 2 },
+    title: { fontSize: T.base, fontWeight: T.medium, color: C.textPrimary },
+    sub: { fontSize: T.sm, color: C.textTertiary },
   });
 }

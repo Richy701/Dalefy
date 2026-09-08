@@ -1,11 +1,10 @@
 import { Text, type TextStyle, type StyleProp } from "react-native";
-import { F, T } from "@/constants/theme";
+import { T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 
 /**
- * The app's uppercase micro-label (section eyebrows, card kickers).
- * One style to replace the five drifted variants: Barlow Condensed 700,
- * 11pt, letterSpacing 1, uppercase, tertiary text.
+ * Quiet section label (eyebrows, card kickers): system font, sentence case,
+ * tertiary text. One style everywhere.
  */
 export function MicroLabel({ children, color, style }: {
   children: React.ReactNode;
@@ -16,11 +15,8 @@ export function MicroLabel({ children, color, style }: {
   return (
     <Text
       style={[{
-        fontFamily: F.bold,
-        lineHeight: 14, includeFontPadding: false,
-        fontSize: T.xs,
-        letterSpacing: 1,
-        textTransform: "uppercase",
+        fontSize: T.sm,
+        fontWeight: T.medium,
         color: color ?? C.textTertiary,
       }, style]}
     >

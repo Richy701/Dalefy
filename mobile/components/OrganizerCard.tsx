@@ -3,7 +3,6 @@ import * as Haptics from "expo-haptics";
 import { Phone, Envelope } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { Avatar } from "@/components/ui/Avatar";
-import { MicroLabel } from "@/components/ui/MicroLabel";
 import type { TripOrganizer } from "@/shared/types";
 
 interface OrganizerCardProps {
@@ -34,17 +33,14 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
   return (
     <View style={s.card}>
       <View style={s.topRow}>
-        <Avatar size={48} uri={organizer.avatar} initials={initials} />
+        <Avatar size={44} uri={organizer.avatar} initials={initials} />
 
         {/* Info */}
         <View style={s.info}>
-          <MicroLabel style={s.label}>Your organiser</MicroLabel>
           <Text style={s.name} numberOfLines={1}>{organizer.name}</Text>
-          {(organizer.role || organizer.company) && (
-            <Text style={s.subtitle} numberOfLines={1}>
-              {[organizer.role, organizer.company].filter(Boolean).join(" · ")}
-            </Text>
-          )}
+          <Text style={s.subtitle} numberOfLines={1}>
+            {["Your organiser", organizer.role, organizer.company].filter(Boolean).join(" · ")}
+          </Text>
         </View>
       </View>
 
@@ -58,8 +54,8 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
               accessibilityRole="button"
               accessibilityLabel={`Call ${organizer.name}`}
             >
-              <Phone size={13} color={C.teal} weight="regular" />
-              <Text style={s.actionText}>CALL</Text>
+              <Phone size={15} color={C.tealText} weight="fill" />
+              <Text style={s.actionText}>Call</Text>
             </Pressable>
           )}
           {organizer.email && (
@@ -69,8 +65,8 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
               accessibilityRole="button"
               accessibilityLabel={`Email ${organizer.name}`}
             >
-              <Envelope size={13} color={C.teal} weight="regular" />
-              <Text style={s.actionText}>EMAIL</Text>
+              <Envelope size={15} color={C.tealText} weight="fill" />
+              <Text style={s.actionText}>Email</Text>
             </Pressable>
           )}
         </View>
@@ -94,17 +90,15 @@ function makeStyles(C: ThemeColors) {
       gap: S.sm,
     },
     info: { flex: 1 },
-    label: { marginBottom: 2 },
     name: {
-      fontSize: T.md,
-      fontWeight: T.bold,
+      fontSize: T.base,
+      fontWeight: T.semibold,
       color: C.textPrimary,
     },
     subtitle: {
       fontSize: T.sm,
-      fontWeight: T.medium,
       color: C.textTertiary,
-      marginTop: 1,
+      marginTop: 2,
     },
     actions: {
       flexDirection: "row",
@@ -125,10 +119,9 @@ function makeStyles(C: ThemeColors) {
       backgroundColor: C.tealDim,
     },
     actionText: {
-      fontSize: T.xs,
-      fontWeight: T.bold,
+      fontSize: T.sm,
+      fontWeight: T.semibold,
       color: C.tealText,
-      letterSpacing: 1,
     },
   });
 }
