@@ -43,7 +43,7 @@ import { DemoUpgradeDialog } from "@/components/shared/DemoUpgradeDialog";
 import { searchImages } from "@/services/imageSearch";
 import { COVER_IMAGES } from "@/data/images";
 import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
-import { tripFactLine, shortDay, destinationCountry, destinationFlag } from "@/lib/tripSummary";
+import { tripFactLine, shortDay } from "@/lib/tripSummary";
 
 
 const EVENT_COLORS = {
@@ -1054,46 +1054,35 @@ export function DashboardPage() {
                 );
               })()}
 
-              {/* One line of numbers, not a wall of tiles */}
-              {trips.length > 0 && (() => {
-                const now = new Date();
-                const flags = [...new Set(trips.map(t => destinationFlag(t.destination)).filter((f): f is string => !!f))];
-                const nextFlags = [...new Set(trips.filter(t => parseTripDate(t.start) > now).map(t => destinationFlag(t.destination)).filter((f): f is string => !!f))];
-                const beenFlags = flags.filter(f => !nextFlags.includes(f));
-                const countries = new Set(trips.map(t => destinationCountry(t.destination)).filter(Boolean)).size;
-                const travellers = trips.reduce((n, t) => n + (parseInt(t.paxCount || "", 10) || (t.travelers?.length ?? 0)), 0);
-                const flights = trips.reduce((n, t) => n + t.events.filter(e => e.type === "flight").length, 0);
-                const cells = [
-                  { n: trips.length, l: trips.length === 1 ? "trip" : "trips" },
-                  { n: travellers, l: "travellers" },
-                  { n: countries, l: countries === 1 ? "country" : "countries" },
-                  { n: flights, l: "flights" },
-                ];
+              {/* Getting travellers into the next trip is the job; put the PIN and link where they are needed */}
+              {upcomingCards[0] && (() => {
+                const trip = upcomingCards[0];
+                const link = `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${trip.id}`;
+                const copy = (text: string, what: string) => {
+                  navigator.clipboard?.writeText(text).then(() => toast.success(`${what} copied`)).catch(() => toast.error(`Couldn't copy the ${what.toLowerCase()}`));
+                };
                 return (
                   <div className="bg-card border border-border shadow-sm rounded-xl px-5 py-5 flex flex-col gap-4">
-                    {(beenFlags.length > 0 || nextFlags.length > 0) && (
-                      <div className="flex items-end justify-between gap-4">
-                        {beenFlags.length > 0 && (
-                          <div className="min-w-0">
-                            <p className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground mb-1">Been to</p>
-                            <p className="text-[26px] leading-8 tracking-[0.06em]" aria-label={`${beenFlags.length} countries visited`}>{beenFlags.join(" ")}</p>
-                          </div>
-                        )}
-                        {nextFlags.length > 0 && (
-                          <div className="min-w-0 text-right shrink-0">
-                            <p className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground mb-1">Next</p>
-                            <p className="text-[26px] leading-8 tracking-[0.06em]" aria-label={`${nextFlags.length} upcoming countries`}>{nextFlags.join(" ")}</p>
-                          </div>
-                        )}
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold tracking-tight text-foreground">Invite travellers</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{trip.name}</p>
+                    </div>
+                    {trip.shortCode ? (
+                      <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary px-4 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-muted-foreground mb-0.5">Trip PIN for the app</p>
+                          <p className="text-2xl font-semibold tracking-[0.18em] tabular-nums text-foreground leading-none">{trip.shortCode}</p>
+                        </div>
+                        <button type="button" onClick={() => copy(trip.shortCode!, "PIN")} className="h-9 px-3 rounded-lg border border-border bg-card text-xs font-medium text-foreground hover:bg-secondary transition-colors inline-flex items-center gap-1.5 shrink-0">
+                          <Copy className="h-3.5 w-3.5" /> Copy
+                        </button>
                       </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">This trip has no PIN yet. Open it and publish to create one.</p>
                     )}
-                    <div className="grid grid-cols-4 gap-2">
-                    {cells.map(c => (
-                      <div key={c.l} className="min-w-0">
-                        <p className="text-xl font-semibold tracking-tight text-foreground tabular-nums leading-none">{c.n}</p>
-                        <p className="text-[11px] text-muted-foreground mt-1 truncate">{c.l}</p>
-                      </div>
-                    ))}
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => copy(link, "Link")} className="flex-1 h-9 rounded-lg bg-brand text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity">Copy itinerary link</button>
+                      <button type="button" onClick={() => navigate(`/trip/${trip.id}`)} className="h-9 px-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-secondary transition-colors">Open trip</button>
                     </div>
                   </div>
                 );
