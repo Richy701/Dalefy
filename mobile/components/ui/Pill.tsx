@@ -1,11 +1,11 @@
 import { View, Text, type StyleProp, type ViewStyle } from "react-native";
-import { F, R, S, T } from "@/constants/theme";
+import { R, S, T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 
 type Tone = "accent" | "neutral" | "glass" | "custom";
 
 /**
- * Standard pill/chip. Uppercase Barlow label, one radius (full).
+ * Standard pill/chip. Small system-font label, sentence case, one radius (full).
  * size="md" (default): 10/5 padding. size="sm": compact count badge.
  * tone="accent"  -> teal fill, onAccent text
  * tone="neutral" -> elevated fill, secondary text
@@ -52,12 +52,10 @@ export function Pill({ label, icon, tone = "neutral", size = "md", bg, color, bo
         {icon}
         <Text
           style={{
-            fontFamily: F.bold,
-            fontSize: T["2xs"],
-            lineHeight: 13,
+            fontSize: T.xs,
+            fontWeight: "600",
+            lineHeight: 14,
             includeFontPadding: false,
-            letterSpacing: 0.8,
-            textTransform: "uppercase",
             color: palette.color,
           }}
         >

@@ -224,7 +224,14 @@ export default function TodayScreen() {
   const sheetRef = useRef<BottomSheet>(null);
   const mapViewRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
-  const snapPoints = useMemo(() => ["40%", "80%"], []);
+  // Collapsed shows the map; expanded stops where the content ends so a short day never leaves a blank sheet
+  const [sheetContentH, setSheetContentH] = useState(0);
+  const { height: winH } = useWindowDimensions();
+  const snapPoints = useMemo(() => {
+    const collapsed = Math.round(winH * 0.42);
+    const expanded = Math.min(Math.round(winH * 0.82), sheetContentH + SCROLL_BOTTOM_PAD + 32);
+    return expanded > collapsed + 40 ? [collapsed, expanded] : [collapsed];
+  }, [winH, sheetContentH]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -672,6 +679,7 @@ export default function TodayScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
         >
+        <View onLayout={e => setSheetContentH(Math.round(e.nativeEvent.layout.height))}>
         {/* ── Zone 1: Compact Header ── */}
         <FadeIn delay={0}>
         <View style={styles.headerSection}>
@@ -792,7 +800,7 @@ export default function TodayScreen() {
               }}
             >
               <CategoryDot type={next.event.type} transferType={next.event.transferType} size={28} />
-              <MicroLabel color={C.textSecondary} style={{ marginRight: S["2xs"] }}>NEXT</MicroLabel>
+              <MicroLabel color={C.textSecondary} style={{ marginRight: S["2xs"] }}>Next</MicroLabel>
               <Text style={{ fontSize: T.sm, fontWeight: "700", color: C.textPrimary, flex: 1 }} numberOfLines={1}>
                 {normaliseTitle(next.event.title, next.event.type, next.event.transferType)}
               </Text>
@@ -903,6 +911,7 @@ export default function TodayScreen() {
             title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
           />
         )}
+        </View>
 
         </BottomSheetScrollView>
       </BottomSheet>
@@ -912,14 +921,14 @@ export default function TodayScreen() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    scope: { fontSize: T.sm, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    scope: { fontSize: T.sm, fontWeight: "500", marginBottom: 2 },
 
     // Header
     headerSection: {
       paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: 0,
     },
     dateLabel: { fontSize: T.base, fontWeight: "600", letterSpacing: 0.2 },
-    tripName: { fontSize: T.xl, fontWeight: "800", letterSpacing: -0.3 },
+    tripName: { fontSize: T.xl, fontWeight: "700", letterSpacing: -0.3 },
 
     // Timeline
     timelineSection: {
