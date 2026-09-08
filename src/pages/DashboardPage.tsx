@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Drawer } from "vaul";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Image as ImageIcon } from "@phosphor-icons/react";
@@ -1452,14 +1453,12 @@ export function DashboardPage() {
                       placeholder="45000"
                       className="flex-1"
                     />
-                    <select
-                      aria-label="Currency"
-                      value={newTripData.currency}
-                      onChange={e => setNewTripData({ ...newTripData, currency: e.target.value })}
-                      className="h-9 w-24 px-3 bg-transparent border border-input rounded-md text-foreground text-[13px] font-medium shadow-xs focus:outline-none focus:border-ring focus:ring-3 focus:ring-ring/50 dark:bg-input/30"
-                    >
-                      {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <Select value={newTripData.currency} onValueChange={v => setNewTripData({ ...newTripData, currency: v ?? "USD" })}>
+                      <SelectTrigger className="w-24 h-9" aria-label="Currency"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["USD", "GBP", "EUR", "AUD", "CAD", "CHF", "JPY", "AED", "ZAR", "KES", "SGD", "THB", "INR", "MXN", "NGN", "CNY"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

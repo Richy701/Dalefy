@@ -25,6 +25,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
@@ -2888,32 +2889,27 @@ export function WorkspacePage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Currency</label>
-                      <select
-                        value={editingTrip.currency ?? "USD"}
-                        onChange={e => setEditingTrip(prev => ({ ...prev, currency: e.target.value }))}
-                        className="w-full h-10 px-3 text-sm font-semibold bg-background border border-border text-foreground rounded-xl focus:outline-none focus:border-brand transition-colors appearance-none cursor-pointer"
-                      >
-                        {[
-                          ["USD", "USD - US Dollar"],
-                          ["EUR", "EUR - Euro"],
-                          ["GBP", "GBP - British Pound"],
-                          ["AED", "AED - UAE Dirham"],
-                          ["AUD", "AUD - Australian Dollar"],
-                          ["CAD", "CAD - Canadian Dollar"],
-                          ["CHF", "CHF - Swiss Franc"],
-                          ["CNY", "CNY - Chinese Yuan"],
-                          ["INR", "INR - Indian Rupee"],
-                          ["JPY", "JPY - Japanese Yen"],
-                          ["KES", "KES - Kenyan Shilling"],
-                          ["MXN", "MXN - Mexican Peso"],
-                          ["NGN", "NGN - Nigerian Naira"],
-                          ["SGD", "SGD - Singapore Dollar"],
-                          ["THB", "THB - Thai Baht"],
-                          ["ZAR", "ZAR - South African Rand"],
-                        ].map(([code, label]) => (
-                          <option key={code} value={code}>{label}</option>
-                        ))}
-                      </select>
+                      <Select value={editingTrip.currency ?? "USD"} onValueChange={v => setEditingTrip(prev => ({ ...prev, currency: v ?? "USD" }))}>
+                        <SelectTrigger className="w-full h-10 rounded-lg" aria-label="Currency"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem key="USD" value="USD">USD - US Dollar</SelectItem>
+                          <SelectItem key="EUR" value="EUR">EUR - Euro</SelectItem>
+                          <SelectItem key="GBP" value="GBP">GBP - British Pound</SelectItem>
+                          <SelectItem key="AED" value="AED">AED - UAE Dirham</SelectItem>
+                          <SelectItem key="AUD" value="AUD">AUD - Australian Dollar</SelectItem>
+                          <SelectItem key="CAD" value="CAD">CAD - Canadian Dollar</SelectItem>
+                          <SelectItem key="CHF" value="CHF">CHF - Swiss Franc</SelectItem>
+                          <SelectItem key="CNY" value="CNY">CNY - Chinese Yuan</SelectItem>
+                          <SelectItem key="INR" value="INR">INR - Indian Rupee</SelectItem>
+                          <SelectItem key="JPY" value="JPY">JPY - Japanese Yen</SelectItem>
+                          <SelectItem key="KES" value="KES">KES - Kenyan Shilling</SelectItem>
+                          <SelectItem key="MXN" value="MXN">MXN - Mexican Peso</SelectItem>
+                          <SelectItem key="NGN" value="NGN">NGN - Nigerian Naira</SelectItem>
+                          <SelectItem key="SGD" value="SGD">SGD - Singapore Dollar</SelectItem>
+                          <SelectItem key="THB" value="THB">THB - Thai Baht</SelectItem>
+                          <SelectItem key="ZAR" value="ZAR">ZAR - South African Rand</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
