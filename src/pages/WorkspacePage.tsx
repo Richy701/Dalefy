@@ -1715,7 +1715,7 @@ export function WorkspacePage() {
 
             {activeTab === "people" && (
               <div className="px-3 sm:px-4 lg:px-10 pt-6 sm:pt-10 pb-32 w-full">
-                <div className="max-w-2xl mx-auto space-y-8">
+                <div className="w-full space-y-8">
                   {/* Trip Travelers */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
