@@ -12,21 +12,22 @@ import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft, Compass, MapPin, Users, Moon, ShareNetwork, Plus, Check, CaretDown,
-  AirplaneTilt, Bed, ForkKnife, Car, WarningCircle,
+  ArrowLeft, Users, ShareNetwork, Plus, Check, CaretDown,
+  AirplaneTakeoff, AirplaneLanding, WarningCircle,
 } from "phosphor-react-native";
+import MaskedView from "@react-native-masked-view/masked-view";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
-import { T, R, S, F, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
+import { T, R, S, SCROLL_BOTTOM_PAD, shadow, type ThemeColors } from "@/constants/theme";
 import { fetchTripById, logTripJoin, fetchClaimedTravelerIds, patchTravelerEmail } from "@/services/firebaseTrips";
-import { parseTripDate } from "@/shared/dates";
+import { tripFactLine, shortDay, destinationFlag } from "@/shared/tripSummary";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { DaySummaryRow } from "@/components/DaySummaryRow";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { InfoDocsRow } from "@/components/InfoDocsRow";
 import { Avatar } from "@/components/ui/Avatar";
+import { CategoryDot } from "@/components/ui/CategoryDot";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { MicroLabel } from "@/components/ui/MicroLabel";
@@ -50,27 +51,27 @@ function timeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
-const EVENT_ICONS: Record<string, React.ComponentType<any>> = {
-  flight: AirplaneTilt, hotel: Bed, activity: Compass, dining: ForkKnife, transfer: Car,
-};
+const DOT = 32;
+const HERO_H = 380;
+const isPlaceholderTime = (t?: string) => !t || /^tb[acd]$/i.test(t);
+const cleanTitle = (title: string) => title.replace(/\s*\([A-Z]{3}\)\s*$/, "");
 
 export default function SharedTripScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const router = useRouter();
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const { trips, addTrip } = useTrips();
   const { prefs } = usePreferences();
   const { user: authUser, isAnonymous } = useAuth();
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(C), [C]);
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [viewAsId, setViewAsId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [showLinkPicker, setShowLinkPicker] = useState(false);
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
 
@@ -152,15 +153,6 @@ export default function SharedTripScreen() {
       .finally(() => setLoading(false));
   }, [tripId]);
 
-  const toggleDay = useCallback((date: string) => {
-    setExpandedDays(prev => {
-      const next = new Set(prev);
-      if (next.has(date)) next.delete(date);
-      else next.add(date);
-      return next;
-    });
-  }, []);
-
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -194,8 +186,7 @@ export default function SharedTripScreen() {
     );
   }
 
-  const start = parseTripDate(trip.start);
-  const end = parseTripDate(trip.end);
+  const flag = destinationFlag(trip.destination);
 
   const hasTravelers = (trip.travelers?.length ?? 0) > 0;
   const viewAsTraveler = viewAsId ? trip.travelers?.find(t => t.id === viewAsId) ?? null : null;
@@ -228,21 +219,31 @@ export default function SharedTripScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Hero */}
+        {/* The photo, blurred, sits behind the whole page; a scrim rises to the page colour */}
+        <View style={styles.wash} pointerEvents="none">
+          <CachedImage
+            uri={trip.image}
+            blurRadius={90}
+            style={[StyleSheet.absoluteFill, { opacity: 0.95 }]}
+            contentPosition={{ top: "35%", left: "50%" }}
+            transition={0}
+          />
+          <LinearGradient
+            colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]}
+            locations={[0, 0.55, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+
+        {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
-          <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.2)", "transparent"]}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.15 }}
+          <MaskedView
             style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.5)"]}
-            locations={[0, 1]}
-            start={{ x: 0.5, y: 0.6 }} end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+            maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.35, 1]} style={{ flex: 1 }} />}
+          >
+            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+          </MaskedView>
+          <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
 
           <IconCircleButton
             variant="glass"
@@ -263,21 +264,15 @@ export default function SharedTripScreen() {
           </IconCircleButton>
 
           <View style={styles.heroContent}>
-            <MicroLabel color={C.teal} style={{ marginBottom: S.xs2 }}>Shared trip</MicroLabel>
-            <Text style={styles.heroTitle} numberOfLines={2}>{trip.name}</Text>
-            <View style={styles.chipsRow}>
-              {trip.attendees ? (
-                <Pill tone="glass" icon={<Users size={10} color={C.teal} weight="regular" />} label={String(trip.attendees)} />
-              ) : null}
-              <Pill
-                tone="glass"
-                icon={<Moon size={10} color={C.teal} weight="regular" />}
-                label={`${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
-              />
-              {trip.destination ? (
-                <Pill tone="glass" icon={<MapPin size={10} color={C.teal} weight="regular" />} label={trip.destination} />
-              ) : null}
-            </View>
+            {flag ? (
+              <View style={styles.flagWrap} accessible={false}>
+                <Text style={styles.flag}>{flag}</Text>
+              </View>
+            ) : null}
+            {trip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
+            <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
+            <Text style={[styles.heroFact, styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
+            <Text style={[styles.heroDates, styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
           </View>
         </View>
 
@@ -364,47 +359,73 @@ export default function SharedTripScreen() {
             <MicroLabel>Itinerary</MicroLabel>
           </View>
 
-          <View style={styles.dayRows}>
-            {(() => {
-              const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
-              const _now = new Date();
-              const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-              return sortedDays.map(([date, events], dayIdx) => (
-                <View key={date}>
-                  <DaySummaryRow
-                    dayIndex={dayIdx + 1}
-                    date={date}
-                    events={events}
-                    C={C}
-                    isToday={date === todayStr}
-                    onPress={() => toggleDay(date)}
-                  />
-                  {expandedDays.has(date) && (
-                    <View style={styles.expandedEvents}>
-                      {[...events].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)).map(ev => {
-                        const Icon = EVENT_ICONS[ev.type] ?? Compass;
-                        return (
-                          <View key={ev.id} style={styles.inlineEvent}>
-                            <View style={[styles.inlineEventIcon, { backgroundColor: C.tealDim }]}>
-                              <Icon size={13} color={C.teal} weight="regular" />
+          {(() => {
+            const sortedDays = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+            const _now = new Date();
+            const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
+            return sortedDays.map(([date, events]) => {
+              const d = new Date(date + "T12:00:00");
+              const isToday = date === todayStr;
+              return (
+                <View key={date} style={styles.dayBlock}>
+                  <View style={styles.dayHeader}>
+                    <Text style={styles.dayHeaderText}>
+                      {d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </Text>
+                    {isToday && <Pill tone="accent" size="sm" label="Today" />}
+                    <View style={{ flex: 1 }} />
+                    <Text style={styles.dayHeaderMeta}>{`${events.length} event${events.length === 1 ? "" : "s"}`}</Text>
+                  </View>
+
+                  <View style={styles.dayCard}>
+                    <View style={styles.tlLine} pointerEvents="none" />
+                    {events.map((ev, i) => (
+                      <View key={ev.id}>
+                        {i > 0 && <View style={styles.tlSep} />}
+                        <View
+                          style={styles.tlRow}
+                          accessible
+                          accessibilityLabel={`${cleanTitle(ev.title)}${isPlaceholderTime(ev.time) ? "" : `, ${ev.time}`}`}
+                        >
+                          <CategoryDot type={ev.type} transferType={ev.transferType} size={DOT} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.tlTitle} numberOfLines={2}>{cleanTitle(ev.title)}</Text>
+                            {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
+                              <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
+                            ) : ev.location ? (
+                              <Text style={styles.tlSub} numberOfLines={1}>{ev.location}</Text>
+                            ) : null}
+                          </View>
+                          {ev.time ? (
+                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{ev.time}</Text>
+                          ) : null}
+                        </View>
+
+                        {ev.type === "flight" && (ev.depAirport || ev.arrAirport) ? (
+                          <View style={styles.legs}>
+                            <View style={styles.leg}>
+                              <AirplaneTakeoff size={13} color={C.textTertiary} weight="regular" />
+                              <Text style={styles.legText} numberOfLines={1}>
+                                {[ev.depAirport, ev.terminal ? `Terminal ${ev.terminal}` : null].filter(Boolean).join(" · ")}
+                              </Text>
+                              {!isPlaceholderTime(ev.time) && <Text style={styles.legTime}>{ev.time}</Text>}
                             </View>
-                            <View style={styles.inlineEventContent}>
-                              <Text style={styles.inlineEventTitle} numberOfLines={1}>{ev.title}</Text>
-                              {(ev.time || ev.location) ? (
-                                <Text style={styles.inlineEventSub} numberOfLines={1}>
-                                  {ev.time || ""}{ev.time && ev.location ? "  ·  " : ""}{ev.location || ""}
-                                </Text>
-                              ) : null}
+                            <View style={styles.leg}>
+                              <AirplaneLanding size={13} color={C.textTertiary} weight="regular" />
+                              <Text style={styles.legText} numberOfLines={1}>
+                                {[ev.arrAirport, ev.arrTerminal ? `Terminal ${ev.arrTerminal}` : null].filter(Boolean).join(" · ")}
+                              </Text>
+                              {!isPlaceholderTime(ev.endTime) && <Text style={styles.legTime}>{ev.endTime}</Text>}
                             </View>
                           </View>
-                        );
-                      })}
-                    </View>
-                  )}
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              ));
-            })()}
-          </View>
+              );
+            });
+          })()}
         </View>
       </ScrollView>
 
@@ -471,7 +492,7 @@ export default function SharedTripScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors) {
+function makeStyles(C: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
     scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
@@ -483,26 +504,54 @@ function makeStyles(C: ThemeColors) {
       fontSize: T.md, fontWeight: T.bold,
     },
 
-    hero: { aspectRatio: 16 / 9, position: "relative" },
-
-    heroContent: {
-      position: "absolute", bottom: 0, left: 0, right: 0,
-      paddingHorizontal: S.md, paddingBottom: S.lg,
+    wash: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 300, overflow: "hidden" },
+    hero: { height: HERO_H, overflow: "hidden", justifyContent: "flex-end" },
+    heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
+    heroShadow: isDark ? {
+      textShadowColor: "rgba(0,0,0,0.6)",
+      textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+    } : {},
+    heroDest: {
+      fontSize: T.sm, fontWeight: T.bold, color: isDark ? "rgba(255,255,255,0.9)" : C.textPrimary,
+      textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
-    heroTitle: {
-      fontSize: T["4xl"], fontFamily: F.extrabold, textTransform: "uppercase",
-      color: "#fff", letterSpacing: 0.3, marginBottom: S.sm, lineHeight: 36,
-      includeFontPadding: false,
+    heroName: {
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
     },
-
-    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xs2 },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
+    flagWrap: {
+      width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
+      backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
+    },
+    flag: { fontSize: 24, lineHeight: 30 },
 
     sectionHeader: {
       paddingHorizontal: S.md, paddingTop: S.lg, paddingBottom: S.sm,
     },
 
     section: { paddingBottom: S.md },
-    dayRows: { paddingHorizontal: S.md },
+    dayBlock: { marginTop: S.sm },
+    dayHeader: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md + S.xs, paddingBottom: S.xs },
+    dayHeaderText: { fontSize: T.sm, fontWeight: T.bold, color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+    dayHeaderMeta: { fontSize: T.sm, color: C.textTertiary },
+    dayCard: {
+      marginHorizontal: S.md, backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
+      ...shadow("card", isDark),
+    },
+    tlLine: {
+      position: "absolute", left: S.md + DOT / 2 - 1, top: S.sm + DOT / 2, bottom: S.sm + DOT / 2, width: 2,
+      backgroundColor: C.border,
+    },
+    tlRow: { flexDirection: "row", alignItems: "center", gap: S.sm2, paddingHorizontal: S.md, paddingVertical: S.sm, minHeight: 56 },
+    tlSep: { height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginLeft: S.md + DOT + S.sm2 },
+    tlTitle: { fontSize: T.md, fontWeight: T.medium, color: C.textPrimary },
+    tlSub: { fontSize: T.sm, color: C.textTertiary, marginTop: 1 },
+    tlTime: { fontSize: T.sm, fontWeight: T.medium, color: C.tealText, fontVariant: ["tabular-nums"] },
+    legs: { paddingLeft: S.md + DOT + S.sm2, paddingRight: S.md, paddingBottom: S.sm, gap: S.xs2 },
+    leg: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    legText: { flex: 1, fontSize: T.sm, color: C.textSecondary },
+    legTime: { fontSize: T.sm, color: C.textTertiary, fontVariant: ["tabular-nums"] },
 
     // Traveler picker
     pickerWrap: { paddingHorizontal: S.md, paddingTop: S.md },
@@ -544,29 +593,6 @@ function makeStyles(C: ThemeColors) {
     },
 
     // Expanded inline events
-    expandedEvents: {
-      marginBottom: S.md,
-      backgroundColor: C.card,
-      borderRadius: R.xl,
-      paddingVertical: S["2xs"], paddingHorizontal: S.sm,
-    },
-    inlineEvent: {
-      flexDirection: "row", alignItems: "center", gap: S.sm2,
-      paddingVertical: S.xs, paddingHorizontal: S["2xs"],
-    },
-    inlineEventIcon: {
-      width: 28, height: 28, borderRadius: R.sm,
-      alignItems: "center", justifyContent: "center",
-    },
-    inlineEventContent: { flex: 1 },
-    inlineEventTitle: {
-      fontSize: T.xs, fontWeight: T.bold as any, color: C.textPrimary,
-    },
-    inlineEventSub: {
-      fontSize: T["2xs"], color: C.textTertiary, marginTop: 1,
-    },
-
-    // Traveler linking overlay
     linkOverlay: {
       ...StyleSheet.absoluteFill,
       backgroundColor: "rgba(0,0,0,0.6)",

@@ -1,68 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Privacy Policy - Dalefy</title>
-<style>
-  :root { --accent: #0bd2b5; --bg: #050505; --card: #111111; --border: #1f1f1f; --text: #e5e5e5; --dim: #888; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
-  .container { max-width: 600px; width: 100%; }
-  h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
-  .subtitle { color: var(--dim); font-size: 15px; margin-bottom: 40px; }
-  .updated { color: var(--dim); font-size: 13px; margin-bottom: 32px; }
-  .section { margin-bottom: 28px; }
-  .section h2 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .section p { color: var(--dim); font-size: 14px; line-height: 1.7; }
-  .section ul { color: var(--dim); font-size: 14px; line-height: 1.7; padding-left: 20px; margin-top: 6px; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .back { display: inline-block; margin-top: 32px; font-size: 14px; font-weight: 600; }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: May 8, 2026</p>
+  <head>
+    <title>Privacy policy - Dalefy</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #F7F7F9; --card: #FFFFFF; --raised: #F1F1F4; --border: #E4E4E9;
+        --text: #17181C; --muted: #6B6E78; --accent: #0bd2b5; --accent-text: #0A8F7C;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0E0E10; --card: #17181C; --raised: #202127; --border: #26272E;
+          --text: #F4F4F6; --muted: #9A9DA8; --accent-text: #0bd2b5;
+        }
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+        padding: 48px 20px 64px;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      .brand { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 28px; }
+      .brand svg { width: 16px; height: 16px; }
+      h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 6px; }
+      .lede { color: var(--muted); font-size: 16px; line-height: 1.5; margin-bottom: 8px; }
+      .updated { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; }
+      .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+      .card p, .card li { color: var(--muted); font-size: 15px; line-height: 1.6; }
+      .card ul { padding-left: 20px; margin-top: 6px; }
+      .card li + li { margin-top: 4px; }
+      .card p + p, .card ul + p { margin-top: 10px; }
+      .faq dt { font-weight: 600; font-size: 15px; margin-top: 14px; }
+      .faq dt:first-child { margin-top: 0; }
+      .faq dd { color: var(--muted); font-size: 15px; line-height: 1.6; margin-top: 4px; }
+      .path { display: inline-block; background: var(--raised); border-radius: 6px; padding: 1px 6px; font-size: 13px; color: var(--text); }
+      a { color: var(--accent-text); text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 32px; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 4.5C5 3.67 5.67 3 6.5 3H15.5C22.4 3 28 8.82 28 16C28 23.18 22.4 29 15.5 29H6.5C5.67 29 5 28.33 5 27.5V4.5ZM11 9.5L22.5 16L11 22.5L13.5 16L11 9.5Z"/></svg> Dalefy</div>
+      <h1>Privacy policy</h1>
+      <p class="lede">What Dalefy collects, why, and how to get it removed.</p>
+      <p class="updated">Last updated: 9 September 2026</p>
 
-  <div class="section">
-    <h2>Information We Collect</h2>
-    <p>When you use Dalefy, we collect information you provide directly:</p>
-    <ul>
-      <li>Your name and profile information</li>
-      <li>Trip details, itineraries, and events you create</li>
-      <li>Photos and videos you upload to trip galleries</li>
-      <li>Device information for push notifications and app functionality</li>
-    </ul>
-  </div>
+      <section class="card">
+        <h2>Who we are</h2>
+        <p>Dalefy is a trip companion app. Travel organisers publish itineraries to it, and travellers use it to follow their trip. When a trip is branded "Powered by" an organiser, that organiser planned the trip, and Dalefy provides the app.</p>
+      </section>
 
-  <div class="section">
-    <h2>How We Use Your Information</h2>
-    <p>We use your information to provide and improve Dalefy's trip planning features, sync your data across devices, and deliver notifications about your trips. We do not sell your personal information to third parties.</p>
-  </div>
+      <section class="card">
+        <h2>What we collect</h2>
+        <p><strong>If you sign in:</strong> your name, email address and profile photo, as provided by Apple, Google or the email link you used. Signing in is optional.</p>
+        <p><strong>Trip data:</strong> the trips you join, the traveller you link yourself to on a trip, and the photos and videos you add to a trip gallery.</p>
+        <p><strong>Device data:</strong> a random identifier for this installation so your trips stay with the device, and a push notification token if you allow notifications. On iPhone, a Live Activity token lets flight progress show on your lock screen.</p>
+        <p><strong>Location:</strong> the app does not track where you are. Event addresses set by your organiser are looked up on a map so the app can show them to you.</p>
+      </section>
 
-  <div class="section">
-    <h2>Data Storage</h2>
-    <p>Your data is stored securely using Google Firebase (Cloud Firestore and Cloud Storage). Photos and files are stored in Firebase Storage. All data is transmitted over encrypted connections.</p>
-  </div>
+      <section class="card">
+        <h2>How we use it</h2>
+        <ul>
+          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>
+          <li>To send trip reminders and itinerary updates you have opted into.</li>
+          <li>To share your name and avatar with the other people on the same trip.</li>
+          <li>To answer support requests you send us.</li>
+        </ul>
+        <p>We do not sell your personal information, and we do not use it for advertising.</p>
+      </section>
 
-  <div class="section">
-    <h2>Sharing</h2>
-    <p>Trip information is shared only with other members of the same trip. When you share a trip link, the recipient can view the published itinerary. You control what is shared through the app's sharing features.</p>
-  </div>
+      <section class="card">
+        <h2>Who we share it with</h2>
+        <ul>
+          <li><strong>Your trip organiser</strong> can see who has joined their trip and which traveller you linked to.</li>
+          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>
+          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>
+          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>
+          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>
+        </ul>
+        <p>All of this data travels over encrypted connections.</p>
+      </section>
 
-  <div class="section">
-    <h2>Your Rights</h2>
-    <p>You can request deletion of your account and associated data at any time by contacting us at <a href="mailto:support@dalefy.com">support@dalefy.com</a>.</p>
-  </div>
+      <section class="card">
+        <h2>How long we keep it</h2>
+        <p>Trip data stays for as long as the trip exists with the organiser. Your account and profile stay until you delete them. Photos you add to a gallery stay with that trip until you or the organiser remove them.</p>
+      </section>
 
-  <div class="section">
-    <h2>Contact</h2>
-    <p>Questions about this policy? Email us at <a href="mailto:support@dalefy.com">support@dalefy.com</a>.</p>
-  </div>
+      <section class="card">
+        <h2>Deleting your data</h2>
+        <p>In the app, go to <span class="path">Profile</span> and tap <span class="path">Delete account</span>. That removes your profile, your trip memberships and your avatar, and signs you out. Photos you added to a trip gallery can be removed from the gallery itself.</p>
+        <p>You can also email <a href="mailto:support@dalefy.com">support@dalefy.com</a> from the address on your account and we will do it for you.</p>
+      </section>
 
-  <a class="back" href="/">&larr; Back to Dalefy</a>
-</div>
-</body>
+      <section class="card">
+        <h2>Children</h2>
+        <p>Dalefy is not aimed at children under 16. Younger travellers on a family or group trip are added by their organiser, who is responsible for having the right consent.</p>
+      </section>
+
+      <section class="card">
+        <h2>Changes and contact</h2>
+        <p>If this policy changes in a way that matters, we will update the date above and let you know in the app. Questions go to <a href="mailto:support@dalefy.com">support@dalefy.com</a>.</p>
+      </section>
+
+      <nav class="links">
+        <a href="/">Back to Dalefy</a>
+        <a href="/support.html">Help &amp; support</a>
+        <a href="/terms.html">Terms of service</a>
+      </nav>
+    </main>
+  </body>
 </html>

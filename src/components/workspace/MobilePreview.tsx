@@ -5,10 +5,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, parseISO } from "date-fns";
 import {
   AirplaneTilt, Bed, ForkKnife, Van, MapPin, Users,
-  CaretRight, CaretLeft, CaretDown, FileText, Phone, Envelope, Sun, Moon,
+  CaretRight, CaretLeft, FileText, Sun, Moon,
   DeviceMobileCamera, X, Train, Bus, Boat, Anchor, Paperclip,
   AppleLogo, AndroidLogo, SlidersHorizontal, TextAa, CalendarDot,
   AirplaneTakeoff, AirplaneLanding, NavigationArrow,
+  ArrowRight, Timer, Armchair, Door, Hash, ArrowSquareOut, Warning, WarningCircle, Clock, Calendar, Check,
 } from "@phosphor-icons/react";
 import { tripFactLine, shortDay, daysUntil, destinationFlag } from "@/lib/tripSummary";
 import { useBrand, hexToRgb } from "@/context/BrandContext";
@@ -22,6 +23,7 @@ const dark = {
   textPrimary: "#EDEDEF", textSecondary: "#9a9a9a", textTertiary: "#8e8e96", textDim: "#4a4a4a",
   teal: "#0bd2b5", tealDim: "rgba(11,210,181,0.1)", tealMid: "rgba(11,210,181,0.25)",
   flight: "#6FA8F5", hotel: "#B08CF0", activity: "#F07AA3", dining: "#F0975A", transfer: "#A0AEC0",
+  green: "#3DDC97", amber: "#F5B74A", red: "#F26D6D",
 };
 const light = {
   bg: "#f5f6fa", card: "#ffffff", elevated: "#f0f1f5",
@@ -29,6 +31,7 @@ const light = {
   textPrimary: "#0d0f14", textSecondary: "#4b5263", textTertiary: "#555d6e", textDim: "#c5cad6",
   teal: "#0ab8a0", tealDim: "rgba(10,184,160,0.12)", tealMid: "rgba(10,184,160,0.25)",
   flight: "#2F80ED", hotel: "#8E5CD9", activity: "#E0447A", dining: "#E8791D", transfer: "#4A5568",
+  green: "#1B9E6B", amber: "#B7791F", red: "#D64545",
 };
 
 type C = typeof dark;
@@ -96,117 +99,497 @@ function CatCircle({ type, transferType, c, size = 28 }: { type: string; transfe
   );
 }
 
-function OrganizerSection({ org, c }: { org: TripOrganizer; c: C }) {
-  const initials = org.name?.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const TYPE_LABELS: Record<string, string> = { flight: "Flight", hotel: "Hotel", activity: "Activity", dining: "Dining", transfer: "Transfer" };
+const TRANSFER_LABELS: Record<string, string> = { car: "Transfer", train: "Train", bus: "Bus", ferry: "Ferry", cruise: "Cruise", other: "Transfer" };
+
+function typeLabelFor(e: TravelEvent) {
+  return e.type === "transfer" ? (TRANSFER_LABELS[e.transferType || "car"] || "Transfer") : (TYPE_LABELS[e.type] ?? "Event");
+}
+function cleanEventTitle(e: TravelEvent) {
+  let title = e.title;
+  for (const l of [TRANSFER_LABELS[e.transferType || ""] || "", TYPE_LABELS[e.type] || ""]) {
+    if (!l) continue;
+    title = title.replace(new RegExp(`^${l}\\s*[-–·:]\\s*`, "i"), "");
+  }
+  return title;
+}
+function shortDate(d: string) {
+  try { return format(parseISO(d), "EEE d MMM"); } catch { return d; }
+}
+function rgba(hex: string, a: number) {
+  return `rgba(${hexToRgb(hex).split(" ").join(",")},${a})`;
+}
+function formatSize(b: number) {
+  const kb = Math.max(1, Math.round(b / 1024));
+  return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+}
+
+/** Status pill. Same recipe as the phone: soft tint, dot, label. */
+function eventStatusPill(status: string | undefined, date: string | undefined, c: C, today: string) {
+  const s = (status || "confirmed").toLowerCase();
+  const isPast = !!date && date < today;
+  const pick = (color: string, label: string) => ({ color, label });
+  if (s.includes("cancel")) return pick(c.red, "Cancelled");
+  if (s.includes("delay")) return pick(c.amber, "Delayed");
+  if (s.includes("pend") || s.includes("hold")) return pick(c.amber, "Pending");
+  if (s.includes("done") || s.includes("complet") || isPast) return pick(c.textTertiary, "Done");
+  return null;
+}
+function StatusPill({ color, label, c }: { color: string; label: string; c: C }) {
+  const tint = color === c.textTertiary ? c.elevated : rgba(color, 0.15);
   return (
-    <div style={{ margin: "14px 14px 0", background: c.card, borderRadius: 20, padding: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {org.avatar ? (
-          <img src={org.avatar} alt="" style={{ width: 48, height: 48, borderRadius: 100, objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: 48, height: 48, borderRadius: 100, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: c.teal }}>{initials}</span>
-          </div>
-        )}
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: c.textTertiary, letterSpacing: 1.5, textTransform: "uppercase" }}>YOUR ORGANIZER</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary }}>{org.name}</div>
-          {(org.role || org.company) && (
-            <div style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary, marginTop: 1 }}>
-              {[org.role, org.company].filter(Boolean).join(" · ")}
-            </div>
-          )}
-        </div>
-      </div>
-      {(org.phone || org.email) && (
-        <div style={{ display: "flex", gap: 6, marginTop: 10, borderTop: `0.5px solid ${c.border}`, paddingTop: 10 }}>
-          {org.phone && (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "10px 0" }}>
-              <Phone size={12} color={c.teal} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 1, textTransform: "uppercase" }}>Call</span>
-            </div>
-          )}
-          {org.email && (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: c.tealDim, borderRadius: 10, padding: "10px 0" }}>
-              <Envelope size={12} color={c.teal} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 1, textTransform: "uppercase" }}>Email</span>
-            </div>
-          )}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 8px", borderRadius: 100, background: tint, fontSize: 10, fontWeight: 600, color }}>
+      <span style={{ width: 6, height: 6, borderRadius: 3, background: color }} />{label}
+    </span>
+  );
+}
+
+const CARD = 16;
+
+/** Quiet section label, as MicroLabel on the phone. */
+function Micro({ children, c, style }: { children: React.ReactNode; c: C; style?: React.CSSProperties }) {
+  return <div style={{ fontSize: 11, fontWeight: 700, color: c.textSecondary, textTransform: "uppercase", letterSpacing: 0.5, ...style }}>{children}</div>;
+}
+
+/** The organiser, as OrganizerCard on the phone: avatar, name, a quiet line. Call and email are leader only. */
+function OrganizerSection({ org, c }: { org: TripOrganizer; c: C }) {
+  const initials = org.name?.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
+  return (
+    <div style={{ margin: "12px 14px 0", background: c.card, borderRadius: CARD, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+      {org.avatar ? (
+        <img src={org.avatar} alt="" style={{ width: 40, height: 40, borderRadius: 20, objectFit: "cover", flexShrink: 0 }} />
+      ) : (
+        <div style={{ width: 40, height: 40, borderRadius: 20, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: c.teal }}>{initials}</span>
         </div>
       )}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: c.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{org.name}</div>
+        <div style={{ fontSize: 11, color: c.textTertiary, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {["Your organiser", org.role, org.company].filter(Boolean).join(" · ")}
+        </div>
+      </div>
     </div>
   );
 }
 
-function InfoDocsSection({ info, documents, c }: { info: TripInfo[]; documents: import("@/types").EventDocument[]; c: C }) {
-  const [open, setOpen] = useState(false);
-  const visibleInfo = info.filter(i => !i.leaderOnly);
-  const totalCount = visibleInfo.length + documents.length;
-  if (totalCount === 0) return null;
+/** One row that opens the Info screen, as InfoDocsRow on the phone. */
+function InfoDocsRow({ count, c, onOpen }: { count: number; c: C; onOpen: () => void }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      style={{ margin: "12px 14px 0", background: c.card, borderRadius: CARD, padding: "10px 10px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+    >
+      <div style={{ width: 34, height: 34, borderRadius: 17, background: c.elevated, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <FileText size={15} color={c.textSecondary} weight="fill" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: c.textPrimary }}>Information &amp; documents</div>
+        <div style={{ fontSize: 11, color: c.textTertiary, marginTop: 2 }}>{count} {count === 1 ? "item" : "items"} from your organiser</div>
+      </div>
+      <CaretRight size={13} color={c.textTertiary} />
+    </div>
+  );
+}
 
-  const formatSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
+/** Glass back control at the top of a pushed screen. */
+function BackButton({ onBack, ink = "#fff" }: { onBack: () => void; ink?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onBack}
+      aria-label="Back"
+      style={{ position: "absolute", left: 12, top: 8, zIndex: 5, width: 34, height: 34, borderRadius: 17, border: "none", cursor: "pointer", background: ink === "#fff" ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.08)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <CaretLeft size={16} color={ink} weight="bold" />
+    </button>
+  );
+}
+
+function DetailRow({ icon, label, value, c, last }: { icon: React.ReactNode; label: string; value: string; c: C; last: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", borderBottom: last ? "none" : `0.5px solid ${c.border}` }}>
+      <span style={{ marginTop: 2, display: "flex" }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary, minWidth: 78 }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary, flex: 1 }}>{value}</span>
+    </div>
+  );
+}
+
+function DocRow({ name, size, c, last, tint }: { name: string; size: number; c: C; last: boolean; tint: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: last ? "none" : `0.5px solid ${c.border}` }}>
+      <div style={{ width: 34, height: 34, borderRadius: 10, background: tint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <FileText size={15} color={c.textTertiary} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name.replace(/\.[^.]+$/, "")}</div>
+        <div style={{ fontSize: 11, fontWeight: 500, color: c.textTertiary, marginTop: 1 }}>{formatSize(size)}</div>
+      </div>
+      <CaretRight size={13} color={c.textTertiary} />
+    </div>
+  );
+}
+
+/** Event detail, as app/trip/event.tsx on the phone. Flights get the pass layout. */
+function EventScreen({ ev, trip, c, isDark, today, onBack, onOpenEvent }: { ev: TravelEvent; trip: Trip; c: C; isDark: boolean; today: string; onBack: () => void; onOpenEvent: (id: string) => void }) {
+  if (ev.type === "flight") return <FlightScreen ev={ev} trip={trip} c={c} isDark={isDark} today={today} onBack={onBack} />;
+  const title = cleanEventTitle(ev);
+  const isHotel = ev.type === "hotel";
+  const status = eventStatusPill(ev.status, ev.date, c, today);
+  const timeText = isHotel && ev.isOvernight ? null : ev.time && !isPlaceholderTime(ev.time) ? `${ev.time}${ev.endTime && !isPlaceholderTime(ev.endTime) ? ` – ${ev.endTime}` : ""}` : null;
+  const fact = [ev.date ? shortDate(ev.date) : null, timeText].filter(Boolean).join(" · ");
+
+  const details: Array<{ icon: React.ReactNode; label: string; value: string }> = [];
+  const ic = (I: React.ComponentType<{ size?: number; color?: string }>) => <I size={14} color={c.textTertiary} />;
+  if (ev.duration) details.push({ icon: ic(Timer), label: "Duration", value: ev.duration });
+  if (ev.roomType) details.push({ icon: ic(Bed), label: "Room type", value: ev.roomType });
+  if (ev.seatDetails) details.push({ icon: ic(Armchair), label: "Seat", value: ev.seatDetails });
+  if (ev.terminal) details.push({ icon: ic(Door), label: "Terminal", value: ev.terminal });
+  if (ev.gate) details.push({ icon: ic(Door), label: "Gate", value: ev.gate });
+  if (ev.price) details.push({ icon: ic(Hash), label: "Price", value: ev.price });
+
+  const dayEvents = trip.events.filter(e => e.date === ev.date).sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
+  const idx = dayEvents.findIndex(e => e.id === ev.id);
+  const neighbours = [
+    { label: "Before", e: idx > 0 ? dayEvents[idx - 1] : null },
+    { label: "Up next", e: idx >= 0 && idx < dayEvents.length - 1 ? dayEvents[idx + 1] : null },
+  ].filter((n): n is { label: string; e: TravelEvent } => !!n.e);
+
+  const card: React.CSSProperties = { margin: "0 14px 12px", background: c.card, borderRadius: CARD, overflow: "hidden" };
 
   return (
-    <div style={{ margin: "10px 14px 0" }}>
-      <div
-        onClick={() => setOpen(p => !p)}
-        style={{ padding: "12px 12px", background: c.card, borderRadius: open ? "20px 20px 0 0" : 20, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-      >
-        <div style={{ width: 38, height: 38, borderRadius: 12, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <FileText size={15} color={c.teal} />
+    <div style={{ position: "relative" }}>
+      <BackButton onBack={onBack} />
+      {/* Hero: the event's photo, or the trip's, with the essentials on it */}
+      <div style={{ position: "relative", height: 250, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end", marginBottom: 12, background: c.elevated }}>
+        {ev.image ? (
+          <img src={ev.image} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 35%" }} />
+        ) : trip.image ? (
+          <img src={trip.image} alt="" style={{ position: "absolute", inset: -30, width: "calc(100% + 60px)", height: "calc(100% + 60px)", objectFit: "cover", filter: "blur(14px)" }} />
+        ) : null}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 35%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.85) 100%)" }} />
+        <div style={{ position: "relative", padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <CatCircle type={ev.type} transferType={ev.transferType} c={c} size={24} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 }}>{typeLabelFor(ev)}</span>
+            {status && <StatusPill color={status.color} label={status.label} c={c} />}
+          </div>
+          <div style={{ fontSize: 24, lineHeight: "27px", fontWeight: 700, color: "#fff", letterSpacing: -0.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{title}</div>
+          {fact && <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>{fact}</div>}
         </div>
-        <span style={{ fontSize: 10, fontWeight: 700, color: c.textSecondary, letterSpacing: 1, flex: 1 }}>INFORMATION & DOCUMENTS</span>
-        <div style={{ background: c.tealDim, borderRadius: 10, padding: "2px 6px" }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: c.teal, letterSpacing: 0.5 }}>{totalCount}</span>
-        </div>
-        {open ? <CaretDown size={14} color={c.textTertiary} /> : <CaretRight size={14} color={c.textTertiary} />}
       </div>
-      {open && (
-        <div style={{ background: c.card, borderRadius: "0 0 20px 20px", padding: "0 12px 12px" }}>
-          {visibleInfo.map(item => (
-            <div key={item.id} style={{ padding: "8px 10px", background: c.bg, borderRadius: 12, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: c.textPrimary }}>{item.title || "Untitled"}</span>
-              {item.body && <p style={{ fontSize: 10, color: c.textSecondary, margin: "4px 0 0", lineHeight: 1.4, whiteSpace: "pre-wrap" }}>{item.body.length > 120 ? item.body.slice(0, 120) + "..." : item.body}</p>}
-              {item.documents && item.documents.length > 0 && (
-                <div style={{ marginTop: 6 }}>
-                  {item.documents.map(doc => (
-                    <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
-                      <Paperclip size={10} color={c.teal} />
-                      <span style={{ fontSize: 9, fontWeight: 700, color: c.textPrimary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
-                      <span style={{ fontSize: 8, color: c.textTertiary }}>{formatSize(doc.size)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+
+      {/* Location */}
+      {ev.location && (
+        <div style={{ ...card, padding: 12, display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <MapPin size={16} color={c.textTertiary} style={{ marginTop: 1, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: c.textPrimary, lineHeight: "18px" }}>{ev.location}</div>
+          <CaretRight size={13} color={c.textTertiary} style={{ alignSelf: "center", flexShrink: 0 }} />
+        </div>
+      )}
+
+      {/* Hotel check-in and out */}
+      {isHotel && !ev.isOvernight && (ev.time || ev.endTime) && (
+        <div style={{ ...card, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
+          {ev.time && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: c.textTertiary, marginBottom: 3 }}>CHECK IN</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: c.textPrimary }}>{ev.time}</div>
             </div>
-          ))}
-          {documents.length > 0 && (
-            <>
-              {visibleInfo.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 0" }}>
-                  <div style={{ height: 1, flex: 1, background: c.border }} />
-                  <span style={{ fontSize: 8, fontWeight: 700, color: c.textTertiary, letterSpacing: 1 }}>DOCUMENTS</span>
-                  <div style={{ height: 1, flex: 1, background: c.border }} />
-                </div>
-              )}
-              {documents.map(doc => (
-                <div key={doc.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: c.bg, borderRadius: 10, marginBottom: 4 }}>
-                  <Paperclip size={12} color={c.teal} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: c.textPrimary, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span>
-                  <span style={{ fontSize: 9, color: c.textTertiary }}>{formatSize(doc.size)}</span>
-                </div>
-              ))}
-            </>
+          )}
+          {ev.time && ev.endTime && <ArrowRight size={14} color={c.textTertiary} />}
+          {ev.endTime && (
+            <div style={{ flex: 1, textAlign: ev.time ? "right" : "left" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: c.textTertiary, marginBottom: 3 }}>CHECK OUT</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: c.textPrimary }}>{ev.endTime}</div>
+            </div>
           )}
         </div>
       )}
+
+      {/* Details */}
+      {details.length > 0 && (
+        <div style={card}>
+          {details.map((d, i) => <DetailRow key={d.label} icon={d.icon} label={d.label} value={d.value} c={c} last={i === details.length - 1} />)}
+        </div>
+      )}
+
+      {/* Notes */}
+      {(ev.description || ev.notes) && (
+        <div style={{ ...card, padding: 12 }}>
+          <Micro c={c} style={{ marginBottom: 8 }}>Notes</Micro>
+          {ev.description && <div style={{ fontSize: 12, lineHeight: "18px", color: c.textPrimary, whiteSpace: "pre-wrap" }}>{ev.description}</div>}
+          {ev.description && ev.notes && <div style={{ height: 8 }} />}
+          {ev.notes && <div style={{ fontSize: 12, lineHeight: "18px", color: c.textPrimary, whiteSpace: "pre-wrap" }}>{ev.notes}</div>}
+        </div>
+      )}
+
+      {/* Documents */}
+      {ev.documents && ev.documents.length > 0 && (
+        <div style={card}>
+          <div style={{ padding: "12px 12px 4px" }}><Micro c={c}>Documents</Micro></div>
+          {ev.documents.map((d, i) => <DocRow key={d.id} name={d.name} size={d.size} c={c} last={i === ev.documents!.length - 1} tint={c.tealDim} />)}
+        </div>
+      )}
+
+      {/* Before and up next on the same day */}
+      {neighbours.length > 0 && (
+        <div style={card}>
+          {neighbours.map(({ label, e }, i) => (
+            <div
+              key={e.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenEvent(e.id)}
+              onKeyDown={k => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); onOpenEvent(e.id); } }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", borderBottom: i < neighbours.length - 1 ? `0.5px solid ${c.border}` : "none" }}
+            >
+              <CatCircle type={e.type} transferType={e.transferType} c={c} size={26} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: c.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cleanEventTitle(e)}</div>
+              </div>
+              {e.time && !isPlaceholderTime(e.time) && <span style={{ fontSize: 11, fontWeight: 500, color: c.teal, fontVariantNumeric: "tabular-nums" }}>{e.time}</span>}
+              <CaretRight size={13} color={c.textTertiary} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {trip.organizer && <div style={{ marginTop: -12, paddingBottom: 12 }}><OrganizerSection org={trip.organizer} c={c} /></div>}
+      <div style={{ height: 24 }} />
+    </div>
+  );
+}
+
+/** Flight detail: the pass, as the phone shows it. The route map is replaced by the trip photo here. */
+function FlightScreen({ ev, trip, c, isDark, today, onBack }: { ev: TravelEvent; trip: Trip; c: C; isDark: boolean; today: string; onBack: () => void }) {
+  const [logoError, setLogoError] = useState(false);
+  const iata = (ev.flightNum || "").match(/^([A-Z0-9]{2})\s*\d/i)?.[1]?.toUpperCase() ?? "";
+  const code = (s?: string) => (s || "").match(/\(([A-Z]{3})\)/)?.[1] ?? ((s || "").match(/^[A-Z]{3}$/) ? s : "");
+  const depCode = code(ev.depAirport), arrCode = code(ev.arrAirport);
+  const nameOf = (s?: string) => (s || "").replace(/\s*\([A-Z]{3}\)\s*$/, "");
+  const status = eventStatusPill(ev.status, ev.date, c, today);
+  const flightColor = eventColor("flight", c);
+  const stub = [
+    { label: "Terminal", value: (ev.terminal || "").replace(/^T/i, "") || null },
+    { label: "Gate", value: ev.gate || null },
+    { label: "Seat", value: ev.seatDetails || null },
+    { label: "Check-in", value: ev.checkin || null },
+    { label: "Arrival terminal", value: (ev.arrTerminal || "").replace(/^T/i, "") || null },
+    { label: "Baggage belt", value: ev.baggageBelt || null },
+  ];
+  return (
+    <div style={{ position: "relative" }}>
+      <BackButton onBack={onBack} ink={isDark ? "#fff" : c.textPrimary} />
+      <div style={{ position: "relative", height: 190, overflow: "hidden", background: c.elevated }}>
+        {trip.image && <img src={trip.image} alt="" style={{ position: "absolute", inset: -30, width: "calc(100% + 60px)", height: "calc(100% + 60px)", objectFit: "cover", filter: "blur(16px)" }} />}
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, ${isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)"} 0%, transparent 30%)` }} />
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, ${c.bg}00 60%, ${c.bg} 100%)` }} />
+      </div>
+      <div style={{ padding: "0 14px", marginTop: -70, position: "relative" }}>
+        <div style={{ background: c.card, borderRadius: CARD, overflow: "hidden", boxShadow: isDark ? "none" : "0 8px 24px rgba(0,0,0,0.10)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 12px 8px" }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              {iata && !logoError
+                ? <img src={`https://images.kiwi.com/airlines/64/${iata}.png`} alt="" onError={() => setLogoError(true)} style={{ width: 28, height: 28, objectFit: "contain" }} />
+                : <span style={{ fontSize: 12, fontWeight: 800, color: "#111" }}>{iata || (ev.airline || "--").slice(0, 2).toUpperCase()}</span>}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: c.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.airline || "Airline"}</div>
+              <div style={{ fontSize: 11, color: c.textTertiary, marginTop: 1 }}>{[ev.flightNum, ev.aircraft].filter(Boolean).join(" · ")}</div>
+            </div>
+            {status && <StatusPill color={status.color} label={status.label} c={c} />}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: c.textPrimary, lineHeight: 1 }}>{depCode || "---"}</div>
+              <div style={{ fontSize: 11, color: c.textSecondary, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nameOf(ev.depAirport) || " "}</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1.2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+                <span style={{ flex: 1, height: 1, background: c.border }} />
+                <AirplaneTilt size={16} color={flightColor} weight="fill" style={{ transform: "rotate(45deg)" }} />
+                <span style={{ flex: 1, height: 1, background: c.border }} />
+              </div>
+              <div style={{ fontSize: 10, color: c.textTertiary, whiteSpace: "nowrap" }}>{ev.duration || " "}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: "right" }}>
+              <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: c.textPrimary, lineHeight: 1 }}>{arrCode || "---"}</div>
+              <div style={{ fontSize: 11, color: c.textSecondary, marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nameOf(ev.arrAirport) || " "}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", padding: "8px 12px 12px" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: c.textTertiary }}>Departs</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: c.textPrimary, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>{isPlaceholderTime(ev.time) ? "--:--" : ev.time}</div>
+              <div style={{ fontSize: 10, color: c.textTertiary }}>{[ev.date ? shortDate(ev.date) : null, ev.depTz].filter(Boolean).join(" · ")}</div>
+            </div>
+            <div style={{ flex: 1, textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: c.textTertiary }}>Arrives</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: c.textPrimary, fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>{!ev.endTime || isPlaceholderTime(ev.endTime) ? "--:--" : ev.endTime}</div>
+              <div style={{ fontSize: 10, color: c.textTertiary }}>{[ev.endDate ? shortDate(ev.endDate) : ev.date ? shortDate(ev.date) : null, ev.arrTz].filter(Boolean).join(" · ")}</div>
+            </div>
+          </div>
+          {/* perforation */}
+          <div style={{ position: "relative", height: 16, display: "flex", alignItems: "center", padding: "0 10px" }}>
+            <div style={{ position: "absolute", left: -8, top: 0, width: 16, height: 16, borderRadius: 8, background: c.bg }} />
+            <div style={{ flex: 1, borderTop: `1.5px dashed ${c.border}` }} />
+            <div style={{ position: "absolute", right: -8, top: 0, width: 16, height: 16, borderRadius: 8, background: c.bg }} />
+          </div>
+          {/* stub */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", rowGap: 10, padding: "6px 12px 12px" }}>
+            {stub.map(f => (
+              <div key={f.label} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 9, color: c.textTertiary, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: f.value ? c.textPrimary : c.textTertiary, marginTop: 2 }}>{f.value ?? "TBA"}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {ev.documents && ev.documents.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <Micro c={c} style={{ marginBottom: 6 }}>Documents</Micro>
+            <div style={{ background: c.card, borderRadius: CARD, overflow: "hidden" }}>
+              {ev.documents.map((d, i) => <DocRow key={d.id} name={d.name} size={d.size} c={c} last={i === ev.documents!.length - 1} tint={c.elevated} />)}
+            </div>
+          </div>
+        )}
+      </div>
+      {trip.organizer && <OrganizerSection org={trip.organizer} c={c} />}
+      <div style={{ height: 24 }} />
+    </div>
+  );
+}
+
+const FACT_RE = /([A-Za-z][^.,:;()\n]{2,48}?)\s*[:(]\s*((?:£|\$|€)\s?[\d,]+(?:\.\d{2})?)/g;
+function extractFacts(body: string) {
+  const out: { label: string; amount: string }[] = [];
+  for (const m of body.matchAll(FACT_RE)) {
+    const label = m[1].trim().replace(/\s+/g, " ");
+    if (label.length > 2 && out.length < 3 && !out.some(f => f.label === label)) out.push({ label, amount: m[2].replace(/\s/g, "") });
+  }
+  return out;
+}
+function hostname(url: string) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+}
+function deadlineMeta(item: TripInfo, c: C, today: string) {
+  if (item.completed) return { Icon: Check, label: "Completed", color: c.green };
+  if (!item.deadline) return null;
+  let dl = item.deadline;
+  try { dl = format(parseISO(item.deadline), "EEE d MMM"); } catch { /* keep iso */ }
+  const days = daysUntil(item.deadline, today);
+  if (days < 0) return { Icon: WarningCircle, label: `Overdue · was due ${dl}`, color: c.red };
+  if (days <= 7) return { Icon: Clock, label: `Due in ${days} day${days !== 1 ? "s" : ""} · ${dl}`, color: c.amber };
+  return { Icon: Calendar, label: `Due ${dl}`, color: c.teal };
+}
+
+/** Information, as app/trip/info.tsx on the phone: one section per item. */
+function InfoScreen({ info, c, today, onBack }: { info: TripInfo[]; c: C; today: string; onBack: () => void }) {
+  const items = info.filter(i => !i.leaderOnly);
+  const [openId, setOpenId] = useState<string | null>(items[0]?.id ?? null);
+  return (
+    <div style={{ position: "relative" }}>
+      <BackButton onBack={onBack} ink={c.textPrimary} />
+      <div style={{ padding: "48px 18px 8px", fontSize: 26, fontWeight: 700, letterSpacing: -0.5, color: c.textPrimary }}>Information</div>
+      <div style={{ padding: "0 14px" }}>
+        {items.length === 0 && <div style={{ fontSize: 12, color: c.textTertiary, padding: "24px 0", textAlign: "center" }}>Nothing shared yet.</div>}
+        {items.map(item => {
+          const isOpen = openId === item.id;
+          const meta = deadlineMeta(item, c, today);
+          const facts = item.body ? extractFacts(item.body) : [];
+          const isLong = !!item.body && item.body.length > 220;
+          return (
+            <div key={item.id} style={{ background: c.card, borderRadius: CARD, marginBottom: 12, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 12px 4px" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: c.elevated, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <FileText size={16} color={c.textPrimary} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: c.textPrimary }}>{item.title || "Information"}</div>
+                  {item.source && <div style={{ fontSize: 11, color: c.textTertiary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>From {item.source}</div>}
+                </div>
+              </div>
+              <div style={{ padding: "4px 12px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {meta && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: meta.color }}>
+                    <meta.Icon size={13} color={meta.color} weight="bold" />{meta.label}
+                  </div>
+                )}
+                {facts.length > 0 && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {facts.map(f => (
+                      <div key={f.label} style={{ flex: 1, minWidth: 0, background: c.elevated, borderRadius: 10, padding: "8px 10px" }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary, letterSpacing: -0.2 }}>{f.amount}</div>
+                        <div style={{ fontSize: 10, color: c.textTertiary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {item.actionUrl && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: c.elevated, borderRadius: 12, padding: "8px 10px" }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 15, background: c.tealDim, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <ArrowSquareOut size={14} color={c.teal} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{item.actionLabel ?? "Open link"}</div>
+                      <div style={{ fontSize: 10, color: c.textTertiary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{hostname(item.actionUrl)}</div>
+                    </div>
+                    <CaretRight size={13} color={c.textTertiary} />
+                  </div>
+                )}
+                {item.notes?.map((note, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, background: rgba(c.amber, 0.12), borderRadius: 10, padding: "8px 10px" }}>
+                    <Warning size={13} color={c.amber} weight="fill" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <div style={{ fontSize: 11, lineHeight: "16px", color: c.textPrimary }}>{note}</div>
+                  </div>
+                ))}
+                {item.body && (
+                  <div>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ fontSize: 12, lineHeight: "18px", color: c.textPrimary, whiteSpace: "pre-wrap", display: isLong && !isOpen ? "-webkit-box" : "block", WebkitLineClamp: isLong && !isOpen ? 5 : undefined, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {item.actionUrl ? item.body.split(item.actionUrl).join("").trim() : item.body}
+                      </div>
+                      {isLong && !isOpen && <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 36, background: `linear-gradient(to bottom, ${c.card}00, ${c.card})` }} />}
+                    </div>
+                    {isLong && (
+                      <button type="button" onClick={() => setOpenId(isOpen ? null : item.id)} style={{ marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 600, color: c.teal }}>
+                        {isOpen ? "Show less" : "Read more"}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {item.documents && item.documents.length > 0 && (
+                  <div style={{ borderTop: `0.5px solid ${c.border}`, paddingTop: 6 }}>
+                    {item.documents.map(d => (
+                      <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
+                        <Paperclip size={13} color={c.textTertiary} />
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: c.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
+                        <CaretRight size={13} color={c.textTertiary} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ height: 24 }} />
     </div>
   );
 }
 
 const isPlaceholderTime = (t?: string) => !t || /^(tb[acd]|n\/a|—|-)$/i.test(t.trim());
 
-function TripBody({ events, trip, c, activeEventId, today }: { events: TravelEvent[]; trip: Trip; c: C; activeEventId?: string | null; today?: string }) {
+function TripBody({ events, trip, c, activeEventId, today, onOpenEvent }: { events: TravelEvent[]; trip: Trip; c: C; activeEventId?: string | null; today?: string; onOpenEvent: (id: string) => void }) {
   const groups = useMemo(() => groupEventsByDay(events), [events]);
   const rootRef = useRef<HTMLDivElement>(null);
   const todayStr = today ?? new Date().toISOString().split("T")[0];
@@ -288,20 +671,16 @@ function TripBody({ events, trip, c, activeEventId, today }: { events: TravelEve
               key={date}
               type="button"
               onClick={() => jumpToDay(date)}
+              aria-label={`${wd} ${num}, ${evs.length} event${evs.length === 1 ? "" : "s"}`}
               style={{
-                flexShrink: 0, width: 46, padding: "6px 4px 4px", cursor: "pointer",
-                background: c.card, border: `1.5px solid ${isToday ? c.teal : "transparent"}`, borderRadius: 10,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                flexShrink: 0, width: 48, padding: "8px 6px 6px", cursor: "pointer",
+                background: c.card, border: `1.5px solid ${isToday ? c.teal : "transparent"}`, borderRadius: 12,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
                 opacity: dimPast && isPast ? 0.55 : 1,
               }}
             >
               <span style={{ fontSize: 9, fontWeight: 600, color: isToday ? c.teal : c.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>{wd}</span>
-              <span style={{ fontSize: 17, fontWeight: 600, color: c.textPrimary, letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>{num}</span>
-              <div style={{ display: "flex", gap: 2, height: 3, alignSelf: "stretch", marginTop: 3 }}>
-                {evs.length === 0
-                  ? <span style={{ flex: 1, height: 3, borderRadius: 2, background: c.border }} />
-                  : evs.map(e => <span key={e.id} style={{ flex: 1, height: 3, borderRadius: 2, background: eventColor(e.type, c) }} />)}
-              </div>
+              <span style={{ fontSize: 18, fontWeight: 600, color: c.textPrimary, letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>{num}</span>
             </button>
           );
         })}
@@ -314,7 +693,7 @@ function TripBody({ events, trip, c, activeEventId, today }: { events: TravelEve
             <span style={{ fontSize: 11, fontWeight: 700, color: c.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>Next up</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: c.teal, fontVariantNumeric: "tabular-nums" }}>{untilLabel(upNext)}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px 12px" }}>
+          <div role="button" tabIndex={0} onClick={() => onOpenEvent(upNext.id)} onKeyDown={k => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); onOpenEvent(upNext.id); } }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px 12px", cursor: "pointer" }}>
             <CatCircle type={upNext.type} transferType={upNext.transferType} c={c} size={38} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 17, fontWeight: 600, color: c.textPrimary, letterSpacing: -0.2, lineHeight: "20px" }}>{cleanTitle(upNext.title)}</div>
@@ -354,7 +733,7 @@ function TripBody({ events, trip, c, activeEventId, today }: { events: TravelEve
                   return (
                     <div key={e.id} data-preview-event={e.id} style={{ position: "relative" }}>
                       {i > 0 && <div style={{ height: 0.5, background: c.border, marginLeft: 14 + 28 + 10 }} />}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", minHeight: 52, background: active ? c.tealDim : "transparent", boxShadow: active ? `inset 0 0 0 1.5px ${c.teal}` : "none", transition: "background 200ms" }}>
+                      <div role="button" tabIndex={0} onClick={() => onOpenEvent(e.id)} onKeyDown={k => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); onOpenEvent(e.id); } }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", minHeight: 52, cursor: "pointer", background: active ? c.tealDim : "transparent", boxShadow: active ? `inset 0 0 0 1.5px ${c.teal}` : "none", transition: "background 200ms" }}>
                         <CatCircle type={e.type} transferType={e.transferType} c={c} />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary, lineHeight: "16px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{cleanTitle(e.title)}</div>
@@ -483,6 +862,24 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
     return { ...base, teal: accent, tealDim: `rgba(${rgb},0.12)`, tealMid: `rgba(${rgb},0.25)` };
   }, [isDark, brand.accentColor]);
   const previewEvents = events ?? trip.events;
+  const todayStr = prefs.today ?? new Date().toISOString().split("T")[0];
+
+  // Screen stack: the Trip screen, or an event or the Info screen pushed on top of it
+  const [screen, setScreen] = useState<{ kind: "trip" } | { kind: "event"; id: string } | { kind: "info" }>({ kind: "trip" });
+  const screenRef = useRef<HTMLDivElement>(null);
+  const openEvent = (id: string) => setScreen({ kind: "event", id });
+  const goBack = () => setScreen({ kind: "trip" });
+  // Follow the event being edited in the workspace: open it, and return when the editor closes
+  useEffect(() => {
+    if (activeEventId) setScreen({ kind: "event", id: activeEventId });
+    else setScreen(prev => prev.kind === "event" ? { kind: "trip" } : prev);
+  }, [activeEventId]);
+  useEffect(() => {
+    if (screen.kind !== "trip") screenRef.current?.scrollTo({ top: 0 });
+  }, [screen]);
+  const screenEvent = screen.kind === "event" ? previewEvents.find(e => e.id === screen.id) ?? trip.events.find(e => e.id === screen.id) : null;
+  const visibleInfo = (trip.info ?? []).filter(i => !i.leaderOnly);
+  const infoCount = visibleInfo.length + (trip.documents?.length ?? 0);
 
   const paxNum = parseInt(trip.paxCount || trip.attendees || "0");
   const flag = destinationFlag(trip.destination);
@@ -636,9 +1033,16 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
         <PhoneFrame isDark={isDark} device={prefs.device} finish={prefs.finish[prefs.device]} screenBg={c.bg} statusInk={c.textPrimary}>
               {/* Scrollable mobile screen */}
               <div
+                ref={screenRef}
                 style={{ background: c.bg, height: "100%", overflowY: "auto", overflowX: "hidden", zoom: prefs.textScale, position: "relative" }}
                 className="scrollbar-hide"
               >
+                {screen.kind === "event" && screenEvent ? (
+                  <EventScreen key={screenEvent.id} ev={screenEvent} trip={trip} c={c} isDark={isDark} today={todayStr} onBack={goBack} onOpenEvent={openEvent} />
+                ) : screen.kind === "info" ? (
+                  <InfoScreen info={trip.info ?? []} c={c} today={todayStr} onBack={goBack} />
+                ) : (
+                  <>
                 {/* The photo, blurred, behind the top of the page; a scrim rises to the page colour */}
                 <div aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, height: HERO + 300, overflow: "hidden", pointerEvents: "none" }}>
                   <img src={trip.image} alt="" style={{ position: "absolute", inset: -40, width: "calc(100% + 80px)", height: "calc(100% + 80px)", objectFit: "cover", filter: "blur(40px)", opacity: 0.95 }} />
@@ -671,17 +1075,17 @@ export function MobilePreview({ trip, onClose, events, activeEventId, viewAsName
                 </div>
 
                 <div style={{ position: "relative" }}>
-                <TripBody events={previewEvents} trip={trip} c={c} activeEventId={activeEventId} today={prefs.today ?? undefined} />
+                <TripBody events={previewEvents} trip={trip} c={c} activeEventId={activeEventId} today={prefs.today ?? undefined} onOpenEvent={openEvent} />
                 </div>
 
-                {/* Organizer */}
+                {/* Organiser and the information row, as the phone shows them under the timeline */}
                 {trip.organizer && <OrganizerSection org={trip.organizer} c={c} />}
-
-                {/* Info */}
-                {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && <InfoDocsSection info={trip.info ?? []} documents={trip.documents ?? []} c={c} />}
+                {infoCount > 0 && <InfoDocsRow count={infoCount} c={c} onOpen={() => setScreen({ kind: "info" })} />}
 
                 {/* Bottom spacer */}
                 <div style={{ height: 24 }} />
+                  </>
+                )}
               </div>
         </PhoneFrame>
       </div>

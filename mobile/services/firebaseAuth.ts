@@ -14,10 +14,12 @@ import {
   signOut as fbSignOut,
   signInAnonymously,
   onAuthStateChanged,
+  deleteUser,
   type User as FbUser,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { firebaseAuth, firebaseDb, isFirebaseConfigured } from "./firebase";
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { ref, listAll, deleteObject } from "firebase/storage";
+import { firebaseAuth, firebaseDb, firebaseStorage, isFirebaseConfigured } from "./firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MAGIC_LINK_EMAIL_KEY = "daf-magic-link-email";
@@ -273,6 +275,43 @@ export async function signOut(): Promise<void> {
   await fbSignOut(firebaseAuth());
   // Fall back to anonymous so Firestore reads still work
   await signInAnonymously(firebaseAuth()).catch(() => {});
+}
+
+// ── Account deletion ────────────────────────────────────────────────────────
+
+/**
+ * Removes everything tied to the signed-in account: trip memberships keyed to
+ * the uid, the profile document, the avatar in Storage, then the auth user.
+ * Returns an error message, or null on success.
+ */
+export async function deleteAccount(): Promise<string | null> {
+  if (!isFirebaseConfigured()) return "Account deletion isn't available right now.";
+  const auth = firebaseAuth();
+  const user = auth.currentUser;
+  if (!user || user.isAnonymous) return "There's no account to delete.";
+  const uid = user.uid;
+  const db = firebaseDb();
+
+  try {
+    const members = await getDocs(query(collection(db, "trip_members"), where("uid", "==", uid)));
+    await Promise.all(members.docs.map(d => deleteDoc(d.ref).catch(() => {})));
+    const tokens = await getDocs(query(collection(db, "push_tokens"), where("user_id", "==", uid))).catch(() => null);
+    if (tokens) await Promise.all(tokens.docs.map(d => deleteDoc(d.ref).catch(() => {})));
+    await deleteDoc(doc(db, "profiles", uid)).catch(() => {});
+    const avatars = await listAll(ref(firebaseStorage(), `avatars/${uid}`)).catch(() => null);
+    if (avatars) await Promise.all(avatars.items.map(item => deleteObject(item).catch(() => {})));
+
+    await deleteUser(user);
+    await signInAnonymously(auth).catch(() => {});
+    return null;
+  } catch (err: unknown) {
+    if ((err as { code?: string })?.code === "auth/requires-recent-login") {
+      await fbSignOut(auth).catch(() => {});
+      await signInAnonymously(auth).catch(() => {});
+      return "For security, sign in again and then delete your account.";
+    }
+    return "Couldn't delete your account. Please try again.";
+  }
 }
 
 // ── Password Reset ──────────────────────────────────────────────────────────

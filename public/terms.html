@@ -1,65 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Terms of Service - Dalefy</title>
-<style>
-  :root { --accent: #0bd2b5; --bg: #050505; --card: #111111; --border: #1f1f1f; --text: #e5e5e5; --dim: #888; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
-  .container { max-width: 600px; width: 100%; }
-  h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
-  .updated { color: var(--dim); font-size: 13px; margin-bottom: 32px; }
-  .section { margin-bottom: 28px; }
-  .section h2 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .section p { color: var(--dim); font-size: 14px; line-height: 1.7; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .back { display: inline-block; margin-top: 32px; font-size: 14px; font-weight: 600; }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Terms of Service</h1>
-  <p class="updated">Last updated: May 8, 2026</p>
+  <head>
+    <title>Terms of service - Dalefy</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #F7F7F9; --card: #FFFFFF; --raised: #F1F1F4; --border: #E4E4E9;
+        --text: #17181C; --muted: #6B6E78; --accent: #0bd2b5; --accent-text: #0A8F7C;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0E0E10; --card: #17181C; --raised: #202127; --border: #26272E;
+          --text: #F4F4F6; --muted: #9A9DA8; --accent-text: #0bd2b5;
+        }
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+        padding: 48px 20px 64px;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      .brand { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 28px; }
+      .brand svg { width: 16px; height: 16px; }
+      h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 6px; }
+      .lede { color: var(--muted); font-size: 16px; line-height: 1.5; margin-bottom: 8px; }
+      .updated { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; }
+      .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+      .card p, .card li { color: var(--muted); font-size: 15px; line-height: 1.6; }
+      .card ul { padding-left: 20px; margin-top: 6px; }
+      .card li + li { margin-top: 4px; }
+      .card p + p, .card ul + p { margin-top: 10px; }
+      .faq dt { font-weight: 600; font-size: 15px; margin-top: 14px; }
+      .faq dt:first-child { margin-top: 0; }
+      .faq dd { color: var(--muted); font-size: 15px; line-height: 1.6; margin-top: 4px; }
+      .path { display: inline-block; background: var(--raised); border-radius: 6px; padding: 1px 6px; font-size: 13px; color: var(--text); }
+      a { color: var(--accent-text); text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 32px; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 4.5C5 3.67 5.67 3 6.5 3H15.5C22.4 3 28 8.82 28 16C28 23.18 22.4 29 15.5 29H6.5C5.67 29 5 28.33 5 27.5V4.5ZM11 9.5L22.5 16L11 22.5L13.5 16L11 9.5Z"/></svg> Dalefy</div>
+      <h1>Terms of service</h1>
+      <p class="lede">The short version: be a good guest, and remember your organiser runs the trip.</p>
+      <p class="updated">Last updated: 9 September 2026</p>
 
-  <div class="section">
-    <h2>Acceptance of Terms</h2>
-    <p>By using Dalefy, you agree to these terms. If you do not agree, please do not use the app.</p>
-  </div>
+      <section class="card">
+        <h2>Agreeing to these terms</h2>
+        <p>By using the Dalefy app or website you agree to these terms. If you do not agree, please do not use Dalefy.</p>
+      </section>
 
-  <div class="section">
-    <h2>Use of Service</h2>
-    <p>Dalefy is a trip planning and coordination platform. You may use it to create, manage, and share trip itineraries with your travel group. You are responsible for the content you upload, including photos, text, and trip details.</p>
-  </div>
+      <section class="card">
+        <h2>Organisers and travellers</h2>
+        <p>Dalefy is the app. The trip itself is planned and run by a travel organiser, who publishes the itinerary, times, bookings and documents you see. When a trip is branded "Powered by" a company, that company is your organiser.</p>
+        <p>Dalefy is not a travel agent, carrier or hotel, and is not a party to any booking. Your contract for flights, accommodation and activities is with your organiser or the provider. Times and details can change, so check with your organiser or the carrier before you travel.</p>
+      </section>
 
-  <div class="section">
-    <h2>User Content</h2>
-    <p>You retain ownership of content you upload. By uploading content to a shared trip, you grant other trip members permission to view that content within the app. We do not claim ownership of your content.</p>
-  </div>
+      <section class="card">
+        <h2>Who can use Dalefy</h2>
+        <p>You must be at least 16 to create an account. Younger travellers can be added to a trip by their organiser with the consent of a parent or guardian.</p>
+      </section>
 
-  <div class="section">
-    <h2>Acceptable Use</h2>
-    <p>You agree not to upload content that is illegal, harmful, or violates the rights of others. We reserve the right to remove content that violates these terms.</p>
-  </div>
+      <section class="card">
+        <h2>Your account</h2>
+        <p>Signing in is optional. If you do sign in, keep your sign-in method secure and tell us if you think someone else has used it. You can delete your account at any time from the Profile tab.</p>
+      </section>
 
-  <div class="section">
-    <h2>Service Availability</h2>
-    <p>We aim to keep Dalefy available and reliable, but we do not guarantee uninterrupted access. We may update, modify, or discontinue features at any time.</p>
-  </div>
+      <section class="card">
+        <h2>Your content</h2>
+        <p>You own the photos, videos and text you add to a trip. By adding them to a shared gallery you allow the other people on that trip, and your organiser, to see them in the app. Dalefy does not claim ownership of your content.</p>
+        <p>Only add content you have the right to share. Do not add anything illegal, harmful, abusive, or that infringes someone else's rights. Organisers and Dalefy can remove content that breaks these terms.</p>
+      </section>
 
-  <div class="section">
-    <h2>Limitation of Liability</h2>
-    <p>Dalefy is provided "as is" without warranties of any kind. We are not liable for any damages arising from your use of the service, including loss of data or disruption to travel plans.</p>
-  </div>
+      <section class="card">
+        <h2>Using the service fairly</h2>
+        <ul>
+          <li>Do not share trip PINs, QR codes or invite links with people who are not on the trip.</li>
+          <li>Do not try to access trips, accounts or data that are not yours.</li>
+          <li>Do not interfere with the app, its servers or other people's use of it.</li>
+        </ul>
+      </section>
 
-  <div class="section">
-    <h2>Contact</h2>
-    <p>Questions about these terms? Email us at <a href="mailto:support@dalefy.com">support@dalefy.com</a>.</p>
-  </div>
+      <section class="card">
+        <h2>Availability</h2>
+        <p>We work hard to keep Dalefy available, but we cannot promise it will always be online or error free. We may change, pause or retire features at any time. Keep a copy of anything critical, such as tickets, outside the app.</p>
+      </section>
 
-  <a class="back" href="/">&larr; Back to Dalefy</a>
-</div>
-</body>
+      <section class="card">
+        <h2>Liability</h2>
+        <p>Dalefy is provided "as is". To the extent the law allows, we are not liable for loss or damage arising from your use of the app, including missed connections, changed bookings or lost data. Nothing in these terms limits liability that cannot be limited by law.</p>
+      </section>
+
+      <section class="card">
+        <h2>Ending your use</h2>
+        <p>You can stop using Dalefy and delete your account whenever you like. We may suspend or end access for anyone who breaks these terms.</p>
+      </section>
+
+      <section class="card">
+        <h2>Law and changes</h2>
+        <p>These terms are governed by the laws of England and Wales. If we change them in a way that matters, we will update the date above and let you know in the app.</p>
+        <p>Questions go to <a href="mailto:support@dalefy.com">support@dalefy.com</a>.</p>
+      </section>
+
+      <nav class="links">
+        <a href="/">Back to Dalefy</a>
+        <a href="/support.html">Help &amp; support</a>
+        <a href="/privacy.html">Privacy policy</a>
+      </nav>
+    </main>
+  </body>
 </html>

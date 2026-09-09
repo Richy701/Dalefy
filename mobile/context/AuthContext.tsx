@@ -14,6 +14,7 @@ import {
   handleMagicLinkReturn as authMagicReturn,
   upgradeWithEmail as authUpgradeEmail,
   signOut as authSignOut,
+  deleteAccount as authDeleteAccount,
   resetPassword as authResetPassword,
   type MobileUser,
 } from "@/services/firebaseAuth";
@@ -34,6 +35,7 @@ interface AuthContextType {
   upgradeWithEmail: (email: string, password: string, name: string) => Promise<string | null>;
   resetPassword: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -50,6 +52,7 @@ const AuthContext = createContext<AuthContextType>({
   upgradeWithEmail: async () => null,
   resetPassword: async () => null,
   signOut: async () => {},
+  deleteAccount: async () => null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -168,6 +171,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem(AUTH_CACHE_KEY).catch(() => {});
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    const error = await authDeleteAccount();
+    if (!error) {
+      cachedRef.current = null;
+      setUser(null);
+      setIsAnonymous(true);
+      await AsyncStorage.removeItem(AUTH_CACHE_KEY).catch(() => {});
+    }
+    return error;
+  }, []);
+
   const value = useMemo<AuthContextType>(() => ({
     user,
     isAuthenticated: !!user && !isAnonymous,
@@ -182,11 +196,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     upgradeWithEmail,
     resetPassword,
     signOut,
+    deleteAccount,
   }), [
     user, isAnonymous, isLoading,
     signIn, signUp, signInWithGoogle, signInWithApple,
     sendMagicLink, handleMagicLinkReturn, upgradeWithEmail,
-    resetPassword, signOut,
+    resetPassword, signOut, deleteAccount,
   ]);
 
   return (

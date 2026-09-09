@@ -11,12 +11,13 @@ import SegmentedControl from "@react-native-segmented-control/segmented-control"
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
+import * as Application from "expo-application";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Palette, Bell, Shield, UserCirclePlus,
   Vibrate, ArrowSquareOut, Info,
   CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
-  SignOut,
+  SignOut, Trash,
 } from "phosphor-react-native";
 import { T, R, S, shadow, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
@@ -110,6 +111,8 @@ export default function ProfileScreen() {
 
 
 
+
+  const appVersion = `${Application.nativeApplicationVersion ?? "-"} (${Application.nativeBuildVersion ?? "-"})`;
 
   const { onScroll, barStyle } = useCollapsingHeader();
 
@@ -368,7 +371,7 @@ export default function ProfileScreen() {
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
             onPress={async () => {
               haptic.selection();
-              await Clipboard.setStringAsync("Dalefy v1.0.0 (27)");
+              await Clipboard.setStringAsync(`Dalefy v${appVersion}`);
               toast("Version copied");
             }}
             accessibilityRole="button"
@@ -376,7 +379,7 @@ export default function ProfileScreen() {
           >
             <Info size={18} color={C.textSecondary} weight="light" />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Version</Text></View>
-            <Text style={s.rowValue}>1.0.0 (27)</Text>
+            <Text style={s.rowValue}>{appVersion}</Text>
           </Pressable>
         </View>
         </FadeIn>
@@ -398,6 +401,34 @@ export default function ProfileScreen() {
             >
               <SignOut size={18} color={C.red} weight="regular" />
               <Text style={[s.signOutText, { color: C.redText }]}>Sign out</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                haptic.medium();
+                Alert.alert(
+                  "Delete your account?",
+                  "This removes your profile, trip memberships and avatar from Dalefy. Trips on this device are cleared too. This can't be undone.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        const error = await auth.deleteAccount();
+                        if (error) { toast(error); return; }
+                        toast("Account deleted");
+                        router.replace("/auth");
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+            >
+              <Trash size={16} color={C.textTertiary} weight="regular" />
+              <Text style={[s.deleteText, { color: C.textTertiary }]}>Delete account</Text>
             </Pressable>
           </FadeIn>
         )}
@@ -548,6 +579,17 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     signOutText: {
       fontSize: T.base,
       fontWeight: T.semibold,
+    },
+    deleteBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: S.xs,
+      paddingVertical: S.sm,
+    },
+    deleteText: {
+      fontSize: T.sm,
+      fontWeight: T.medium,
     },
 
     // ── Footer ──

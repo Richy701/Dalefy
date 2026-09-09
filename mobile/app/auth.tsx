@@ -8,7 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
-  Envelope, LockKey, ArrowRight, CaretLeft, GoogleLogo, AppleLogo, Check,
+  Envelope, LockKey, ArrowRight, CaretLeft, Check,
 } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
@@ -21,6 +21,7 @@ import { usePreferences } from "@/context/PreferencesContext";
 import { useHaptic } from "@/hooks/useHaptic";
 import { T, R, S, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
+import { GoogleG, AppleMark } from "@/components/BrandLogos";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -364,7 +365,7 @@ export default function AuthScreen() {
                     {busyProvider === "apple"
                       ? <ActivityIndicator size="small" color={C.bg} />
                       : <>
-                          <AppleLogo size={20} color={C.bg} weight="fill" />
+                          <AppleMark size={20} color={C.bg} />
                           <Text style={[styles.providerText, { color: C.bg }]}>Continue with Apple</Text>
                         </>}
                   </Pressable>
@@ -380,7 +381,7 @@ export default function AuthScreen() {
                     {busyProvider === "google"
                       ? <ActivityIndicator size="small" color={C.textPrimary} />
                       : <>
-                          <GoogleLogo size={20} color={C.textPrimary} weight="bold" />
+                          <GoogleG size={20} />
                           <Text style={styles.providerText}>Continue with Google</Text>
                         </>}
                   </Pressable>

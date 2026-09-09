@@ -1,47 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Help & Support - Dalefy</title>
-<style>
-  :root { --accent: #0bd2b5; --bg: #050505; --card: #111111; --border: #1f1f1f; --text: #e5e5e5; --dim: #888; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
-  .container { max-width: 600px; width: 100%; }
-  h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
-  .subtitle { color: var(--dim); font-size: 15px; margin-bottom: 40px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
-  .card h2 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .card p { color: var(--dim); font-size: 14px; line-height: 1.6; }
-  .card a { color: var(--accent); text-decoration: none; }
-  .card a:hover { text-decoration: underline; }
-  .back { display: inline-block; margin-top: 32px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; }
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>Help & Support</h1>
-  <p class="subtitle">We're here to help you get the most out of Dalefy.</p>
+  <head>
+    <title>Help &amp; support - Dalefy</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #F7F7F9; --card: #FFFFFF; --raised: #F1F1F4; --border: #E4E4E9;
+        --text: #17181C; --muted: #6B6E78; --accent: #0bd2b5; --accent-text: #0A8F7C;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0E0E10; --card: #17181C; --raised: #202127; --border: #26272E;
+          --text: #F4F4F6; --muted: #9A9DA8; --accent-text: #0bd2b5;
+        }
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+        padding: 48px 20px 64px;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      .brand { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 28px; }
+      .brand svg { width: 16px; height: 16px; }
+      h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 6px; }
+      .lede { color: var(--muted); font-size: 16px; line-height: 1.5; margin-bottom: 8px; }
+      .updated { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; }
+      .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+      .card p, .card li { color: var(--muted); font-size: 15px; line-height: 1.6; }
+      .card ul { padding-left: 20px; margin-top: 6px; }
+      .card li + li { margin-top: 4px; }
+      .card p + p, .card ul + p { margin-top: 10px; }
+      .faq dt { font-weight: 600; font-size: 15px; margin-top: 14px; }
+      .faq dt:first-child { margin-top: 0; }
+      .faq dd { color: var(--muted); font-size: 15px; line-height: 1.6; margin-top: 4px; }
+      .path { display: inline-block; background: var(--raised); border-radius: 6px; padding: 1px 6px; font-size: 13px; color: var(--text); }
+      a { color: var(--accent-text); text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 32px; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 4.5C5 3.67 5.67 3 6.5 3H15.5C22.4 3 28 8.82 28 16C28 23.18 22.4 29 15.5 29H6.5C5.67 29 5 28.33 5 27.5V4.5ZM11 9.5L22.5 16L11 22.5L13.5 16L11 9.5Z"/></svg> Dalefy</div>
+      <h1>Help &amp; support</h1>
+      <p class="lede">Answers to the common questions, and how to reach us when you need a person.</p>
+      <p class="updated">Last updated: 9 September 2026</p>
 
-  <div class="card">
-    <h2>Contact Us</h2>
-    <p>Have a question or running into an issue? Reach out to us at <a href="mailto:support@dalefy.com">support@dalefy.com</a> and we'll get back to you as soon as possible.</p>
-  </div>
+      <section class="card">
+        <h2>Contact us</h2>
+        <p>Email <a href="mailto:support@dalefy.com">support@dalefy.com</a> and we will get back to you as soon as we can. If your question is about a booking, a hotel or a flight, your trip organiser is usually the fastest route, and their details are on the trip's Info page.</p>
+        <p>It helps if you include your app version. You will find it in the app under <span class="path">Profile</span> &rarr; <span class="path">About</span> &rarr; <span class="path">Version</span>. Tap it to copy it.</p>
+      </section>
 
-  <div class="card">
-    <h2>FAQ</h2>
-    <p><strong>How do I join a trip?</strong><br>Ask your trip organizer for the trip PIN, then enter it on the Join screen in the app.</p>
-    <p style="margin-top:12px"><strong>Can I upload photos?</strong><br>Yes. Go to the Gallery tab and tap the + button to upload photos from your camera roll.</p>
-    <p style="margin-top:12px"><strong>How do I see the itinerary?</strong><br>Open your trip and tap Schedule to see the day-by-day itinerary your organizer has planned.</p>
-  </div>
+      <section class="card faq">
+        <h2>Frequently asked</h2>
+        <dl>
+          <dt>How do I join a trip?</dt>
+          <dd>Tap the plus button on the Home tab and enter the six-digit PIN your organiser sent you. You can also scan the QR code or paste the invite link from the same screen.</dd>
 
-  <div class="card">
-    <h2>App Version</h2>
-    <p>Current version: 1.0.0</p>
-  </div>
+          <dt>Where is my itinerary?</dt>
+          <dd>Open your trip from Home. The Today tab shows what is coming up next, and the trip's Itinerary shows every day in order. Tap any event for the details, tickets and documents your organiser attached.</dd>
 
-  <a class="back" href="/">&larr; Back to Dalefy</a>
-</div>
-</body>
+          <dt>Can I add photos?</dt>
+          <dd>Yes. Open the Gallery tab and tap the plus button to add photos or videos from your camera roll. Everyone on the trip can see what is shared there.</dd>
+
+          <dt>Do I need an account?</dt>
+          <dd>No. You can join and use a trip without one. Signing in with Apple, Google or an email link keeps your trips with you if you change phones. Go to <span class="path">Profile</span> &rarr; <span class="path">Sign in</span>.</dd>
+
+          <dt>How do notifications work?</dt>
+          <dd>Trip reminders arrive before each event, and itinerary updates arrive when your organiser changes the plan. Both can be turned off under <span class="path">Profile</span> &rarr; <span class="path">Notifications</span>.</dd>
+
+          <dt>What is Live Activity?</dt>
+          <dd>On iPhone, flight progress can show on your lock screen and in the Dynamic Island while you travel. Turn it off under <span class="path">Profile</span> &rarr; <span class="path">Notifications</span> if you would rather not see it.</dd>
+
+          <dt>How do I delete my account?</dt>
+          <dd>Go to <span class="path">Profile</span> and tap <span class="path">Delete account</span> below Sign out. This removes your profile, your trip memberships and your avatar. If you would rather we did it for you, email us from the address on your account.</dd>
+        </dl>
+      </section>
+
+      <nav class="links">
+        <a href="/">Back to Dalefy</a>
+        <a href="/privacy.html">Privacy policy</a>
+        <a href="/terms.html">Terms of service</a>
+      </nav>
+    </main>
+  </body>
 </html>
