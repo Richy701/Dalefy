@@ -2,9 +2,23 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Trip } from "@/shared/types";
-import { fetchTrips, upsertTrip as upsertTripRemote, subscribeToTrips } from "@/services/firebaseTrips";
+import { fetchTrips, changeTripMedia, subscribeToTrips } from "@/services/firebaseTrips";
+import { onAuthStateChanged } from "firebase/auth";
+import { firebaseAuth } from "@/services/firebase";
 
-const CACHE_KEY = "daf-trips-cache";
+const CACHE_KEY = "daf-published-trips-cache-v2";
+// Preserve the original cache for recovery. Never delete it during module loading.
+async function readCache(): Promise<Trip[] | null> {
+  for (const key of [CACHE_KEY, "daf-trips-cache"]) {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed as Trip[];
+    } catch { /* Try the older copy if the current cache is damaged. */ }
+  }
+  return null;
+}
 
 export const TRIPS_CTX_VERSION = "v9";
 console.log(`[TripsContext] ${TRIPS_CTX_VERSION} loaded`);
@@ -12,11 +26,8 @@ console.log(`[TripsContext] ${TRIPS_CTX_VERSION} loaded`);
 // If AsyncStorage resolves before first render, trips are available immediately.
 let _eagerCache: Trip[] | null = null;
 let _eagerReady = false;
-AsyncStorage.getItem(CACHE_KEY).then(raw => {
-  console.log("[TripsCache] eager load:", raw ? `${JSON.parse(raw).length} trips` : "empty");
-  if (raw) {
-    try { _eagerCache = JSON.parse(raw) as Trip[]; } catch {}
-  }
+readCache().then(trips => {
+  _eagerCache = trips;
   _eagerReady = true;
 }).catch(() => { _eagerReady = true; });
 
@@ -28,7 +39,7 @@ interface TripsContextValue {
   _debug: { lc: number | null; ok: boolean; err: boolean };
   addTrip: (trip: Trip) => void;
   deleteTrip: (id: string) => void;
-  updateTrip: (trip: Trip) => void;
+  updateTrip: (trip: Trip) => Promise<void>;
   /** Optimistic-only update — no Firestore write */
   updateTripLocal: (trip: Trip) => void;
   clearTrips: () => Promise<void>;
@@ -41,8 +52,20 @@ interface TripsContextValue {
 const TripsContext = createContext<TripsContextValue | null>(null);
 
 function save(trips: Trip[]) {
-  if (trips.length === 0) return;
-  AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trips)).catch(() => {});
+  const publicTrips = trips.map(trip => ({
+    ...trip,
+    info: trip.info?.filter(page => !page.leaderOnly),
+    events: trip.events.map(event => {
+      const safe = { ...event };
+      delete safe.notes;
+      delete safe.price;
+      delete safe.supplier;
+      delete safe.confNumber;
+      delete safe.seatDetails;
+      return safe;
+    }),
+  }));
+  AsyncStorage.setItem(CACHE_KEY, JSON.stringify(publicTrips)).catch(() => {});
 }
 
 export function TripsProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +73,28 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   const [networkDown, setNetworkDown] = useState(false);
   const mounted = useRef(true);
   const qc = useQueryClient();
+  useEffect(() => {
+    let previousUid = firebaseAuth().currentUser?.uid;
+    let initialized = false;
+    return onAuthStateChanged(firebaseAuth(), user => {
+      // Restoring persisted auth on launch is not an account switch.
+      if (!initialized) {
+        initialized = true;
+        previousUid = user?.uid;
+        return;
+      }
+      if (previousUid !== user?.uid) {
+        previousUid = user?.uid;
+        _eagerCache = [];
+        void qc.cancelQueries({ queryKey: ["trips"] }).then(() => {
+          qc.setQueryData<Trip[]>(["trips"], []);
+          setLocalCache([]);
+          save([]);
+          void qc.invalidateQueries({ queryKey: ["trips"] });
+        });
+      }
+    });
+  }, [qc]);
   /** Track pending writes — block subscription updates until all writes settle */
   const pendingWrites = useRef(0);
   /** True once a remote fetch has succeeded — safe to trust empty results */
@@ -74,10 +119,9 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
       setLocalCache(_eagerCache);
       return () => { mounted.current = false; };
     }
-    AsyncStorage.getItem(CACHE_KEY)
-      .then(raw => {
-        if (raw && mounted.current) setLocalCache(JSON.parse(raw) as Trip[]);
-        else if (mounted.current) setLocalCache([]);
+    readCache()
+      .then(cached => {
+        if (mounted.current) setLocalCache(cached ?? []);
       })
       .catch(() => { if (mounted.current) setLocalCache([]); });
     return () => { mounted.current = false; };
@@ -103,19 +147,18 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isError]);
 
-  // Sync remote data → local cache (only non-empty to prevent offline wipes)
+  // Cache authoritative responses, including membership removals.
   useEffect(() => {
-    if (remoteTrips && pendingWrites.current === 0 && remoteTrips.length > 0) {
+    if (remoteTrips && pendingWrites.current === 0) {
       setLocalCache(remoteTrips);
       save(remoteTrips);
     }
   }, [remoteTrips]);
 
-  // Firestore realtime subscription (never accepts empty — prevents offline wipes)
+  // Membership-driven API refreshes report successful empties, not network errors.
   useEffect(() => {
     const unsub = subscribeToTrips((freshTrips) => {
       if (pendingWrites.current > 0) return;
-      if (freshTrips.length === 0) return;
       confirmedOnline.current = true;
       setNetworkDown(false);
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
@@ -134,10 +177,8 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
           confirmedOnline.current = true;
           setNetworkDown(false);
           qc.setQueryData<Trip[]>(["trips"], trips);
-          if (trips.length > 0) {
-            setLocalCache(trips);
-            save(trips);
-          }
+          setLocalCache(trips);
+          save(trips);
         })
         .catch(() => {});
     }, 10000);
@@ -146,18 +187,10 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
 
   // Prefer remote when it has data; fall back to cache when remote is empty.
   // Only show truly empty when remote confirmed empty AND cache is also empty.
-  const rawTrips = useMemo(() => {
-    if (remoteTrips && remoteTrips.length > 0) return remoteTrips;
-    if (localCache && localCache.length > 0) return localCache;
+  const trips = useMemo(() => {
     if (isSuccess) return remoteTrips ?? [];
     return remoteTrips ?? localCache ?? [];
   }, [remoteTrips, localCache, isSuccess]);
-
-  const trips = useMemo(() => rawTrips.map(t => {
-    const snap = t.publishedSnapshot;
-    if (!snap) return t;
-    return { ...t, events: snap.events, info: t.info ?? snap.info, organizer: t.organizer ?? snap.organizer, image: snap.image, name: snap.name, destination: snap.destination, start: snap.start, end: snap.end, paxCount: snap.paxCount };
-  }), [rawTrips]);
   const hasCachedTrips = localCache !== null && localCache.length > 0;
   const ready = hasCachedTrips || isSuccess || isError || networkDown;
   const offline = networkDown && !isSuccess;
@@ -166,11 +199,12 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
   // Ensure displayed trips are always persisted for offline cold start
   const lastSaved = useRef("");
   useEffect(() => {
+    // Initial empty rendering must not overwrite storage before hydration finishes.
     if (trips.length === 0) return;
     const json = JSON.stringify(trips);
     if (json !== lastSaved.current) {
       lastSaved.current = json;
-      AsyncStorage.setItem(CACHE_KEY, json).catch(() => {});
+      save(trips);
     }
   }, [trips]);
 
@@ -210,19 +244,21 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
     setLocalCache(prev => update(prev ?? []));
   }, [qc]);
 
-  const updateTrip = useCallback((trip: Trip) => {
+  const updateTrip = useCallback(async (trip: Trip) => {
+    const previous = (qc.getQueryData<Trip[]>(["trips"]) ?? []).find(t => t.id === trip.id);
+    const keep = new Set((trip.media ?? []).map(m => m.id));
+    const removed = (previous?.media ?? []).filter(m => !keep.has(m.id)).map(m => m.id);
     const update = (prev: Trip[]) => {
       const next = prev.map(t => t.id === trip.id ? trip : t);
       save(next);
       return next;
     };
-    qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
-    setLocalCache(prev => update(prev ?? []));
-    // Block subscription until write settles
     pendingWrites.current++;
-    upsertTripRemote(trip)
-      .catch(err => console.warn("[TripsContext] updateTrip upsert failed:", err))
-      .finally(() => { pendingWrites.current--; });
+    try {
+      await changeTripMedia(trip.id, [], removed);
+      qc.setQueryData<Trip[]>(["trips"], (prev = []) => update(prev));
+      setLocalCache(prev => update(prev ?? []));
+    } finally { pendingWrites.current--; }
   }, [qc]);
 
   const clearTrips = useCallback(async () => {
@@ -241,10 +277,8 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
       confirmedOnline.current = true;
       setNetworkDown(false);
       qc.setQueryData<Trip[]>(["trips"], fresh);
-      if (fresh.length > 0) {
-        setLocalCache(fresh);
-        save(fresh);
-      }
+      setLocalCache(fresh);
+      save(fresh);
       return true;
     } catch {
       setNetworkDown(true);

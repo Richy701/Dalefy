@@ -85,7 +85,26 @@ function apiRoutesPlugin(env: Record<string, string>) {
           res.end(JSON.stringify(data))
         }
         try {
-          if (p === "/api/parse-itinerary") {
+          if (p === "/api/trip") {
+            for (const key of ["VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD"]) {
+              if (env[key]) process.env[key] = env[key]
+            }
+            let body = ""
+            for await (const chunk of req) {
+              body += chunk.toString()
+              if (Buffer.byteLength(body) > 256 * 1024) { send(413, { error: "Request too large" }); return }
+            }
+            let parsed: unknown
+            try { parsed = body ? JSON.parse(body) : undefined }
+            catch { send(400, { error: "Invalid JSON" }); return }
+            const { default: handler } = await server.ssrLoadModule("/api/trip.ts")
+            const response = {
+              setHeader: (name: string, value: string) => res.setHeader(name, value),
+              status: (code: number) => { res.statusCode = code; return response },
+              json: (data: unknown) => send(res.statusCode || 200, data),
+            }
+            await handler({ method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body: parsed }, response)
+          } else if (p === "/api/parse-itinerary") {
             if (req.method !== "POST") { res.statusCode = 405; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "Method not allowed" })); return }
             const apiKey = env.ANTHROPIC_API_KEY
             if (!apiKey) { res.statusCode = 500; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" })); return }

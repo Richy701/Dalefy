@@ -62,7 +62,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       Appearance.setColorScheme(m === "system" ? "unspecified" : m);
     }
     const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
-    SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f7f8fb");
+    SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f5f6fa");
     setPref("themeMode", m);
   }, [setPref]);
 

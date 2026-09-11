@@ -1,9 +1,9 @@
 import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
-  useWindowDimensions,
+  ActivityIndicator, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MapPin, Clock, Sun, CaretRight, Crosshair, Compass } from "phosphor-react-native";
+import { MapPin, Clock, Sun, CaretRight, Crosshair, MapTrifold, WifiSlash } from "phosphor-react-native";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import * as Haptics from "expo-haptics";
 import { useTrips } from "@/context/TripsContext";
@@ -14,17 +14,19 @@ import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHe
 import { useTheme } from "@/context/ThemeContext";
 import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MicroLabel } from "@/components/ui/MicroLabel";
+import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { Pill } from "@/components/ui/Pill";
 import { Avatar } from "@/components/ui/Avatar";
-import { ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { FadeIn } from "@/components/FadeIn";
 import { ScalePress } from "@/components/ScalePress";
 import type { TravelEvent, Trip } from "@/shared/types";
 import { toLngLat, isSamePoint, AREA_PLACE_TYPES, distanceKm, formatDistance } from "@/shared/coordinates";
-import { getDestinationTz, todayInTz, nowInTz } from "@/shared/timezones";
+import { getDestinationTz } from "@/shared/timezones";
 import { PreTripSheetContent, PostTripSheetContent } from "@/components/TodayPreTrip";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
+import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
+import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext } from "@/shared/today";
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -44,7 +46,6 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
   let t = cleanTitle(title, type, transferType);
-  t = t.replace(/\s*\([^)]*\)\s*/g, " ").trim();
   t = t.replace(/\s+[-–—·]\s+|:\s+/g, " — ");
   return t;
 }
@@ -70,27 +71,13 @@ async function geocodeLocation(loc: string, proximity?: [number, number]): Promi
     let center = feat?.center as [number, number] | undefined;
     // Event lookups (with proximity) that only match a country/region are not a venue
     if (proximity && center && (feat.place_type ?? []).some((t: string) => AREA_PLACE_TYPES.has(t))) center = undefined;
-    geocodeCache[key] = center ?? null;
+    if (center) geocodeCache[key] = center;
     return center ?? null;
   } catch {
-    geocodeCache[key] = null;
     return null;
   }
 }
 
-
-function timeToMinutes(t: string): number {
-  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
-  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return 720;
-  let h = parseInt(m[1]);
-  const min = parseInt(m[2]);
-  const pm = m[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
-  return h * 60 + min;
-}
 
 function formatCountdown(mins: number): string {
   if (mins <= 0) return "Now";
@@ -98,34 +85,6 @@ function formatCountdown(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `in ${h}h ${m}m` : `in ${h}h`;
-}
-
-function tripDayInfo(trip: Trip): { day: number; total: number } {
-  const tz = getDestinationTz(trip.destination);
-  const today = todayInTz(tz);
-  const s = new Date(trip.start + "T00:00:00");
-  const e = new Date(trip.end + "T00:00:00");
-  const t = new Date(today + "T00:00:00");
-  const day = Math.floor((t.getTime() - s.getTime()) / 86400000) + 1;
-  const total = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
-  return { day, total };
-}
-
-function findActiveTrip(trips: Trip[]): Trip | null {
-  for (const t of trips) {
-    const tz = getDestinationTz(t.destination);
-    const today = todayInTz(tz);
-    if (t.start <= today && t.end >= today) return t;
-  }
-  return null;
-}
-
-function getTodayEvents(trip: Trip): TravelEvent[] {
-  const tz = getDestinationTz(trip.destination);
-  const today = todayInTz(tz);
-  const evts = trip.events.filter(e => e.date === today);
-  evts.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-  return evts;
 }
 
 interface WeatherData {
@@ -177,48 +136,10 @@ async function fetchCurrentWeather(destination: string): Promise<WeatherData | n
   }
 }
 
-async function fetchForecastWeather(destination: string, targetDate: string): Promise<WeatherData | null> {
-  const geo = await geocodeDestination(destination);
-  if (!geo) return null;
-  try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&units=metric&appid=${WEATHER_KEY}`
-    );
-    const json = await res.json();
-    const targetDay = targetDate.slice(0, 10);
-    const dayEntries = (json.list ?? []).filter((e: any) => (e.dt_txt as string).startsWith(targetDay));
-    if (dayEntries.length === 0) return null;
-    const midday = dayEntries.find((e: any) => (e.dt_txt as string).includes("12:00")) ?? dayEntries[0];
-    const high = Math.round(Math.max(...dayEntries.map((e: any) => e.main.temp_max)));
-    const low = Math.round(Math.min(...dayEntries.map((e: any) => e.main.temp_min)));
-    const maxRainChance = Math.round(Math.max(...dayEntries.map((e: any) => (e.pop ?? 0) * 100)));
-    return {
-      temp: Math.round(midday.main.temp),
-      description: midday.weather[0].description,
-      icon: midday.weather[0].icon,
-      high,
-      low,
-      rainChance: maxRainChance,
-    };
-  } catch {
-    return null;
-  }
-}
-
-
-function getNextEvent(events: TravelEvent[], tz?: string): { event: TravelEvent; minsUntil: number } | null {
-  const { minutes: nowMins } = nowInTz(tz);
-  for (const ev of events) {
-    const evMins = timeToMinutes(ev.time);
-    if (evMins > nowMins) return { event: ev, minsUntil: evMins - nowMins };
-  }
-  return null;
-}
-
 export default function TodayScreen() {
   const { C, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, reload } = useTrips();
+  const { trips, ready, offline, reload } = useTrips();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -226,8 +147,12 @@ export default function TodayScreen() {
   const [destCenter, setDestCenter] = useState<[number, number] | null>(null);
   const mapViewRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
+  const now = useMinuteClock();
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapAttempt, setMapAttempt] = useState(0);
+  const [focusedMapEventId, setFocusedMapEventId] = useState<string | null>(null);
+  const contentY = useRef(0);
   const { height: winH } = useWindowDimensions();
-  // The map is a hero at the top of a normal page; the content scrolls up over it
   const mapH = Math.round(winH * 0.46);
 
   const onRefresh = useCallback(async () => {
@@ -237,74 +162,45 @@ export default function TodayScreen() {
     setRefreshing(false);
   }, [reload]);
 
-  const activeTrip = useMemo(() => findActiveTrip(trips), [trips]);
-
-  // Find the next upcoming trip if none active
-  const upcomingTrip = useMemo(() => {
-    if (activeTrip) return null;
-    const future = trips.filter(t => {
-      const tz = getDestinationTz(t.destination);
-      return t.start > todayInTz(tz);
-    }).sort((a, b) => a.start.localeCompare(b.start));
-    return future[0] ?? null;
-  }, [trips, activeTrip]);
-
-  const mostRecentTrip = useMemo(() => {
-    if (activeTrip || upcomingTrip) return null;
-    return [...trips].sort((a, b) => b.end.localeCompare(a.end))[0] ?? null;
-  }, [trips, activeTrip, upcomingTrip]);
-
+  const { active: activeTrip, upcoming: upcomingTrip, past: mostRecentTrip } = useMemo(() => selectTodayTrips(trips, now), [trips, now]);
   const displayTrip = activeTrip ?? upcomingTrip ?? mostRecentTrip;
   const isPreview = !activeTrip && !!upcomingTrip;
-  // Before and after a trip the map is a backdrop: region view, no pins
   const isLiveDay = !!activeTrip;
+  const destTz = getDestinationTz(displayTrip?.destination);
+  const todayISO = dateInZone(now, destTz);
+  const linkedTravelerId = useLinkedTravelerId(displayTrip?.id);
+  const visibleEvents = useMemo(() => visibleTodayEvents(displayTrip?.events ?? [], linkedTravelerId), [displayTrip?.events, linkedTravelerId]);
+  const travellerTrip = useMemo(() => displayTrip ? { ...displayTrip, events: visibleEvents } : null, [displayTrip, visibleEvents]);
+  const displayEvents = useMemo(() => activeTrip
+    ? dayEvents(visibleEvents, todayISO, destTz, now)
+    : [...visibleEvents].filter(e => e.type !== "flight" && (e.location || e.locationCoords))
+        .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity)).slice(0, 40),
+  [activeTrip, visibleEvents, todayISO, destTz, now]);
+  const next = useMemo(() => activeTrip ? currentOrNext(displayEvents, destTz, now) : null, [activeTrip, displayEvents, destTz, now]);
+  const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
+  const pastCount = activeTrip ? displayEvents.filter(e => eventTiming(e, destTz, now).phase === "earlier").length : 0;
 
-  const destTz = useMemo(() => getDestinationTz(displayTrip?.destination), [displayTrip?.destination]);
-  const previewTrip = upcomingTrip ?? mostRecentTrip;
-  const displayEvents = useMemo(() => {
-    if (activeTrip) return getTodayEvents(activeTrip);
-    if (previewTrip) {
-      return previewTrip.events
-        .filter(e => e.type !== "flight" && (e.location || e.locationCoords))
-        .sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.time) - timeToMinutes(b.time))
-        .slice(0, 40);
-    }
-    return [];
-  }, [activeTrip, previewTrip]);
-  const next = useMemo(() => activeTrip ? getNextEvent(displayEvents, destTz) : null, [activeTrip, displayEvents, destTz]);
-  const dayInfo = useMemo(() => activeTrip ? tripDayInfo(activeTrip) : null, [activeTrip]);
-  const nowMins = useMemo(() => activeTrip ? nowInTz(destTz).minutes : -1, [activeTrip, destTz]);
-  const pastCount = useMemo(() => activeTrip ? displayEvents.filter(e => timeToMinutes(e.time) < nowMins).length : 0, [activeTrip, displayEvents, nowMins]);
-
-  const daysUntilNext = useMemo(() => {
-    if (upcomingTrip) return Math.ceil((new Date(upcomingTrip.start + "T00:00:00").getTime() - Date.now()) / 86400000);
-    return 0;
-  }, [upcomingTrip]);
-
-
-  const weatherTrip = activeTrip ?? upcomingTrip;
   const [weather, setWeather] = useState<WeatherData | null>(null);
   useEffect(() => {
-    const dest = weatherTrip?.destination;
-    if (!dest) return;
     setWeather(null);
-    if (activeTrip) {
-      fetchCurrentWeather(dest).then(setWeather);
-    } else {
-      fetchForecastWeather(dest, weatherTrip.start).then(w => {
-        if (w) setWeather(w);
-        else fetchCurrentWeather(dest).then(setWeather);
-      });
-    }
-  }, [weatherTrip?.destination, !!activeTrip]);
-
+    if (!activeTrip?.destination || offline) return;
+    let cancelled = false;
+    fetchCurrentWeather(activeTrip.destination).then(value => { if (!cancelled) setWeather(value); });
+    return () => { cancelled = true; };
+  }, [activeTrip?.destination, todayISO, offline, refreshing]);
 
   useEffect(() => {
     setDestCenter(null);
-    const dest = displayTrip?.destination;
-    if (!dest) return;
-    geocodeLocation(dest).then(c => { if (c) setDestCenter(c); });
-  }, [displayTrip?.destination]);
+    if (!displayTrip?.destination || !MapboxGL) return;
+    let cancelled = false;
+    setMapLoading(true);
+    geocodeLocation(displayTrip.destination).then(center => {
+      if (cancelled) return;
+      setDestCenter(center);
+      setMapLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [displayTrip?.destination, mapAttempt]);
 
   useEffect(() => { setMapReady(false); }, [isDark]);
 
@@ -385,13 +281,13 @@ export default function TodayScreen() {
             label: isLiveDay ? String(index + 1) : "",
             type: ev.type,
             title: normaliseTitle(ev.title, ev.type, ev.transferType),
-            isPast: isPreview ? false : timeToMinutes(ev.time) < nowMins,
+            isPast: isLiveDay && eventTiming(ev, destTz, now).phase === "earlier",
           },
         };
       })
       .filter(Boolean);
     return { type: "FeatureCollection" as const, features };
-  }, [displayEvents, eventCoords, nowMins, isPreview, destCenter, isLiveDay]);
+  }, [displayEvents, eventCoords, now, destTz, destCenter, isLiveDay]);
 
   const markerCoords = useMemo(() =>
     markerFeatures.features.map((f: any) => f.geometry.coordinates as [number, number]),
@@ -454,12 +350,17 @@ export default function TodayScreen() {
     }
   }, [homeCoord, markerCoords, fitToMarkers, isLiveDay]);
 
+  const markerPositionKey = markerCoords.map(coord => coord.join(",")).join(";");
+  const fitRef = useRef(fitToMarkers);
+  fitRef.current = fitToMarkers;
+  const snapRef = useRef(snapBack);
+  snapRef.current = snapBack;
   useEffect(() => {
-    if (mapReady && markerCoords.length > 0) fitToMarkers();
-  }, [mapReady, markerCoords.length > 0]);
+    if (mapReady && !focusedMapEventId) fitRef.current();
+  }, [mapReady, markerPositionKey, destCenter, focusedMapEventId]);
 
-  // Recentre each time the tab is opened
-  useFocusEffect(useCallback(() => { snapBack(); }, [snapBack]));
+  // Clock updates must not interrupt a traveller exploring the map.
+  useFocusEffect(useCallback(() => { snapRef.current(); }, []));
 
   const handleMarkerPress = useCallback((e: any) => {
     const feature = e?.features?.[0];
@@ -474,21 +375,20 @@ export default function TodayScreen() {
     setTimeout(() => setHighlightedEventId(null), 800);
     const y = eventRowYs.current[evId];
     if (y != null && scheduleScrollRef.current) {
-      scheduleScrollRef.current.scrollTo({ y: Math.max(0, mapH + listY.current + y - 120), animated: true });
+      scheduleScrollRef.current.scrollTo({ y: Math.max(0, contentY.current + listY.current + y - insets.top - 64), animated: true });
     }
-  }, [isLiveDay, displayTrip?.id, router, mapH]);
+  }, [isLiveDay, displayTrip?.id, router, insets.top]);
 
   const flyToEvent = useCallback((evId: string) => {
-    const coord = eventCoords[evId];
+    setFocusedMapEventId(evId);
+  }, []);
+  useEffect(() => {
+    if (!mapReady || !focusedMapEventId) return;
+    const coord = eventCoords[focusedMapEventId];
     if (!coord || !cameraRef.current) return;
-    cameraRef.current.setCamera({
-      centerCoordinate: coord,
-      zoomLevel: 16.5,
-      pitch: 60,
-      animationDuration: 800,
-      animationMode: "flyTo",
-    });
-  }, [eventCoords]);
+    cameraRef.current.setCamera({ centerCoordinate: coord, zoomLevel: 16.5, pitch: 45, animationDuration: 800, animationMode: "flyTo" });
+    scheduleScrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [mapReady, focusedMapEventId, eventCoords]);
 
   const circleColorExpr: any = useMemo(() => [
     "match", ["get", "type"],
@@ -504,45 +404,11 @@ export default function TodayScreen() {
     "case", ["get", "isPast"], 0.35, 1,
   ], []);
 
-  const today = new Date();
-  const dateLabel = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-
-  // ── Local time strip ──
-  const deviceTz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const showLocalTime = !!destTz && destTz !== deviceTz;
-  const [localTimeStr, setLocalTimeStr] = useState("");
-  useEffect(() => {
-    if (!showLocalTime || !destTz) return;
-    const fmt = () => {
-      try {
-        setLocalTimeStr(
-          new Intl.DateTimeFormat("en-US", { timeZone: destTz, hour: "numeric", minute: "2-digit", hour12: true }).format(new Date())
-        );
-      } catch {}
-    };
-    fmt();
-    const id = setInterval(fmt, 60000);
-    return () => clearInterval(id);
-  }, [showLocalTime, destTz]);
-
+  const localTimeStr = new Intl.DateTimeFormat("en-GB", { timeZone: destTz, hour: "2-digit", minute: "2-digit" }).format(now);
   const nextFlight = next?.event.type === "flight" ? next.event : null;
   const { data: nextFlightLive } = useFlightLiveData(nextFlight?.flightNum, nextFlight?.date);
-  const hoursFromHome = useMemo(() => {
-    if (!showLocalTime || !destTz) return 0;
-    try {
-      const now = new Date();
-      const toMins = (tz: string) => {
-        const p = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "numeric", hour12: false }).formatToParts(now);
-        const h = parseInt(p.find(x => x.type === "hour")?.value ?? "0") % 24;
-        const m = parseInt(p.find(x => x.type === "minute")?.value ?? "0");
-        return h * 60 + m;
-      };
-      let diff = toMins(destTz) - toMins(deviceTz);
-      if (diff > 720) diff -= 1440;
-      if (diff < -720) diff += 1440;
-      return Math.round(diff / 30) / 2;
-    } catch { return 0; }
-  }, [showLocalTime, destTz, deviceTz]);
 
   // ── Traveler avatars ──
   const [showTravelerNames, setShowTravelerNames] = useState(false);
@@ -556,21 +422,7 @@ export default function TodayScreen() {
           contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
         >
-          <ScreenTitle>Today</ScreenTitle>
-          <View style={styles.headerSection}>
-            <Text style={[styles.dateLabel, { color: C.textTertiary }]}>{dateLabel}</Text>
-          </View>
-          <View style={{ paddingTop: S["2xl"] }}>
-            <EmptyState
-              icon={<Compass size={32} color={C.textTertiary} weight="regular" />}
-              title="No trips yet"
-              message={"When you join a trip, your schedule\nand daily plans will appear here."}
-              cta={{
-                label: "Join a trip",
-                onPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.navigate({ pathname: "/(tabs)", params: { join: "1" } }); },
-              }}
-            />
-          </View>
+          <NoTripsPage screen="today" ready={ready} offline={offline} onRetry={onRefresh} retrying={refreshing} />
         </ScrollView>
       </View>
     );
@@ -586,8 +438,15 @@ export default function TodayScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
-      {/* ── Map hero (3D street level on trip days, flat overview otherwise) ── */}
+      {/* Full-width map hero; the plan scrolls over its lower edge. */}
       <View style={{ height: mapH, backgroundColor: C.elevated }}>
+      {(!destCenter || !MapboxGL) && (
+        <View style={styles.mapFallback}>
+          {mapLoading && MapboxGL ? <ActivityIndicator color={C.tealText} /> : <MapTrifold size={30} color={C.textTertiary} />}
+          <Text style={{ fontSize: T.base, color: C.textSecondary, textAlign: "center" }}>{mapLoading && MapboxGL ? "Finding your trip’s locations…" : "The map is unavailable. Your itinerary is still available below."}</Text>
+          {!mapLoading && !!MapboxGL && <Pressable accessibilityRole="button" onPress={() => setMapAttempt(value => value + 1)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: T.base, color: C.tealText }}>Try again</Text></Pressable>}
+        </View>
+      )}
       {!!destCenter && !!MapboxGL && (
         <MapboxGL.MapView
           ref={mapViewRef}
@@ -686,7 +545,7 @@ export default function TodayScreen() {
       <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }} pointerEvents="box-none">
         {markerCoords.length > 0 && (
           <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); fitToMarkers(); }}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFocusedMapEventId(null); fitToMarkers(); }}
             style={({ pressed }) => ({
               width: 36, height: 36, borderRadius: 18,
               backgroundColor: C.glass,
@@ -705,22 +564,22 @@ export default function TodayScreen() {
       </View>
       </View>
 
-      {/* ── Page content, lifted over the bottom edge of the map ── */}
-      <View style={{ marginTop: -R.xl, backgroundColor: C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, paddingTop: S.xs }}>
+      <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={{ marginTop: -R.xl, backgroundColor: C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, paddingTop: S.xs }}>
+        {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}
         <View>
         {!isLiveDay && upcomingTrip ? (
-          <PreTripSheetContent trip={upcomingTrip} />
+          <PreTripSheetContent trip={travellerTrip!} todayISO={todayISO} />
         ) : !isLiveDay && mostRecentTrip ? (
-          <PostTripSheetContent trip={mostRecentTrip} />
+          <PostTripSheetContent trip={travellerTrip!} todayISO={todayISO} />
         ) : (
         <>
         {/* ── Zone 1: Compact Header ── */}
         <FadeIn delay={0}>
         <View style={styles.headerSection}>
           <Text style={[styles.scope, { color: C.textTertiary }]}>
-            {isPreview ? "Your first day" : "Today"}
+            {"Your day"}
             {" · "}
-            {new Date((isPreview ? displayTrip.start : todayInTz(destTz)) + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+            {new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
           </Text>
           {/* Row A: Trip name + badge */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
@@ -730,30 +589,24 @@ export default function TodayScreen() {
               accessibilityRole="button"
               accessibilityLabel={`Open trip ${displayTrip.name}`}
             >
-              <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={1}>{displayTrip.name}</Text>
+              <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={2}>{displayTrip.name}</Text>
             </Pressable>
-            {isPreview && daysUntilNext > 0 ? (
-              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={daysUntilNext === 1 ? "Tomorrow" : `In ${daysUntilNext}d`} />
-            ) : isPreview && mostRecentTrip ? (
-              <Pill tone="custom" bg={C.elevated} color={C.textTertiary} label="Past" />
-            ) : dayInfo ? (
-              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`Day ${dayInfo.day}/${dayInfo.total}`} />
-            ) : null}
+            {dayInfo ? <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`Day ${dayInfo.day} of ${dayInfo.total}`} /> : null}
           </View>
 
           {/* Row B: Context strip — destination + weather + local time */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs2, marginTop: S.xs }}>
             {displayTrip.destination && (
               <>
                 <MapPin size={10} color={C.textTertiary} weight="fill" />
-                <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{displayTrip.destination}</Text>
+                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{displayTrip.destination}</Text>
               </>
             )}
             {weather && displayTrip.destination && (
               <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
             )}
             {weather && (
-              <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary }} numberOfLines={1}>
+              <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }} numberOfLines={1}>
                 {weather.temp}°, {weather.description}
               </Text>
             )}
@@ -761,8 +614,8 @@ export default function TodayScreen() {
               <>
                 <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
                 <Clock size={10} color={C.textTertiary} weight="bold" />
-                <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary }}>
-                  {localTimeStr}{hoursFromHome !== 0 ? ` (${hoursFromHome > 0 ? "+" : ""}${hoursFromHome}h)` : ""}
+                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }}>
+                  {localTimeStr} local
                 </Text>
               </>
             ) : null}
@@ -815,45 +668,35 @@ export default function TodayScreen() {
         </View>
         </FadeIn>
 
-        {/* Compact NEXT UP banner (active trip only) */}
-        {!isPreview && next && (() => {
-          return (
-            <FadeIn delay={60}>
+        {next && (
+          <FadeIn delay={60}>
             <ScalePress
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } });
-              }}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } }); }}
               accessibilityRole="button"
-              accessibilityLabel={`Next up: ${normaliseTitle(next.event.title, next.event.type, next.event.transferType)}, ${formatCountdown(next.minsUntil)}`}
-              style={{
-                flexDirection: "row", alignItems: "center",
-                marginHorizontal: S.md, marginTop: S.xs,
-                paddingVertical: S.sm2, paddingHorizontal: S.md,
-                borderRadius: R.lg, backgroundColor: C.card,
-                gap: S.xs,
-                ...shadow("card", isDark),
-              }}
+              accessibilityLabel={`${next.phase === "current" ? "Happening now" : "Next up"}: ${next.event.title}, ${next.event.time}`}
+              style={[styles.nextCard, { backgroundColor: C.card, borderColor: C.border }, shadow("card", isDark)]}
             >
-              <CategoryDot type={next.event.type} transferType={next.event.transferType} size={28} />
-              <MicroLabel color={C.textSecondary} style={{ marginRight: S["2xs"] }}>Next</MicroLabel>
-              <Text style={{ fontSize: T.sm, fontWeight: "700", color: C.textPrimary, flex: 1 }} numberOfLines={1}>
-                {normaliseTitle(next.event.title, next.event.type, next.event.transferType)}
-              </Text>
-              <Text style={{ fontSize: T.xs, fontWeight: "800", color: C.tealText }}>{formatCountdown(next.minsUntil)}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm }}>
+                <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{next.phase === "current" ? "Happening now" : "Next up"}</Text>
+                <Text style={{ fontSize: T.base, color: C.textSecondary }}>{next.phase === "current" ? "In progress" : formatCountdown(next.minsUntil ?? 0)}</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: S.sm, marginTop: S.md }}>
+                <CategoryDot type={next.event.type} transferType={next.event.transferType} size={40} />
+                <View style={{ flex: 1, gap: S.xs2 }}>
+                  <Text style={{ fontSize: T.xl, lineHeight: 26, fontWeight: T.bold, color: C.textPrimary }}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
+                  <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }}>{next.event.time}{next.event.type === "flight" ? " · Departure time" : " · Local time"}</Text>
+                  {!!next.event.location && <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }} numberOfLines={2}>{next.event.location}</Text>}
+                </View>
+                <CaretRight size={18} color={C.textTertiary} />
+              </View>
+              {nextFlightLive && (nextFlightLive.status || nextFlightLive.gate || nextFlightLive.terminal) ? (
+                <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary, marginTop: S.sm }}>
+                  {[nextFlightLive.status, nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "", nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : ""].filter(Boolean).join(" · ")}
+                </Text>
+              ) : null}
             </ScalePress>
-            {nextFlightLive && (nextFlightLive.status || nextFlightLive.gate || nextFlightLive.terminal) ? (
-              <Text style={{ fontSize: T.sm, color: C.textSecondary, marginHorizontal: S.md, marginTop: S.xs2, paddingLeft: 28 + S.xs }} numberOfLines={1}>
-                {[
-                  nextFlightLive.status,
-                  nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "",
-                  nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : "",
-                ].filter(Boolean).join(" · ")}
-              </Text>
-            ) : null}
-            </FadeIn>
-          );
-        })()}
+          </FadeIn>
+        )}
 
         {/* ── Zone 2: Schedule ── */}
         {/* Section header */}
@@ -861,7 +704,7 @@ export default function TodayScreen() {
         <View style={styles.timelineSection}>
           {!isPreview && displayEvents.length > 0 && (
             <Text style={[styles.sectionCount, { color: C.textTertiary, textAlign: "right", marginBottom: 2 }]}>
-              {pastCount} of {displayEvents.length} done
+              {pastCount > 0 ? `${pastCount} earlier · ` : ""}{displayEvents.length} {displayEvents.length === 1 ? "event" : "events"}
             </Text>
           )}
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginBottom: S.xs }} />
@@ -871,10 +714,9 @@ export default function TodayScreen() {
         {displayEvents.length > 0 ? (
           <View style={{ paddingHorizontal: S.md }} onLayout={(e) => { listY.current = e.nativeEvent.layout.y; }}>
             {displayEvents.map((ev, i) => {
-              const evMins = timeToMinutes(ev.time);
-              const isPast = !isPreview && evMins < nowMins;
-              const nextEvMins = i < displayEvents.length - 1 ? timeToMinutes(displayEvents[i + 1].time) : Infinity;
-              const showNowLine = !isPreview && isPast && nextEvMins > nowMins;
+              const timing = eventTiming(ev, destTz, now);
+              const isPast = timing.phase === "earlier";
+              const showNowLine = isPast && i + 1 < displayEvents.length && eventTiming(displayEvents[i + 1], destTz, now).phase === "upcoming";
 
               const hasCoord = !!eventCoords[ev.id];
               const rawKm = hasCoord && stayCoord && ev.type !== "hotel" ? distanceKm(stayCoord, eventCoords[ev.id]) : null;
@@ -897,14 +739,14 @@ export default function TodayScreen() {
                   >
                     <View style={[
                       styles.eventRow,
-                      isPast && { opacity: 0.45 },
+                      isPast && { opacity: 0.8 },
                       isHighlighted && { backgroundColor: C.tealDim, borderRadius: R.lg, marginHorizontal: -S["2xs"], paddingHorizontal: S["2xs"] },
                     ]}>
                       <Pressable
-                        onPress={() => { if (hasCoord) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); flyToEvent(ev.id); } }}
-                        disabled={!hasCoord}
+                        onPress={() => { if (ev.location || ev.locationCoords) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); flyToEvent(ev.id); } }}
+                        disabled={!ev.location && !ev.locationCoords}
                         hitSlop={6}
-                        style={{ opacity: hasCoord ? 1 : 0.35 }}
+                        style={{ opacity: ev.location || ev.locationCoords ? 1 : 0.5 }}
                         accessibilityRole="button"
                         accessibilityLabel="Show event on map"
                       >
@@ -922,7 +764,7 @@ export default function TodayScreen() {
                           </Text>
                         )}
                       </View>
-                      <Text style={[styles.eventTime, { color: C.textTertiary }]}>{ev.time}</Text>
+                      <Text style={[styles.eventTime, { color: C.textTertiary }]}>{timing.phase === "unscheduled" ? "TBC" : ev.time}</Text>
                     </View>
                   </ScalePress>
                   {showNowLine && (
@@ -961,21 +803,23 @@ export default function TodayScreen() {
         </View>
       </View>
       </Animated.ScrollView>
-      <CompactHeader title={isLiveDay ? "Today" : (upcomingTrip ? "Next trip" : "Last trip")} barStyle={barStyle} />
+      <CompactHeader title="Today" barStyle={barStyle} />
     </View>
   );
 }
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    scope: { fontSize: T.sm, fontWeight: "500", marginBottom: 2 },
+    mapFallback: { flex: 1, justifyContent: "center", alignItems: "center", gap: S.sm, padding: S.lg },
+    offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
+    nextCard: { marginHorizontal: S.md, marginTop: S.lg, padding: S.md, borderRadius: R.xl, borderWidth: StyleSheet.hairlineWidth },
+    scope: { fontSize: T.base, fontWeight: "500", marginBottom: 2 },
 
     // Header
     headerSection: {
       paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: 0,
     },
-    dateLabel: { fontSize: T.base, fontWeight: "600", letterSpacing: 0.2 },
-    tripName: { fontSize: T.xl, fontWeight: "700", letterSpacing: -0.3 },
+    tripName: { fontSize: T["2xl"], lineHeight: 29, fontWeight: "700", letterSpacing: -0.3 },
 
     // Timeline
     timelineSection: {
@@ -986,9 +830,9 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "center",
       paddingVertical: S.sm2, gap: S.sm,
     },
-    eventTitle: { fontSize: T.base, fontWeight: "600" },
-    eventTime: { fontSize: T.xs, fontWeight: "600" },
-    eventLocation: { fontSize: T.xs, fontWeight: "500" },
+    eventTitle: { fontSize: T.lg, lineHeight: 23, fontWeight: "600" },
+    eventTime: { fontSize: T.base, maxWidth: 80, fontWeight: "600" },
+    eventLocation: { fontSize: T.base, lineHeight: 21, fontWeight: "500" },
     divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
     nowLineWrap: {
       flexDirection: "row", alignItems: "center",
@@ -1009,6 +853,6 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: S["2xs"], paddingVertical: S.sm, borderRadius: R.xl,
     },
-    seeAllBtnText: { fontSize: T.sm, fontWeight: "700" },
+    seeAllBtnText: { fontSize: T.base, fontWeight: "700" },
   });
 }

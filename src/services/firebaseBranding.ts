@@ -56,10 +56,9 @@ export async function fetchBrandingForTrip(tripId: string): Promise<OrgBranding 
   if (!isFirebaseConfigured()) return loadLocalBranding();
 
   try {
-    const tripSnap = await getDoc(doc(firebaseDb(), "trips", tripId));
-    if (!tripSnap.exists()) return null;
-
-    const orgId = tripSnap.data().organization_id;
+    const { apiFetch } = await import("@/lib/api");
+    const { trip } = await apiFetch<{ trip: { organization_id?: string } }>(`/api/trip?id=${encodeURIComponent(tripId)}`);
+    const orgId = trip?.organization_id;
     if (!orgId) return null;
 
     return fetchBranding(orgId);

@@ -5,3 +5,9 @@ mobile/
 screenshot.png
 screenshot_2.png
 screenshot_3.png
+
+# Local review artifacts and emulator tooling are not deployable assets.
+audit/
+tests/
+scripts/
+firebase.test.json

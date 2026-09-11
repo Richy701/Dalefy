@@ -120,6 +120,7 @@ export interface TripTask {
 }
 
 export interface PublishedSnapshot {
+  travelers?: Array<{ id: string; name: string; initials: string }>;
   events: TravelEvent[];
   info?: TripInfo[];
   documents?: EventDocument[];

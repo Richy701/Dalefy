@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { DragHandle } from "@/components/ui/DragHandle";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
@@ -34,7 +35,7 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { uploadTripMedia } from "@/services/mediaUpload";
 import { parseTripDate } from "@/shared/dates";
-import { upsertTrip as upsertTripRemote, fetchTripById } from "@/services/firebaseTrips";
+import { changeTripMedia, fetchTripById } from "@/services/firebaseTrips";
 import { firebaseAuth, waitForAuth } from "@/services/firebase";
 import { getDeviceId } from "@/services/deviceId";
 import type { TripMedia, Trip } from "@/shared/types";
@@ -693,7 +694,7 @@ export default function MediaScreen() {
   const { toast } = useToast();
   const { prefs } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { trips, updateTrip, updateTripLocal, reload } = useTrips();
+  const { trips, ready, offline, updateTrip, updateTripLocal, reload } = useTrips();
   const [deviceId, setDeviceId] = useState<string | null>(null);
   useEffect(() => { getDeviceId().then(setDeviceId); }, []);
   const [refreshing, setRefreshing] = useState(false);
@@ -824,7 +825,7 @@ export default function MediaScreen() {
   }, [galleryRows]);
 
   const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
-    const isOwner = item.uploaderId && item.uploaderId === deviceId;
+    const isOwner = item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid);
     if (!isOwner) {
       Alert.alert("Can't delete", "You can only remove photos you uploaded.");
       return;
@@ -843,7 +844,12 @@ export default function MediaScreen() {
             if (!remaining.length) { const next = { ...prev }; delete next[item.tripId]; return next; }
             return { ...prev, [item.tripId]: remaining };
           });
-          updateTrip(updated);
+          try {
+            await updateTrip(updated);
+          } catch {
+            toast("Couldn't remove this photo. Please try again.");
+            return;
+          }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           toast("Removed");
         },
@@ -945,7 +951,7 @@ export default function MediaScreen() {
 
           // Write to Firestore FIRST — only clear pending once confirmed
           try {
-            await upsertTripRemote(finalTrip);
+            await changeTripMedia(tripId, newMedia);
             // Firestore confirmed! Update local state only (no double-write)
             updateTripLocal(finalTrip);
             const itemIds = new Set(items.map(m => m.id));
@@ -1074,16 +1080,7 @@ export default function MediaScreen() {
       )}
 
       {/* ── Empty states ── */}
-      {trips.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <EmptyState
-            compact
-            title="No trips yet"
-            message="Join a trip and the group's photos will collect here, day by day."
-            cta={{ label: "Join a trip", onPress: () => { Haptics.selectionAsync(); router.push("/(tabs)?join=1"); } }}
-          />
-        </View>
-      ) : filteredTrips.length === 0 && mediaFilter !== "all" && tripsWithMedia.length > 0 ? (
+      {trips.length === 0 ? null : filteredTrips.length === 0 && mediaFilter !== "all" && tripsWithMedia.length > 0 ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             compact
@@ -1125,6 +1122,9 @@ export default function MediaScreen() {
         getItemLayout={getItemLayout}
         ListHeaderComponent={
           <View>
+            {trips.length === 0 ? (
+              <NoTripsPage screen="gallery" ready={ready} offline={offline} onRetry={onRefresh} retrying={refreshing} />
+            ) : (
             <ScreenTitle
               right={trips.length > 0 ? (
                 <Pressable
@@ -1140,6 +1140,7 @@ export default function MediaScreen() {
             >
               Gallery
             </ScreenTitle>
+            )}
             {listHeader}
           </View>
         }

@@ -1,8 +1,11 @@
-import { Platform, Text, Pressable } from "react-native";
+import { useMemo } from "react";
+import { Platform, Text, Pressable, DynamicColorIOS } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
+import { useBrand } from "@/context/BrandContext";
+import { darkColors, lightColors } from "@/constants/theme";
 
 const TABS: {
   name: string;
@@ -21,6 +24,25 @@ const TABS: {
 function IOSTabLayout() {
   const { NativeTabs } = require("expo-router/unstable-native-tabs");
   const { C } = useTheme();
+  const { brand } = useBrand();
+
+  // Light/dark pairs that iOS resolves itself, so the bar recolours in the same frame as the
+  // glass when the theme flips, and the props stay the same across themes (no appearance rebuild).
+  const bar = useMemo(() => {
+    const teal = DynamicColorIOS({
+      light: brand.accentColor || lightColors.teal,
+      dark: brand.accentColor || darkColors.teal,
+    });
+    const muted = DynamicColorIOS({ light: lightColors.textTertiary, dark: darkColors.textTertiary });
+    return {
+      teal,
+      iconColor: { default: muted, selected: teal },
+      labelStyle: {
+        default: { color: muted, fontWeight: "500" as const },
+        selected: { color: teal, fontWeight: "700" as const },
+      },
+    };
+  }, [brand.accentColor]);
 
   const sfIcons: Record<string, string> = {
     index: "house",
@@ -40,16 +62,9 @@ function IOSTabLayout() {
   return (
     <NativeTabs
       minimizeBehavior="onScrollDown"
-      tintColor={C.teal}
-      iconColor={{
-        default: C.textTertiary,
-        selected: C.teal,
-      }}
-      labelStyle={{
-        default: { color: C.textTertiary, fontWeight: "500" },
-        selected: { color: C.teal, fontWeight: "700" },
-      }}
-      sceneContainerStyle={{ backgroundColor: C.bg }}
+      tintColor={bar.teal}
+      iconColor={bar.iconColor}
+      labelStyle={bar.labelStyle}
       screenOptions={{
         contentStyle: { backgroundColor: C.bg },
         headerShown: false,

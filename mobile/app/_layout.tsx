@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { Appearance, Platform, View, AppState } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -202,6 +202,13 @@ function AppStack() {
     }
   }, [ready, auth.isAuthenticated, prefs.name, pathname, router]);
 
+  // Navigator containers (behind tabs, pushed screens, overscroll) paint the page colour
+  // instead of React Navigation's default grey/white.
+  const navTheme = useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: C.bg, card: C.bg } };
+  }, [isDark, C.bg]);
+
   const onLayoutRootView = useCallback(() => {
     if (ready) {
       SplashScreen.hideAsync().catch(() => {});
@@ -217,15 +224,17 @@ function AppStack() {
       <StatusBar style={isDark ? "light" : "dark"} />
       {settled && <DeferredServices />}
       <ErrorBoundary>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            headerBackTitle: " ",
-            headerBackButtonDisplayMode: "minimal",
-            animation: "slide_from_right",
-            contentStyle: { backgroundColor: C.bg },
-          }}
-        />
+        <NavThemeProvider value={navTheme}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              headerBackTitle: " ",
+              headerBackButtonDisplayMode: "minimal",
+              animation: "slide_from_right",
+              contentStyle: { backgroundColor: C.bg },
+            }}
+          />
+        </NavThemeProvider>
       </ErrorBoundary>
     </View>
   );

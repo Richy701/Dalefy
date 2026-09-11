@@ -17,6 +17,7 @@ import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constant
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { JoinTripNote } from "@/components/ui/JoinTripNote";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
 import * as Haptics from "expo-haptics";
@@ -197,13 +198,7 @@ export default function ScheduleScreen() {
     return (
       <View style={[styles.safe, { backgroundColor: C.bg }]}>
         <ScreenTitle>Schedule</ScreenTitle>
-        <View style={styles.emptyState}>
-          <EmptyState
-            compact
-            title="No schedule yet"
-            message="Join a trip from the home screen and your upcoming events will appear here."
-          />
-        </View>
+        <JoinTripNote message="Your upcoming events show up here once you join a trip." />
       </View>
     );
   }
@@ -321,11 +316,5 @@ const styles = StyleSheet.create({
   emptyDay: {
     marginHorizontal: S.md, borderRadius: R.lg,
     alignItems: "center",
-  },
-
-  // Empty state
-  emptyState: {
-    alignItems: "center", paddingTop: S["2xl"],
-    paddingHorizontal: S.xl, gap: S.sm,
   },
 });

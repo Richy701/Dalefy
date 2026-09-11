@@ -4,12 +4,12 @@ import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDo
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
 import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
-import { isFirebaseConfigured, firebaseDb } from "@/services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { isFirebaseConfigured } from "@/services/firebase";
+import { apiFetch, ApiError } from "@/lib/api";
 import type { Trip, TravelEvent } from "@/types";
 import { resolvedBrand } from "@/config/brand";
 import { hexToRgb } from "@/context/BrandContext";
-import { fetchBrandingForTrip, type OrgBranding } from "@/services/firebaseBranding";
+import { fetchBranding, type OrgBranding } from "@/services/firebaseBranding";
 import { EVENT_ICONS, EVENT_HEX } from "@/config/eventStyles";
 import { sortEvents } from "@/lib/sortEvents";
 
@@ -173,19 +173,17 @@ export function SharedTripPage() {
     setError("");
     setErrorKind(null);
 
-    // Load branding alongside the trip so the page paints once, in the agency's colours
-    const tripPromise = getDoc(doc(firebaseDb(), "trips", tripId));
-    const brandingPromise = fetchBrandingForTrip(tripId).catch(() => null);
-
-    Promise.all([tripPromise, brandingPromise])
-      .then(([snap, b]) => {
+    // Resolve branding from the sanitized trip's organization, never its private record.
+    apiFetch<{ trip: Record<string, unknown> }>(`/api/trip?id=${encodeURIComponent(tripId)}`)
+      .then(async ({ trip: row }) => {
+        const b = typeof row?.organization_id === "string" ? await fetchBranding(row.organization_id) : null;
         if (cancelled) return;
         setOrgBranding(b);
-        if (!snap.exists()) {
+        if (!row) {
           setError("We couldn't find this itinerary. The link may be out of date.");
           setErrorKind("unavailable");
         } else {
-          const t = rowToTrip({ id: snap.id, ...snap.data() });
+          const t = rowToTrip(row);
           if (t.status !== "Published") {
             setError("Your itinerary isn't ready yet. Your travel organiser is still finalising it.");
             setErrorKind("unpublished");
@@ -198,7 +196,7 @@ export function SharedTripPage() {
       .catch((err: unknown) => {
         if (cancelled) return;
         const code = typeof err === "object" && err && "code" in err ? String((err as { code: unknown }).code) : "";
-        if (code === "permission-denied") {
+        if (code === "permission-denied" || (err instanceof ApiError && err.status === 404)) {
           setError("Your itinerary isn't ready yet. Your travel organiser is still finalising it.");
           setErrorKind("unpublished");
         } else {

@@ -2,6 +2,30 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    function orgRole(orgId, roles) {
+      return request.auth != null && orgId != null
+        && firestore.get(/databases/(default)/documents/org_members/$(request.auth.uid + '_' + orgId)).data.role in roles;
+    }
+
+    function tripEditor(tripId) {
+      let trip = firestore.get(/databases/(default)/documents/trips/$(tripId)).data;
+      return request.auth != null && (trip.user_id == request.auth.uid
+        || orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent']));
+    }
+
+    function tripStaff(tripId) {
+      let trip = firestore.get(/databases/(default)/documents/trips/$(tripId)).data;
+      return request.auth != null && (trip.user_id == request.auth.uid
+        || orgRole(trip.get('organization_id', null), ['owner', 'admin', 'agent', 'viewer']));
+    }
+
+    function tripMember(tripId) {
+      let trip = firestore.get(/databases/(default)/documents/trips/$(tripId)).data;
+      let member = firestore.get(/databases/(default)/documents/trip_members/$(request.auth.uid + '_' + tripId)).data;
+      return request.auth != null && trip.status in ['Published', 'published']
+        && member.uid == request.auth.uid && member.trip_id == tripId;
+    }
+
     // Avatar uploads: scoped by auth UID, max 2MB, images only
     match /avatars/{uid}/{fileName} {
       allow read: if true;
@@ -12,9 +36,7 @@ service firebase.storage {
     }
 
     // Logo uploads: namespaced by org ID, then by uploading user's UID.
-    // Storage rules cannot cross-reference Firestore, so org-admin checks
-    // are enforced in the application layer. The UID scope prevents users
-    // from overwriting each other's uploads.
+    // Organization administration is checked against Firestore.
     match /logos/{orgId}/{uid}/{fileName} {
       allow read: if true;
       allow write: if request.auth != null
@@ -28,37 +50,35 @@ service firebase.storage {
       allow write: if false;
     }
 
-    // Trip media: scoped by trip ID + uploader UID.
-    // Users can only write/delete under their own UID subfolder.
+    // Gallery reads/uploads require membership; editors may moderate any upload.
     match /trips/{tripId}/media/{uid}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.uid == uid
+      allow read: if tripStaff(tripId) || tripMember(tripId);
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && (tripEditor(tripId) || tripMember(tripId))
         && request.resource.size < 25 * 1024 * 1024
         && request.resource.contentType.matches('(image|video)/.*');
-      allow delete: if request.auth != null
-        && request.auth.uid == uid;
+      allow delete: if tripEditor(tripId)
+        || (request.auth != null && request.auth.uid == uid && tripMember(tripId));
     }
-    // Legacy flat path (read-only for existing media uploaded before UID scoping)
     match /trips/{tripId}/media/{fileName} {
-      allow read: if true;
-      allow write: if false;
+      allow read: if tripStaff(tripId) || tripMember(tripId);
+      allow delete: if tripEditor(tripId);
     }
 
-    // Event-level media (itinerary attachments, uploaded by organiser)
+    // Published readers receive only approved download capabilities from the API.
+    // They cannot enumerate private files or fetch metadata for hidden attachments.
     match /trips/{tripId}/events/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null
+      allow read: if tripStaff(tripId);
+      allow create, update: if tripEditor(tripId)
         && request.resource.size < 25 * 1024 * 1024
         && request.resource.contentType.matches('(image|video)/.*');
+      allow delete: if tripEditor(tripId);
     }
-
-    // Trip-level documents (PDFs, vouchers, etc.)
     match /trips/{tripId}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null
+      allow read: if tripStaff(tripId);
+      allow create, update: if tripEditor(tripId)
         && request.resource.size < 50 * 1024 * 1024;
-      allow delete: if request.auth != null;
+      allow delete: if tripEditor(tripId);
     }
 
     // Deny everything else by default

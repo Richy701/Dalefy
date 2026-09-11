@@ -356,7 +356,7 @@ export function DashboardPage() {
     }
     setNewTripDateError(null);
     const newTrip: Trip = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: newTripData.name,
       attendees: newTripData.attendees,
       destination: newTripData.destination || undefined,
@@ -391,7 +391,7 @@ export function DashboardPage() {
   const handleDuplicateTrip = (trip: Trip) => {
     const dup: Trip = {
       ...trip,
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: `${trip.name} (Copy)`,
       status: "Draft",
       events: trip.events.map(e => ({ ...e, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` })),
@@ -424,7 +424,7 @@ export function DashboardPage() {
     };
     const newTrip: Trip = {
       ...tpl,
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: `${tpl.name}`,
       start: shiftDate(tpl.start),
       end: shiftDate(tpl.end),

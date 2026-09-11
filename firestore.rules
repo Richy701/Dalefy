@@ -18,26 +18,21 @@ service cloud.firestore {
       return mem != null && mem.data.role in ["owner", "admin", "agent"];
     }
 
-    // ── System cron user (flight status checker) ──────────────────────────
+    // Server identity is provisioned by an administrator, never by a client.
     function isCronUser() {
       return request.auth != null
-             && request.auth.token.email == "cron@dalefy.app";
+        && request.auth.uid == get(/databases/$(database)/documents/app_config/server_identity).data.uid;
     }
 
-    // ── Helper: check if the caller is a trip member (by auth UID) ──────
-    function isTripMember(tripId) {
-      return exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + tripId));
+    function isTripEditor(tripId) {
+      let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
+      return request.auth != null && (t.user_id == request.auth.uid
+        || (t.get('organization_id', null) != null && isOrgEditor(t.organization_id)));
     }
 
-    // ── Helper: a trip is joinable if it is published, or the caller owns
-    //    it / is an org editor of it (so joins can't be minted on private trips)
     function canJoinTrip(tripId) {
-      let t = get(/databases/$(database)/documents/trips/$(tripId));
-      return t != null && (
-        t.data.status in ["Published", "published"]
-        || t.data.user_id == request.auth.uid
-        || (t.data.organization_id != null && isOrgEditor(t.data.organization_id))
-      );
+      let t = get(/databases/$(database)/documents/trips/$(tripId)).data;
+      return t.status in ["Published", "published"] || isTripEditor(tripId);
     }
 
     // ── Profiles: any authenticated user can read; only owner can write ──
@@ -82,7 +77,8 @@ service cloud.firestore {
       // A user can read their own memberships; org members can read their org's roster
       allow read: if request.auth != null
         && (resource.data.user_id == request.auth.uid
-            || isOrgMember(resource.data.organization_id));
+            || isOrgMember(resource.data.organization_id)
+            || isCronUser());
 
       // Doc ID must always be `${user_id}_${organization_id}` so the helper lookups work
       allow create: if request.auth != null
@@ -168,74 +164,57 @@ service cloud.firestore {
       allow write: if request.auth != null && isOrgAdmin(orgId);
     }
 
-    // ── Trips ──────────────────────────────────────────────────────────────
+    // Working records are private. Shared clients use the filtered trip API.
     match /trips/{tripId} {
-      // Published trips are readable by anyone (shared links, PIN join flow).
-      // Non-published trips require ownership, org membership, or cron. Trip
-      // membership is NOT a read grant here: since it is world-mintable, it
-      // would otherwise let anyone read private/draft trips.
-      allow read: if resource.data.status in ["Published", "published"]
-                  || (request.auth != null
-                      && (resource.data.user_id == request.auth.uid
-                          || isCronUser()
-                          || (resource.data.organization_id != null
-                              && isOrgMember(resource.data.organization_id))));
-
-      // Only authenticated users can create; user_id must match caller
+      allow read: if request.auth != null && (
+        resource.data.user_id == request.auth.uid || isCronUser()
+        || (resource.data.get('organization_id', null) != null
+            && isOrgMember(resource.data.organization_id)));
       allow create: if request.auth != null
-                    && request.resource.data.user_id == request.auth.uid;
-
-      // The creator, org editor (not viewer), or cron user can update. A trip
-      // member can update only while the trip is published (travelers claim a
-      // slot / attach media on published trips); this stops a stale or
-      // self-minted membership from editing a private/draft trip.
+        && request.resource.data.user_id == request.auth.uid
+        && (request.resource.data.get('organization_id', null) == null
+            || isOrgEditor(request.resource.data.organization_id));
       allow update: if request.auth != null
-                    && (resource.data.user_id == request.auth.uid
-                        || isCronUser()
-                        || (isTripMember(tripId)
-                            && resource.data.status in ["Published", "published"])
-                        || (resource.data.organization_id != null
-                            && isOrgEditor(resource.data.organization_id)));
-      allow delete: if request.auth != null
-                    && (resource.data.user_id == request.auth.uid
-                        || isCronUser()
-                        || (resource.data.organization_id != null
-                            && isOrgAdmin(resource.data.organization_id)));
+        && (isTripEditor(tripId) || isCronUser())
+        && request.resource.data.user_id == resource.data.user_id
+        && (request.resource.data.get('organization_id', null) == resource.data.get('organization_id', null)
+            || (resource.data.user_id == request.auth.uid
+                && resource.data.get('organization_id', null) == null
+                && isOrgEditor(request.resource.data.organization_id)));
+      allow delete: if request.auth != null && (
+        resource.data.user_id == request.auth.uid || isCronUser()
+        || (resource.data.get('organization_id', null) != null
+            && isOrgAdmin(resource.data.organization_id)));
     }
 
-    // ── Trip members ───────────────────────────────────────────────────────
     match /trip_members/{docId} {
-      // Read: authenticated users only
+      // Roster read scope is retained for the existing organizer roster query.
       allow read: if request.auth != null;
-
-      // Create: must be authenticated, include a trip_id, identify via
-      // device_id or a matching uid/user_id, AND the target trip must be
-      // joinable (published, or owned / org-edited by the caller). Without the
-      // joinable check, any user could mint membership on any trip.
       allow create: if request.auth != null
-                    && request.resource.data.trip_id is string
-                    && request.resource.data.trip_id.size() > 0
-                    && (request.resource.data.device_id is string
-                        || request.resource.data.uid == request.auth.uid
-                        || request.resource.data.user_id == request.auth.uid)
-                    && canJoinTrip(request.resource.data.trip_id);
-
-      // The member themselves, the trip owner, or an org editor can update/delete.
-      allow update, delete: if request.auth != null
-        && (resource.data.user_id == request.auth.uid
-            || resource.data.uid == request.auth.uid
-            || resource.data.device_id == request.auth.uid
-            || exists(/databases/$(database)/documents/trip_members/$(request.auth.uid + '_' + resource.data.trip_id))
-            || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
-                && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.user_id == request.auth.uid)
-            || (resource.data.organization_id != null
-                && isOrgEditor(resource.data.organization_id))
-            || (exists(/databases/$(database)/documents/trips/$(resource.data.trip_id))
-                && get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id != null
-                && isOrgEditor(get(/databases/$(database)/documents/trips/$(resource.data.trip_id)).data.organization_id))
-            // Fallback: org admin via user profile (handles orphaned trip_members whose trip was deleted)
-            || (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.current_org_id != null
-                && isOrgAdmin(get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.current_org_id)));
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.device_id is string
+        && request.resource.data.trip_id is string
+        && docId in [request.auth.uid + '_' + request.resource.data.trip_id,
+                     request.resource.data.device_id + '_' + request.resource.data.trip_id]
+        && request.resource.data.keys().hasOnly([
+          'uid', 'device_id', 'trip_id', 'trip_name', 'name', 'avatar',
+          'joined_at', 'email', 'linked_traveler_id', 'role'
+        ])
+        && request.resource.data.get('role', 'traveler') == 'traveler'
+        && canJoinTrip(request.resource.data.trip_id);
+      allow update: if request.auth != null && (
+        (resource.data.get('uid', null) == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'avatar', 'email', 'linked_traveler_id', 'joined_at', 'trip_name'
+          ]))
+        || (isTripEditor(resource.data.trip_id)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'avatar', 'role', 'linked_traveler_id', 'email'
+          ])
+          && request.resource.data.get('role', 'traveler') in ['traveler', 'leader']));
+      allow delete: if request.auth != null && (
+        resource.data.get('uid', null) == request.auth.uid
+        || isTripEditor(resource.data.trip_id));
     }
 
     // ── Trip presence: real-time editing presence ────────────────────────

@@ -1,123 +1,101 @@
 import {
   collection, doc, getDocs, setDoc, deleteDoc, getDoc,
-  query, orderBy, where, onSnapshot,
+  query, where, onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
 import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import type { Trip } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
 
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
+// Enable only after the API, server identity, and security rules are deployed together.
+const USE_TRIP_API = process.env.EXPO_PUBLIC_TRIP_API_ENABLED === "true";
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
   return Promise.race([
     promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("offline-timeout")), ms),
-    ),
-  ]);
+    new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("Trip connection timed out")), 15000); }),
+  ]).finally(() => clearTimeout(timer));
 }
 
-/**
- * Fetch only trips this device has explicitly joined (via PIN or creation).
- * 1. Get trip IDs from trip_members where device_id matches
- * 2. Fetch those trips from the trips collection
- */
+const API_BASE = (process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app").replace(/\/$/, "");
+
+async function tripRequest(params: string, body?: unknown): Promise<{ trip?: Record<string, unknown> }> {
+  await waitForAuth();
+  const user = firebaseAuth().currentUser;
+  const token = await user?.getIdToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`${API_BASE}/api/trip${params}`, {
+      method: body ? "POST" : "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (response.status === 404 && !body) {
+      // A missing deployment is not an authoritative empty trip list.
+      const error = await response.json().catch(() => null);
+      if (error?.error === "Itinerary unavailable") return {};
+      throw new Error("Trip service is not deployed");
+    }
+    if (!response.ok) throw new Error(response.status === 409 ? "Trip changed. Please try again." : "Unable to load or update trip");
+    const data = await response.json();
+    if (user?.uid !== firebaseAuth().currentUser?.uid) throw new Error("Account changed");
+    return data;
+  } finally { clearTimeout(timer); }
+}
+
 export async function fetchTrips(): Promise<Trip[]> {
   await waitForAuth();
+  const uid = firebaseAuth().currentUser?.uid;
+  if (!uid) throw new Error("Waiting for sign-in");
+  const members = await withTimeout(getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid))));
   const deviceId = await getDeviceId();
-
-  // Get trip IDs this device has joined (timeout prevents hanging when offline)
-  const memberSnap = await withTimeout(
-    getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
-    5000,
-  );
-  const tripIds = [...new Set(memberSnap.docs.map(d => d.data().trip_id as string))];
-  if (tripIds.length === 0) return [];
-
-  // Firestore "in" queries support max 30 values — batch if needed
-  const trips: Trip[] = [];
-  for (let i = 0; i < tripIds.length; i += 30) {
-    const batch = tripIds.slice(i, i + 30);
-    const snap = await withTimeout(
-      getDocs(query(collection(firebaseDb(), TRIPS), where("__name__", "in", batch))),
-      5000,
-    );
-    for (const d of snap.docs) {
-      trips.push(docToTrip(d.id, d.data()));
-    }
-  }
-
-  // Sort by start date descending
-  trips.sort((a, b) => (b.start > a.start ? 1 : b.start < a.start ? -1 : 0));
-  return trips;
+  const legacyMembers = USE_TRIP_API ? [] : (await withTimeout(getDocs(query(
+    collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId),
+  )))).docs;
+  const ids = [...new Set([...members.docs, ...legacyMembers].map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
+  const trips = await Promise.all(ids.map(fetchTripById));
+  if (uid !== firebaseAuth().currentUser?.uid) throw new Error("Account changed");
+  return trips.filter((t): t is Trip => t !== null).sort((a, b) => b.start.localeCompare(a.start));
 }
 
 export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe {
-  // Initial fetch
-  fetchTrips().then(onChange).catch(() => {});
-
-  // Listen to the specific trips this device has joined — avoids security rule
-  // issues with broad collection queries and ensures we get notified of all
-  // changes (including event reordering, layout edits, etc.)
-  let innerUnsubs: Unsubscribe[] = [];
-
-  async function setupListeners() {
+  let cancelled = false;
+  let fetching = false;
+  let membershipUnsub: Unsubscribe = () => {};
+  const refresh = async () => {
+    if (cancelled || fetching) return;
+    fetching = true;
     try {
-      await waitForAuth();
-      const deviceId = await getDeviceId();
-      const memberSnap = await withTimeout(
-        getDocs(query(collection(firebaseDb(), TRIP_MEMBERS), where("device_id", "==", deviceId))),
-        5000,
-      );
-      const tripIds = memberSnap.docs.map(d => d.data().trip_id as string);
+      const trips = await fetchTrips();
+      if (!cancelled) onChange(trips);
+    } catch { /* Preserve offline cache on network failure, never on successful empty results. */ }
+    finally { fetching = false; }
+  };
+  const authUnsub = onAuthStateChanged(firebaseAuth(), user => {
+    membershipUnsub();
+    const uid = user?.uid;
+    if (cancelled || !uid) return;
+    membershipUnsub = onSnapshot(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)), () => { void refresh(); });
+  });
+  void refresh();
+  // Working trip documents are no longer readable by travelers.
+  const timer = setInterval(() => { void refresh(); }, 30000);
+  return () => { cancelled = true; clearInterval(timer); membershipUnsub(); authUnsub(); };
+}
 
-      // Backfill UID-keyed member docs so Firestore rules can verify membership
-      const uid = firebaseAuth().currentUser?.uid;
-      if (uid) {
-        const backfills = memberSnap.docs.map((memberDoc) => {
-          const data = memberDoc.data();
-          const uidKey = `${uid}_${data.trip_id}`;
-          return setDoc(doc(firebaseDb(), TRIP_MEMBERS, uidKey), {
-            ...data,
-            uid,
-          }, { merge: true }).catch(() => {});
-        });
-        await Promise.all(backfills);
-      }
-
-      // Clean up any previous listeners
-      innerUnsubs.forEach(u => u());
-      innerUnsubs = [];
-
-      if (tripIds.length === 0) return;
-
-      // Subscribe to each trip doc individually
-      for (const tripId of tripIds) {
-        const unsub = onSnapshot(doc(firebaseDb(), TRIPS, tripId), () => {
-          // Any trip doc changed — re-fetch all joined trips
-          fetchTrips().then(onChange).catch(() => {});
-        }, (err) => {
-          console.warn(`[subscribeToTrips] listener error for ${tripId}:`, err.message);
-        });
-        innerUnsubs.push(unsub);
-      }
-    } catch (err) {
-      console.warn("[subscribeToTrips] setup failed:", err);
-    }
-  }
-
-  setupListeners();
-
-  return () => { innerUnsubs.forEach(u => u()); };
+export async function changeTripMedia(tripId: string, add: NonNullable<Trip["media"]>, remove: string[] = []): Promise<void> {
+  await tripRequest("", { tripId, add, remove });
 }
 
 export async function upsertTrip(trip: Trip): Promise<void> {
-  console.log("[upsertTrip] saving trip:", trip.id, "media:", trip.media?.length ?? 0);
-  await waitForAuth();
-  await setDoc(doc(firebaseDb(), TRIPS, trip.id), tripToDoc(trip), { merge: true });
-  console.log("[upsertTrip] done");
+  // Compatibility for the gallery upload path: only append media, never write a trip.
+  await changeTripMedia(trip.id, trip.media ?? []);
 }
 
 export async function removeTrip(id: string): Promise<void> {
@@ -125,39 +103,29 @@ export async function removeTrip(id: string): Promise<void> {
 }
 
 export async function fetchTripById(id: string): Promise<Trip | null> {
-  try {
-    const snap = await getDoc(doc(firebaseDb(), TRIPS, id));
-    if (!snap.exists()) return null;
-    return docToTrip(snap.id, snap.data());
-  } catch {
-    // getDoc can fail on security rules for unpublished trips
-    return null;
+  if (!USE_TRIP_API) {
+    await waitForAuth();
+    const snap = await withTimeout(getDoc(doc(firebaseDb(), TRIPS, id)));
+    return snap.exists() ? legacyDocToTrip(snap.id, snap.data()) : null;
   }
+  const { trip } = await tripRequest(`?id=${encodeURIComponent(id)}`);
+  return trip ? docToTrip(id, trip) : null;
 }
 
 export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-Z0-9]{4,6}$/.test(normalized)) return null;
-
-  // The status filter is required by Firestore security rules —
-  // unauthenticated reads are only allowed for published trips,
-  // and Firestore rejects queries that could return non-published docs.
-  for (const status of ["Published", "published"]) {
-    try {
-      const q = query(
-        collection(firebaseDb(), TRIPS),
-        where("short_code", "==", normalized),
-        where("status", "==", status),
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        return docToTrip(snap.docs[0].id, snap.docs[0].data());
-      }
-    } catch (err) {
-      console.warn(`[fetchTripByShortCode] query failed for status="${status}":`, err);
+  if (!USE_TRIP_API) {
+    await waitForAuth();
+    for (const status of ["Published", "published"]) {
+      const snap = await withTimeout(getDocs(query(collection(firebaseDb(), TRIPS),
+        where("short_code", "==", normalized), where("status", "==", status))));
+      if (!snap.empty) return legacyDocToTrip(snap.docs[0].id, snap.docs[0].data());
     }
+    return null;
   }
-  return null;
+  const { trip } = await tripRequest(`?code=${encodeURIComponent(normalized)}`);
+  return trip ? docToTrip(String(trip.id), trip) : null;
 }
 
 // ── Role Check ─────────────────────────────────────────────────────────────
@@ -328,52 +296,14 @@ export async function updateMemberProfile(name: string, avatar: string | null): 
   }
 }
 
-/** Patch a traveler's email onto the trip's denormalized travelers array */
-export async function patchTravelerEmail(
-  tripId: string,
-  travelerId: string,
-  email: string,
-): Promise<void> {
+/** Contact changes belong to the caller's membership, never the private roster. */
+export async function patchTravelerEmail(tripId: string, _travelerId: string, email: string): Promise<void> {
   try {
     await waitForAuth();
-    const snap = await getDoc(doc(firebaseDb(), TRIPS, tripId));
-    if (!snap.exists()) return;
-    const travelers = snap.data().travelers as Array<{ id: string; name: string; initials: string; email?: string }> | undefined;
-    if (!travelers) return;
-    const idx = travelers.findIndex(t => t.id === travelerId);
-    if (idx === -1 || travelers[idx].email) return;
-    travelers[idx] = { ...travelers[idx], email };
-    await setDoc(doc(firebaseDb(), TRIPS, tripId), { travelers }, { merge: true });
-  } catch {
-    // non-critical
-  }
-}
-
-// ── Mappers ─────────────────────────────────────────────────────────────────
-
-function tripToDoc(trip: Trip): Record<string, unknown> {
-  return {
-    name: trip.name,
-    attendees: trip.attendees ?? "",
-    destination: trip.destination ?? null,
-    pax_count: trip.paxCount ?? null,
-    trip_type: trip.tripType ?? null,
-    budget: trip.budget ?? null,
-    currency: trip.currency ?? null,
-    start: trip.start,
-    end_date: trip.end,
-    status: trip.status,
-    image: trip.image,
-    events: trip.events,
-    media: trip.media ?? null,
-    short_code: trip.shortCode ?? null,
-    organization_id: trip.organizationId ?? null,
-    traveler_ids: trip.travelerIds ?? null,
-    travelers: trip.travelers ?? null,
-    organizer: trip.organizer ?? null,
-    info: trip.info ?? null,
-    published_snapshot: trip.publishedSnapshot ?? null,
-  };
+    const uid = firebaseAuth().currentUser?.uid;
+    if (!uid) return;
+    await setDoc(doc(firebaseDb(), TRIP_MEMBERS, `${uid}_${tripId}`), { email }, { merge: true });
+  } catch { /* Joining remains successful when an optional contact update fails. */ }
 }
 
 function docToTrip(id: string, data: Record<string, unknown>): Trip {
@@ -398,6 +328,22 @@ function docToTrip(id: string, data: Record<string, unknown>): Trip {
     organizer: (data.organizer as Trip["organizer"]) ?? undefined,
     info: (data.info as Trip["info"]) ?? undefined,
     organizationId: (data.organization_id as string) ?? undefined,
-    publishedSnapshot: (data.published_snapshot as Trip["publishedSnapshot"]) ?? undefined,
+    documents: (data.documents as Trip["documents"]) ?? undefined,
   };
+}
+
+// Temporary compatibility with the currently deployed Firestore reader.
+// Keep the published itinerary separate from organizer edits; do not retain the raw document.
+function legacyDocToTrip(id: string, data: Record<string, unknown>): Trip {
+  const trip = docToTrip(id, data);
+  const snap = data.published_snapshot as Trip["publishedSnapshot"];
+  const published = snap ? {
+    ...trip, name: snap.name, image: snap.image, destination: snap.destination,
+    start: snap.start, end: snap.end, paxCount: snap.paxCount, events: snap.events,
+    info: snap.info, organizer: snap.organizer, documents: snap.documents,
+  } : trip;
+  delete published.budget;
+  delete published.travelerIds;
+  published.travelers = published.travelers?.map(({ id, name, initials }) => ({ id, name, initials }));
+  return published;
 }

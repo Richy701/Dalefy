@@ -579,6 +579,7 @@ export function WorkspacePage() {
       start: trip.start,
       end: trip.end,
       paxCount: trip.paxCount,
+      travelers: trip.travelers?.map(({ id, name, initials }) => ({ id, name, initials })),
       publishedAt: new Date().toISOString(),
     };
     const published = { ...trip, status: "Published" as const, publishedSnapshot: snapshot };
@@ -610,7 +611,7 @@ export function WorkspacePage() {
     setImageSearchSource(null);
     const activeDate = groupedEvents[activeDayIdx]?.[0] || trip.start || new Date().toISOString().split("T")[0];
     setEditingEvent({
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type,
       date: activeDate,
       title: "",

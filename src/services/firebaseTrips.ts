@@ -107,21 +107,27 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
   const auth = firebaseAuth();
   const userId = auth.currentUser?.uid ?? null;
 
-  const cleanTrip = await uploadTripImages(trip);
-
-  const data = tripToDoc(cleanTrip);
-  if (orgId) data.organization_id = orgId;
-
-  // Only stamp user_id on brand-new docs - never overwrite another user's ownership
+  if (!userId) throw new Error("Sign in before saving a trip");
   const tripRef = doc(firebaseDb(), TRIPS, trip.id);
   let isNew = false;
   try {
-    const existing = await getDoc(tripRef);
-    isNew = !existing.exists();
-  } catch {
+    isNew = !(await getDoc(tripRef)).exists();
+  } catch (error) {
+    // Rules may deny reading a missing document. A guarded create below still
+    // cannot replace an existing record owned by another account.
+    if ((error as { code?: string }).code !== "permission-denied") throw error;
     isNew = true;
   }
-  if (isNew && userId) data.user_id = userId;
+  if (isNew) {
+    await setDoc(tripRef, {
+      user_id: userId, organization_id: orgId ?? trip.organizationId ?? null,
+      name: trip.name, start: trip.start, end_date: trip.end,
+      status: "Draft", events: [],
+    });
+  }
+  const cleanTrip = await uploadTripImages(trip);
+  const data = tripToDoc(cleanTrip);
+  if (orgId) data.organization_id = orgId;
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org", isNew ? "(new)" : "(update)");
   await setDoc(tripRef, data, { merge: true });
@@ -148,14 +154,9 @@ export async function fetchTripByShortCode(code: string): Promise<Trip | null> {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-Z0-9]{4,6}$/.test(normalized)) return null;
 
-  const q = query(
-    collection(firebaseDb(), TRIPS),
-    where("short_code", "==", normalized),
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return docToTrip(d.id, d.data());
+  const { apiFetch } = await import("@/lib/api");
+  const { trip } = await apiFetch<{ trip: Record<string, unknown> }>(`/api/trip?code=${encodeURIComponent(normalized)}`);
+  return trip ? docToTrip(String(trip.id), trip) : null;
 }
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
@@ -474,7 +475,7 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
   // Trip cover - upload base64 or external URLs to Firebase Storage
   if (isBase64(clean.image) || isExternalUrl(clean.image)) {
     try {
-      clean.image = await uploadImage(clean.image, `trips/${trip.id}/cover`);
+      clean.image = await uploadImage(clean.image, `trips/${trip.id}/cover-${crypto.randomUUID()}`);
       logger.log("uploadTripImages", "uploaded cover for", trip.id);
     } catch (err) {
       logger.log("uploadTripImages", "cover upload failed, keeping original:", err);
@@ -510,7 +511,7 @@ async function uploadTripImages(trip: Trip): Promise<Trip> {
     const e = { ...ev };
     if (isBase64(e.image) || isExternalUrl(e.image)) {
       try {
-        e.image = await uploadImage(e.image!, `trips/${trip.id}/events/${e.id || i}`);
+        e.image = await uploadImage(e.image!, `trips/${trip.id}/events/${e.id || i}-${crypto.randomUUID()}`);
       } catch {
         // Keep original URL as fallback
       }

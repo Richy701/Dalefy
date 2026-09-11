@@ -13,20 +13,13 @@ import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { type ThemeColors, T, R, S, shadow, statusTone } from "@/constants/theme";
+import { calendarDays, scheduledMinutes, dateInZone } from "@/shared/today";
+import { getDestinationTz } from "@/shared/timezones";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function daysBetween(fromISO: string, toISO: string): number {
-  const a = new Date(fromISO + "T00:00:00").getTime();
-  const b = new Date(toISO + "T00:00:00").getTime();
-  return Math.round((b - a) / 86400000);
-}
-
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const daysBetween = calendarDays;
 
 function fmtShort(d: string): string {
   const date = new Date(d + "T12:00:00");
@@ -40,23 +33,10 @@ function fmtLong(d: string): string {
   return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
-function timeToMinutes(t: string): number {
-  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
-  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!m) return 720;
-  let h = parseInt(m[1]);
-  const min = parseInt(m[2]);
-  const pm = m[3].toUpperCase() === "PM";
-  if (pm && h < 12) h += 12;
-  if (!pm && h === 12) h = 0;
-  return h * 60 + min;
-}
-
 function firstFlight(trip: Trip): TravelEvent | null {
   const flights = trip.events.filter(e => e.type === "flight");
   if (!flights.length) return null;
-  flights.sort((a, b) => a.date.localeCompare(b.date) || timeToMinutes(a.time) - timeToMinutes(b.time));
+  flights.sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity));
   return flights[0];
 }
 
@@ -95,9 +75,13 @@ async function fetchFirstDayForecast(destination: string, date: string): Promise
     const g = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(destination)}&limit=1&appid=${WEATHER_KEY}`).then(r => r.json());
     if (!g?.[0]) return null;
     const f = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${g[0].lat}&lon=${g[0].lon}&units=metric&appid=${WEATHER_KEY}`).then(r => r.json());
-    const entries = (f.list ?? []).filter((e: any) => (e.dt_txt as string).startsWith(date));
+    const timeZone = getDestinationTz(destination);
+    const entries = (f.list ?? []).filter((e: any) => typeof e.dt === "number" && dateInZone(e.dt * 1000, timeZone) === date);
     if (!entries.length) return null;
-    const midday = entries.find((e: any) => (e.dt_txt as string).includes("12:00")) ?? entries[0];
+    const midday = [...entries].sort((a: any, b: any) => {
+      const hour = (entry: any) => Number(new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(entry.dt * 1000));
+      return Math.abs(hour(a) - 12) - Math.abs(hour(b) - 12);
+    })[0];
     return {
       temp: Math.round(midday.main.temp),
       high: Math.round(Math.max(...entries.map((e: any) => e.main.temp_max))),
@@ -117,7 +101,7 @@ function SectionHeader({ title, action, onAction, C }: { title: string; action?:
     <View style={s.sectionHeader}>
       <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{title}</Text>
       {action && onAction ? (
-        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
           <Text style={[s.sectionAction, { color: C.tealText }]}>{action}</Text>
         </Pressable>
       ) : null}
@@ -131,16 +115,15 @@ function Card({ children, C, isDark, style }: { children: React.ReactNode; C: Th
 
 // ── Pre-trip ─────────────────────────────────────────────────────────────────
 
-export function PreTripSheetContent({ trip }: { trip: Trip }) {
+export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: string }) {
   const { C, isDark } = useTheme();
   const router = useRouter();
   const { isLeader } = useTripRole(trip.id);
-  const todayISO = localToday();
   const daysUntil = Math.max(0, daysBetween(todayISO, trip.start));
   const tripDays = daysBetween(trip.start, trip.end) + 1;
 
   const flight = useMemo(() => firstFlight(trip), [trip]);
-  const flightSoon = !!flight && daysBetween(todayISO, flight.date) <= 1;
+  const flightSoon = !!flight && daysBetween(todayISO, flight.date) >= 0 && daysBetween(todayISO, flight.date) <= 1;
   const { data: live } = useFlightLiveData(flightSoon ? flight?.flightNum : undefined, flightSoon ? flight?.date : undefined);
 
   const todo = useMemo(() => {
@@ -152,7 +135,7 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
     return { rows, total: all.length, actionable: open.length > 0 };
   }, [trip.info, isLeader]);
 
-  const docCount = (trip.documents?.length ?? 0) + (trip.info ?? []).reduce((n, i) => n + (i.documents?.length ?? 0), 0);
+  const docCount = (trip.documents?.length ?? 0) + (trip.info ?? []).filter(item => isLeader || !item.leaderOnly).reduce((n, i) => n + (i.documents?.length ?? 0), 0);
 
   const [forecast, setForecast] = useState<Forecast | null>(null);
   useEffect(() => {
@@ -175,32 +158,32 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
         {/* Header */}
         <FadeIn delay={next()}>
           <View style={s.header}>
-            <Text style={[s.scope, { color: C.textTertiary }]}>{fmtShort(trip.start)} – {fmtShort(trip.end)} · {tripDays} {tripDays === 1 ? "day" : "days"}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-              <Pressable onPress={openTrip} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={`Open trip ${trip.name}`}>
-                <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={1}>{trip.name}</Text>
-              </Pressable>
-              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `${daysUntil} days to go`} />
+            <View style={s.headingMeta}>
+              <Text style={[s.scope, { color: C.textSecondary }]}>Your next trip</Text>
+              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`} />
             </View>
+            <View>
+              <Pressable onPress={openTrip} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={`Open trip ${trip.name}`}>
+                <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={2}>{trip.name}</Text>
+              </Pressable>
+
+            </View>
+            <Text style={[s.headerDates, { color: C.textSecondary }]}>{fmtShort(trip.start)} – {fmtShort(trip.end)} · {tripDays} {tripDays === 1 ? "day" : "days"}</Text>
             {trip.destination ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs2, marginTop: S.xs2 }}>
                 <MapPin size={10} color={C.textTertiary} weight="fill" />
-                <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
-                {forecast ? (
-                  <>
-                    <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
-                    <Text style={{ fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary }} numberOfLines={1}>{forecast.temp}°, {forecast.description}</Text>
-                  </>
-                ) : null}
+                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
+
               </View>
             ) : null}
+            {forecast && <Text style={[s.forecast, { color: C.textSecondary }]}>First-day forecast · {forecast.temp}° · {forecast.description}</Text>}
           </View>
         </FadeIn>
 
         {/* Before you go */}
         {todo.total > 0 && (
           <FadeIn delay={next()}>
-            <SectionHeader title={todo.actionable ? "Before you go" : "Good to know"} action={todo.total > todo.rows.length ? "See all" : undefined} onAction={openInfo} C={C} />
+            <SectionHeader title={todo.actionable ? "Before you go" : "From your organiser"} action={todo.total > todo.rows.length ? "See all" : undefined} onAction={openInfo} C={C} />
             <Card C={C} isDark={isDark}>
               {todo.rows.map((item, i) => {
                 const st = infoStatusLabel(infoStatus(item, todayISO), item, todayISO);
@@ -217,7 +200,7 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
                       {st ? <st.Icon size={16} color={tone!.text} weight="bold" /> : <FileText size={16} color={C.textSecondary} weight="regular" />}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={1}>{item.title}</Text>
+                      <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{item.title}</Text>
                       {st && <Text style={[s.rowSub, { color: tone!.text }]}>{st.label}</Text>}
                     </View>
                     <CaretRight size={14} color={C.textTertiary} weight="regular" />
@@ -249,7 +232,7 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
                     </Text>
                     <Text style={[s.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
                       {flight.depAirport && flight.arrAirport ? `${flight.depAirport} → ${flight.arrAirport} · ` : ""}
-                      {fmtLong(flight.date)}{flight.time ? ` · ${flight.time}` : ""}
+                      {fmtLong(flight.date)} · {scheduledMinutes(flight.time) == null ? "Time to be confirmed" : flight.time}
                     </Text>
                   </View>
                   <CaretRight size={14} color={C.textTertiary} weight="regular" />
@@ -268,7 +251,7 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
 
         {/* Documents + travellers */}
         <FadeIn delay={next()}>
-          <SectionHeader title="On this trip" C={C} />
+          <SectionHeader title="Trip details" C={C} />
           <Card C={C} isDark={isDark}>
             {docCount > 0 && (
               <Pressable onPress={openInfo} accessibilityRole="button" accessibilityLabel={`${docCount} documents`} style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}>
@@ -308,10 +291,9 @@ export function PreTripSheetContent({ trip }: { trip: Trip }) {
 
 // ── Post-trip ────────────────────────────────────────────────────────────────
 
-export function PostTripSheetContent({ trip }: { trip: Trip }) {
+export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: string }) {
   const { C, isDark } = useTheme();
   const router = useRouter();
-  const todayISO = localToday();
   const daysSince = Math.max(0, daysBetween(trip.end, todayISO));
   const photoCount = trip.media?.length ?? 0;
 
@@ -320,7 +302,7 @@ export function PostTripSheetContent({ trip }: { trip: Trip }) {
       <FadeIn delay={0}>
         <View style={s.header}>
           <Text style={[s.scope, { color: C.textTertiary }]}>
-            {daysSince === 0 ? "Welcome home" : daysSince === 1 ? "Home since yesterday" : `Home ${daysSince} days`} · {fmtShort(trip.start)} – {fmtShort(trip.end)}
+            {daysSince === 0 ? "Trip ended today" : daysSince === 1 ? "Trip ended yesterday" : `Trip ended ${daysSince} days ago`} · {fmtShort(trip.start)} – {fmtShort(trip.end)}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
@@ -329,14 +311,14 @@ export function PostTripSheetContent({ trip }: { trip: Trip }) {
               accessibilityRole="button"
               accessibilityLabel={`Open trip ${trip.name}`}
             >
-              <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={1}>{trip.name}</Text>
+              <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={2}>{trip.name}</Text>
             </Pressable>
             <Pill tone="custom" bg={C.elevated} color={C.textTertiary} label="Past" />
           </View>
           {trip.destination ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
               <MapPin size={10} color={C.textTertiary} weight="fill" />
-              <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
+              <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
             </View>
           ) : null}
         </View>
@@ -381,22 +363,25 @@ export function PostTripSheetContent({ trip }: { trip: Trip }) {
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  header: { paddingHorizontal: S.md, paddingTop: S.sm },
-  scope: { fontSize: T.sm, fontWeight: T.medium, marginBottom: 2 },
-  tripName: { fontSize: T.xl, fontWeight: T.bold, letterSpacing: -0.3 },
+  header: { paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.xs },
+  headingMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm, marginBottom: S.sm },
+  headerDates: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
+  forecast: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
+  scope: { fontSize: T.base, lineHeight: 22, fontWeight: T.medium, marginBottom: 2 },
+  tripName: { fontSize: T["3xl"], lineHeight: 33, fontWeight: T.bold, letterSpacing: -0.3 },
 
   sectionHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: S.md, marginTop: S.md, marginBottom: S.xs,
+    paddingHorizontal: S.md, marginTop: S.lg, marginBottom: S.sm,
   },
   sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, letterSpacing: -0.2 },
-  sectionAction: { fontSize: T.sm, fontWeight: T.medium },
+  sectionAction: { fontSize: T.base, fontWeight: T.medium },
 
   card: { marginHorizontal: S.md, borderRadius: R.xl, overflow: "hidden" },
-  row: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.sm2, minHeight: 52 },
+  row: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.md, minHeight: 60 },
   rowIcon: { width: 32, height: 32, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
-  rowTitle: { fontSize: T.base, fontWeight: T.semibold },
-  rowSub: { fontSize: T.sm, marginTop: 1 },
+  rowTitle: { fontSize: T.md, lineHeight: 22, fontWeight: T.semibold },
+  rowSub: { fontSize: 14, lineHeight: 20, marginTop: S["2xs"] },
   flightMeta: {
     flexDirection: "row", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.xs,
     borderTopWidth: StyleSheet.hairlineWidth, marginLeft: S.md + 32 + S.sm,

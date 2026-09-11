@@ -15,7 +15,6 @@ import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { Avatar } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { CategoryDot } from "@/components/ui/CategoryDot";
 import { DragHandle } from "@/components/ui/DragHandle";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,6 +31,8 @@ import {
   Check, WifiSlash,
   Camera, MapTrifold, Info,
 } from "phosphor-react-native";
+import { NoTripsHero } from "@/components/ui/JoinTripNote";
+import { CoverFade } from "@/components/ui/CoverFade";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
@@ -271,12 +272,14 @@ function QRScanPane({ C, styles, onScanned }: {
 }
 
 // ── Greeting Hero ─────────────────────────────────────────────────────────────
-function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
+function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!nextTrip }: {
   nextTrip: Trip | undefined;
   isActive: boolean;
   onPress: (t: Trip) => void;
   /** Page scroll offset; the bar stays pinned to the top while the page is pulled past it */
   scrollY?: SharedValue<number>;
+  /** Bar sits over a cover photo (a trip's, or the no-trips cover) rather than the page ground */
+  overPhoto?: boolean;
 }) {
   const { C, isDark } = useTheme();
   const { unreadCount } = useNotifications();
@@ -288,7 +291,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
   const [notifOpen, setNotifOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
   useEffect(() => {
-    if (params.join === "1") setCodeOpen(true);
+    if (params.join) setCodeOpen(true);
   }, [params.join]);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [linkValue, setLinkValue] = useState("");
@@ -335,8 +338,6 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY }: {
   };
   const handlePaste = useCallback(() => { handlePasteRef.current(); }, []);
   const styles = useMemo(() => makeGreetingStyles(C, isDark), [C, isDark]);
-  // Bar sits over the cover photo when there is one, over the page ground when there is not.
-  const overPhoto = !!nextTrip;
   // Glass circles are dark in dark mode and white in light mode; the glyph takes the opposite.
   const barIcon = isDark ? "#fff" : C.textPrimary;
 
@@ -1018,6 +1019,7 @@ export default function HomeScreen() {
   const { trips, ready, offline, reload } = useTrips();
   const router = useRouter();
   const { toast } = useToast();
+  const { prefs } = usePreferences();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1116,28 +1118,13 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} style={{ zIndex: 5 }} />}
       >
-        {/* ── The photo, blurred, sits behind the whole page; a scrim rises to the page colour ── */}
-        {ready && heroTrip ? (
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <CachedImage uri={heroTrip.image} blurRadius={90} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
-            <View style={StyleSheet.absoluteFill}>
-              {/* Barely there where the sharp photo dissolves, then solid page colour under the content */}
-              <LinearGradient
-                colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]}
-                locations={[0, 0.55, 1]}
-                style={{ height: HERO_H + insets.top + 300 }}
-              />
-              <View style={{ flex: 1, backgroundColor: C.bg }} />
-            </View>
-          </View>
-        ) : null}
-
         {/* Top bar scrolls away with the cover; it also owns the join sheet */}
         <GreetingHero
           scrollY={scrollY}
           nextTrip={heroTrip ?? undefined}
           isActive={isNextActive}
           onPress={(t) => router.push(`/trip/${t.id}`)}
+          overPhoto={!!heroTrip || (ready && trips.length === 0 && !offline)}
         />
 
         {/* ── Cover ── */}
@@ -1151,17 +1138,10 @@ export default function HomeScreen() {
               accessibilityLabel={`${heroTrip.name}. ${factLine(heroTrip)}`}
             >
               <View style={[styles.hero, { height: HERO_H + insets.top }]}>
-                {/* Sharp photo dissolves into the blurred wash beneath it, so there is no edge */}
+                {/* The photo resolves into the exact page colour before the cover ends. */}
                 <Animated.View style={[StyleSheet.absoluteFill, heroStretch]}>
-                <MaskedView
-                  style={StyleSheet.absoluteFill}
-                  maskElement={
-                    <LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.45, 1]} style={{ flex: 1 }} />
-                  }
-                >
-                  <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} />
-                </MaskedView>
-                <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} />
+                  <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+                  <CoverFade />
                 </Animated.View>
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
@@ -1312,20 +1292,12 @@ export default function HomeScreen() {
 
         {/* ── Empty state ── */}
         {ready && trips.length === 0 && (
-          <View style={[styles.emptyState, { paddingTop: insets.top + 96 }]}>
-            {offline ? (
-              <EmptyState
-                icon={<WifiSlash size={30} color={C.textTertiary} weight="light" />}
-                title="You're offline"
-                message="Your trips will appear here once you're back online."
-              />
-            ) : (
-              <EmptyState
-                title="No trips yet"
-                message="Tap + and enter the PIN your organiser sent to open your itinerary."
-              />
-            )}
-          </View>
+          <NoTripsHero
+            greeting={prefs.name.trim() ? `Welcome, ${prefs.name.trim().split(" ")[0].replace(/^./, c => c.toUpperCase())}` : "Welcome"}
+            offline={offline}
+            onRetry={onRefresh}
+            retrying={refreshing}
+          />
         )}
       </Animated.ScrollView>
       </ScrollViewMarker>
@@ -1435,11 +1407,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
     offlineText: {
       fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary,
-    },
-
-    // ── Empty ──
-    emptyState: {
-      alignItems: "center",
     },
   });
 }

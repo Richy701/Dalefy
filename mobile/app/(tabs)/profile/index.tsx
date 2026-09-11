@@ -1,12 +1,11 @@
 import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert } from "react-native";
 import { tripFactLine, tripLengthDays, daysUntil, destinationCountry, destinationFlag } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
-import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
+import { CoverFade } from "@/components/ui/CoverFade";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { distanceKm } from "@/shared/coordinates";
 import Animated from "react-native-reanimated";
-import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
+import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -126,27 +125,16 @@ export default function ProfileScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
-        {heroTrip ? (
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <CachedImage uri={heroTrip.image} blurRadius={90} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} transition={0} />
-            <View style={StyleSheet.absoluteFill}>
-              <LinearGradient colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]} locations={[0, 0.5, 1]} style={{ height: HERO_H + insets.top + 260 }} />
-              <View style={{ flex: 1, backgroundColor: C.bg }} />
-            </View>
-          </View>
-        ) : null}
-
-        {/* ── Hero: you, on your next trip's photo ── */}
-        <View style={[s.hero, { height: HERO_H + insets.top }]}>
+        {/* A photo cover when a trip exists; a compact identity header before joining. */}
+        {!heroTrip && <ScreenTitle>Profile</ScreenTitle>}
+        <View style={heroTrip ? [s.hero, { height: HERO_H + insets.top }] : s.identityHeader}>
           {heroTrip ? (
-            <MaskedView
-              style={StyleSheet.absoluteFill}
-              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.3, 1]} style={{ flex: 1 }} />}
-            >
+            <>
               <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-            </MaskedView>
+              <CoverFade />
+            </>
           ) : null}
-          <View style={s.heroBody}>
+          <View style={heroTrip ? s.heroBody : s.identityRow}>
             {prefs.avatar || initials ? (
               <Avatar size={76} uri={prefs.avatar} initials={initials || undefined} color={avatarColor} ringColor={isDark ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.9)"} />
             ) : (
@@ -154,17 +142,19 @@ export default function ProfileScreen() {
                 <User size={34} color={C.textTertiary} weight="light" />
               </View>
             )}
-            <Text style={[s.heroName, s.heroShadow]}>{firstName || "Traveller"}</Text>
-            {nextTrip ? <Text style={[s.heroSub, s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
-            <Pressable
-              style={({ pressed }) => [s.editBtn, { opacity: pressed ? 0.5 : 1 }]}
-              onPress={() => { haptic.selection(); router.push("/welcome"); }}
-              accessibilityRole="button"
-              accessibilityLabel="Edit your profile"
-              hitSlop={8}
-            >
-              <Text style={s.editText}>Edit profile</Text>
-            </Pressable>
+            <View style={heroTrip ? s.heroDetails : s.identityDetails}>
+              <Text accessibilityRole="header" style={heroTrip ? [s.heroName, s.heroShadow] : s.identityName}>{heroTrip ? (firstName || "Traveller") : (prefs.name.trim() || "Traveller")}</Text>
+              {nextTrip ? <Text style={[s.heroSub, s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
+              <Pressable
+                style={({ pressed }) => [heroTrip ? s.editBtn : s.identityEdit, { opacity: pressed ? 0.5 : 1 }]}
+                onPress={() => { haptic.selection(); router.push("/welcome"); }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit your profile"
+                hitSlop={8}
+              >
+                <Text style={heroTrip ? s.editText : s.identityEditText}>Edit profile</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -458,6 +448,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     body: { paddingHorizontal: S.md },
 
     // ── Hero ──
+    identityHeader: { paddingHorizontal: S.md + S.xs, paddingTop: S.lg, paddingBottom: S.lg },
+    identityRow: { flexDirection: "row", alignItems: "center", gap: S.md },
+    identityDetails: { flex: 1 },
+    identityName: { fontSize: T["2xl"], lineHeight: 29, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
+    identityEdit: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center", paddingVertical: S.xs },
+    identityEditText: { fontSize: T.base, lineHeight: 22, fontWeight: T.semibold, color: C.tealText },
+    heroDetails: { alignItems: "center", gap: 4, alignSelf: "stretch" },
     hero: { overflow: "hidden", justifyContent: "flex-end" },
     heroBody: { alignItems: "center", gap: 4, paddingHorizontal: S.lg, paddingBottom: S.sm },
     heroShadow: isDark ? {

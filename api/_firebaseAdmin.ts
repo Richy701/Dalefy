@@ -67,6 +67,23 @@ function authHeaders(token: string): Record<string, string> {
 export interface FirestoreDoc {
   name: string;
   fields: Record<string, any>;
+  updateTime?: string;
+}
+
+export async function queryDocuments(collection: string, field: string, value: string, limit = 1): Promise<FirestoreDoc[]> {
+  const token = await getAuthToken();
+  const response = await fetchWithTimeout(`${BASE}:runQuery`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: collection }],
+      where: { fieldFilter: { field: { fieldPath: field }, op: "EQUAL", value: { stringValue: value } } },
+      limit,
+    } }),
+  });
+  if (!response.ok) throw new Error(`Firestore query: ${response.status}`);
+  const rows = await response.json() as Array<{ document?: FirestoreDoc }>;
+  return rows.flatMap(row => row.document ? [row.document] : []);
 }
 
 /** List all documents in a collection */
@@ -102,16 +119,19 @@ export async function updateDocument(
   docId: string,
   fields: Record<string, any>,
   fieldPaths: string[],
+  updateTime?: string,
 ): Promise<void> {
   const token = await getAuthToken();
   const mask = fieldPaths.map(f => `updateMask.fieldPaths=${f}`).join("&");
-  const url = `${BASE}/${collectionName}/${docId}?${mask}`;
+  const condition = updateTime ? `&currentDocument.updateTime=${encodeURIComponent(updateTime)}` : "&currentDocument.exists=true";
+  const url = `${BASE}/${collectionName}/${encodeURIComponent(docId)}?${mask}${condition}`;
   const resp = await fetchWithTimeout(url, {
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ fields }),
   });
   if (!resp.ok) {
+    if (resp.status === 409 || resp.status === 412 || (updateTime && resp.status === 400)) throw new Error("Database conflict");
     console.error(`Firestore update ${collectionName}/${docId}:`, resp.status, await resp.text());
     throw new Error("Database update failed");
   }
