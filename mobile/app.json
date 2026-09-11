@@ -49,7 +49,7 @@
         "projectId": "4bffc7b2-6f5d-481c-8712-44e8d9107dbb"
       }
     },
-    "runtimeVersion": "1.0.0-security-20260911",
+    "runtimeVersion": "1.0.0-widgets-20260911",
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
