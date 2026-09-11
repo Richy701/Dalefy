@@ -11,6 +11,8 @@ import { createLiveActivity } from "expo-widgets";
 import type { SFSymbols7_0 } from "sf-symbols-typescript";
 
 export type UpcomingEventProps = {
+  startTimestamp?: number;
+  endTimestamp?: number;
   title: string;
   shortTitle?: string;
   type: "dining" | "activity" | "transfer" | "hotel" | "flight";

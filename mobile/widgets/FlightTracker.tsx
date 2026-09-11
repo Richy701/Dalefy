@@ -51,14 +51,14 @@ function FlightTrackerActivity(
     status.includes("delay") ? "#f59e0b" :
     status.includes("landed") || status.includes("arrived") ? "#22c55e" :
     status.includes("boarding") ? teal :
-    "#22c55e";
+    "#aeb4b9";
 
   const statusLabel =
     status.includes("cancel") ? "CANCELLED" :
     status.includes("delay") ? "DELAYED" :
     status.includes("landed") || status.includes("arrived") ? "LANDED" :
     status.includes("boarding") ? "BOARDING" :
-    "ON TIME";
+    status.includes("on time") ? "ON TIME" : "Scheduled";
 
   // ── Banner (Lock Screen) ──
   const banner = (

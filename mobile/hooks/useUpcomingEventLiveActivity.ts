@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
-import { useTrips } from "@/context/TripsContext";
+import type { useSurfaceTrips } from "./useSurfaceTrips";
+import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { UpcomingEventProps } from "@/widgets/UpcomingEvent";
@@ -19,13 +20,6 @@ const TYPE_ICONS: Record<string, string> = {
   hotel: "building.2",
   flight: "airplane",
 };
-
-import { getDestinationTz, nowInTz, timeToMinutes } from "@/shared/timezones";
-
-function minutesUntilMidnight(tz?: string): number {
-  const { minutes } = nowInTz(tz);
-  return (24 * 60) - minutes;
-}
 
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 2) + "..." : s;
@@ -81,11 +75,11 @@ function eventToProps(ev: TravelEvent): UpcomingEventProps {
   // Location: just the venue name, strip address details after comma
   const shortLocation = (ev.location || "").split(",")[0].trim();
   return {
-    title: truncate(cleaned, 48),
+    title: cleaned,
     shortTitle: summarise(cleaned),
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
-    location: truncate(shortLocation, 28),
+    location: shortLocation,
     icon: TYPE_ICONS[ev.type] || "calendar",
   };
 }
@@ -100,8 +94,8 @@ function safe(fn: () => unknown) {
  * Skips flights (those get their own FlightTracker Live Activity).
  * Automatically advances to the next event as each one's time passes.
  */
-export function useUpcomingEventLiveActivity() {
-  const { trips } = useTrips();
+export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfaceTrips>) {
+  const { trips } = surface;
   const { prefs } = usePreferences();
   const activityRef = useRef<{ eventId: string; activity: any } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,86 +121,29 @@ export function useUpcomingEventLiveActivity() {
     } catch {}
 
     function update() {
-      const currentTrips = tripsRef.current;
-      const todayEvents: TravelEvent[] = [];
-      let tz: string | undefined;
-      const deviceToday = nowInTz(undefined).dateStr;
-
-      for (const trip of currentTrips) {
-        const tripTz = getDestinationTz(trip.destination);
-        const useTripTz = tripTz && deviceToday > trip.start;
-        const { dateStr: todayStr } = nowInTz(useTripTz ? tripTz : undefined);
-
-        for (const ev of trip.events) {
-          if (ev.date !== todayStr) continue;
-          if (ev.type === "flight") continue;
-          const mins = timeToMinutes(ev.time);
-          if (mins < 0) continue;
-          todayEvents.push(ev);
-          if (!tz && useTripTz) tz = tripTz;
-        }
-      }
-
-      const { minutes: now } = nowInTz(tz);
-      todayEvents.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-
-      const upcoming = todayEvents.find(ev => {
-        const mins = timeToMinutes(ev.time);
-        return mins > now - 30 && mins <= now + 60;
-      });
-
-      const nextOutsideWindow = todayEvents.find(ev => timeToMinutes(ev.time) > now + 60);
-
       if (timerRef.current) clearTimeout(timerRef.current);
-
-      if (!upcoming) {
-        if (activityRef.current) {
-          safe(() => activityRef.current!.activity.end("immediate"));
+      const now = Date.now();
+      const selected = surfaceCandidates(tripsRef.current, now, false)[0];
+      if (!selected) {
+        if (activityRef.current) safe(() => activityRef.current!.activity.end("immediate"));
+        activityRef.current = null;
+      } else {
+        const { event, trip, start, end } = selected;
+        const key = `${trip.id}:${event.id}`;
+        const props = { ...eventToProps(event), startTimestamp: start!, endTimestamp: end! };
+        const staleDate = new Date(end!);
+        if (activityRef.current?.eventId === key) {
+          safe(() => activityRef.current!.activity.update(props, staleDate));
+        } else {
+          if (activityRef.current) safe(() => activityRef.current!.activity.end("immediate"));
           activityRef.current = null;
+          try {
+            const activity = UpcomingEvent.start(props, tripDayUrl(trip.id, event.date), staleDate);
+            activityRef.current = { eventId: key, activity };
+          } catch {}
         }
-        const minsToMid = minutesUntilMidnight(tz);
-        const wakeIn = nextOutsideWindow
-          ? Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now)
-          : minsToMid + 1;
-        timerRef.current = setTimeout(update, wakeIn * 60 * 1000);
-        return;
       }
-
-      // Same event still active — just schedule next check, don't restart
-      if (activityRef.current && activityRef.current.eventId === upcoming.id) {
-        const eventMins = timeToMinutes(upcoming.time);
-        const minsUntilPast = eventMins + 30 - now;
-        const minsToMid = minutesUntilMidnight(tz);
-        const candidates = [minsToMid + 1];
-        if (minsUntilPast > 0) candidates.push(minsUntilPast);
-        else candidates.push(1);
-        if (nextOutsideWindow) candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
-        timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
-        return;
-      }
-
-      // Different event — end old, start new
-      if (activityRef.current) {
-        safe(() => activityRef.current!.activity.end("immediate"));
-        activityRef.current = null;
-      }
-
-      const props = eventToProps(upcoming);
-      try {
-        const activity = UpcomingEvent.start(props, `/trip/day?date=${upcoming.date}`);
-        activityRef.current = { eventId: upcoming.id, activity };
-      } catch {
-        activityRef.current = null;
-      }
-
-      const eventMins = timeToMinutes(upcoming.time);
-      const minsUntilPast = eventMins + 30 - now;
-      const minsToMid = minutesUntilMidnight(tz);
-      const candidates = [minsToMid + 1];
-      if (minsUntilPast > 0) candidates.push(minsUntilPast);
-      else candidates.push(1);
-      if (nextOutsideWindow) candidates.push(Math.max(1, timeToMinutes(nextOutsideWindow.time) - 60 - now));
-      timerRef.current = setTimeout(update, Math.max(1, Math.min(...candidates)) * 60 * 1000);
+      timerRef.current = setTimeout(update, 60000);
     }
 
     updateRef.current = update;

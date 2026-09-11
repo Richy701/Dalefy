@@ -14,8 +14,8 @@ export function dateInZone(now: number, timeZone?: string): string {
 }
 
 /** Unknown times stay unknown: a TBD event must never become a noon appointment. */
-export function scheduledMinutes(value: string): number | null {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+export function scheduledMinutes(value?: string | null): number | null {
+  const match = (value ?? "").trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
   if (!match) return null;
   let hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -25,7 +25,7 @@ export function scheduledMinutes(value: string): number | null {
 }
 
 /** Convert a wall-clock itinerary time to an instant, including its date's DST offset. */
-function eventInstant(date: string, minutes: number, timeZone?: string): number | null {
+export function eventInstant(date: string, minutes: number, timeZone?: string): number | null {
   const [year, month, day] = date.split("-").map(Number);
   if (!year || !month || !day) return null;
   if (!timeZone) return new Date(year, month - 1, day, 0, minutes).getTime();

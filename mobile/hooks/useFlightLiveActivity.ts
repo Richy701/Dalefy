@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
-import { useTrips } from "@/context/TripsContext";
+import type { useSurfaceTrips } from "./useSurfaceTrips";
+import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { FlightTrackerProps } from "@/widgets/FlightTracker";
@@ -45,44 +46,6 @@ async function fetchAirportCodes(flightNum: string, date: string): Promise<{ fro
   }
 }
 
-import {
-  IATA_TZ, getDestinationTz, getUtcOffsetMins,
-  todayInTz, tomorrowInTz, yesterdayInTz, timeToMinutes,
-} from "@/shared/timezones";
-
-function getDepAirportCode(ev: TravelEvent): string | null {
-  if (ev.depAirport) return ev.depAirport.toUpperCase();
-  const locRoute = ev.location?.match(/^([A-Z]{3})\s+to\s+/i);
-  if (locRoute) return locRoute[1].toUpperCase();
-  return null;
-}
-
-function depTimeToMs(ev: TravelEvent): number {
-  // timeToMinutes handles both "HH:MM" and "H:MM AM/PM"; the bare regex dropped
-  // the meridiem, so any PM flight parsed ~12h early and the Live Activity never started.
-  const mins = ev.time ? timeToMinutes(ev.time) : -1;
-  if (mins < 0) return new Date(`${ev.date}T23:59:00`).getTime();
-  const h = String(Math.floor(mins / 60)).padStart(2, "0");
-  const m = String(mins % 60).padStart(2, "0");
-  const code = getDepAirportCode(ev);
-  const tz = ev.depTz || (code ? IATA_TZ[code] : undefined);
-  if (!tz) return new Date(`${ev.date}T${h}:${m}:00`).getTime();
-  const offsetMins = getUtcOffsetMins(tz, ev.date);
-  return new Date(`${ev.date}T${h}:${m}:00Z`).getTime() - offsetMins * 60000;
-}
-
-function getFlightProgress(ev: TravelEvent): number {
-  const depMs = depTimeToMs(ev);
-  const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
-  const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
-  if (durMins <= 0) return 0;
-  const arrMs = depMs + durMins * 60000;
-  const now = Date.now();
-  if (now <= depMs) return 0;
-  if (now >= arrMs) return 1;
-  return (now - depMs) / (arrMs - depMs);
-}
-
 function eventToProps(ev: TravelEvent): FlightTrackerProps {
   let from = "";
   let to = "";
@@ -112,8 +75,7 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
   }
 
   // 4. Shorten to airport codes if they look like full names
-  if (from.length > 4) from = from.slice(0, 3).toUpperCase();
-  if (to.length > 4) to = to.slice(0, 3).toUpperCase();
+  // Keep full airport names: inventing a three-letter code gives false guidance.
 
   return {
     flightNum: ev.flightNum || ev.title,
@@ -122,7 +84,7 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
     to: to || "---",
     departTime: ev.time || "",
     arriveTime: ev.endTime || "",
-    status: "Scheduled",
+    status: ev.status || "Scheduled",
     gate: ev.gate || "",
     duration: ev.duration || "",
   };
@@ -139,8 +101,8 @@ function safe(fn: () => unknown) {
   try { Promise.resolve(fn()).catch(() => {}); } catch { /* ignore */ }
 }
 
-export function useFlightLiveActivity() {
-  const { trips } = useTrips();
+export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips>) {
+  const { trips } = surface;
   const { prefs } = usePreferences();
   const activityRef = useRef<LiveActivityRef | null>(null);
   const startingRef = useRef<string | null>(null);
@@ -167,39 +129,9 @@ export function useFlightLiveActivity() {
     } catch {}
 
     function update() {
-      const currentTrips = tripsRef.current;
-      const todayFlights: TravelEvent[] = [];
-      const deviceToday = todayInTz(undefined);
-      for (const trip of currentTrips) {
-        const tz = getDestinationTz(trip.destination);
-        const useTripTz = tz && deviceToday > trip.start;
-        const today = todayInTz(useTripTz ? tz : undefined);
-        const tomorrow = tomorrowInTz(useTripTz ? tz : undefined);
-        const yesterday = yesterdayInTz(useTripTz ? tz : undefined);
-        const deviceYesterday = yesterdayInTz(undefined);
-        for (const ev of trip.events) {
-          if (ev.type !== "flight") continue;
-          if (ev.date === today || ev.date === tomorrow || ev.date === deviceToday
-              || ev.date === yesterday || ev.date === deviceYesterday) {
-            todayFlights.push(ev);
-          }
-        }
-      }
-
       const now = Date.now();
-      let bestFlight: TravelEvent | null = null;
-      for (const ev of todayFlights) {
-        const st = (ev as any).status?.toLowerCase() ?? "";
-        if (st.includes("landed") || st.includes("arrived") || st.includes("cancelled")) continue;
-        const durMatch = ev.duration?.match(/(\d+)h\s*(\d+)?/);
-        const durMins = durMatch ? parseInt(durMatch[1]) * 60 + parseInt(durMatch[2] || "0") : 0;
-        const depMs = depTimeToMs(ev);
-        const arrMs = durMins > 0 ? depMs + durMins * 60000 : depMs + 24 * 3600000;
-        if (now > arrMs) continue;
-        bestFlight = ev;
-        break;
-      }
-
+      const selected = surfaceCandidates(tripsRef.current, now, true)[0];
+      const bestFlight = selected?.event;
       if (!bestFlight) {
         startingRef.current = null;
         if (activityRef.current) {
@@ -209,13 +141,14 @@ export function useFlightLiveActivity() {
         return;
       }
 
-      if (startingRef.current === bestFlight.id) return;
+      const key = `${selected!.trip.id}:${bestFlight.id}`;
+      if (startingRef.current === key) return;
 
       const props = eventToProps(bestFlight);
-      props.progress = getFlightProgress(bestFlight);
+      const staleDate = new Date(selected!.end!);
 
-      if (activityRef.current && activityRef.current.eventId === bestFlight.id) {
-        safe(() => activityRef.current!.activity.update(props));
+      if (activityRef.current && activityRef.current.eventId === key) {
+        safe(() => activityRef.current!.activity.update(props, staleDate));
         return;
       }
 
@@ -224,18 +157,18 @@ export function useFlightLiveActivity() {
         activityRef.current = null;
       }
 
-      startingRef.current = bestFlight.id;
+      startingRef.current = key;
       const flight = bestFlight;
       const doStart = (p: FlightTrackerProps) => {
-        if (startingRef.current !== flight.id) return;
+        if (startingRef.current !== key) return;
         try {
-          const activity = FlightTracker.start(p, `/trip/day?date=${flight.date}`);
-          activityRef.current = { eventId: flight.id, activity };
+          const activity = FlightTracker.start(p, tripDayUrl(selected!.trip.id, flight.date), staleDate);
+          activityRef.current = { eventId: key, activity };
         } catch {}
         startingRef.current = null;
       };
 
-      if (props.from === "---" || props.to === "---") {
+      if (! /^[A-Z]{3}$/.test(props.from) || ! /^[A-Z]{3}$/.test(props.to)) {
         if (flight.flightNum) {
           fetchAirportCodes(flight.flightNum, flight.date).then(codes => {
             if (codes) { props.from = codes.from; props.to = codes.to; }

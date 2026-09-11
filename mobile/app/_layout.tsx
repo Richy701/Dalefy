@@ -53,6 +53,7 @@ try {
   useQuickActionRouting = require("expo-quick-actions/router").useQuickActionRouting;
 } catch { /* not available */ }
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useSurfaceTrips } from "@/hooks/useSurfaceTrips";
 import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useTripReminders } from "@/hooks/useTripReminders";
@@ -241,12 +242,13 @@ function AppStack() {
 }
 
 function DeferredServices() {
-  useWidgetSync();
+  const surfaceTrips = useSurfaceTrips();
+  useWidgetSync(surfaceTrips);
   useFlightAlerts();
   useTripReminders();
   useTripNotifications();
-  useFlightLiveActivity();
-  useUpcomingEventLiveActivity();
+  useFlightLiveActivity(surfaceTrips);
+  useUpcomingEventLiveActivity(surfaceTrips);
 
   useEffect(() => {
     registerForPushNotifications();
