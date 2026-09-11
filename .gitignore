@@ -39,3 +39,6 @@ mobile/.env
 supabase/.temp/
 firebase-debug.log
 screenshot*.png
+
+# Private production release backups
+.release-backups/

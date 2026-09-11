@@ -6,18 +6,15 @@ import { fetchTrips, changeTripMedia, subscribeToTrips } from "@/services/fireba
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/services/firebase";
 
-const CACHE_KEY = "daf-published-trips-cache-v2";
-// Preserve the original cache for recovery. Never delete it during module loading.
+const CACHE_KEY = "daf-published-trips-cache-v3";
+// Only hydrate data fetched through the filtered API after the security cutover.
 async function readCache(): Promise<Trip[] | null> {
-  for (const key of [CACHE_KEY, "daf-trips-cache"]) {
-    const raw = await AsyncStorage.getItem(key);
-    if (!raw) continue;
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as Trip[];
-    } catch { /* Try the older copy if the current cache is damaged. */ }
-  }
-  return null;
+  const raw = await AsyncStorage.getItem(CACHE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as Trip[] : null;
+  } catch { return null; }
 }
 
 export const TRIPS_CTX_VERSION = "v9";
@@ -65,7 +62,9 @@ function save(trips: Trip[]) {
       return safe;
     }),
   }));
-  AsyncStorage.setItem(CACHE_KEY, JSON.stringify(publicTrips)).catch(() => {});
+  AsyncStorage.setItem(CACHE_KEY, JSON.stringify(publicTrips))
+    .then(() => AsyncStorage.multiRemove(["daf-published-trips-cache-v2", "daf-trips-cache"]))
+    .catch(() => {});
 }
 
 export function TripsProvider({ children }: { children: React.ReactNode }) {

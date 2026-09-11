@@ -11,3 +11,5 @@ audit/
 tests/
 scripts/
 firebase.test.json
+
+.release-backups/

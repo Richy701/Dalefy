@@ -10,8 +10,8 @@ import { getDeviceId } from "./deviceId";
 
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
-// Enable only after the API, server identity, and security rules are deployed together.
-const USE_TRIP_API = process.env.EXPO_PUBLIC_TRIP_API_ENABLED === "true";
+// The filtered API is deployed. Only an explicit local override uses the legacy reader.
+const USE_TRIP_API = process.env.EXPO_PUBLIC_TRIP_API_ENABLED !== "false";
 
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;

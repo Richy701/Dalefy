@@ -35,8 +35,8 @@ function service({ api = false, uid = 'account', response, queryError = false } 
       if (name === 'firebase/auth') return {};
       throw Error(name);
     },
-    process: { env: { EXPO_PUBLIC_TRIP_API_ENABLED: String(api) } },
-    fetch: async () => { if (!api) throw Error('Undeployed API must not be called'); return response; },
+    process: { env: api === null ? {} : { EXPO_PUBLIC_TRIP_API_ENABLED: String(api) } },
+    fetch: async () => { if (api === false) throw Error('Undeployed API must not be called'); return response; },
     setTimeout, clearTimeout, AbortController, console,
   });
   return { service: exports, calls };
@@ -70,6 +70,13 @@ test('deployed API can authoritatively report an unavailable trip', async () => 
 test('API rollout uses authenticated account membership only', async () => {
   const response = { status: 200, ok: true, json: async () => ({ trip: { name: 'Published', start: '2026-01-01' } }) };
   const { service: trips, calls } = service({ api: true, response });
+  assert.equal((await trips.fetchTrips()).length, 2);
+  assert.deepEqual(calls, ['uid']);
+});
+
+test('production defaults to the filtered API without an environment flag', async () => {
+  const response = { status: 200, ok: true, json: async () => ({ trip: { name: 'Published', start: '2026-01-01' } }) };
+  const { service: trips, calls } = service({ api: null, response });
   assert.equal((await trips.fetchTrips()).length, 2);
   assert.deepEqual(calls, ['uid']);
 });
