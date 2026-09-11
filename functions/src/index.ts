@@ -1,6 +1,7 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { hasPublishedContentChanged } from "./publishedChange";
 
 initializeApp();
 const db = getFirestore();
@@ -122,9 +123,7 @@ export const onTripUpdated = onDocumentWritten(
 function describeChange(before: TripDoc, after: TripDoc): string | null {
   // Only notify when the published snapshot changes (i.e. organizer hit Publish)
   if (
-    !after.published_snapshot ||
-    JSON.stringify(before.published_snapshot) ===
-      JSON.stringify(after.published_snapshot)
+    !hasPublishedContentChanged(before.published_snapshot, after.published_snapshot)
   ) {
     return null;
   }

@@ -39,12 +39,18 @@ await db.doc('app_config/server_identity').set({ uid: serverUser.uid });
 // Rotate every trip capability, including files no longer referenced by a trip.
 // Re-running repairs stored references by path, even after a partial prior run.
 const tokens = new Map();
-for (const file of files) {
-  const [metadata] = await file.getMetadata();
-  const token = randomUUID();
-  await file.setMetadata({ metadata: { ...metadata.metadata, firebaseStorageDownloadTokens: token } });
-  tokens.set(file.name, token);
+for (let offset = 0; offset < files.length; offset += 10) {
+  const results = await Promise.allSettled(files.slice(offset, offset + 10).map(async file => {
+    const [metadata] = await file.getMetadata();
+    const token = randomUUID();
+    await file.setMetadata({ metadata: { ...metadata.metadata, firebaseStorageDownloadTokens: token } });
+    tokens.set(file.name, token);
+  }));
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure) throw new Error('Token rotation interrupted; keep maintenance active and rerun to repair references.', { cause: failure.reason });
+  if (tokens.size % 100 === 0 || tokens.size === files.length) console.log(`Rotated ${tokens.size}/${files.length} file tokens`);
 }
+
 function rewrite(value) {
   if (typeof value === 'string') {
     return value.replace(/https:\/\/firebasestorage\.googleapis\.com\/[^\s<>"')]+/g, match => {

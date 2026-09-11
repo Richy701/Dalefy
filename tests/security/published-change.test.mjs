@@ -1,0 +1,12 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const exports = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../../functions/src/publishedChange.ts', import.meta.url), 'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,URL});
+const {hasPublishedContentChanged}=exports;
+const snapshot = token => ({events:[{title:'Museum',time:'10:00',documents:[{url:`https://firebasestorage.googleapis.com/v0/b/example/o/trips%2Ftrip%2Ffile?alt=media&token=${token}`}]}]});
+test('file token rotation alone does not notify travellers',()=>assert.equal(hasPublishedContentChanged(snapshot('old'),snapshot('new')),false));
+test('real published event changes still notify travellers',()=>{const next=snapshot('new');next.events[0].time='11:00';assert.equal(hasPublishedContentChanged(snapshot('old'),next),true);});
+test('first publish notifies, removal does not',()=>{assert.equal(hasPublishedContentChanged(undefined,snapshot('new')),true);assert.equal(hasPublishedContentChanged(snapshot('old'),undefined),false);});

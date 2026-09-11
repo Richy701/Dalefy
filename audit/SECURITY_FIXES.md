@@ -1,6 +1,6 @@
 # Trip security fixes — release notes
 
-The first three blockers from `SECOND_OPINION.md` are addressed in code. **These changes are not deployed.** They require a coordinated web/API, Firebase rules, and mobile release.
+The first three blockers from `SECOND_OPINION.md` are addressed. The web/API, Firebase rules, server identity, and file-link migration were deployed on 11 September 2026. The API-enabled iOS client is build 65; its TestFlight submission was queued at cutover. Earlier build 64 uses the old reader and must be replaced.
 
 ## Changed behavior
 
@@ -69,3 +69,17 @@ Recovery removes automatic legacy-cache deletion, avoids saving an empty initial
 This compatibility path is not a replacement for the pending server security rollout. Deploy and verify the API/server identity/migration/rules together before enabling the mobile flag. Gallery mutations still require the new API; this recovery only restores trip reading. No production data migration or rules deployment was performed.
 
 Verification: all five trips reappeared in the running iPhone 17 Pro simulator after an Expo reload, and all five were persisted in its local cache. Six focused recovery regression tests and the mobile TypeScript check passed. Remaining simulator storage was backed up to `/tmp/dalefy-trip-recovery-backup` before edits; it contains private app data and must not be committed.
+
+## Production cutover — 11 September 2026
+
+- Production web/API: `https://dalefy.vercel.app`; the filtered published view was checked against all seven production trips.
+- Private backups of affected Firestore documents, file metadata, and prior rules were taken under `.release-backups/`, excluded from Git and deployment uploads. A fresh document/metadata backup was taken while client writes were paused.
+- Provisioned the dedicated server identity and deployed temporary maintenance rules. Confirmed unauthenticated working-trip and Storage metadata requests were denied before rotating tokens.
+- Rotated 904 file tokens and repaired references in all seven trips. Reset 412 legacy leader records; removed zero memberships. Organisers must reapprove legitimate leaders. No trips required republishing for missing snapshots.
+- Deployed final Firestore/Storage rules and restored authorized writes. Added `roles/firebaserules.firestoreServiceAgent` to the project's Firebase Storage service agent; live upload testing identified this missing cross-service permission.
+- Updated the trip notification function so download-token rotation alone does not notify travellers. Three focused tests and the Functions build passed.
+- Mobile now defaults to the filtered API and uses a new sanitized cache. The old cache is removed only after a new cache write succeeds. Seven recovery/API tests and mobile TypeScript passed; the combined security suite passed 42 tests before the notification tests were added.
+- Build 65 (`af5af51f-cffd-4099-af99-68daba8cd18a`) completed with runtime `1.0.0-security-20260911`. Submission `73d9bdee-fa14-48db-b23f-ce8baf4cc0a2` was queued by Expo. No OTA was sent to older native builds sharing runtime 1.0.0.
+- Earlier historical sections above describe the staged work and simulator recovery before this cutover; the temporary direct-reader compatibility path is no longer the production default.
+
+- Final live verification: **29 checks passed**, covering all seven published trips, private-read denial, old-token revocation, replacement file access, owner editing, unchanged published content after draft edits, joining, leader promotion/demotion, and gallery upload/add/remove/delete. Synthetic test data and Auth accounts were removed successfully. Storage probes use the Firebase SDK’s `Authorization: Firebase` token format.
