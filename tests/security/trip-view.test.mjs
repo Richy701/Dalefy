@@ -143,3 +143,13 @@ test('unavailable trip never falls back to private data or accepts gallery chang
   assert.equal(JSON.stringify(response.data).includes('SECRET'), false);
   assert.deepEqual(writes, []);
 });
+
+
+test('missing or nameless organiser is null, never a truthy empty card', () => {
+  for (const organizer of [undefined, null, {}, { name: '' }, { name: '   ' }, { company: 'Travel company' }]) {
+    const result = publishedTripView('trip', { ...trip, published_snapshot: { ...trip.published_snapshot, organizer } });
+    assert.equal(result.organizer, null);
+  }
+  const result = publishedTripView('trip', { ...trip, published_snapshot: { ...trip.published_snapshot, organizer: { name: 'Alex', secret: 'private' } } });
+  assert.deepEqual(result.organizer, { name: 'Alex' });
+});

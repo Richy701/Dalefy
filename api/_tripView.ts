@@ -62,7 +62,9 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     status: "Published",
     events,
     info,
-    organizer: strings(snap.organizer, ["name", "role", "company", "email", "phone", "avatar"]),
+    organizer: typeof record(snap.organizer).name === "string" && String(record(snap.organizer).name).trim()
+      ? strings(snap.organizer, ["name", "role", "company", "email", "phone", "avatar"])
+      : null,
     documents: documents(snap.documents),
     // Names support the intentional itinerary-personalization picker; never expose emails.
     travelers: list(snap.travelers).map(v => strings(v, ["id", "name", "initials"])),

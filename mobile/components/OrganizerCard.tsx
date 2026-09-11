@@ -14,6 +14,8 @@ interface OrganizerCardProps {
 export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardProps) {
   const s = makeStyles(C);
 
+  if (!organizer?.name?.trim()) return null;
+
   const initials = organizer.name
     .split(" ")
     .slice(0, 2)
