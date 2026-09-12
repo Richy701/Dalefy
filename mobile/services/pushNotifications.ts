@@ -32,12 +32,16 @@ try {
   /* native module not available in Expo Go */
 }
 
-export async function registerForPushNotifications(): Promise<string | null> {
+export async function registerForPushNotifications(
+  { prompt = true }: { prompt?: boolean } = {},
+): Promise<string | null> {
   if (!Notifications || !Device || !Device.isDevice) return null;
 
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
+
+    if (existing !== "granted" && !prompt) return null;
 
     if (existing !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();

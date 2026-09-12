@@ -73,7 +73,7 @@ import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
 import { usePresence } from "@/hooks/usePresence";
 import { STORAGE } from "@/config/storageKeys";
 import { IMAGE_BANK, COVER_IMAGES, getEventImageCategory, generateEventImage } from "@/data/images";
-// html2canvas and jsPDF are lazy-loaded in handleExportPdf to avoid ~100KB on the critical path
+// The PDF builder and jsPDF are lazy-loaded in handleExportPdf to keep them off the critical path
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -396,7 +396,6 @@ export function WorkspacePage() {
   const [renameValue, setRenameValue] = useState("");
   const tripDocInputRef = useRef<HTMLInputElement>(null);
   const tripDocInputRef2 = useRef<HTMLInputElement>(null);
-  const [, setPdfMapUrl] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -837,121 +836,28 @@ export function WorkspacePage() {
   };
 
   const handleExportPdf = async () => {
-    if (!pdfRef.current) return;
     setExporting(true);
-    const origSrcs: { el: HTMLImageElement; src: string }[] = [];
     try {
-      // Generate static map URL and set it so the hidden div renders it
-      const mapUrl = await Promise.race([
-        buildStaticMapUrl(),
-        new Promise<null>(r => setTimeout(() => r(null), 5000)),
+      const { buildItineraryPdf, loadImage } = await import("@/lib/itineraryPdf");
+      const [mapUrl, coverDataUrl] = await Promise.all([
+        Promise.race([buildStaticMapUrl(), new Promise<null>(r => setTimeout(() => r(null), 5000))]),
+        trip.image ? loadImage(trip.image, 16 / 7) : Promise.resolve(null),
       ]);
-      setPdfMapUrl(mapUrl);
-      // Wait a tick for React to render the map image in the hidden div
-      await new Promise(r => setTimeout(r, 500));
-
-      // Pre-convert cross-origin images to data URLs so html2canvas can render them
-      const imgs = pdfRef.current.querySelectorAll("img");
-      await Promise.all(
-        Array.from(imgs).map(async (img) => {
-          const src = img.src;
-          if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
-          try {
-            // Try direct fetch first (works for CORS-enabled sources like Mapbox)
-            // Fall back to proxy for other cross-origin images
-            let resp = await fetch(src, { mode: "cors" }).catch(() => null);
-            if (!resp?.ok) {
-              resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(src)}`).catch(() => null);
-            }
-            if (!resp?.ok) return;
-            const blob = await resp.blob();
-            const dataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            });
-            origSrcs.push({ el: img, src });
-            img.src = dataUrl;
-          } catch { /* keep original src */ }
-        }),
-      );
-
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(pdfRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        imageTimeout: 5000,
+      const mapDataUrl = mapUrl ? await loadImage(mapUrl, 800 / 300) : null;
+      const pdf = await buildItineraryPdf({
+        trip,
+        brand: { name: brand.name, platformName: brand.platformName, accentColor: brand.accentColor },
+        coverDataUrl,
+        mapDataUrl,
+        includeReferences: true,
       });
-      // Restore original image srcs
-      for (const { el, src } of origSrcs) el.src = src;
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // If we have a static map, add it as a dedicated first page
-      if (mapUrl) {
-        try {
-          let mapResp = await fetch(mapUrl, { mode: "cors" }).catch(() => null);
-          if (!mapResp?.ok) mapResp = null;
-          if (mapResp) {
-            const mapBlob = await mapResp.blob();
-            const mapDataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(mapBlob);
-            });
-            // Map centered on the page
-            const mapH = 80;
-            const mapY = (pdfHeight - mapH) / 2 - 20;
-            pdf.addImage(mapDataUrl, "PNG", 10, mapY, pdfWidth - 20, mapH);
-            // Trip name below map
-            pdf.setFontSize(18);
-            pdf.setTextColor(30, 30, 30);
-            pdf.text(trip.name.toUpperCase(), pdfWidth / 2, mapY + mapH + 15, { align: "center" });
-            pdf.setFontSize(9);
-            pdf.setTextColor(120, 120, 120);
-            pdf.text(
-              [trip.destination, `${trip.start} - ${trip.end}`].filter(Boolean).join(" · "),
-              pdfWidth / 2, mapY + mapH + 22, { align: "center" }
-            );
-            // Start itinerary content on page 2
-            pdf.addPage();
-          }
-        } catch { /* skip map page on error */ }
-      }
-
-      const imgWidth = canvas.width;
-      const ratio = pdfWidth / imgWidth;
-      const scaledHeight = canvas.height * ratio;
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, scaledHeight);
-      let heightLeft = scaledHeight - pdfHeight;
-      let position = -pdfHeight;
-      while (heightLeft > 0) {
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-        heightLeft -= pdfHeight;
-        position -= pdfHeight;
-      }
-
-      const filename = `${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`;
-      pdf.save(filename);
-      toast.success("PDF exported successfully");
+      pdf.save(`${trip.name.toLowerCase().replace(/\s+/g, "-")}-itinerary.pdf`);
+      toast.success("PDF exported");
     } catch (err) {
       console.error("PDF export failed:", err);
-      for (const { el, src } of origSrcs) el.src = src;
       toast.error("PDF export failed");
     } finally {
       setExporting(false);
-      setPdfMapUrl(null);
     }
   };
 

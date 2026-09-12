@@ -1,17 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDots, MapPin, Users, Compass, Clock, SpinnerGap, Check, CaretDown, AirplaneTilt, Door, Info, FileText, Paperclip } from "@phosphor-icons/react";
+import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight } from "@phosphor-icons/react";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
-import { tzAbbr, destinationTz, eventTz } from "@/lib/timezone";
+import { tzAbbr, eventTz } from "@/lib/timezone";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { apiFetch, ApiError } from "@/lib/api";
 import type { Trip, TravelEvent } from "@/types";
 import { resolvedBrand } from "@/config/brand";
 import { hexToRgb } from "@/context/BrandContext";
 import { fetchBranding, type OrgBranding } from "@/services/firebaseBranding";
-import { EVENT_ICONS, EVENT_HEX } from "@/config/eventStyles";
 import { sortEvents } from "@/lib/sortEvents";
+import { CategoryDot, CATEGORY_CLASS } from "@/components/ui/category-dot";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+
+type Brand = ReturnType<typeof resolvedBrand>;
 
 function rowToTrip(row: Record<string, unknown>): Trip {
   return {
@@ -28,119 +31,204 @@ function rowToTrip(row: Record<string, unknown>): Trip {
     media: (row.media as Trip["media"]) ?? undefined,
     travelerIds: (row.traveler_ids as string[]) ?? undefined,
     travelers: (row.travelers as Trip["travelers"]) ?? undefined,
+    organizer: (row.organizer as Trip["organizer"]) ?? undefined,
     info: ((row.info as Trip["info"]) ?? [])?.filter(i => !i.leaderOnly),
     documents: (row.documents as Trip["documents"]) ?? undefined,
   };
 }
 
-function EventRow({ ev, tripTz, accent }: { ev: TravelEvent; tripTz?: string; accent?: string | null }) {
-  const [open, setOpen] = useState(false);
-  const Icon = EVENT_ICONS[ev.type] ?? Compass;
-  const color = EVENT_HEX[ev.type] ?? accent ?? "#0bd2b5";
-  const hasDetail = !!(ev.description || ev.notes || ev.image || ev.airline || ev.terminal || ev.arrTerminal || ev.status || ev.flightNum || ev.confNumber || ev.roomType);
+/* ---------- formatting helpers ---------- */
+
+const DAY_MS = 86400000;
+
+function fmtLong(date: string) {
+  return parseTripDate(date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+function fmtShort(date: string) {
+  return parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+function fmtRange(start: string, end: string) {
+  const s = parseTripDate(start);
+  const e = parseTripDate(end);
+  const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+  const sPart = sameMonth
+    ? s.toLocaleDateString("en-GB", { day: "numeric" })
+    : s.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  return `${sPart} - ${e.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`;
+}
+function fmtSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+function isPlaceholderTime(t?: string) {
+  return !t || /^tb[acd]$/i.test(t);
+}
+
+/** Departure and arrival from explicit airport fields, else "X to Y" in the location. */
+function routeOf(ev: TravelEvent): { from: string; to: string } {
+  const parts = ev.location?.split(/\s+to\s+|→/i).map(s => s.trim());
+  return {
+    from: ev.depAirport || parts?.[0] || "",
+    to: ev.arrAirport || parts?.[1] || "",
+  };
+}
+const isCode = (s: string) => /^[A-Z]{3,4}$/.test(s);
+
+/** Trip phase relative to today, for the status line under the title. */
+function tripPhase(start: string, end: string): string {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const s = parseTripDate(start);
+  const e = parseTripDate(end);
+  const untilStart = Math.round((s.getTime() - today.getTime()) / DAY_MS);
+  if (untilStart > 1) return `Departs in ${untilStart} days`;
+  if (untilStart === 1) return "Departs tomorrow";
+  if (untilStart === 0) return "Departs today";
+  if (today.getTime() <= e.getTime() + DAY_MS / 2) return "Trip in progress";
+  return "Trip completed";
+}
+
+/* ---------- sections ---------- */
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">{children}</h2>;
+}
+
+function FlightCard({ ev }: { ev: TravelEvent }) {
+  const { from, to } = routeOf(ev);
+  // Only label a zone the event itself resolves; the trip fallback would mislabel the outbound leg.
+  const depTz = tzAbbr(eventTz(ev, undefined, "dep"), ev.date);
+  const arrTz = tzAbbr(eventTz(ev, undefined, "arr"), ev.endDate || ev.date);
+  const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ") || ev.title;
+  const arrivesNextDay = ev.endDate && ev.endDate !== ev.date;
 
   return (
-    <div
-      className={`transition-colors ${hasDetail ? "cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/2" : ""}`}
-      onClick={() => hasDetail && setOpen(!open)}
-    >
-      <div className="flex items-start gap-3 p-3 sm:p-4">
-        <div
-          className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 border"
-          style={{ backgroundColor: `${color}15`, borderColor: `${color}30` }}
-        >
-          <Icon className="h-4 w-4" style={{ color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground leading-snug">{ev.title}</p>
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
-            {ev.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{ev.time}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "dep"); return tz ? ` ${tzAbbr(tz, ev.date)}` : ""; })() : ""}</span>}
-            {ev.endTime && <span className="text-muted-foreground">-</span>}
-            {ev.endTime && <span>{ev.endTime}{ev.type === "flight" ? (() => { const tz = eventTz(ev, tripTz, "arr"); return tz ? ` ${tzAbbr(tz, ev.endDate || ev.date)}` : ""; })() : ""}</span>}
-            {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate max-w-[200px] sm:max-w-[300px]">{ev.location}</span></span>}
-            {ev.duration && <span>{ev.duration}</span>}
-          </div>
-        </div>
-        {hasDetail && (
-          <CaretDown
-            className={`h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        )}
+    <div className="rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <p className="font-medium text-foreground truncate">{carrier}</p>
+        <p className="text-muted-foreground shrink-0">{fmtShort(ev.date)}</p>
       </div>
 
-      {open && (
-        <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 ml-12 space-y-3">
-          {ev.image && (
-            <img src={ev.image} alt={ev.title} className="w-full h-40 sm:h-48 rounded-xl object-cover" />
-          )}
+      <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="min-w-0">
+          <p className={`font-semibold tracking-tight text-foreground ${isCode(from) ? "text-2xl sm:text-3xl font-mono" : "text-base leading-tight"}`}>{from || "—"}</p>
+          <p className="mt-1 text-sm text-foreground whitespace-nowrap">
+            {isPlaceholderTime(ev.time) ? "" : ev.time}
+            {depTz && !isPlaceholderTime(ev.time) && <span className="ml-1 text-xs text-muted-foreground">{depTz}</span>}
+          </p>
+          {ev.terminal && <p className="text-xs text-muted-foreground">Terminal {ev.terminal.replace(/^T/i, "")}</p>}
+        </div>
 
-          {(ev.airline || ev.flightNum || ev.terminal || ev.arrTerminal || ev.status) && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
-              {ev.airline && <span className="flex items-center gap-1 text-muted-foreground"><AirplaneTilt className="h-3 w-3" />{ev.airline}{ev.flightNum ? ` ${ev.flightNum}` : ""}</span>}
-              {ev.terminal && <span className="flex items-center gap-1 text-muted-foreground"><Door className="h-3 w-3" />Dep T{ev.terminal}</span>}
-              {ev.arrTerminal && <span className="flex items-center gap-1 text-muted-foreground"><Door className="h-3 w-3" />Arr T{ev.arrTerminal}</span>}
-              {ev.status && <span className="flex items-center gap-1 text-muted-foreground"><Info className="h-3 w-3" />{ev.status}</span>}
-            </div>
-          )}
+        <div className="flex flex-col items-center gap-1 px-2 text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <span className="h-px w-6 sm:w-10 bg-border" />
+            <AirplaneTilt className="h-4 w-4 text-cat-flight" weight="fill" />
+            <span className="h-px w-6 sm:w-10 bg-border" />
+          </div>
+          {ev.duration && <p className="text-[11px]">{ev.duration}</p>}
+        </div>
 
-          {(ev.confNumber || ev.roomType) && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
-              {ev.roomType && <span className="text-muted-foreground">{ev.roomType}</span>}
-              {ev.confNumber && <span className="text-muted-foreground font-mono">Ref: {ev.confNumber}</span>}
-            </div>
-          )}
+        <div className="min-w-0 text-right">
+          <p className={`font-semibold tracking-tight text-foreground ${isCode(to) ? "text-2xl sm:text-3xl font-mono" : "text-base leading-tight"}`}>{to || "—"}</p>
+          <p className="mt-1 text-sm text-foreground whitespace-nowrap">
+            {isPlaceholderTime(ev.endTime) ? "" : ev.endTime}
+            {arrTz && !isPlaceholderTime(ev.endTime) && <span className="ml-1 text-xs text-muted-foreground">{arrTz}</span>}
+            {arrivesNextDay && <span className="ml-1 text-xs text-muted-foreground">+1</span>}
+          </p>
+          {ev.arrTerminal && <p className="text-xs text-muted-foreground">Terminal {ev.arrTerminal.replace(/^T/i, "")}</p>}
+        </div>
+      </div>
 
-          {ev.description && (
-            <p className="text-[12px] leading-relaxed text-muted-foreground">{ev.description}</p>
-          )}
-
-          {ev.notes && (
-            <p className="text-[11px] leading-relaxed text-muted-foreground italic">{ev.notes}</p>
-          )}
+      {(ev.gate || ev.aircraft || ev.confNumber || ev.status) && (
+        <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+          {ev.gate && <span>Gate {ev.gate}</span>}
+          {ev.aircraft && <span>{ev.aircraft}</span>}
+          {ev.confNumber && <span>Booking ref <span className="font-mono text-foreground">{ev.confNumber}</span></span>}
+          {ev.status && <span>{ev.status}</span>}
         </div>
       )}
     </div>
   );
 }
 
-function ordinal(n: number) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string }) {
+  const nights = checkoutDate ? Math.max(0, Math.round((parseTripDate(checkoutDate).getTime() - parseTripDate(ev.date).getTime()) / DAY_MS)) : 0;
+  const checkin = ev.checkin || (isPlaceholderTime(ev.time) ? "" : ev.time);
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-semibold tracking-tight text-foreground leading-tight">{ev.title}</p>
+          {ev.location && <p className="mt-0.5 text-sm text-muted-foreground">{ev.location}</p>}
+          {ev.roomType && <p className="mt-2 text-sm text-foreground">{ev.roomType}</p>}
+        </div>
+        {ev.image && (
+          <img src={ev.image} alt="" className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover shrink-0 print:hidden" />
+        )}
+      </div>
+      <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="text-xs text-muted-foreground">Check in</p>
+          <p className="mt-0.5 text-foreground">{fmtShort(ev.date)}{checkin ? ` · ${checkin}` : ""}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Check out</p>
+          <p className="mt-0.5 text-foreground">
+            {checkoutDate ? fmtShort(checkoutDate) : "—"}{ev.checkout ? ` · ${ev.checkout}` : ""}
+          </p>
+        </div>
+      </div>
+      {(nights > 0 || ev.confNumber || ev.status) && (
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+          {nights > 0 && <span>{nights} night{nights !== 1 ? "s" : ""}</span>}
+          {ev.confNumber && <span>Booking ref <span className="font-mono text-foreground">{ev.confNumber}</span></span>}
+          {ev.status && <span>{ev.status}</span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; events: TravelEvent[]; dayIdx: number; tripTz?: string; accent?: string | null }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const d = new Date(date + "T12:00:00");
+function eventMeta(ev: TravelEvent): string {
+  if (ev.type === "flight") {
+    const { from, to } = routeOf(ev);
+    const route = from && to ? `${from} to ${to}` : ev.location;
+    const carrier = [ev.airline, ev.flightNum].filter(Boolean).join(" ");
+    const titled = ev.flightNum && ev.title.includes(ev.flightNum);
+    return [titled ? "" : carrier, route, ev.duration].filter(Boolean).join(" · ");
+  }
+  if (ev.type === "hotel") {
+    return [ev.location, ev.roomType].filter(Boolean).join(" · ");
+  }
+  const until = ev.endTime && !isPlaceholderTime(ev.endTime) ? `until ${ev.endTime}` : "";
+  return [ev.location, ev.duration, until].filter(Boolean).join(" · ");
+}
 
+function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
+  const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
+  const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div>
-      <div className="bg-secondary border border-border rounded-xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-3 w-full text-left cursor-pointer px-4 py-3"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[11px] font-black uppercase tracking-wider text-brand">
-                Day {dayIdx + 1}
-              </span>
-              <span className="w-px h-3.5 bg-slate-300 dark:bg-[#333]" />
-              <span className="text-[13px] font-bold text-foreground">
-                {d.toLocaleDateString("en-GB", { weekday: "long" })} {ordinal(d.getDate())} {d.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-              </span>
-            </div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">
-              {events.length} event{events.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <CaretDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${collapsed ? "-rotate-90" : ""}`} />
-        </button>
-        {!collapsed && (
-          <div className="divide-y divide-slate-100 dark:divide-border border-t border-border">
-            {events.map(ev => (
-              <EventRow key={ev.id} ev={ev} tripTz={tripTz} accent={accent} />
+    <div className="grid grid-cols-[3.75rem_2.25rem_1fr] sm:grid-cols-[4.5rem_2.25rem_1fr] gap-x-2 print:break-inside-avoid">
+      <p className="pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
+      <div className="flex flex-col items-center">
+        <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
+        {!last && <span className="w-px flex-1 bg-border my-1.5" />}
+      </div>
+      <div className={`min-w-0 pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
+        <p className="text-sm font-medium text-foreground leading-snug">
+          {ev.title}
+          {label && ev.type !== "activity" && <span className="ml-2 text-xs font-normal text-muted-foreground">{label}</span>}
+        </p>
+        {eventMeta(ev) && <p className="mt-0.5 text-sm text-muted-foreground">{eventMeta(ev)}</p>}
+        {ev.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80"><Linkify text={ev.description} /></p>}
+        {ev.image && ev.type !== "hotel" && (
+          <img src={ev.image} alt="" className="mt-3 w-full max-w-sm aspect-[16/9] rounded-lg object-cover print:hidden" />
+        )}
+        {ev.documents && ev.documents.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            {ev.documents.map(doc => (
+              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                <Paperclip className="h-3.5 w-3.5" />{doc.name}
+              </a>
             ))}
           </div>
         )}
@@ -149,6 +237,271 @@ function DaySection({ date, events, dayIdx, tripTz, accent }: { date: string; ev
   );
 }
 
+function OverviewCell({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="py-3 sm:py-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+/* ---------- the document ---------- */
+
+export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
+  const [viewAsId, setViewAsId] = useState<string | null>(null);
+  const travelers = trip.travelers ?? [];
+  const viewAsTraveler = viewAsId ? travelers.find(t => t.id === viewAsId) ?? null : null;
+
+  const visibleEvents = useMemo(() => {
+    const sorted = sortEvents(trip.events);
+    if (!viewAsId) return sorted;
+    return sorted.filter(e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId));
+  }, [trip.events, viewAsId]);
+
+  const days = useMemo(() => {
+    const map = new Map<string, TravelEvent[]>();
+    for (const ev of visibleEvents) {
+      if (!map.has(ev.date)) map.set(ev.date, []);
+      map.get(ev.date)!.push(ev);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [visibleEvents]);
+
+  const flights = useMemo(() => visibleEvents.filter(e => e.type === "flight"), [visibleEvents]);
+  const stays = useMemo(() => {
+    const hotels = visibleEvents.filter(e => e.type === "hotel");
+    return hotels.map((h, i) => ({
+      ev: h,
+      checkoutDate: h.endDate || hotels[i + 1]?.date || trip.end,
+    }));
+  }, [visibleEvents, trip.end]);
+
+  const nights = Math.max(0, Math.round((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS));
+  const org = trip.organizer;
+  const dayNumber = (date: string) => Math.round((parseTripDate(date).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS) + 1;
+
+  return (
+    <div
+      className="min-h-screen bg-background text-foreground print:bg-white"
+      style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
+    >
+      <div className="max-w-2xl mx-auto px-5 sm:px-8 pt-6 sm:pt-10 pb-16">
+        {/* Masthead */}
+        <header className="flex items-center justify-between gap-4 pb-6 border-b border-border">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {brand.logoUrl && <img src={brand.logoUrl} alt="" className="h-7 w-7 rounded object-contain" />}
+            <p className="text-sm font-semibold tracking-tight text-foreground truncate">{brand.name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="print:hidden inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-secondary transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            <span className="hidden sm:inline">Print or save PDF</span>
+            <span className="sm:hidden">Print</span>
+          </button>
+        </header>
+
+        {/* Cover */}
+        {trip.image && (
+          <img src={trip.image} alt="" className="mt-8 w-full aspect-[16/7] rounded-xl object-cover bg-secondary print:hidden" />
+        )}
+
+        {/* Title */}
+        <div className="mt-8">
+          <p className="text-sm text-muted-foreground">Travel itinerary</p>
+          <h1 className="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
+          <p className="mt-3 text-base text-muted-foreground">
+            {fmtRange(trip.start, trip.end)}
+            {trip.destination ? ` · ${trip.destination}` : ""}
+          </p>
+        </div>
+
+        {/* Overview */}
+        <div className="mt-8 rounded-xl border border-border bg-card px-5 sm:px-6 py-2 sm:py-5 grid grid-cols-1 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border sm:[&>*]:px-5 sm:[&>*:first-child]:pl-0 sm:[&>*:last-child]:pr-0">
+          <OverviewCell label="Departure" value={fmtShort(trip.start)} />
+          <OverviewCell label="Return" value={fmtShort(trip.end)} />
+          <OverviewCell label="Duration" value={`${nights} night${nights !== 1 ? "s" : ""}`} />
+          <OverviewCell label="Status" value={tripPhase(trip.start, trip.end)} />
+        </div>
+
+        {/* Organiser */}
+        {org?.name && (
+          <div className="mt-4 rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
+            <div className="flex items-center gap-3">
+              {org.avatar ? (
+                <img src={org.avatar} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-brand/15 text-brand flex items-center justify-center text-sm font-semibold shrink-0">
+                  {org.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Your travel organiser</p>
+                <p className="text-sm font-medium text-foreground">{org.name}</p>
+                {(org.role || org.company) && <p className="text-sm text-muted-foreground">{[org.role, org.company].filter(Boolean).join(", ")}</p>}
+              </div>
+            </div>
+            {(org.email || org.phone) && (
+              <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                {org.phone && <a href={`tel:${org.phone}`} className="inline-flex items-center gap-1.5 text-brand hover:underline"><Phone className="h-4 w-4" />{org.phone}</a>}
+                {org.email && <a href={`mailto:${org.email}`} className="inline-flex items-center gap-1.5 text-brand hover:underline"><EnvelopeSimple className="h-4 w-4" />{org.email}</a>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Traveller picker */}
+        {travelers.length > 0 && (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 print:hidden">
+            <p className="text-sm text-muted-foreground">
+              {viewAsTraveler ? `Showing ${visibleEvents.length} of ${trip.events.length} items for ${viewAsTraveler.name}` : "Showing the full group itinerary"}
+            </p>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-secondary transition-colors">
+                {viewAsTraveler ? viewAsTraveler.name : "Everyone"}
+                <CaretDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card border border-border text-foreground rounded-xl shadow-xl p-1 min-w-[220px] max-h-80 overflow-y-auto">
+                <DropdownMenuItem onClick={() => setViewAsId(null)} className="gap-2 p-2 rounded-lg text-sm hover:bg-secondary">
+                  <span className="flex-1">Everyone</span>
+                  {!viewAsId && <Check className="h-4 w-4 text-brand" />}
+                </DropdownMenuItem>
+                <div className="my-1 h-px bg-border" />
+                {travelers.map(t => (
+                  <DropdownMenuItem key={t.id} onClick={() => setViewAsId(t.id)} className="gap-2 p-2 rounded-lg text-sm hover:bg-secondary">
+                    <span className="flex-1">{t.name}</span>
+                    {viewAsId === t.id && <Check className="h-4 w-4 text-brand" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
+        {/* Flights */}
+        {flights.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle>Flights</SectionTitle>
+            <div className="space-y-3">
+              {flights.map(ev => <FlightCard key={ev.id} ev={ev} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Stays */}
+        {stays.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle>Where you're staying</SectionTitle>
+            <div className="space-y-3">
+              {stays.map(({ ev, checkoutDate }) => <StayCard key={ev.id} ev={ev} checkoutDate={checkoutDate} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Day by day */}
+        {days.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle>Day by day</SectionTitle>
+
+            {days.length > 3 && (
+              <div className="print:hidden -mx-5 sm:mx-0 px-5 sm:px-0 mb-6 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none]">
+                {days.map(([date]) => (
+                  <a
+                    key={date}
+                    href={`#day-${dayNumber(date)}`}
+                    className="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <span className="text-muted-foreground">Day {dayNumber(date)}</span>
+                    <span className="mx-1.5 text-border">|</span>
+                    {parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {days.map(([date, events]) => (
+                <div key={date} id={`day-${dayNumber(date)}`} className="scroll-mt-6 print:break-inside-avoid">
+                  <div className="flex items-baseline gap-3 pb-3 mb-4 border-b border-border">
+                    <p className="text-sm font-medium text-muted-foreground tabular-nums">Day {dayNumber(date)}</p>
+                    <h3 className="text-base font-semibold tracking-tight text-foreground">{fmtLong(date)}</h3>
+                  </div>
+                  <div>
+                    {events.map((ev, i) => <TimelineRow key={ev.id} ev={ev} last={i === events.length - 1} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {days.length === 0 && (
+          <div className="mt-10 rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-sm text-muted-foreground">No itinerary items yet.</p>
+          </div>
+        )}
+
+        {/* Good to know */}
+        {trip.info && trip.info.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle>Good to know</SectionTitle>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {trip.info.map(item => (
+                <div key={item.id} className="p-5 print:break-inside-avoid">
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  {item.body && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>}
+                  {item.deadline && <p className="mt-2 text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
+                  {item.actionUrl && (
+                    <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                      {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {item.documents && item.documents.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                      {item.documents.map(doc => (
+                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                          <Paperclip className="h-3.5 w-3.5" />{doc.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Documents */}
+        {trip.documents && trip.documents.length > 0 && (
+          <section className="mt-10">
+            <SectionTitle>Documents</SectionTitle>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {trip.documents.map(doc => (
+                <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 py-3.5 hover:bg-secondary transition-colors">
+                  <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-foreground truncate flex-1">{doc.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{fmtSize(doc.size)}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Footer */}
+        <footer className="mt-14 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <p>Prepared by {brand.name}</p>
+          <p>Powered by {brand.platformName}</p>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- page: loads and hands off ---------- */
+
 export function SharedTripPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -156,10 +509,22 @@ export function SharedTripPage() {
   const [error, setError] = useState("");
   const [errorKind, setErrorKind] = useState<"unavailable" | "unpublished" | "network" | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [viewAsId, setViewAsId] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [orgBranding, setOrgBranding] = useState<OrgBranding | null>(null);
   const brand = resolvedBrand(orgBranding ? { companyName: orgBranding.companyName, logoUrl: orgBranding.logoUrl, accentColor: orgBranding.accentColor } : null);
+
+  // The document is always light. Restore the viewer's theme when leaving.
+  useEffect(() => {
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+    html.classList.remove("dark");
+    html.classList.add("light");
+    return () => {
+      if (wasDark) {
+        html.classList.remove("light");
+        html.classList.add("dark");
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!tripId || !isFirebaseConfigured()) {
@@ -208,41 +573,11 @@ export function SharedTripPage() {
     return () => { cancelled = true; };
   }, [tripId, reloadKey]);
 
-  const tripTz = useMemo(() => destinationTz(trip?.destination), [trip?.destination]);
-  const hasTravelers = (trip?.travelers?.length ?? 0) > 0;
-  const viewAsTraveler = useMemo(() => {
-    if (!viewAsId || !trip?.travelers) return null;
-    return trip.travelers.find(t => t.id === viewAsId) ?? null;
-  }, [viewAsId, trip?.travelers]);
-
-  const filteredEvents = useMemo(() => {
-    if (!trip) return [];
-    if (!viewAsId) return trip.events;
-    return trip.events.filter(
-      e => !e.assignedTo || e.assignedTo.length === 0 || e.assignedTo.includes(viewAsId)
-    );
-  }, [trip, viewAsId]);
-
-  const grouped = useMemo(() => {
-    const sorted = sortEvents(filteredEvents);
-    const map: Record<string, TravelEvent[]> = {};
-    for (const ev of sorted) {
-      if (!map[ev.date]) map[ev.date] = [];
-      map[ev.date].push(ev);
-    }
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredEvents]);
-
-  const nights = useMemo(() => {
-    if (!trip) return 0;
-    return Math.ceil((new Date(trip.end).getTime() - new Date(trip.start).getTime()) / 86400000);
-  }, [trip]);
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <SpinnerGap className="h-8 w-8 text-brand animate-spin" />
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">Loading your itinerary</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
+        <SpinnerGap className="h-6 w-6 text-brand animate-spin" />
+        <p className="text-sm text-muted-foreground">Loading your itinerary</p>
       </div>
     );
   }
@@ -250,212 +585,31 @@ export function SharedTripPage() {
   if (error || !trip) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-5 px-6 text-center">
-        <div className="h-16 w-16 rounded-xl bg-card border border-border flex items-center justify-center">
-          <MapPin className="h-7 w-7 text-muted-foreground" />
+        <div className="h-14 w-14 rounded-xl bg-card border border-border flex items-center justify-center">
+          <MapPin className="h-6 w-6 text-muted-foreground" />
         </div>
         <div className="max-w-sm space-y-2">
-          <p className="text-lg font-bold tracking-tight text-foreground">
+          <p className="text-lg font-semibold tracking-tight text-foreground">
             {errorKind === "unpublished" ? "Almost there" : errorKind === "network" ? "Connection problem" : "Itinerary unavailable"}
           </p>
           <p className="text-sm text-muted-foreground">{error}</p>
           {errorKind === "unpublished" && (
-            <p className="text-xs text-muted-foreground">Check back soon, or contact your travel organiser if you think this is a mistake.</p>
+            <p className="text-sm text-muted-foreground">Check back soon, or contact your travel organiser if you think this is a mistake.</p>
           )}
         </div>
         {errorKind === "network" && (
           <button
             type="button"
             onClick={() => setReloadKey(k => k + 1)}
-            className="h-11 px-6 rounded-xl bg-brand text-black text-xs font-medium hover:opacity-90"
+            className="h-10 px-5 rounded-lg bg-brand text-black text-sm font-medium hover:opacity-90"
           >
             Try again
           </button>
         )}
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">Powered by {brand.platformName}</p>
+        <p className="text-xs text-muted-foreground">Powered by {brand.platformName}</p>
       </div>
     );
   }
 
-  return (
-    <div
-      className="min-h-screen bg-secondary"
-      style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
-    >
-      {/* Hero */}
-      <div className="relative h-[320px] sm:h-[400px] overflow-hidden">
-        <img src={trip.image} alt={trip.name} className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-black/5" />
-        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-          <div className="flex items-center gap-2 mb-2">
-            {brand.logoUrl && (
-              <img src={brand.logoUrl} alt="" className="h-6 w-6 rounded object-contain" />
-            )}
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-white/80">
-              {brand.name} · Itinerary
-            </p>
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-4">
-            {trip.name}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-              <CalendarDots className="h-3 w-3 text-white/70" />
-              <span className="text-xs font-medium text-white/90">
-                {parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                {" - "}
-                {parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                {" · "}{nights} nights
-              </span>
-            </div>
-            {trip.destination && (
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <MapPin className="h-3 w-3 text-white/70" />
-                <span className="text-xs font-medium text-white/90">{trip.destination}</span>
-              </div>
-            )}
-            {trip.attendees && (
-              <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1.5">
-                <Users className="h-3 w-3 text-white/70" />
-                <span className="text-xs font-medium text-white/90">{trip.attendees}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Itinerary */}
-      <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-10">
-        <div className="bg-card border border-border rounded-xl p-4 sm:p-6 shadow-sm">
-          {/* Traveler picker */}
-          {hasTravelers && (
-            <div className="mb-6">
-              <div className="relative">
-                <button
-                  onClick={() => setPickerOpen(!pickerOpen)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                    viewAsId
-                      ? "bg-brand/5 dark:bg-brand/10 border-brand/20"
-                      : "bg-secondary border-border hover:border-brand/30"
-                  }`}
-                >
-                  <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-black uppercase shrink-0 ${
-                    viewAsId ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {viewAsTraveler ? viewAsTraveler.initials : <Users className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {viewAsId ? "Viewing as" : "Who are you?"}
-                    </p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {viewAsTraveler ? viewAsTraveler.name : "Select your name to see your itinerary"}
-                    </p>
-                  </div>
-                  <CaretDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ${pickerOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {pickerOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1.5 bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-20">
-                    <button
-                      onClick={() => { setViewAsId(null); setPickerOpen(false); }}
-                      className={`w-full flex items-center gap-3 p-3 text-left transition-colors cursor-pointer ${
-                        !viewAsId ? "bg-brand/5" : "hover:bg-secondary"
-                      }`}
-                    >
-                      <div className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center text-[9px] font-black text-muted-foreground">ALL</div>
-                      <span className="text-xs font-bold text-foreground/80 uppercase tracking-wider">Everyone - Full itinerary</span>
-                      {!viewAsId && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
-                    </button>
-                    <div className="h-px bg-secondary" />
-                    {trip.travelers!.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => { setViewAsId(t.id); setPickerOpen(false); }}
-                        className={`w-full flex items-center gap-3 p-3 text-left transition-colors cursor-pointer ${
-                          viewAsId === t.id ? "bg-brand/5" : "hover:bg-secondary"
-                        }`}
-                      >
-                        <div className="h-8 w-8 rounded-md bg-brand/10 flex items-center justify-center text-[9px] font-black text-brand uppercase">{t.initials}</div>
-                        <span className="text-xs font-bold text-foreground/80">{t.name}</span>
-                        {viewAsId === t.id && <Check className="h-3.5 w-3.5 text-brand ml-auto" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {viewAsTraveler && (
-                <p className="text-[10px] font-bold text-brand/60 uppercase tracking-wider mt-2 px-1">
-                  Showing {filteredEvents.length} of {trip.events.length} events for {viewAsTraveler.name}
-                </p>
-              )}
-            </div>
-          )}
-
-          {((trip.info && trip.info.length > 0) || (trip.documents && trip.documents.length > 0)) && (
-            <div className="mb-6">
-              {trip.info && trip.info.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="h-3.5 w-3.5 text-brand" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Trip Information</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {trip.info.map(item => (
-                      <div key={item.id} className="rounded-xl p-3.5 bg-secondary border border-border">
-                        <p className="text-xs font-bold text-foreground uppercase tracking-tight mb-1">{item.title}</p>
-                        {item.body && (
-                          <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>
-                        )}
-                        {item.documents && item.documents.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {item.documents.map(doc => (
-                              <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border hover:border-brand/30 transition-colors">
-                                <Paperclip className="h-3 w-3 text-brand shrink-0" />
-                                <span className="text-[10px] font-bold text-foreground truncate flex-1">{doc.name}</span>
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {trip.documents && trip.documents.length > 0 && (
-                <div className={trip.info && trip.info.length > 0 ? "mt-4" : ""}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Paperclip className="h-3.5 w-3.5 text-brand" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-brand">Documents</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {trip.documents.map(doc => (
-                      <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-secondary border border-border hover:border-brand/30 transition-colors">
-                        <Paperclip className="h-3.5 w-3.5 text-brand shrink-0" />
-                        <span className="text-xs font-bold text-foreground truncate flex-1">{doc.name}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium shrink-0">{doc.size < 1024 * 1024 ? `${(doc.size / 1024).toFixed(0)} KB` : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-6">
-            {grouped.map(([date, events], dayIdx) => (
-              <DaySection key={date} date={date} events={events} dayIdx={dayIdx} tripTz={tripTz} accent={brand.accentColor} />
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-10 text-center pb-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-            Powered by {brand.platformName}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  return <SharedTripView trip={trip} brand={brand} />;
 }

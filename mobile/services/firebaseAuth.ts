@@ -15,6 +15,8 @@ import {
   signInAnonymously,
   onAuthStateChanged,
   deleteUser,
+  reauthenticateWithCredential,
+  revokeAccessToken,
   type User as FbUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -280,6 +282,40 @@ export async function signOut(): Promise<void> {
 // ── Account deletion ────────────────────────────────────────────────────────
 
 /**
+ * Apple requires apps to revoke Sign in with Apple tokens when an account is
+ * deleted. Apple only issues a fresh authorization code during a sign-in, so
+ * re-prompt Apple, reauthenticate Firebase with it, then revoke the code.
+ * Returns "cancelled" if the user dismissed Apple's sheet; any other failure
+ * (e.g. revoke not configured in Firebase Console) is non-fatal.
+ */
+async function revokeAppleSignIn(user: FbUser): Promise<"ok" | "cancelled" | "skipped"> {
+  try {
+    const AppleAuthentication = require("expo-apple-authentication") as typeof import("expo-apple-authentication");
+    const Crypto = require("expo-crypto") as typeof import("expo-crypto");
+    if (!(await AppleAuthentication.isAvailableAsync())) return "skipped";
+    const rawNonce = Crypto.randomUUID();
+    const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+    let credential: import("expo-apple-authentication").AppleAuthenticationCredential;
+    try {
+      credential = await AppleAuthentication.signInAsync({ requestedScopes: [], nonce: hashedNonce });
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "ERR_REQUEST_CANCELED") return "cancelled";
+      return "skipped";
+    }
+    if (credential.identityToken) {
+      const provider = new OAuthProvider("apple.com");
+      await reauthenticateWithCredential(user, provider.credential({ idToken: credential.identityToken, rawNonce })).catch(() => {});
+    }
+    if (credential.authorizationCode) {
+      await revokeAccessToken(firebaseAuth(), credential.authorizationCode).catch(() => {});
+    }
+    return "ok";
+  } catch {
+    return "skipped";
+  }
+}
+
+/**
  * Removes everything tied to the signed-in account: trip memberships keyed to
  * the uid, the profile document, the avatar in Storage, then the auth user.
  * Returns an error message, or null on success.
@@ -291,6 +327,11 @@ export async function deleteAccount(): Promise<string | null> {
   if (!user || user.isAnonymous) return "There's no account to delete.";
   const uid = user.uid;
   const db = firebaseDb();
+
+  if (user.providerData.some(p => p.providerId === "apple.com")) {
+    const revoked = await revokeAppleSignIn(user);
+    if (revoked === "cancelled") return "Account deletion cancelled.";
+  }
 
   try {
     const members = await getDocs(query(collection(db, "trip_members"), where("uid", "==", uid)));

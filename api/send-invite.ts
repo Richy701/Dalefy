@@ -4,7 +4,7 @@ import { rateLimit } from "./_rateLimit.js";
 
 const PROJECT_ID = (process.env.VITE_FIREBASE_PROJECT_ID || "dalefy-d87c9").trim();
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.vercel.app").trim().replace(/\/$/, "");
+const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.app").trim().replace(/\/$/, "");
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type Role = "admin" | "agent" | "viewer";

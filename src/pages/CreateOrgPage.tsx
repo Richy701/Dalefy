@@ -40,7 +40,7 @@ export function CreateOrgPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingBrand, setSavingBrand] = useState(false);
 
-  const { createOrg, tablesReady, refreshOrg } = useOrg();
+  const { createOrg, tablesReady, hasOrg, refreshOrg } = useOrg();
   const { refreshBranding } = useBrand();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -54,6 +54,8 @@ export function CreateOrgPage() {
   }, [user?.id]);
 
   if (!tablesReady) return <Navigate to="/dashboard" replace />;
+  // Org finished loading after we landed here (slow connection): go back.
+  if (hasOrg && !createdOrgId) return <Navigate to="/dashboard" replace />;
 
   if (canCreate === false) {
     return (

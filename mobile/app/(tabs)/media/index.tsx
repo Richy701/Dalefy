@@ -69,6 +69,19 @@ const CONTENT_W = SCREEN_W - S.md * 2;
 const HERO_ROW_H = Math.floor(GRID_ITEM_SIZE * 1.6);
 const COL2_WIDE = Math.floor((CONTENT_W - GRID_GAP) * 0.62);
 const COL2_NARROW = CONTENT_W - COL2_WIDE - GRID_GAP;
+
+type OriginRect = { x: number; y: number; width: number; height: number; aspect?: number };
+
+const FALLBACK_ORIGIN: OriginRect = { x: SCREEN_W / 2 - 40, y: SCREEN_H / 2 - 40, width: 80, height: 80 };
+
+function fitRect(aspect?: number): OriginRect {
+  if (!aspect) return { x: 0, y: 0, width: SCREEN_W, height: SCREEN_H };
+  const screenAspect = SCREEN_W / SCREEN_H;
+  const width = aspect > screenAspect ? SCREEN_W : SCREEN_H * aspect;
+  const height = aspect > screenAspect ? SCREEN_W / aspect : SCREEN_H;
+  return { x: (SCREEN_W - width) / 2, y: (SCREEN_H - height) / 2, width, height };
+}
+
 const DUO_H = Math.floor(GRID_ITEM_SIZE * 1.35);
 const FEATURE_H = Math.floor(CONTENT_W * 0.5);
 
@@ -349,10 +362,11 @@ function ZoomableImage({ uri, width, height, onTap }: {
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
-function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
+function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, C }: {
   items: (TripMedia & { tripId: string; tripName: string })[];
   initialIndex: number;
   visible: boolean;
+  origin: OriginRect | null;
   onClose: () => void;
   onDelete: (item: TripMedia & { tripId: string; tripName: string }) => void;
   C: ThemeColors;
@@ -364,21 +378,71 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
 
   const dismissY = useSharedValue(0);
   const bgOpacity = useSharedValue(1);
+  const progress = useSharedValue(1);
+  const heroOpacity = useSharedValue(0);
+  const pagerOpacity = useSharedValue(1);
+  const chrome = useSharedValue(1);
+  const originRect = useSharedValue<OriginRect>(FALLBACK_ORIGIN);
+  const targetRect = useSharedValue<OriginRect>(fitRect());
+  const closingRef = useRef(false);
+
+  const hideHero = useCallback(() => {
+    setTimeout(() => { heroOpacity.value = 0; }, 32);
+  }, []);
 
   useEffect(() => {
     if (visible && initialIndex >= 0) {
       setActiveIndex(initialIndex);
       setChromeVisible(true);
+      closingRef.current = false;
       dismissY.value = 0;
-      bgOpacity.value = 1;
+      originRect.value = origin ?? FALLBACK_ORIGIN;
+      targetRect.value = fitRect(origin?.aspect);
+      progress.value = 0;
+      heroOpacity.value = 1;
+      pagerOpacity.value = 0;
+      bgOpacity.value = 0;
+      chrome.value = 1;
+      bgOpacity.value = withTiming(1, { duration: 260 });
+      progress.value = withSpring(1, { damping: 22, stiffness: 190, mass: 0.8 }, (finished) => {
+        if (finished) {
+          pagerOpacity.value = 1;
+          runOnJS(hideHero)();
+        }
+      });
       setTimeout(() => flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false }), 50);
     }
   }, [visible, initialIndex]);
+
+  useEffect(() => {
+    chrome.value = withTiming(chromeVisible ? 1 : 0, { duration: 200 });
+  }, [chromeVisible]);
 
   const handleDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
   }, [onClose]);
+
+  const animateClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const canReturn = !!origin && activeIndex === initialIndex;
+    chrome.value = withTiming(0, { duration: 120 });
+    if (canReturn) {
+      heroOpacity.value = 1;
+      pagerOpacity.value = 0;
+      bgOpacity.value = withTiming(0, { duration: 260 });
+      dismissY.value = withTiming(0, { duration: 300 });
+      progress.value = withTiming(0, { duration: 300 }, () => runOnJS(handleDismiss)());
+    } else {
+      bgOpacity.value = withTiming(0, { duration: 200 });
+      dismissY.value = withTiming(
+        dismissY.value >= 0 ? SCREEN_H : -SCREEN_H,
+        { duration: 220 },
+        () => runOnJS(handleDismiss)(),
+      );
+    }
+  }, [origin, activeIndex, initialIndex, handleDismiss]);
 
   const swipeToDismiss = Gesture.Pan()
     .minPointers(1)
@@ -392,12 +456,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
     })
     .onEnd((e) => {
       if (Math.abs(e.translationY) > 120 || Math.abs(e.velocityY) > 800) {
-        bgOpacity.value = withTiming(0, { duration: 200 });
-        dismissY.value = withTiming(
-          e.translationY > 0 ? SCREEN_H : -SCREEN_H,
-          { duration: 200 },
-          () => runOnJS(handleDismiss)(),
-        );
+        runOnJS(animateClose)();
       } else {
         dismissY.value = withSpring(0, { damping: 20, stiffness: 200 });
         bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
@@ -405,18 +464,35 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
     });
 
   const dismissStyle = useAnimatedStyle(() => ({
+    opacity: pagerOpacity.value,
     transform: [
       { translateY: dismissY.value },
       { scale: interpolate(Math.abs(dismissY.value), [0, 400], [1, 0.85], Extrapolation.CLAMP) },
     ],
   }));
 
+  const heroStyle = useAnimatedStyle(() => {
+    const o = originRect.value;
+    const t = targetRect.value;
+    const p = progress.value;
+    const dragScale = interpolate(Math.abs(dismissY.value), [0, 400], [1, 0.85], Extrapolation.CLAMP);
+    return {
+      opacity: heroOpacity.value,
+      left: interpolate(p, [0, 1], [o.x, t.x]),
+      top: interpolate(p, [0, 1], [o.y, t.y]),
+      width: interpolate(p, [0, 1], [o.width, t.width]),
+      height: interpolate(p, [0, 1], [o.height, t.height]),
+      borderRadius: interpolate(p, [0, 1], [R.lg, 0]),
+      transform: [{ translateY: dismissY.value * p }, { scale: 1 - (1 - dragScale) * p }],
+    };
+  });
+
   const bgStyle = useAnimatedStyle(() => ({
     backgroundColor: `rgba(0,0,0,${bgOpacity.value})`,
   }));
 
   const chromeOpacity = useAnimatedStyle(() => ({
-    opacity: withTiming(chromeVisible ? 1 : 0, { duration: 200 }),
+    opacity: chrome.value * progress.value,
     pointerEvents: chromeVisible ? "auto" as const : "none" as const,
   }));
 
@@ -438,7 +514,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={animateClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View style={[{ flex: 1 }, bgStyle]}>
           <GestureDetector gesture={swipeToDismiss}>
@@ -461,6 +537,23 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
             </Animated.View>
           </GestureDetector>
 
+          {/* Hero image: flies between the grid tile and full screen */}
+          {items[initialIndex]?.type === "image" && (
+            <Animated.View pointerEvents="none" style={[{ position: "absolute", overflow: "hidden", backgroundColor: C.card, zIndex: 5 }, heroStyle]}>
+              <ExpoImage
+                source={{ uri: items[initialIndex].url }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                onLoad={(e) => {
+                  if (!origin?.aspect && e?.source?.width && e?.source?.height) {
+                    targetRect.value = fitRect(e.source.width / e.source.height);
+                  }
+                }}
+              />
+            </Animated.View>
+          )}
+
           {/* Top chrome */}
           <Animated.View style={[{
             position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
@@ -471,7 +564,7 @@ function MediaViewer({ items, initialIndex, visible, onClose, onDelete, C }: {
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <Pressable
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onClose(); }}
+                  onPress={animateClose}
                   hitSlop={12}
                   accessibilityRole="button"
                   accessibilityLabel="Close"
@@ -588,12 +681,21 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
   height: number;
   isLast: boolean;
   remaining: number;
-  onPress: () => void;
+  onPress: (origin: OriginRect | null) => void;
   onDelete: () => void;
   C: ThemeColors;
   index?: number;
 }) {
   const isLarge = width > GRID_ITEM_SIZE + 1;
+  const tileRef = useRef<View>(null);
+  const aspectRef = useRef<number | undefined>(undefined);
+  const open = () => {
+    const node = tileRef.current;
+    if (!node) { onPress(null); return; }
+    node.measureInWindow((x, y, w, h) => {
+      onPress(w > 0 && h > 0 ? { x, y, width: w, height: h, aspect: aspectRef.current } : null);
+    });
+  };
   return (
     <ContextMenu
       actions={[
@@ -602,13 +704,14 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
         { title: "Delete", systemIcon: "trash", destructive: true },
       ]}
       onPress={(e: any) => {
-        if (e.nativeEvent.index === 0) onPress();
+        if (e.nativeEvent.index === 0) open();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
         else if (e.nativeEvent.index === 2) onDelete();
       }}
     >
     <Pressable
-      onPress={() => { Haptics.selectionAsync(); onPress(); }}
+      ref={tileRef}
+      onPress={() => { Haptics.selectionAsync(); open(); }}
       accessibilityRole="button"
       accessibilityLabel={item.name}
       style={({ pressed }) => ({
@@ -621,7 +724,13 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
       })}
     >
       {item.type === "image" ? (
-        <CachedImage uri={item.url} style={{ width: "100%", height: "100%" }} />
+        <CachedImage
+          uri={item.url}
+          style={{ width: "100%", height: "100%" }}
+          onLoad={(e) => {
+            if (e?.source?.width && e?.source?.height) aspectRef.current = e.source.width / e.source.height;
+          }}
+        />
       ) : (
         <View style={{ width: "100%", height: "100%", backgroundColor: C.tealDim, alignItems: "center", justifyContent: "center" }}>
           <View style={{
@@ -702,6 +811,7 @@ export default function MediaScreen() {
   const [mediaFilter, setMediaFilter] = useState<"all" | "image" | "video">("all");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(-1);
+  const [viewerOrigin, setViewerOrigin] = useState<OriginRect | null>(null);
 
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   /** Pending uploads — persisted to AsyncStorage so they survive refresh + restart */
@@ -877,7 +987,7 @@ export default function MediaScreen() {
         height={h}
         isLast={isLastItem && row.remaining > 0}
         remaining={isLastItem ? row.remaining : 0}
-        onPress={() => setViewerIndex(allItemsIndex.get(m.id) ?? -1)}
+        onPress={(origin) => { setViewerOrigin(origin); setViewerIndex(allItemsIndex.get(m.id) ?? -1); }}
         onDelete={() => handleDelete({ ...m, tripId: row.tripId })}
         C={C}
         index={idx}
@@ -1169,6 +1279,7 @@ export default function MediaScreen() {
         items={allItems}
         initialIndex={viewerIndex}
         visible={viewerIndex >= 0}
+        origin={viewerOrigin}
         onClose={() => setViewerIndex(-1)}
         onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
         C={C}

@@ -19,7 +19,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 
 Your live itinerary is available on the web and in the {{brandName}} app.
 
-Click 'View Itinerary' below to open it in your browser, or enter the Trip PIN in the {{brandName}} app on your phone. Please let me know if you have any issues viewing it.
+Open it with the button below, or enter the trip PIN in the Dalefy app on your phone. Please let me know if you have any trouble viewing it.
 
 Have a great trip!`,
   },
@@ -38,7 +38,7 @@ Please make sure you have:
 • Travel insurance details
 • Copies of your booking confirmations
 
-Your full itinerary is available via the link below. If you have any questions or need to make changes, please don't hesitate to reach out.
+Your full itinerary is one tap away below. If you have any questions or need to make changes, please don't hesitate to reach out.
 
 Looking forward to a great trip!`,
   },
@@ -60,7 +60,7 @@ If you have any questions about what's appropriate, please don't hesitate to ask
     subject: "Updated Itinerary: {{tripName}}",
     body: `Your itinerary for {{tripName}} has been updated with some changes.
 
-Please review the latest version via the link below to see what's new. Key changes have been highlighted in the itinerary.
+Please review the latest version below to see what's new.
 
 If you have any questions about the updates, please get in touch.`,
   },

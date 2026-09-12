@@ -95,6 +95,7 @@ try {
   const Mapbox = require("@rnmapbox/maps").default;
   const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
   if (token) Mapbox.setAccessToken(token);
+  Mapbox.setTelemetryEnabled(false);
 } catch { /* native module not available in Expo Go */ }
 
 function AppStack() {
@@ -253,9 +254,10 @@ function DeferredServices() {
   useFlightLiveActivity(surfaceTrips);
   useUpcomingEventLiveActivity(surfaceTrips);
 
+  const hasTrips = surfaceTrips.trips.length > 0;
   useEffect(() => {
-    registerForPushNotifications();
-  }, []);
+    registerForPushNotifications({ prompt: hasTrips });
+  }, [hasTrips]);
 
   useEffect(() => {
     let Upd: typeof import("expo-updates") | null = null;

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>About Dalefy</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Dalefy is a trip companion app. Travel organisers build itineraries in a shared workspace, and travellers follow their trip live on their phone." />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #F7F7F9; --card: #FFFFFF; --raised: #F1F1F4; --border: #E4E4E9;
+        --text: #17181C; --muted: #6B6E78; --accent: #0bd2b5; --accent-text: #0A8F7C;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0E0E10; --card: #17181C; --raised: #202127; --border: #26272E;
+          --text: #F4F4F6; --muted: #9A9DA8; --accent-text: #0bd2b5;
+        }
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+        padding: 48px 20px 64px;
+      }
+      main { max-width: 640px; margin: 0 auto; }
+      .brand { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; margin-bottom: 28px; }
+      .brand svg { width: 16px; height: 16px; }
+      h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 6px; }
+      .lede { color: var(--muted); font-size: 16px; line-height: 1.5; margin-bottom: 32px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; }
+      .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+      .card p, .card li { color: var(--muted); font-size: 15px; line-height: 1.6; }
+      .card ul { padding-left: 20px; margin-top: 6px; }
+      .card li + li { margin-top: 4px; }
+      .card p + p, .card ul + p { margin-top: 10px; }
+      a { color: var(--accent-text); text-decoration: none; font-weight: 500; }
+      a:hover { text-decoration: underline; }
+      .cta { display: inline-block; margin-top: 4px; background: var(--accent); color: #0E0E10; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600; }
+      .cta:hover { text-decoration: none; opacity: 0.9; }
+      .links { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 32px; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 4.5C5 3.67 5.67 3 6.5 3H15.5C22.4 3 28 8.82 28 16C28 23.18 22.4 29 15.5 29H6.5C5.67 29 5 28.33 5 27.5V4.5ZM11 9.5L22.5 16L11 22.5L13.5 16L11 9.5Z"/></svg> Dalefy</div>
+      <h1>Trips, planned and followed in one place</h1>
+      <p class="lede">Dalefy is a trip companion app. Travel organisers build itineraries in a shared workspace, and travellers follow their trip live on their phone.</p>
+
+      <section class="card">
+        <h2>For travel organisers</h2>
+        <p>Dalefy is the workspace where a travel team plans a trip end to end.</p>
+        <ul>
+          <li>Build day-by-day itineraries with flights, stays, transfers and events.</li>
+          <li>Import bookings and confirmations, with flight details checked automatically.</li>
+          <li>Manage travellers, documents and compliance for each trip.</li>
+          <li>Publish the finished itinerary to travellers with your own branding.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>For travellers</h2>
+        <p>Travellers use the Dalefy mobile app to follow the trip their organiser planned.</p>
+        <ul>
+          <li>See the full itinerary, updated live if plans change.</li>
+          <li>Get flight status and reminders for what's next.</li>
+          <li>Keep trip documents, maps and the shared photo gallery in one place.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Signing in</h2>
+        <p>Dalefy is used by travel organisations and their clients. Access to the organiser workspace is by invitation from your team admin. Travellers join a trip from the link or code their organiser sends them.</p>
+        <p>Sign in with Google or with your email address. We only use your Google account to confirm who you are. See the <a href="/privacy.html">privacy policy</a> for what we store.</p>
+        <p><a class="cta" href="/#/login">Sign in to Dalefy</a></p>
+      </section>
+
+      <nav class="links">
+        <a href="/support.html">Help &amp; support</a>
+        <a href="/privacy.html">Privacy policy</a>
+        <a href="/terms.html">Terms of service</a>
+      </nav>
+    </main>
+  </body>
+</html>

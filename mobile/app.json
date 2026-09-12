@@ -15,6 +15,18 @@
         "NSSupportsLiveActivities": true,
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Dalefy uses your location to show nearby trip activities and provide directions."
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1",
+              "1C8F.1"
+            ]
+          }
+        ]
       }
     },
     "android": {

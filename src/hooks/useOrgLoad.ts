@@ -60,9 +60,7 @@ export function useOrgLoad() {
           query(collection(db, "org_members"), where("user_id", "==", user!.id)),
         );
 
-        if (mounted) setTablesReady(true);
-
-        if (membershipsSnap.empty) { clear(); return; }
+        if (membershipsSnap.empty) { if (mounted) setTablesReady(true); clear(); return; }
 
         // Spreading DocumentData loses its fields, so name the shape we read.
         const memberships = membershipsSnap.docs.map(d => ({
@@ -95,6 +93,9 @@ export function useOrgLoad() {
         setOrgs(allOrgs);
 
         const current = allOrgs.find(o => o.id === membership.organization_id);
+        // Only now do we know whether the user has an org; flagging ready any earlier
+        // lets the route guard's timeout misread "still loading" as "no org".
+        setTablesReady(true);
         if (!current) { clear(); return; }
         setCurrentOrg(current);
         setOrgRole(membership.role as OrgRole);

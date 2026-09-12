@@ -18,6 +18,7 @@ interface Props {
   blurhash?: string | null;
   contentPosition?: { top?: string; left?: string };
   blurRadius?: number;
+  onLoad?: (event: any) => void;
 }
 
 export function CachedImage({
@@ -29,6 +30,7 @@ export function CachedImage({
   blurhash,
   contentPosition,
   blurRadius,
+  onLoad,
 }: Props) {
   const [retries, setRetries] = useState(0);
   const maxRetries = 3;
@@ -79,6 +81,7 @@ export function CachedImage({
         contentPosition={contentPosition}
         accessible={accessible}
         accessibilityLabel={accessibilityLabel}
+        onLoad={onLoad}
         onError={handleError}
       />
     );

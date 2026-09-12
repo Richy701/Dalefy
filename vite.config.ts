@@ -85,8 +85,8 @@ function apiRoutesPlugin(env: Record<string, string>) {
           res.end(JSON.stringify(data))
         }
         try {
-          if (p === "/api/trip") {
-            for (const key of ["VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD"]) {
+          if (p === "/api/trip" || p === "/api/send-itinerary") {
+            for (const key of ["VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "VITE_APP_URL"]) {
               if (env[key]) process.env[key] = env[key]
             }
             let body = ""
@@ -97,7 +97,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
             let parsed: unknown
             try { parsed = body ? JSON.parse(body) : undefined }
             catch { send(400, { error: "Invalid JSON" }); return }
-            const { default: handler } = await server.ssrLoadModule("/api/trip.ts")
+            const { default: handler } = await server.ssrLoadModule(`${p}.ts`)
             const response = {
               setHeader: (name: string, value: string) => res.setHeader(name, value),
               status: (code: number) => { res.statusCode = code; return response },
