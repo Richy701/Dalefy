@@ -65,39 +65,39 @@ function groupNotifications(notifs: Notification[]): Section[] {
 
 /* ── Icon config by notification type ── */
 
-function getNotifIcon(n: { type: string; message: string }, C: ThemeColors) {
+function getNotifIcon(n: { type: string; message: string }) {
   const msg = n.message.toLowerCase();
 
   if (n.type === "warning" || msg.includes("cancelled") || msg.includes("delayed"))
-    return { Icon: Warning, color: C.red, bg: C.redDim };
+    return Warning;
   if (n.type === "landed" || msg.includes("landed"))
-    return { Icon: AirplaneLanding, color: C.flight, bg: `${C.flight}18` };
+    return AirplaneLanding;
   if (n.type === "boarding" || msg.includes("boarding"))
-    return { Icon: AirplaneTakeoff, color: C.flight, bg: `${C.flight}18` };
+    return AirplaneTakeoff;
   if (n.type === "flight" || msg.includes("flight") || msg.includes("gate") || msg.includes("terminal"))
-    return { Icon: AirplaneTilt, color: C.flight, bg: `${C.flight}18` };
+    return AirplaneTilt;
   if (n.type === "hotel" || msg.includes("hotel") || msg.includes("check-in"))
-    return { Icon: Bed, color: C.hotel, bg: `${C.hotel}18` };
+    return Bed;
   if (n.type === "dining" || msg.includes("dining") || msg.includes("restaurant"))
-    return { Icon: ForkKnife, color: C.dining, bg: `${C.dining}18` };
+    return ForkKnife;
   if (n.type === "transfer" || msg.includes("transfer") || msg.includes("pickup"))
-    return { Icon: Car, color: C.transfer, bg: `${C.transfer}18` };
+    return Car;
   if (n.type === "activity")
-    return { Icon: CalendarDots, color: C.activity, bg: C.amberDim };
+    return CalendarDots;
   if (n.type === "success")
-    return { Icon: CheckCircle, color: C.green, bg: C.greenDim };
+    return CheckCircle;
   if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart"))
-    return { Icon: AirplaneTilt, color: C.flight, bg: `${C.flight}18` };
-  return { Icon: Bell, color: C.teal, bg: `${C.teal}18` };
+    return AirplaneTilt;
+  return Bell;
 }
 
 /* ── Main sheet ── */
 
 export function NotificationSheet({ visible, onClose }: Props) {
-  const { C, isDark } = useTheme();
+  const { C } = useTheme();
   const router = useRouter();
   const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearAll } = useNotifications();
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C), [C]);
   const haptic = useHaptic();
   const sections = useMemo(() => groupNotifications(notifications), [notifications]);
 
@@ -121,54 +121,30 @@ export function NotificationSheet({ visible, onClose }: Props) {
         {/* Native drag indicator */}
         <DragHandle />
 
-        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerSide}>
-            {unreadCount > 0 && (
-              <Pressable
-                onPress={() => { haptic.light(); markAllRead(); }}
-                style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Mark all read"
-              >
-                <Text style={styles.readAllLabel}>Mark all read</Text>
-              </Pressable>
-            )}
-            {notifications.length > 0 && unreadCount === 0 && (
-              <Pressable
-                onPress={() => { haptic.light(); clearAll(); }}
-                style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Clear all"
-              >
-                <Text style={styles.readAllLabel}>Clear</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <Text style={styles.headerTitle}>Notifications</Text>
-
-          <View style={[styles.headerSide, { justifyContent: "flex-end" }]}>
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <Text style={styles.doneText}>Done</Text>
-            </Pressable>
-          </View>
+          <Text accessibilityRole="header" style={styles.headerTitle}>Notifications</Text>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Close notifications"
+          >
+            <Text style={styles.doneText}>Done</Text>
+          </Pressable>
         </View>
-
-        {/* Count subtitle */}
         {notifications.length > 0 && (
           <View style={styles.countRow}>
             <Text style={styles.countText}>
-              {unreadCount > 0 ? `${unreadCount} unread` : "All read"}
+              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
             </Text>
+            <Pressable
+              onPress={() => { haptic.light(); unreadCount > 0 ? markAllRead() : clearAll(); }}
+              style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={unreadCount > 0 ? "Mark all read" : "Clear all notifications"}
+            >
+              <Text style={styles.readAllLabel}>{unreadCount > 0 ? "Mark all read" : "Clear all"}</Text>
+            </Pressable>
           </View>
         )}
 
@@ -196,7 +172,6 @@ export function NotificationSheet({ visible, onClose }: Props) {
               <NotificationRow
                 notification={item}
                 C={C}
-                isDark={isDark}
                 styles={styles}
                 onPress={() => { haptic.light(); handleNavigate(item); }}
                 onMarkRead={() => { haptic.light(); markRead(item.id); }}
@@ -218,16 +193,15 @@ export function NotificationSheet({ visible, onClose }: Props) {
 interface RowProps {
   notification: Notification;
   C: ThemeColors;
-  isDark: boolean;
   styles: ReturnType<typeof makeStyles>;
   onPress: () => void;
   onMarkRead: () => void;
   onRemove: () => void;
 }
 
-function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRead, onRemove }: RowProps) {
+function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
   const swipeRef = useRef<Swipeable>(null);
-  const { Icon, color, bg } = getNotifIcon(n, C);
+  const Icon = getNotifIcon(n);
   const navigable = n.tripId != null;
 
   const actionWidth = n.read ? 56 : 112;
@@ -256,7 +230,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
         </Pressable>
       </View>
     );
-  }, [n.read, C, isDark, styles, onMarkRead, onRemove, actionWidth]);
+  }, [n.read, C, styles, onMarkRead, onRemove, actionWidth]);
 
   const contextActions = [
     ...(!n.read ? [{ title: "Mark read", systemIcon: "checkmark.circle" }] : []),
@@ -292,34 +266,29 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
             accessibilityLabel={n.detail ? `${n.message}. ${n.detail}` : n.message}
             style={({ pressed }) => [
               styles.item,
-              !n.read && styles.itemUnread,
               pressed && styles.itemPressed,
             ]}
           >
             <View style={styles.itemRow}>
-              {/* Left color accent bar for unread */}
-
-              {/* Type icon */}
-              <View style={[styles.iconWrap, { backgroundColor: bg }]}>
-                <Icon size={18} color={color} weight="fill" />
+              <View style={styles.iconWrap}>
+                <Icon size={22} color={Icon === Warning ? C.redText : C.textSecondary} weight="regular" />
               </View>
 
               <View style={styles.itemContent}>
                 <View style={styles.itemTitleRow}>
                   <Text
                     style={[styles.itemMessage, n.read && styles.itemMessageRead]}
-                    numberOfLines={1}
+                    numberOfLines={3}
                   >
                     {n.message}
                   </Text>
-                  {!n.read && <View style={styles.unreadDot} />}
-                  {n.time ? (
-                    <Text style={styles.itemTime}>{n.time}</Text>
-                  ) : null}
                 </View>
-                <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={2}>
-                  {n.detail}
-                </Text>
+                {!!n.detail && (
+                  <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={3}>
+                    {n.detail}
+                  </Text>
+                )}
+                {!!n.time && <Text style={styles.itemTime}>{n.time}</Text>}
               </View>
 
               {navigable && (
@@ -335,7 +304,7 @@ function NotificationRow({ notification: n, C, isDark, styles, onPress, onMarkRe
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg, overflow: "hidden" as const },
 
@@ -344,31 +313,27 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: S.md,
-      paddingVertical: S.xs,
-    },
-    headerSide: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 2,
-      minWidth: 44,
+      paddingHorizontal: S.lg,
+      paddingTop: S.md,
+      paddingBottom: S.xs,
     },
     headerTitle: {
-      fontSize: T.lg,
+      fontSize: T["3xl"],
       fontWeight: T.bold,
       color: C.textPrimary,
-      letterSpacing: -0.2,
-      textAlign: "center",
+      letterSpacing: -0.7,
       flex: 1,
     },
     headerTextBtn: {
-      paddingVertical: S["2xs"],
-      paddingHorizontal: S["2xs"],
+      minHeight: 44,
+      minWidth: 44,
+      justifyContent: "center",
+      alignItems: "flex-end",
     },
     readAllLabel: {
-      fontSize: T.xs,
+      fontSize: 14,
       fontWeight: T.medium,
-      color: C.textSecondary,
+      color: C.textPrimary,
     },
     doneText: {
       fontSize: T.base,
@@ -378,75 +343,72 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // Count subtitle
     countRow: {
-      paddingHorizontal: S.md,
-      paddingBottom: S.sm,
+      paddingHorizontal: S.lg,
+      paddingBottom: S.xs,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
     countText: {
-      fontSize: T.xs,
-      fontWeight: T.medium,
-      color: C.textTertiary,
+      fontSize: 14,
+      fontWeight: T.regular,
+      color: C.textSecondary,
     },
 
     // Section headers
     sectionHeader: {
-      paddingHorizontal: S.md,
+      paddingHorizontal: 0,
       paddingTop: S.md,
       paddingBottom: S.xs2,
       backgroundColor: C.bg,
     },
 
     // List
-    list: { paddingHorizontal: S.md, paddingBottom: S["2xl"] },
+    list: { paddingHorizontal: S.lg, paddingBottom: S["2xl"] },
 
     // Swipe container
     swipeContainer: {
-      borderRadius: R.lg,
       overflow: "hidden" as const,
-      marginBottom: S.xs2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: C.border,
     },
 
     // Opaque base
     itemOpaqueBase: {
-      backgroundColor: C.card,
-      borderRadius: R.lg,
+      backgroundColor: C.bg,
       overflow: "hidden" as const,
     },
 
     // Notification item
     item: {
       position: "relative" as const,
-      paddingLeft: S.md,
-      paddingRight: S.sm,
-      paddingVertical: S.sm,
-    },
-    itemUnread: {
-      backgroundColor: isDark ? `${C.teal}14` : `${C.teal}18`,
+      paddingHorizontal: 0,
+      paddingVertical: S.md,
     },
     itemPressed: {
       backgroundColor: C.elevated,
     },
-    unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.teal, marginRight: 6 },
     itemRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       gap: S.sm,
     },
     iconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: R.full,
+      width: 28,
+      height: 28,
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
-    itemContent: { flex: 1, minWidth: 0, gap: 3 },
+    itemContent: { flex: 1, minWidth: 0, gap: 5 },
     itemTitleRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       gap: S.xs,
     },
     itemMessage: {
-      fontSize: T.sm + 1,
+      fontSize: T.base,
+      lineHeight: 21,
       fontWeight: T.semibold,
       color: C.textPrimary,
       flex: 1,
@@ -456,15 +418,16 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       color: C.textSecondary,
     },
     itemDetail: {
-      fontSize: T.xs,
+      fontSize: 14,
       color: C.textSecondary,
-      lineHeight: 17,
+      lineHeight: 20,
     },
     itemDetailRead: {
       color: C.textTertiary,
     },
     itemTime: {
-      fontSize: T["2xs"],
+      marginTop: 3,
+      fontSize: 12,
       fontWeight: T.medium,
       color: C.textTertiary,
     },

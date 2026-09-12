@@ -46,7 +46,6 @@ import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constant
 import type { Trip, TravelEvent } from "@/shared/types";
 import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 
-const ON_RED = "#fff";
 const HERO_H = 300;
 
 let CameraView: any = null;
@@ -480,7 +479,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
           >
             <Bell size={18} color={barIcon} weight="fill" />
             {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
+              <View pointerEvents="none" accessible={false} style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </Text>
@@ -785,15 +784,15 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
       flex: 1, flexDirection: "row", alignItems: "center", gap: S["2xs"],
     },
     unreadBadge: {
-      position: "absolute", top: 8, right: 6,
+      position: "absolute", top: -4, right: -4,
       minWidth: 18, height: 18, borderRadius: 9,
-      backgroundColor: C.red,
-      borderWidth: 1.5, borderColor: C.card,
+      backgroundColor: C.textPrimary,
+      borderWidth: 2, borderColor: C.card,
       alignItems: "center", justifyContent: "center",
       paddingHorizontal: 3,
     },
     unreadBadgeText: {
-      fontSize: T["2xs"], fontWeight: "700", color: ON_RED,
+      fontSize: T["2xs"], fontWeight: "700", color: C.bg,
       lineHeight: 12,
     },
     codeSheet: {
