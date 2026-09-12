@@ -838,15 +838,16 @@ export function WorkspacePage() {
   const handleExportPdf = async () => {
     setExporting(true);
     try {
-      const { buildItineraryPdf, loadImage } = await import("@/lib/itineraryPdf");
-      const [mapUrl, coverDataUrl] = await Promise.all([
+      const { buildItineraryPdf, loadImage, loadLogo } = await import("@/lib/itineraryPdf");
+      const [mapUrl, coverDataUrl, logo] = await Promise.all([
         Promise.race([buildStaticMapUrl(), new Promise<null>(r => setTimeout(() => r(null), 5000))]),
         trip.image ? loadImage(trip.image, 16 / 7) : Promise.resolve(null),
+        brand.logoUrl ? loadLogo(brand.logoUrl) : Promise.resolve(null),
       ]);
       const mapDataUrl = mapUrl ? await loadImage(mapUrl, 800 / 300) : null;
       const pdf = await buildItineraryPdf({
         trip,
-        brand: { name: brand.name, platformName: brand.platformName, accentColor: brand.accentColor },
+        brand: { name: brand.name, platformName: brand.platformName, accentColor: brand.accentColor, logo },
         coverDataUrl,
         mapDataUrl,
         includeReferences: true,

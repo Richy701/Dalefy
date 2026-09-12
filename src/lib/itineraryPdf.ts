@@ -13,6 +13,8 @@ export interface PdfBrand {
   name: string;
   platformName: string;
   accentColor?: string | null;
+  /** Organiser logo as a PNG data URL plus its width/height ratio, from `loadLogo`. */
+  logo?: { dataUrl: string; ratio: number } | null;
 }
 
 export interface ItineraryPdfOptions {
@@ -26,12 +28,15 @@ export interface ItineraryPdfOptions {
   includeReferences?: boolean;
 }
 
+/** Phosphor AirplaneTilt (fill weight), rotated to point right, rasterised for jsPDF. */
+const PLANE_PNG =
+  "data:image/png;base64,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";
+
 /* ---------- palette (light document) ---------- */
 const INK: [number, number, number] = [24, 24, 27];
 const MUTED: [number, number, number] = [107, 114, 128];
 const LINE: [number, number, number] = [229, 231, 235];
 const PANEL: [number, number, number] = [247, 247, 249];
-const CATEGORY = { flight: [47, 128, 237] as [number, number, number] };
 const CATEGORY_LABEL: Record<TravelEvent["type"], string> = {
   flight: "Flight", hotel: "Stay", dining: "Meal", activity: "Activity", transfer: "Transfer",
 };
@@ -155,16 +160,9 @@ class Doc {
     this.pdf.setLineWidth(0.25);
     this.pdf.roundedRect(x, y, w, h, 2, 2, "FD");
   }
-  /** Small top-down plane silhouette pointing right, centred on (x, y). Vector, so no font tricks. */
-  plane(x: number, y: number, scale = 1) {
-    const pts: Array<[number, number]> = [
-      [-2.8, -0.9], [-2.2, -0.9], [-1.6, -0.3], [-0.4, -0.3], [0.2, -2.2], [0.9, -2.2], [0.5, -0.3], [1.9, -0.3],
-      [2.8, 0], [1.9, 0.3], [0.5, 0.3], [0.9, 2.2], [0.2, 2.2], [-0.4, 0.3], [-1.6, 0.3], [-2.2, 0.9], [-2.8, 0.9], [-2.4, 0],
-    ];
-    const segs: Array<[number, number]> = [];
-    for (let i = 1; i < pts.length; i++) segs.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
-    this.pdf.setFillColor(...CATEGORY.flight);
-    this.pdf.lines(segs, x + pts[0][0] * scale, y + pts[0][1] * scale, [scale, scale], "F", true);
+  /** Plane icon centred on (x, y), from the same icon set the app uses. */
+  plane(x: number, y: number, size = 5) {
+    this.pdf.addImage(PLANE_PNG, "PNG", x - size / 2, y - size / 2, size, size);
   }
   /** Timeline marker: one quiet ring for every row, so the column reads as a timeline rather than a legend. */
   marker(x: number, y: number) {
@@ -183,9 +181,22 @@ class Doc {
     this.y = TOP;
     this.runningHeader();
   }
+  /** Draw the logo with its top-left at (x, y) and the given height; returns the width used, 0 if there is no logo. */
+  logo(x: number, y: number, height: number): number {
+    const logo = this.brand.logo;
+    if (!logo) return 0;
+    const w = Math.min(height * logo.ratio, 60);
+    try {
+      this.pdf.addImage(logo.dataUrl, "PNG", x, y, w, w / logo.ratio);
+      return w;
+    } catch {
+      return 0;
+    }
+  }
   runningHeader() {
-    this.text(this.trip.name, MARGIN, 13, { size: 8, color: MUTED });
-    this.text(this.brand.name, PAGE_W - MARGIN, 13, { size: 8, color: MUTED, align: "right" });
+    const used = this.logo(MARGIN, 8.5, 5);
+    this.text(this.trip.name, MARGIN + (used ? used + 3 : 0), 12.5, { size: 8, color: MUTED });
+    this.text(this.brand.name, PAGE_W - MARGIN, 12.5, { size: 8, color: MUTED, align: "right" });
     this.rule(16);
   }
   footers() {
@@ -208,12 +219,14 @@ class Doc {
 /* ---------- sections ---------- */
 
 function cover(d: Doc, pdf: JsPdfType, trip: Trip, brand: PdfBrand, coverDataUrl?: string | null, mapDataUrl?: string | null) {
-  // Masthead
-  d.text(brand.name, MARGIN, 18, { size: 10.5, weight: "bold" });
+  // Masthead: the logo when there is one, otherwise the organiser's name
+  const logoW = d.logo(MARGIN, 11, 10);
+  // A square mark gets the name beside it; a wordmark already carries the name.
+  if (!logoW || (brand.logo && brand.logo.ratio < 2)) d.text(brand.name, MARGIN + (logoW ? logoW + 3 : 0), 18, { size: 10.5, weight: "bold" });
   d.text("Travel itinerary", PAGE_W - MARGIN, 18, { size: 8.5, color: MUTED, align: "right" });
   const accent = hexToRgb(brand.accentColor);
-  d.rule(22, MARGIN, PAGE_W - MARGIN, accent ?? LINE);
-  d.y = 30;
+  d.rule(25, MARGIN, PAGE_W - MARGIN, accent ?? LINE);
+  d.y = 33;
 
   // Cover photo, 16:7
   if (coverDataUrl) {
@@ -340,7 +353,7 @@ function flights(d: Doc, evs: TravelEvent[], includeRefs: boolean) {
     const lineY = y0 + 4.5;
     d.rule(lineY, mid - 24, mid - 5);
     d.rule(lineY, mid + 5, mid + 24);
-    d.plane(mid, lineY, 0.9);
+    d.plane(mid, lineY, 5.5);
     if (ev.duration) d.text(ev.duration, mid, lineY + 6.5, { size: 7.5, color: MUTED, align: "center" });
 
     let bottom = y0 + bodyH + 2;
@@ -556,6 +569,38 @@ export async function loadImage(src: string, ratio?: number, maxWidth = 1600): P
       if (!ctx) return null;
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL("image/jpeg", 0.86);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch the organiser logo as a PNG data URL (transparency kept) with its aspect ratio. Browser only. */
+export async function loadLogo(src: string): Promise<{ dataUrl: string; ratio: number } | null> {
+  if (!src) return null;
+  try {
+    let resp = await fetch(src, { mode: "cors" }).catch(() => null);
+    if (!resp?.ok) resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(src)}`).catch(() => null);
+    if (!resp?.ok) return null;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = url;
+      });
+      const scale = Math.min(1, 800 / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return { dataUrl: canvas.toDataURL("image/png"), ratio: canvas.width / canvas.height };
     } finally {
       URL.revokeObjectURL(url);
     }
