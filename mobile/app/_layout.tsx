@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
-import { Appearance, Platform, View, AppState } from "react-native";
+import { Appearance, Platform, View, AppState, InteractionManager } from "react-native";
 import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -143,8 +143,11 @@ function AppStack() {
   const [settled, setSettled] = useState(false);
   useEffect(() => {
     if (!ready) return;
-    const t = setTimeout(() => setSettled(true), 500);
-    return () => clearTimeout(t);
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const task = InteractionManager.runAfterInteractions(() => {
+      t = setTimeout(() => setSettled(true), 1500);
+    });
+    return () => { task.cancel(); if (t) clearTimeout(t); };
   }, [ready]);
   const pendingTripNav = useRef<string | null>(null);
 

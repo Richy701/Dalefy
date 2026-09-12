@@ -1178,7 +1178,7 @@ export default function HomeScreen() {
             )}
 
             {/* ── Itinerary ── */}
-            <FadeIn delay={60}>
+            <FadeIn delay={0}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>Itinerary</Text>
@@ -1221,7 +1221,7 @@ export default function HomeScreen() {
             </FadeIn>
 
             {/* ── Photos ── */}
-            <FadeIn delay={120}>
+            <FadeIn delay={0}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>Photos</Text>
@@ -1274,7 +1274,7 @@ export default function HomeScreen() {
 
         {/* ── Other trips ── */}
         {ready && otherTrips.length > 0 && (
-          <FadeIn delay={180}>
+          <FadeIn delay={80}>
             <View style={styles.section}>
               <Text style={styles.groupHeader}>Trips</Text>
               <View style={styles.listCard}>

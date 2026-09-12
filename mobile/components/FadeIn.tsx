@@ -4,10 +4,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
-  withSpring,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 
-const SPRING = { damping: 20, stiffness: 120, mass: 0.8 };
+const TIMING = { duration: 250, easing: Easing.out(Easing.cubic) };
 
 interface FadeInProps {
   /** Stagger delay in ms (e.g. index * 80) */
@@ -26,7 +27,7 @@ export function FadeIn({ delay = 0, slideUp = 18, style, children }: FadeInProps
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = withDelay(delay, withSpring(1, SPRING));
+    progress.value = withDelay(delay, withTiming(1, TIMING));
   }, [delay, progress]);
 
   const animStyle = useAnimatedStyle(() => ({
