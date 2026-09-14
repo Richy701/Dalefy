@@ -47,8 +47,9 @@ export function CachedImage({
     }
   };
 
-  // Bust expo-image disk cache on retry by appending a param
-  const resolvedUri = retries > 0 ? `${uri}${uri.includes("?") ? "&" : "?"}_r=${retries}` : uri;
+  // Retry the plain URL first so a copy already on disk still shows offline;
+  // only bust the expo-image disk cache on the final attempt.
+  const resolvedUri = retries >= maxRetries ? `${uri}${uri.includes("?") ? "&" : "?"}_r=${retries}` : uri;
 
   if (!uri || failed) {
     if (ExpoImage) {

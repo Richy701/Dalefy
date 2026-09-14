@@ -60,6 +60,8 @@ export interface TripMedia {
   type: "image" | "video";
   name: string;
   url: string;
+  /** Small preview generated on upload; grids use it and fall back to url */
+  thumbUrl?: string;
   size: number;
   uploadedAt: string;
   uploadedBy?: string;

@@ -725,7 +725,7 @@ const GridItem = React.memo(function GridItem({ item, width, height, isLast, rem
     >
       {item.type === "image" ? (
         <CachedImage
-          uri={item.url}
+          uri={item.thumbUrl ?? item.url}
           style={{ width: "100%", height: "100%" }}
           onLoad={(e) => {
             if (e?.source?.width && e?.source?.height) aspectRef.current = e.source.width / e.source.height;

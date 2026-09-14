@@ -69,7 +69,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     // Names support the intentional itinerary-personalization picker; never expose emails.
     travelers: list(snap.travelers).map(v => strings(v, ["id", "name", "initials"])),
     media: member ? list(trip.media).map(v => ({
-      ...strings(v, ["id", "type", "name", "url", "uploadedAt", "uploadedBy", "uploaderId"]),
+      ...strings(v, ["id", "type", "name", "url", "thumbUrl", "uploadedAt", "uploadedBy", "uploaderId"]),
       size: typeof record(v).size === "number" ? record(v).size : 0,
     })) : [],
   };
@@ -102,8 +102,9 @@ export function mergeTravelerMedia(current: unknown, additions: unknown, removal
     // Retries cannot change someone else's existing metadata.
     if (existing.some(v => v.id === item.id)) continue;
     if (storageMediaOwner(item.url, tripId, bucket) !== uid) throw new Error("Upload must belong to your account and this trip");
+    if (item.thumbUrl !== undefined && storageMediaOwner(item.thumbUrl, tripId, bucket) !== uid) throw new Error("Upload must belong to your account and this trip");
     if (typeof item.size !== "number" || item.size < 0 || item.size > 25 * 1024 * 1024) throw new Error("Invalid upload size");
-    result.push({ ...strings(item, ["id", "type", "name", "url", "uploadedBy"]), size: item.size, uploaderId: uid, uploadedAt: new Date().toISOString() });
+    result.push({ ...strings(item, ["id", "type", "name", "url", "thumbUrl", "uploadedBy"]), size: item.size, uploaderId: uid, uploadedAt: new Date().toISOString() });
   }
   if (result.length > 1000) throw new Error("Trip media limit reached");
   return result;

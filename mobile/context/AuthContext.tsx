@@ -77,25 +77,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const unsub = onAuthStateChange(async (fbUser) => {
       if (fbUser && !fbUser.isAnonymous) {
+        // Unblock the UI with what we already know; the profile read may be slow or offline.
+        const displayName = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Traveler";
+        const fallback: MobileUser = cachedRef.current?.id === fbUser.uid ? cachedRef.current : {
+          id: fbUser.uid,
+          name: displayName,
+          email: fbUser.email ?? "",
+          avatar: fbUser.photoURL ?? "",
+          initials: displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(""),
+        };
+        setUser(fallback);
+        setIsAnonymous(false);
+        cachedRef.current = fallback;
+        setIsLoading(false);
         const profile = await fetchProfile(fbUser.uid);
-        if (profile) {
+        if (profile && cachedRef.current?.id === fbUser.uid) {
           setUser(profile);
-          setIsAnonymous(false);
           cachedRef.current = profile;
           await AsyncStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(profile)).catch(() => {});
-        } else {
-          const displayName = fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Traveler";
-          const fallback: MobileUser = {
-            id: fbUser.uid,
-            name: displayName,
-            email: fbUser.email ?? "",
-            avatar: fbUser.photoURL ?? "",
-            initials: displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(""),
-          };
-          setUser(fallback);
-          setIsAnonymous(false);
-          cachedRef.current = fallback;
         }
+        return;
       } else if (cachedRef.current) {
         setUser(cachedRef.current);
         setIsAnonymous(false);

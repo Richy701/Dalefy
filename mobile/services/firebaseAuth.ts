@@ -376,7 +376,11 @@ export async function fetchProfile(uid: string): Promise<MobileUser | null> {
   if (!isFirebaseConfigured()) return null;
 
   try {
-    const snap = await getDoc(doc(firebaseDb(), "profiles", uid));
+    // Never let a profile read stall app boot on a slow or absent connection.
+    const snap = await Promise.race([
+      getDoc(doc(firebaseDb(), "profiles", uid)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Profile fetch timed out")), 4000)),
+    ]);
     if (!snap.exists()) return null;
     const d = snap.data();
     return {

@@ -1251,7 +1251,7 @@ export default function HomeScreen() {
                           accessibilityLabel={firstName ? `Photo by ${firstName}` : "Trip photo"}
                           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                         >
-                          <CachedImage uri={photo.url} style={styles.latestPhoto} />
+                          <CachedImage uri={photo.thumbUrl ?? photo.url} style={styles.latestPhoto} />
                           {firstName ? (
                             <View style={styles.photoCaption}>
                               <Avatar size={16} initials={initial} />

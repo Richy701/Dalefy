@@ -144,22 +144,37 @@ export async function fetchMemberRole(tripId: string): Promise<TripMemberRole> {
   return "traveler";
 }
 
-/** Subscribe to role changes for this device on a specific trip */
+/**
+ * Subscribe to role changes for the current account on a specific trip.
+ * The server grants leader access from the account membership, so watch that
+ * first and fall back to the legacy device membership. Listener errors never
+ * downgrade the role: the last known value stays until a document says otherwise.
+ */
 export function subscribeToMemberRole(
   tripId: string,
   onChange: (role: TripMemberRole) => void,
 ): Unsubscribe {
-  let unsub: Unsubscribe = () => {};
+  let cancelled = false;
+  let accountUnsub: Unsubscribe = () => {};
+  let deviceUnsub: Unsubscribe = () => {};
+  const roleOf = (data: Record<string, unknown>) => (data.role as TripMemberRole) || "traveler";
   getDeviceId().then(deviceId => {
-    unsub = onSnapshot(doc(firebaseDb(), TRIP_MEMBERS, `${deviceId}_${tripId}`), (snap) => {
-      if (snap.exists()) {
-        onChange((snap.data().role as TripMemberRole) || "traveler");
-      } else {
-        onChange("traveler");
-      }
-    }, () => { onChange("traveler"); });
+    if (cancelled) return;
+    const watchDevice = () => {
+      deviceUnsub();
+      deviceUnsub = onSnapshot(doc(firebaseDb(), TRIP_MEMBERS, `${deviceId}_${tripId}`), (snap) => {
+        if (!cancelled) onChange(snap.exists() ? roleOf(snap.data()) : "traveler");
+      }, () => { /* keep last known role */ });
+    };
+    const uid = firebaseAuth().currentUser?.uid;
+    if (!uid) { watchDevice(); return; }
+    accountUnsub = onSnapshot(doc(firebaseDb(), TRIP_MEMBERS, `${uid}_${tripId}`), (snap) => {
+      if (cancelled) return;
+      if (snap.exists()) { deviceUnsub(); deviceUnsub = () => {}; onChange(roleOf(snap.data())); }
+      else watchDevice();
+    }, () => { /* keep last known role */ });
   });
-  return () => unsub();
+  return () => { cancelled = true; accountUnsub(); deviceUnsub(); };
 }
 
 // ── Trip Members ────────────────────────────────────────────────────────────

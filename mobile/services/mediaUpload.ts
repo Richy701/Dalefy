@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firebaseStorage, waitForAuth, firebaseAuth } from "./firebase";
 import * as ImageManipulator from "expo-image-manipulator";
+import { Image } from "react-native";
 import type { TripMedia } from "@/shared/types";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB — must match storage.rules
@@ -15,8 +16,30 @@ function isHeic(uri: string, mimeType: string): boolean {
   return HEIC_EXTS.some(ext => lower.endsWith(ext) || lower.includes(ext + "?"));
 }
 
-/** Convert HEIC/HEIF to JPEG so browsers can display it */
+const MAX_IMAGE_EDGE = 2048;
+const THUMB_EDGE = 600;
+
+/** Bound the longest edge so the image never exceeds `edge` pixels. */
+async function resizeToFit(uri: string, edge: number, compress: number): Promise<string> {
+  const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) =>
+    Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), reject));
+  const resize = width >= height ? { width: Math.min(width, edge) } : { height: Math.min(height, edge) };
+  const result = await ImageManipulator.manipulateAsync(uri, [{ resize }], {
+    compress,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  return result.uri;
+}
+
+/** Convert HEIC/HEIF to JPEG and cap the size so phone originals upload and display quickly. */
 async function ensureWebCompatible(uri: string, mimeType: string): Promise<{ uri: string; contentType: string }> {
+  if (mimeType.startsWith("image/") && mimeType !== "image/gif") {
+    try {
+      return { uri: await resizeToFit(uri, MAX_IMAGE_EDGE, 0.85), contentType: "image/jpeg" };
+    } catch {
+      // Fall through to the original bytes if the image cannot be decoded here.
+    }
+  }
   if (isHeic(uri, mimeType)) {
     const result = await ImageManipulator.manipulateAsync(uri, [], {
       compress: 0.85,
@@ -61,13 +84,14 @@ function uriToBlob(uri: string): Promise<Blob> {
 
 /**
  * Uploads a single media file to Firebase Storage under trips/{tripId}/media/.
- * Returns the download URL on success, or null on failure.
+ * Images also get a small thumbnail next to the original for gallery grids.
+ * Returns the download URLs on success, or null on failure.
  */
 export async function uploadMediaFile(
   localUri: string,
   tripId: string,
   mediaId: string,
-): Promise<string | null> {
+): Promise<{ url: string; thumbUrl?: string } | null> {
   try {
     await waitForAuth();
     const uid = firebaseAuth().currentUser?.uid;
@@ -112,7 +136,19 @@ export async function uploadMediaFile(
 
     const url = await getDownloadURL(storageRef);
     console.log("[MediaUpload] Uploaded:", storagePath);
-    return url;
+
+    let thumbUrl: string | undefined;
+    if (contentType.startsWith("image/")) {
+      try {
+        const thumbBlob = await uriToBlob(await resizeToFit(uploadUri, THUMB_EDGE, 0.7));
+        const thumbRef = ref(firebaseStorage(), `trips/${tripId}/media/${uid}/${mediaId}_thumb.jpg`);
+        await uploadBytes(thumbRef, thumbBlob, { contentType: "image/jpeg" });
+        thumbUrl = await getDownloadURL(thumbRef);
+      } catch (err) {
+        console.warn("[MediaUpload] Thumbnail skipped:", err);
+      }
+    }
+    return { url, thumbUrl };
   } catch (err) {
     console.warn("[MediaUpload] Upload failed:", err);
     return null;
@@ -136,8 +172,8 @@ export async function uploadTripMedia(
     if (item.url.includes("firebasestorage")) {
       results.push(item);
     } else {
-      const url = await uploadMediaFile(item.url, tripId, item.id);
-      results.push(url ? { ...item, url } : item);
+      const uploaded = await uploadMediaFile(item.url, tripId, item.id);
+      results.push(uploaded ? { ...item, url: uploaded.url, thumbUrl: uploaded.thumbUrl } : item);
     }
     onProgress?.(i + 1, total);
   }
