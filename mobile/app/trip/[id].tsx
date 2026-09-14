@@ -278,16 +278,16 @@ export default function TripScreen() {
         scrollEventThrottle={16}
       >
         {/* Carry the photo's colours below the heading before fading to the page. */}
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 240 }} pointerEvents="none">
-          <CachedImage uri={trip.image} blurRadius={60} style={StyleSheet.absoluteFill} transition={0} />
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 600 }} pointerEvents="none">
+          <CachedImage uri={trip.image} blurRadius={90} style={StyleSheet.absoluteFill} transition={0} />
           <LinearGradient
-            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.6)", "rgba(0,0,0,0.6)"]}
-            locations={[0, 0.45, 1]}
+            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.25)"]}
+            locations={[0, 0.4, 1]}
             style={StyleSheet.absoluteFill}
           />
           <LinearGradient
-            colors={[`${C.bg}00`, `${C.bg}00`, `${C.bg}66`, C.bg]}
-            locations={[0, HERO_H / (HERO_H + 240), 0.83, 1]}
+            colors={[`${C.bg}00`, `${C.bg}00`, `${C.bg}1a`, `${C.bg}66`, `${C.bg}b3`, `${C.bg}eb`, C.bg]}
+            locations={[0, 0.4, 0.52, 0.68, 0.82, 0.94, 1]}
             style={StyleSheet.absoluteFill}
           />
         </View>
@@ -297,7 +297,7 @@ export default function TripScreen() {
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
             <MaskedView
               style={StyleSheet.absoluteFill}
-              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.45, 1]} style={{ flex: 1 }} />}
+              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.6, 1]} style={{ flex: 1 }} />}
             >
               <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
                 {Platform.OS === "ios" && Link.AppleZoomTarget ? (
@@ -309,7 +309,7 @@ export default function TripScreen() {
                 )}
               </Animated.View>
               <LinearGradient
-                colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.6)"]}
+                colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.25)"]}
                 locations={[0, 0.25, 0.55, 1]}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
