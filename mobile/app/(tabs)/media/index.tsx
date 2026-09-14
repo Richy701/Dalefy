@@ -398,11 +398,25 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
     setTimeout(() => { heroOpacity.value = 0; }, 32);
   }, []);
 
+  const openStartedRef = useRef(false);
+  const startOpen = useCallback(() => {
+    if (openStartedRef.current) return;
+    openStartedRef.current = true;
+    bgOpacity.value = withTiming(1, { duration: 260 });
+    progress.value = withSpring(1, { damping: 22, stiffness: 190, mass: 0.8 }, (finished) => {
+      if (finished) {
+        pagerOpacity.value = 1;
+        runOnJS(hideHero)();
+      }
+    });
+  }, [hideHero]);
+
   useEffect(() => {
     if (visible && initialIndex >= 0) {
       setActiveIndex(initialIndex);
       setChromeVisible(true);
       closingRef.current = false;
+      openStartedRef.current = false;
       dismissY.value = 0;
       originRect.value = origin ?? FALLBACK_ORIGIN;
       targetRect.value = fitRect(origin?.aspect);
@@ -411,14 +425,12 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
       pagerOpacity.value = 0;
       bgOpacity.value = 0;
       chrome.value = 1;
-      bgOpacity.value = withTiming(1, { duration: 260 });
-      progress.value = withSpring(1, { damping: 22, stiffness: 190, mass: 0.8 }, (finished) => {
-        if (finished) {
-          pagerOpacity.value = 1;
-          runOnJS(hideHero)();
-        }
-      });
+      // iOS takes a few frames to present the modal; starting the spring before
+      // then plays its first frames off-screen and the fly-in looks like a jump.
+      // Modal onShow starts it, this is only a fallback if onShow never fires.
+      const fallback = setTimeout(startOpen, 400);
       setTimeout(() => flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false }), 50);
+      return () => clearTimeout(fallback);
     }
   }, [visible, initialIndex]);
 
@@ -452,7 +464,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
     }
   }, [origin, activeIndex, initialIndex, handleDismiss]);
 
-  const swipeToDismiss = Gesture.Pan()
+  const swipeToDismiss = useMemo(() => Gesture.Pan()
     .minPointers(1)
     .activeOffsetY([-20, 20])
     .failOffsetX([-10, 10])
@@ -469,7 +481,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
         dismissY.value = withSpring(0, { damping: 20, stiffness: 200 });
         bgOpacity.value = withSpring(1, { damping: 20, stiffness: 200 });
       }
-    });
+    }), [animateClose]);
 
   const dismissStyle = useAnimatedStyle(() => ({
     opacity: pagerOpacity.value,
@@ -522,7 +534,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   const current = items[activeIndex] ?? items[0];
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={animateClose}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onShow={startOpen} onRequestClose={animateClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View style={[{ flex: 1 }, bgStyle]}>
           <GestureDetector gesture={swipeToDismiss}>
@@ -552,9 +564,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
           {items[initialIndex]?.type === "image" && (
             <Animated.View pointerEvents="none" style={[{ position: "absolute", overflow: "hidden", backgroundColor: C.card, zIndex: 5 }, heroStyle]}>
               <ExpoImage
-                source={{ uri: items[initialIndex].url }}
-                placeholder={items[initialIndex].thumbUrl ? { uri: items[initialIndex].thumbUrl } : undefined}
-                placeholderContentFit="cover"
+                source={{ uri: items[initialIndex].thumbUrl ?? items[initialIndex].url }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 cachePolicy="memory-disk"
