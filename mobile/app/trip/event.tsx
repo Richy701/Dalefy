@@ -1,3 +1,4 @@
+import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
   View, Text, Pressable, Linking,
@@ -453,18 +454,19 @@ export default function EventDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: showActionBar ? 80 + insets.bottom : insets.bottom + 24, backgroundColor: C.bg }}
       >
+        {(ev.image || trip.image) ? <PhotoWash uri={ev.image || trip.image} heroHeight={EV_HERO_H + insets.top} /> : null}
         {/* Hero: the event's photo, or the trip's, with the essentials on it */}
         <View style={[styles.heroWrap, { height: EV_HERO_H + insets.top }]}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            {ev.image ? (
-              <CachedImage uri={ev.image} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
-            ) : trip.image ? (
-              <CachedImage uri={trip.image} blurRadius={18} style={StyleSheet.absoluteFill} accessible={false} />
-            ) : (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
-            )}
-            <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-            <LinearGradient colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.85)"]} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <PhotoBlend>
+              {ev.image ? (
+                <CachedImage uri={ev.image} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
+              ) : trip.image ? (
+                <CachedImage uri={trip.image} blurRadius={18} style={StyleSheet.absoluteFill} accessible={false} />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
+              )}
+            </PhotoBlend>
           </Animated.View>
           <View style={styles.heroBody}>
             <View style={styles.heroTypeRow}>
@@ -827,6 +829,7 @@ function FlightDetailScreen({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >
+          {!hasMap && trip?.image ? <PhotoWash uri={trip.image} heroHeight={HERO_H + insets.top} /> : null}
           {/* Hero: the route on a map, or the trip's photo when we don't know both airports */}
           <Animated.View style={[fs.hero, { height: HERO_H + insets.top }, stretchStyle]}>
             {hasMap && mapFrom && mapTo ? (
@@ -842,12 +845,12 @@ function FlightDetailScreen({
                 isDark={isDark}
               />
             ) : trip?.image ? (
-              <CachedImage uri={trip.image} blurRadius={20} style={StyleSheet.absoluteFill} accessible={false} />
+              <PhotoBlend><CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} /></PhotoBlend>
             ) : (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
             )}
-            <LinearGradient colors={[isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-            <LinearGradient colors={[`${C.bg}00`, C.bg]} locations={[0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            {(hasMap || !trip?.image) && <><LinearGradient colors={[isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <LinearGradient colors={[`${C.bg}00`, C.bg]} locations={[0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" /></>}
           </Animated.View>
 
           <View style={fs.body}>
@@ -1019,7 +1022,7 @@ function FlightDetailScreen({
 
 function makeFlightStyles(C: ThemeColors) {
   return StyleSheet.create({
-    hero: { overflow: "hidden", backgroundColor: C.elevated },
+    hero: { overflow: "hidden" },
     body: { paddingHorizontal: S.md, marginTop: -PASS_OVERLAP, gap: S.md },
 
     pass: { borderRadius: R.lg, overflow: "visible" },
@@ -1077,7 +1080,7 @@ function makeStyles(C: ThemeColors) {
     errorBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
     px: { paddingHorizontal: S.md, marginBottom: S.md },
 
-    heroWrap: { position: "relative", justifyContent: "flex-end", marginBottom: S.md, backgroundColor: C.elevated },
+    heroWrap: { position: "relative", justifyContent: "flex-end", marginBottom: S.md },
     heroBody: { paddingHorizontal: S.md, paddingBottom: S.md, gap: S.xs },
     heroTypeRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
     heroType: { fontSize: T.sm, fontWeight: T.semibold, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },

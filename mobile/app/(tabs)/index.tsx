@@ -32,7 +32,7 @@ import {
   Camera, MapTrifold, Info,
 } from "phosphor-react-native";
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
-import { CoverFade } from "@/components/ui/CoverFade";
+import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
@@ -1097,7 +1097,7 @@ export default function HomeScreen() {
 
   // Ground the photo fades into: the page colour, thinner in light mode so the photo keeps
   // showing through instead of washing out to white.
-  const onGround = isDark ? "#fff" : C.textPrimary;
+  const onGround = heroTrip || isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
     { label: "Itinerary", Icon: CalendarDots, go: () => router.push(`/trip/${heroTrip.id}`) },
     { label: "Today", Icon: MapTrifold, go: () => router.push("/(tabs)/destinations") },
@@ -1117,6 +1117,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} style={{ zIndex: 5 }} />}
       >
+        {ready && heroTrip ? <PhotoWash uri={heroTrip.image} heroHeight={heroH} /> : null}
         {/* Top bar scrolls away with the cover; it also owns the join sheet */}
         <GreetingHero
           scrollY={scrollY}
@@ -1139,8 +1140,9 @@ export default function HomeScreen() {
               <View style={[styles.hero, { height: HERO_H + insets.top }]}>
                 {/* The photo resolves into the exact page colour before the cover ends. */}
                 <Animated.View style={[StyleSheet.absoluteFill, heroStretch]}>
-                  <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-                  <CoverFade />
+                  <PhotoBlend>
+                    <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+                  </PhotoBlend>
                 </Animated.View>
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
@@ -1164,7 +1166,7 @@ export default function HomeScreen() {
                   <View style={styles.actionCircle}>
                     <a.Icon size={22} color={onGround} weight="fill" />
                   </View>
-                  <Text style={styles.actionLabel}>{a.label}</Text>
+                  <Text style={[styles.actionLabel, { color: onGround }]}>{a.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -1314,19 +1316,19 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     // ── Cover ──
     hero: { justifyContent: "flex-end" },
     heroBody: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
-    heroShadow: isDark ? {
+    heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    } : {},
+    },
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: isDark ? "rgba(255,255,255,0.9)" : C.textPrimary,
+      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
 
     // ── Actions ──
     actions: {

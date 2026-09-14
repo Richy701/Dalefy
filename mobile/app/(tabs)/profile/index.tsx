@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert } from "react-native";
 import { tripFactLine, tripLengthDays, daysUntil, destinationCountry, destinationFlag } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
-import { CoverFade } from "@/components/ui/CoverFade";
+import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { distanceKm } from "@/shared/coordinates";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
@@ -127,13 +127,15 @@ export default function ProfileScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
+        {heroTrip ? <PhotoWash uri={heroTrip.image} heroHeight={HERO_H + insets.top} /> : null}
         {/* A photo cover when a trip exists; a compact identity header before joining. */}
         {!heroTrip && <ScreenTitle>Profile</ScreenTitle>}
         <View style={heroTrip ? [s.hero, { height: HERO_H + insets.top }] : s.identityHeader}>
           {heroTrip ? (
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-              <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-              <CoverFade />
+              <PhotoBlend>
+                <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+              </PhotoBlend>
             </Animated.View>
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
@@ -459,9 +461,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroDetails: { alignItems: "center", gap: 4, alignSelf: "stretch" },
     hero: { justifyContent: "flex-end" },
     heroBody: { alignItems: "center", gap: 4, paddingHorizontal: S.lg, paddingBottom: S.sm },
-    heroShadow: isDark ? {
+    heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    } : {},
+    },
     editBtn: { marginTop: S.xs2, paddingVertical: 4, paddingHorizontal: S.sm2, borderRadius: R.sm, backgroundColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)" },
     flagsRow: { flexDirection: "row", alignItems: "flex-end", gap: S.lg, marginBottom: S.md },
     flagsGroup: { gap: 2 },
@@ -497,8 +499,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center",
       justifyContent: "center",
     },
-    editText: { fontSize: T.sm, color: isDark ? "#fff" : C.textPrimary, fontWeight: T.semibold },
-    heroSub: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.85)" : C.textSecondary, textAlign: "center", lineHeight: 18 },
+    editText: { fontSize: T.sm, color: "#fff", fontWeight: T.semibold },
+    heroSub: { fontSize: T.sm, color: "rgba(255,255,255,0.85)", textAlign: "center", lineHeight: 18 },
     statsCard: {
       backgroundColor: C.card, borderRadius: R.xl, marginTop: S.sm,
       paddingVertical: S.md, paddingHorizontal: S.md,
@@ -511,7 +513,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroName: {
       fontSize: 26,
       fontWeight: T.bold,
-      color: isDark ? "#fff" : C.textPrimary,
+      color: "#fff",
       letterSpacing: -0.3, marginTop: S.xs,
     },
 

@@ -1,3 +1,4 @@
+import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
   View, Text, Pressable, ActivityIndicator, ScrollView,
@@ -7,7 +8,6 @@ import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArrow } from "phosphor-react-native";
@@ -277,28 +277,12 @@ export default function TripScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        {/* Carry the photo's colours below the heading before fading to the page. */}
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 600 }} pointerEvents="none">
-          <CachedImage uri={trip.image} blurRadius={90} style={StyleSheet.absoluteFill} transition={0} />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.25)"]}
-            locations={[0, 0.4, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={[`${C.bg}00`, `${C.bg}00`, `${C.bg}1a`, `${C.bg}66`, `${C.bg}b3`, `${C.bg}eb`, C.bg]}
-            locations={[0, 0.4, 0.52, 0.68, 0.82, 0.94, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
+        <PhotoWash uri={trip.image} heroHeight={HERO_H} />
 
         {/* ── Hero: parallax photo that dissolves into the wash ── */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            <MaskedView
-              style={StyleSheet.absoluteFill}
-              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.6, 1]} style={{ flex: 1 }} />}
-            >
+            <PhotoBlend>
               <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
                 {Platform.OS === "ios" && Link.AppleZoomTarget ? (
                   <Link.AppleZoomTarget>
@@ -308,13 +292,7 @@ export default function TripScreen() {
                   <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
                 )}
               </Animated.View>
-              <LinearGradient
-                colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0)", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.25)"]}
-                locations={[0, 0.25, 0.55, 1]}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-              />
-            </MaskedView>
+            </PhotoBlend>
           </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             {flag ? (

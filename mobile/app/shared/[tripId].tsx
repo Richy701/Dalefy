@@ -1,3 +1,4 @@
+import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
@@ -10,13 +11,11 @@ import Animated, {
 import { Skeleton } from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft, Users, ShareNetwork, Plus, Check, CaretDown,
   AirplaneTakeoff, AirplaneLanding, WarningCircle,
 } from "phosphor-react-native";
-import MaskedView from "@react-native-masked-view/masked-view";
 import { useTheme } from "@/context/ThemeContext";
 import { useTrips } from "@/context/TripsContext";
 import { T, R, S, SCROLL_BOTTOM_PAD, shadow, type ThemeColors } from "@/constants/theme";
@@ -221,32 +220,15 @@ export default function SharedTripScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* The photo, blurred, sits behind the whole page; a scrim rises to the page colour */}
-        <View style={styles.wash} pointerEvents="none">
-          <CachedImage
-            uri={trip.image}
-            blurRadius={90}
-            style={[StyleSheet.absoluteFill, { opacity: 0.95 }]}
-            contentPosition={{ top: "35%", left: "50%" }}
-            transition={0}
-          />
-          <LinearGradient
-            colors={[`${C.bg}1a`, `${C.bg}b3`, C.bg]}
-            locations={[0, 0.55, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
+        <PhotoWash uri={trip.image} heroHeight={HERO_H} />
 
         {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            <MaskedView
-              style={StyleSheet.absoluteFill}
-              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.35, 1]} style={{ flex: 1 }} />}
-            >
+            <PhotoBlend>
               <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-            </MaskedView>
-            <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
+            </PhotoBlend>
+
 
           </Animated.View>
           <IconCircleButton
@@ -508,22 +490,21 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       fontSize: T.md, fontWeight: T.bold,
     },
 
-    wash: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 300, overflow: "hidden" },
     hero: { height: HERO_H, justifyContent: "flex-end" },
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
-    heroShadow: isDark ? {
+    heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    } : {},
+    },
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: isDark ? "rgba(255,255,255,0.9)" : C.textPrimary,
+      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
