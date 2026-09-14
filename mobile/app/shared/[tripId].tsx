@@ -257,8 +257,8 @@ export default function SharedTripScreen() {
             ) : null}
             {trip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
             <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
-            <Text style={[styles.heroFact, styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
-            <Text style={[styles.heroDates, styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
+            <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
+            <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
           </View>
         </View>
 

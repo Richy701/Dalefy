@@ -148,7 +148,7 @@ export default function ProfileScreen() {
             )}
             <View style={heroTrip ? s.heroDetails : s.identityDetails}>
               <Text accessibilityRole="header" style={heroTrip ? [s.heroName, s.heroShadow] : s.identityName}>{heroTrip ? (firstName || "Traveller") : (prefs.name.trim() || "Traveller")}</Text>
-              {nextTrip ? <Text style={[s.heroSub, s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
+              {nextTrip ? <Text style={[s.heroSub, isDark && s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
               <Pressable
                 style={({ pressed }) => [heroTrip ? s.editBtn : s.identityEdit, { opacity: pressed ? 0.5 : 1 }]}
                 onPress={() => { haptic.selection(); router.push("/welcome"); }}

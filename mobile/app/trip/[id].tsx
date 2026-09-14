@@ -302,8 +302,8 @@ export default function TripScreen() {
             ) : null}
             {trip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
             <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
-            <Text style={[styles.heroFact, styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
-            <Text style={[styles.heroDates, styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
+            <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
+            <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
 
             {/* A hosted group, not a solo plan: who is coming and who is looking after them */}
             <View style={styles.groupRow}>
@@ -321,7 +321,7 @@ export default function TripScreen() {
                   )}
                 </View>
               )}
-              <Text style={[styles.groupText, styles.heroShadow]} numberOfLines={1}>
+              <Text style={[styles.groupText, isDark && styles.heroShadow]} numberOfLines={1}>
                 {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"} · ` : ""}Hosted by {brand.name}
               </Text>
               {brand.logoUrl ? <Image source={{ uri: brand.logoUrl }} style={styles.hostLogo} accessible={false} /> : null}

@@ -1147,8 +1147,8 @@ export default function HomeScreen() {
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
                   <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{heroTrip.name}</Text>
-                  <Text style={[styles.heroFact, styles.heroShadow]} numberOfLines={1}>{factLine(heroTrip)}</Text>
-                  <Text style={[styles.heroDates, styles.heroShadow]}>{fmtDay(heroTrip.start)} → {fmtDay(heroTrip.end)}</Text>
+                  <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{factLine(heroTrip)}</Text>
+                  <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{fmtDay(heroTrip.start)} → {fmtDay(heroTrip.end)}</Text>
                 </View>
               </View>
             </Pressable>
