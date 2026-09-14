@@ -504,9 +504,6 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
     pointerEvents: chromeVisible ? "auto" as const : "none" as const,
   }));
 
-  if (!visible || items.length === 0) return null;
-  const current = items[activeIndex] ?? items[0];
-
   const toggleChrome = useCallback(() => setChromeVisible(v => !v), []);
 
   const renderItem = useCallback(({ item }: { item: TripMedia & { tripName: string } }) => (
@@ -520,6 +517,9 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
       )}
     </View>
   ), [toggleChrome]);
+
+  if (!visible || items.length === 0) return null;
+  const current = items[activeIndex] ?? items[0];
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={animateClose}>
