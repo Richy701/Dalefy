@@ -25,7 +25,7 @@ export function useCollapsingHeader(threshold = 40) {
   const barStyle = useAnimatedStyle(() => ({
     opacity: interpolate(y.value, [threshold - 16, threshold + 24], [0, 1], Extrapolation.CLAMP),
   }));
-  return { onScroll, barStyle };
+  return { onScroll, barStyle, scrollY: y };
 }
 
 const BAR_H = 44;

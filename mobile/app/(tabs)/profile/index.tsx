@@ -4,6 +4,7 @@ import { CachedImage } from "@/components/CachedImage";
 import { CoverFade } from "@/components/ui/CoverFade";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { distanceKm } from "@/shared/coordinates";
+import { useBannerStretch } from "@/hooks/useBannerStretch";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
@@ -113,7 +114,8 @@ export default function ProfileScreen() {
 
   const appVersion = `${Application.nativeApplicationVersion ?? "-"} (${Application.nativeBuildVersion ?? "-"})`;
 
-  const { onScroll, barStyle } = useCollapsingHeader();
+  const { onScroll, barStyle, scrollY } = useCollapsingHeader();
+  const { stretchStyle } = useBannerStretch(HERO_H + insets.top, scrollY);
 
   return (
     <View style={s.safe}>
@@ -129,10 +131,10 @@ export default function ProfileScreen() {
         {!heroTrip && <ScreenTitle>Profile</ScreenTitle>}
         <View style={heroTrip ? [s.hero, { height: HERO_H + insets.top }] : s.identityHeader}>
           {heroTrip ? (
-            <>
+            <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
               <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
               <CoverFade />
-            </>
+            </Animated.View>
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
             {prefs.avatar || initials ? (
@@ -455,7 +457,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     identityEdit: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center", paddingVertical: S.xs },
     identityEditText: { fontSize: T.base, lineHeight: 22, fontWeight: T.semibold, color: C.tealText },
     heroDetails: { alignItems: "center", gap: 4, alignSelf: "stretch" },
-    hero: { overflow: "hidden", justifyContent: "flex-end" },
+    hero: { justifyContent: "flex-end" },
     heroBody: { alignItems: "center", gap: 4, paddingHorizontal: S.lg, paddingBottom: S.sm },
     heroShadow: isDark ? {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,

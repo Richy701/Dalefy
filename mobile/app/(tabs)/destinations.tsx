@@ -1,3 +1,4 @@
+import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
   ActivityIndicator, useWindowDimensions,
@@ -209,7 +210,8 @@ export default function TodayScreen() {
   const eventRowYs = useRef<Record<string, number>>({});
   const listY = useRef(0);
   const scheduleScrollRef = useRef<ScrollView>(null);
-  const { onScroll, barStyle } = useCollapsingHeader();
+  const { onScroll, barStyle, scrollY } = useCollapsingHeader();
+  const { stretchStyle } = useBannerStretch(mapH, scrollY);
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
   const stayCoord = useMemo((): [number, number] | null => {
@@ -439,7 +441,7 @@ export default function TodayScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
       {/* Full-width map hero; the plan scrolls over its lower edge. */}
-      <View style={{ height: mapH, backgroundColor: C.elevated }}>
+      <Animated.View style={[{ height: mapH, backgroundColor: C.elevated }, stretchStyle]}>
       {(!destCenter || !MapboxGL) && (
         <View style={styles.mapFallback}>
           {mapLoading && MapboxGL ? <ActivityIndicator color={C.tealText} /> : <MapTrifold size={30} color={C.textTertiary} />}
@@ -562,7 +564,7 @@ export default function TodayScreen() {
           </Pressable>
         )}
       </View>
-      </View>
+      </Animated.View>
 
       <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={{ marginTop: -R.xl, backgroundColor: C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, paddingTop: S.xs }}>
         {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}

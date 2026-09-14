@@ -1,3 +1,4 @@
+import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
   View, Text, Pressable, ActivityIndicator, ScrollView,
   StyleSheet, Platform, Linking, Share,
@@ -101,11 +102,12 @@ export default function TripScreen() {
   });
   const scrollRef = useRef<any>(null);
 
-  // Hero image: parallax (moves at 50% scroll speed) + slight scale on overscroll
+  const { stretchStyle } = useBannerStretch(HERO_H, scrollY);
+
+  // Preserve upward-scroll parallax; the outer photo layer handles pull-down.
   const heroImageStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: interpolate(scrollY.value, [-100, 0, HERO_H], [-50, 0, HERO_H * 0.4], Extrapolation.CLAMP) },
-      { scale: interpolate(scrollY.value, [-200, 0], [1.4, 1], Extrapolation.CLAMP) },
+      { translateY: interpolate(scrollY.value, [0, HERO_H], [0, HERO_H * 0.4], Extrapolation.CLAMP) },
     ],
   }));
 
@@ -290,22 +292,32 @@ export default function TripScreen() {
 
         {/* ── Hero: parallax photo that dissolves into the wash ── */}
         <View style={styles.hero}>
-          <MaskedView
-            style={StyleSheet.absoluteFill}
-            maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.45, 1]} style={{ flex: 1 }} />}
-          >
-            <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
-              {Platform.OS === "ios" && Link.AppleZoomTarget ? (
-                <Link.AppleZoomTarget>
+          <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
+            <MaskedView
+              style={StyleSheet.absoluteFill}
+              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.45, 1]} style={{ flex: 1 }} />}
+            >
+              <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
+                {Platform.OS === "ios" && Link.AppleZoomTarget ? (
+                  <Link.AppleZoomTarget>
+                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                  </Link.AppleZoomTarget>
+                ) : (
                   <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-                </Link.AppleZoomTarget>
-              ) : (
-                <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-              )}
-            </Animated.View>
-          </MaskedView>
-          <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
+                )}
+              </Animated.View>
+            </MaskedView>
+            <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
 
+            {!isDark && (
+              <LinearGradient
+                colors={[`${C.bg}00`, `${C.bg}99`, `${C.bg}eb`]}
+                locations={[0.25, 0.6, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+            )}
+          </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             {flag ? (
               <View style={styles.flagWrap} accessible={false}>
@@ -607,22 +619,22 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     stickyTitle: { flex: 1, fontSize: T.base, fontWeight: T.bold, textAlign: "center", letterSpacing: -0.2 },
 
     // Hero
-    hero: { height: HERO_H, overflow: "hidden", justifyContent: "flex-end" },
+    hero: { height: HERO_H, justifyContent: "flex-end" },
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
-    // The hero is always the dark photo treatment: white text on a dark scrim, in both themes
-    heroShadow: {
+    // Match the text to the page colour the photo fades into.
+    heroShadow: isDark ? {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
-    },
+    } : {},
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
+      fontSize: T.sm, fontWeight: T.bold, color: isDark ? "rgba(255,255,255,0.9)" : C.textPrimary,
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textSecondary, textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
@@ -636,8 +648,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       backgroundColor: "rgba(255,255,255,0.12)",
       borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
-    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "#fff" },
-    groupText: { fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.85)", flexShrink: 1 },
+    avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: isDark ? "#fff" : C.textPrimary },
+    groupText: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.85)" : C.textSecondary, flexShrink: 1 },
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
     // Next up

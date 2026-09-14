@@ -1,5 +1,6 @@
+import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
-  View, Text, ScrollView, Pressable, Linking,
+  View, Text, Pressable, Linking,
   StyleSheet, Platform, Image,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -317,6 +318,7 @@ export default function EventDetailScreen() {
   const { C, isDark } = useTheme();
   const { isLeader } = useTripRole(tripId);
   const insets = useSafeAreaInsets();
+  const { onScroll, stretchStyle } = useBannerStretch(EV_HERO_H + insets.top);
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -447,21 +449,23 @@ export default function EventDetailScreen() {
       }} />
 
       <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: showActionBar ? 80 + insets.bottom : insets.bottom + 24, backgroundColor: C.bg }}
       >
         {/* Hero: the event's photo, or the trip's, with the essentials on it */}
         <View style={[styles.heroWrap, { height: EV_HERO_H + insets.top }]}>
-          {ev.image ? (
-            <CachedImage uri={ev.image} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
-          ) : trip.image ? (
-            <CachedImage uri={trip.image} blurRadius={18} style={StyleSheet.absoluteFill} accessible={false} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
-          )}
-          <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-          <LinearGradient colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.85)"]} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
+            {ev.image ? (
+              <CachedImage uri={ev.image} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
+            ) : trip.image ? (
+              <CachedImage uri={trip.image} blurRadius={18} style={StyleSheet.absoluteFill} accessible={false} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
+            )}
+            <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.35]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+            <LinearGradient colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.85)"]} locations={[0.3, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          </Animated.View>
           <View style={styles.heroBody}>
             <View style={styles.heroTypeRow}>
               <CategoryDot type={ev.type} transferType={ev.transferType} size={26} />
@@ -639,7 +643,7 @@ export default function EventDetailScreen() {
             <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />
           </Animated.View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Action bar — data-driven */}
       {showActionBar && (
@@ -709,6 +713,7 @@ function FlightDetailScreen({
   router: any;
   safeBack: () => void;
 }) {
+  const { onScroll, stretchStyle } = useBannerStretch(HERO_H + insets.top);
   const { data: live } = useFlightLiveData(ev.flightNum, ev.date);
 
   const locMatch = (ev.location || "").match(/^([A-Z]{3})\s*(?:to|→|➜|>|–|—|-)\s*([A-Z]{3})$/i);
@@ -818,12 +823,12 @@ function FlightDetailScreen({
       }} />
 
       <View style={{ flex: 1 }}>
-        <ScrollView
+        <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         >
           {/* Hero: the route on a map, or the trip's photo when we don't know both airports */}
-          <View style={[fs.hero, { height: HERO_H + insets.top }]}>
+          <Animated.View style={[fs.hero, { height: HERO_H + insets.top }, stretchStyle]}>
             {hasMap && mapFrom && mapTo ? (
               <FlightRouteMap
                 from={mapFrom}
@@ -843,7 +848,7 @@ function FlightDetailScreen({
             )}
             <LinearGradient colors={[isDark ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <LinearGradient colors={[`${C.bg}00`, C.bg]} locations={[0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-          </View>
+          </Animated.View>
 
           <View style={fs.body}>
             {/* The pass: one object with everything you need at the airport */}
@@ -1003,7 +1008,7 @@ function FlightDetailScreen({
               </Animated.View>
             )}
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
 
       </View>
     </View>
@@ -1072,7 +1077,7 @@ function makeStyles(C: ThemeColors) {
     errorBtnText: { color: C.onAccent, fontWeight: T.bold, fontSize: T.base },
     px: { paddingHorizontal: S.md, marginBottom: S.md },
 
-    heroWrap: { position: "relative", overflow: "hidden", justifyContent: "flex-end", marginBottom: S.md, backgroundColor: C.elevated },
+    heroWrap: { position: "relative", justifyContent: "flex-end", marginBottom: S.md, backgroundColor: C.elevated },
     heroBody: { paddingHorizontal: S.md, paddingBottom: S.md, gap: S.xs },
     heroTypeRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
     heroType: { fontSize: T.sm, fontWeight: T.semibold, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },

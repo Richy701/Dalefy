@@ -1,6 +1,7 @@
+import { useBannerStretch } from "@/hooks/useBannerStretch";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
-  View, Text, ScrollView, Pressable,
+  View, Text, Pressable,
   StyleSheet, Platform,
 } from "react-native";
 import Animated, {
@@ -65,6 +66,7 @@ export default function SharedTripScreen() {
   const { user: authUser, isAnonymous } = useAuth();
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
+  const { onScroll, stretchStyle } = useBannerStretch(HERO_H);
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
 
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -218,7 +220,7 @@ export default function SharedTripScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* The photo, blurred, sits behind the whole page; a scrim rises to the page colour */}
         <View style={styles.wash} pointerEvents="none">
           <CachedImage
@@ -237,14 +239,16 @@ export default function SharedTripScreen() {
 
         {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
-          <MaskedView
-            style={StyleSheet.absoluteFill}
-            maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.35, 1]} style={{ flex: 1 }} />}
-          >
-            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
-          </MaskedView>
-          <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
+          <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
+            <MaskedView
+              style={StyleSheet.absoluteFill}
+              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.35, 1]} style={{ flex: 1 }} />}
+            >
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+            </MaskedView>
+            <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} />
 
+          </Animated.View>
           <IconCircleButton
             variant="glass"
             onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
@@ -427,7 +431,7 @@ export default function SharedTripScreen() {
             });
           })()}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Traveler linking overlay */}
       {showLinkPicker && trip.travelers && trip.travelers.length > 0 && (
@@ -505,7 +509,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     },
 
     wash: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_H + 300, overflow: "hidden" },
-    hero: { height: HERO_H, overflow: "hidden", justifyContent: "flex-end" },
+    hero: { height: HERO_H, justifyContent: "flex-end" },
     heroContent: { paddingHorizontal: S.lg, paddingBottom: S.sm, gap: 3, alignItems: "center" },
     heroShadow: isDark ? {
       textShadowColor: "rgba(0,0,0,0.6)",
