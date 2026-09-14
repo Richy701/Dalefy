@@ -609,8 +609,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroName: {
       fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textPrimary, textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
@@ -625,7 +625,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
     avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "#fff" },
-    groupText: { fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.85)", flexShrink: 1 },
+    groupText: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.85)" : C.textPrimary, flexShrink: 1 },
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
     // Next up

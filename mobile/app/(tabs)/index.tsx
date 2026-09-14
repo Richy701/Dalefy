@@ -1097,7 +1097,7 @@ export default function HomeScreen() {
 
   // Ground the photo fades into: the page colour, thinner in light mode so the photo keeps
   // showing through instead of washing out to white.
-  const onGround = heroTrip || isDark ? "#fff" : C.textPrimary;
+  const onGround = isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
     { label: "Itinerary", Icon: CalendarDots, go: () => router.push(`/trip/${heroTrip.id}`) },
     { label: "Today", Icon: MapTrifold, go: () => router.push("/(tabs)/destinations") },
@@ -1327,8 +1327,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroName: {
       fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
     },
-    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: "rgba(255,255,255,0.92)", marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: "rgba(255,255,255,0.72)", textAlign: "center" },
+    heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
+    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textPrimary, textAlign: "center" },
 
     // ── Actions ──
     actions: {

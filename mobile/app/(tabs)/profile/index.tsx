@@ -464,7 +464,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
-    editBtn: { marginTop: S.xs2, paddingVertical: 4, paddingHorizontal: S.sm2, borderRadius: R.sm, backgroundColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)" },
+    editBtn: { marginTop: S.xs2, paddingVertical: 4, paddingHorizontal: S.sm2, borderRadius: R.sm, backgroundColor: isDark ? "rgba(255,255,255,0.14)" : C.card },
     flagsRow: { flexDirection: "row", alignItems: "flex-end", gap: S.lg, marginBottom: S.md },
     flagsGroup: { gap: 2 },
     flagsGroupEnd: { marginLeft: "auto", alignItems: "flex-end" },
@@ -499,8 +499,8 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center",
       justifyContent: "center",
     },
-    editText: { fontSize: T.sm, color: "#fff", fontWeight: T.semibold },
-    heroSub: { fontSize: T.sm, color: "rgba(255,255,255,0.85)", textAlign: "center", lineHeight: 18 },
+    editText: { fontSize: T.sm, color: isDark ? "#fff" : C.textPrimary, fontWeight: T.semibold },
+    heroSub: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.85)" : C.textPrimary, textAlign: "center", lineHeight: 18 },
     statsCard: {
       backgroundColor: C.card, borderRadius: R.xl, marginTop: S.sm,
       paddingVertical: S.md, paddingHorizontal: S.md,
