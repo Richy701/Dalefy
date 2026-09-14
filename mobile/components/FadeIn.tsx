@@ -27,7 +27,10 @@ export function FadeIn({ delay = 0, slideUp = 18, style, children }: FadeInProps
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = withDelay(delay, withTiming(1, TIMING));
+    // Reanimated 4.5 never starts a withDelay(0, ...) animation, so the wrapped
+    // content stays at opacity 0. Only wrap when there is a real delay.
+    const fade = withTiming(1, TIMING);
+    progress.value = delay > 0 ? withDelay(delay, fade) : fade;
   }, [delay, progress]);
 
   const animStyle = useAnimatedStyle(() => ({

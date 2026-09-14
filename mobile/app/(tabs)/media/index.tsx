@@ -276,8 +276,8 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
 
 // ── Zoomable Image ──────────────────────────────────────────────────────────
 
-function ZoomableImage({ uri, width, height, onTap }: {
-  uri: string; width: number; height: number; onTap: () => void;
+const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, height, onTap }: {
+  uri: string; thumbUri?: string; width: number; height: number; onTap: () => void;
 }) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -354,11 +354,19 @@ function ZoomableImage({ uri, width, height, onTap }: {
   return (
     <GestureDetector gesture={composed}>
       <Animated.View style={[{ width, height, justifyContent: "center", alignItems: "center" }, animStyle]}>
-        <ExpoImage source={{ uri }} style={{ width, height }} contentFit="contain" cachePolicy="memory-disk" />
+        <ExpoImage
+          source={{ uri }}
+          placeholder={thumbUri ? { uri: thumbUri } : undefined}
+          placeholderContentFit="contain"
+          recyclingKey={uri}
+          style={{ width, height }}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
       </Animated.View>
     </GestureDetector>
   );
-}
+});
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
@@ -499,19 +507,19 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   if (!visible || items.length === 0) return null;
   const current = items[activeIndex] ?? items[0];
 
-  const toggleChrome = () => setChromeVisible(v => !v);
+  const toggleChrome = useCallback(() => setChromeVisible(v => !v), []);
 
-  const renderItem = ({ item }: { item: TripMedia & { tripName: string } }) => (
+  const renderItem = useCallback(({ item }: { item: TripMedia & { tripName: string } }) => (
     <View style={{ width: SCREEN_W, height: SCREEN_H, justifyContent: "center", alignItems: "center" }}>
       {item.type === "image" ? (
-        <ZoomableImage uri={item.url} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} />
+        <ZoomableImage uri={item.url} thumbUri={item.thumbUrl} width={SCREEN_W} height={SCREEN_H} onTap={toggleChrome} />
       ) : (
         <Pressable onPress={toggleChrome} accessibilityRole="button" accessibilityLabel="Play video" style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
           <Play size={28} color="#fff" weight="fill" />
         </Pressable>
       )}
     </View>
-  );
+  ), [toggleChrome]);
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={animateClose}>
@@ -528,6 +536,9 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 initialScrollIndex={initialIndex}
+                initialNumToRender={1}
+                maxToRenderPerBatch={2}
+                windowSize={3}
                 getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
                 onMomentumScrollEnd={(e) => {
                   const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -542,6 +553,8 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
             <Animated.View pointerEvents="none" style={[{ position: "absolute", overflow: "hidden", backgroundColor: C.card, zIndex: 5 }, heroStyle]}>
               <ExpoImage
                 source={{ uri: items[initialIndex].url }}
+                placeholder={items[initialIndex].thumbUrl ? { uri: items[initialIndex].thumbUrl } : undefined}
+                placeholderContentFit="cover"
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 cachePolicy="memory-disk"
