@@ -311,8 +311,8 @@ export default function TripScreen() {
 
             {!isDark && (
               <LinearGradient
-                colors={[`${C.bg}00`, `${C.bg}99`, `${C.bg}eb`]}
-                locations={[0.25, 0.6, 1]}
+                colors={[`${C.bg}00`, `${C.bg}00`, `${C.bg}1a`, `${C.bg}66`]}
+                locations={[0, 0.55, 0.8, 1]}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
