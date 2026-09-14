@@ -361,6 +361,8 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
           recyclingKey={uri}
           style={{ width, height }}
           contentFit="contain"
+          // Avoid synchronous bitmap resizing while viewer pages mount.
+          allowDownscaling={false}
           cachePolicy="memory-disk"
         />
       </Animated.View>
@@ -567,6 +569,8 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
                 source={{ uri: items[initialIndex].thumbUrl ?? items[initialIndex].url }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                // Animated bounds otherwise trigger CPU bitmap resizing each frame.
+                allowDownscaling={false}
                 cachePolicy="memory-disk"
                 onLoad={(e) => {
                   if (!origin?.aspect && e?.source?.width && e?.source?.height) {

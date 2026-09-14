@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { type ViewStyle, type StyleProp } from "react-native";
 import Animated, {
   useSharedValue,
@@ -6,9 +6,12 @@ import Animated, {
   withDelay,
   withTiming,
   Easing,
+  cancelAnimation,
+  runOnJS,
 } from "react-native-reanimated";
 
 const TIMING = { duration: 250, easing: Easing.out(Easing.cubic) };
+const VISIBLE_STYLE: ViewStyle = { opacity: 1, transform: [{ translateY: 0 }] };
 
 interface FadeInProps {
   /** Stagger delay in ms (e.g. index * 80) */
@@ -25,12 +28,29 @@ interface FadeInProps {
  */
 export function FadeIn({ delay = 0, slideUp = 18, style, children }: FadeInProps) {
   const progress = useSharedValue(0);
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    // Reanimated 4.5 never starts a withDelay(0, ...) animation, so the wrapped
-    // content stays at opacity 0. Only wrap when there is a real delay.
-    const fade = withTiming(1, TIMING);
+    let active = true;
+    const finish = () => {
+      if (!active) return;
+      cancelAnimation(progress);
+      progress.value = 1;
+      setSettled(true);
+    };
+    // Keep the entrance transient. Commit the visible style through React so
+    // native screen reattachment cannot restore the initial hidden props.
+    const fade = withTiming(1, TIMING, (finished) => {
+      if (finished) runOnJS(finish)();
+    });
     progress.value = delay > 0 ? withDelay(delay, fade) : fade;
+    // Also reveal content if an off-screen/interrupted animation never finishes.
+    const fallback = setTimeout(finish, Math.max(0, delay) + TIMING.duration + 100);
+    return () => {
+      active = false;
+      clearTimeout(fallback);
+      cancelAnimation(progress);
+    };
   }, [delay, progress]);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -39,7 +59,7 @@ export function FadeIn({ delay = 0, slideUp = 18, style, children }: FadeInProps
   }));
 
   return (
-    <Animated.View style={[style, animStyle]}>
+    <Animated.View style={[style, settled ? VISIBLE_STYLE : animStyle]}>
       {children}
     </Animated.View>
   );

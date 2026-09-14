@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, getDocsFromServer, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { firebaseDb, isFirebaseConfigured } from "@/services/firebase";
 import { waitForAuth } from "@/services/firebaseTrips";
 import { useAuth } from "@/context/AuthContext";
@@ -22,16 +22,20 @@ export function useOrgLoad() {
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tablesReady, setTablesReady] = useState(false);
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const useFirebase = isFirebaseConfigured();
   const isRealUser = useFirebase && isAuthenticated && user?.id !== "demo" && (user?.id?.length ?? 0) > 20;
 
   useEffect(() => {
+    setTablesReady(false);
+    setResolvedUserId(null);
     if (!isRealUser || !user) {
       setCurrentOrg(null);
       setOrgRole(null);
       setOrgMembers([]);
+      setOrgs([]);
       setIsLoading(false);
       return;
     }
@@ -51,16 +55,25 @@ export function useOrgLoad() {
     async function load() {
       try {
         const uid = await waitForAuth();
-        if (!uid || !mounted) return;
+        if (!mounted) return;
+        if (uid !== user!.id) throw new Error("Waiting for the current account to finish signing in");
         logger.log("OrgLoad", "loading org for user:", user!.id);
         const db = firebaseDb();
 
         // Get user's org memberships
-        const membershipsSnap = await getDocs(
+        // Only a server response can confirm that onboarding is needed.
+        // An empty offline cache does not mean the account has no memberships.
+        const membershipsSnap = await getDocsFromServer(
           query(collection(db, "org_members"), where("user_id", "==", user!.id)),
         );
 
-        if (membershipsSnap.empty) { if (mounted) setTablesReady(true); clear(); return; }
+        if (!mounted) return;
+        if (membershipsSnap.empty) {
+          setResolvedUserId(uid);
+          setTablesReady(true);
+          clear();
+          return;
+        }
 
         // Spreading DocumentData loses its fields, so name the shape we read.
         const memberships = membershipsSnap.docs.map(d => ({
@@ -76,7 +89,10 @@ export function useOrgLoad() {
 
         // Get org data for every membership (for the org switcher), current one first
         const orgSnaps = await Promise.all(
-          memberships.map(m => getDoc(doc(db, "organizations", m.organization_id)).catch(() => null)),
+          memberships.map(m => getDoc(doc(db, "organizations", m.organization_id)).catch(err => {
+            if (m.organization_id === membership.organization_id) throw err;
+            return null;
+          })),
         );
         if (!mounted) return;
         const allOrgs: Organization[] = orgSnaps.flatMap(snap => {
@@ -93,10 +109,11 @@ export function useOrgLoad() {
         setOrgs(allOrgs);
 
         const current = allOrgs.find(o => o.id === membership.organization_id);
+        if (!current) throw new Error("Your organisation could not be loaded");
         // Only now do we know whether the user has an org; flagging ready any earlier
         // lets the route guard's timeout misread "still loading" as "no org".
         setTablesReady(true);
-        if (!current) { clear(); return; }
+        setResolvedUserId(uid);
         setCurrentOrg(current);
         setOrgRole(membership.role as OrgRole);
 
@@ -119,8 +136,10 @@ export function useOrgLoad() {
               profile: p ? { id: m.user_id, name: p.name || "", email: p.email || "", initials: p.initials || "", avatar: p.avatar || "", role: p.role || "", status: p.status || "Active" } : undefined,
             };
           }));
-          setOrgMembers(members);
-          setIsLoading(false);
+          if (mounted) {
+            setOrgMembers(members);
+            setIsLoading(false);
+          }
         }
       } catch (err) {
         // Transient failure: leave org state unknown (tablesReady=false) so the
@@ -222,5 +241,5 @@ export function useOrgLoad() {
     }
   }, [isRealUser, user]);
 
-  return { currentOrg, orgRole, orgMembers, orgs, isLoading, tablesReady, createOrg, refreshOrg, switchOrg };
+  return { currentOrg, orgRole, orgMembers, orgs, isLoading, tablesReady: tablesReady && resolvedUserId === user?.id, createOrg, refreshOrg, switchOrg };
 }

@@ -519,7 +519,7 @@ private struct FlightBanner: View {
       HStack {
         airport(p.from, time: p.departTime, alignment: .leading)
         Spacer(minLength: 12)
-        Image(systemName: "arrow.right").font(.system(size: 17)).foregroundStyle(.white.opacity(0.45))
+        Image(systemName: "airplane").font(.system(size: 17)).foregroundStyle(teal)
         Spacer(minLength: 12)
         airport(p.to, time: p.arriveTime, alignment: .trailing)
       }
@@ -641,7 +641,15 @@ private struct ExTrailing: View {
 private struct ExCenter: View {
   let name: String
   let props: [String: Any]
-  var body: some View { EmptyView() }
+  var body: some View {
+    if name == "FlightTracker" {
+      Image(systemName: "airplane")
+        .font(.system(size: 17, weight: .semibold))
+        .foregroundStyle(teal)
+        .padding(.horizontal, 8)
+        .accessibilityLabel("Flight")
+    }
+  }
 }
 
 private struct ExBottom: View {
