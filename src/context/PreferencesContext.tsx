@@ -108,6 +108,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     root.style.setProperty("--brand-rgb", hexToRgbStr(resolvedAccent));
     root.style.setProperty("--accent-fg", accentFg);
     root.style.setProperty("--primary", hexToHsl(resolvedAccent));
+    root.style.setProperty("--primary-foreground", hexToHsl(accentFg));
     root.style.setProperty("--ring", hexToHsl(resolvedAccent));
     root.style.setProperty("--sidebar-ring", hexToHsl(resolvedAccent));
     if (accentColor === MONO_ACCENT) root.dataset.accentMono = "true";
