@@ -5,7 +5,7 @@
  */
 
 import {
-  renderEmailShell, paragraphs, detailStrip, signature, pinLine, escapeHtml, PALETTE,
+  renderEmailShell, paragraphs, detailStrip, signature, escapeHtml, PALETTE,
 } from "./email/layout.js";
 
 export { escapeHtml };
@@ -67,17 +67,6 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
   const org = input.organizer && input.organizer.name?.trim() ? input.organizer : null;
   const body = paragraphs(input.message);
 
-  // Render actual bullet lines as scannable rows, preserving all edited wording.
-  const structuredMessage = input.message.split(/\n{2,}/).filter(p => p.trim()).map(part => {
-    const lines = part.trim().split("\n");
-    return lines.some(line => /^\s*[•-]\s+/.test(line))
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">${lines.map(line => /^\s*[•-]\s+/.test(line)
-          ? `<tr><td width="24" valign="top" style="padding:12px 0;border-bottom:1px solid ${PALETTE.border};color:${PALETTE.muted};">&#9633;</td><td style="padding:12px 0;border-bottom:1px solid ${PALETTE.border};font-size:15px;line-height:1.6;color:${PALETTE.body};">${escapeHtml(line.replace(/^\s*[•-]\s+/, ""))}</td></tr>`
-          : `<tr><td colspan="2" style="padding:0 0 8px;font-size:15px;font-weight:600;color:${PALETTE.ink};">${escapeHtml(line)}</td></tr>`).join("")}</table>`
-      : paragraphs(part).html;
-  }).join("");
-  const departure = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background:${PALETTE.raised};border-radius:8px;"><tr><td style="padding:20px;"><p style="margin:0 0 8px;font-size:12px;color:${PALETTE.muted};">Your departure</p><p style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.5px;color:${PALETTE.ink};">${escapeHtml(fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "long" }))}</p>${input.destination ? `<p style="margin:8px 0 0;font-size:14px;color:${PALETTE.muted};">${escapeHtml(input.destination)}</p>` : ""}</td></tr></table>`;
-  const updateMessage = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PALETTE.raised};border-radius:8px;"><tr><td style="padding:20px;"><p style="margin:0 0 12px;font-size:12px;font-weight:600;color:${PALETTE.ink};">A note from your organiser</p>${structuredMessage}</td></tr></table>`;
 
   const details = detailStrip([
     { label: "Departure", value: fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "short" }) },
@@ -94,7 +83,10 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
     email: org.email,
   }) : null;
 
-  const pin = input.shortCode ? pinLine(input.platformName, input.shortCode) : null;
+  const pin = input.shortCode ? {
+    html: `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${PALETTE.muted};">Or join in ${escapeHtml(input.platformName)} with PIN <strong style="color:${PALETTE.ink};letter-spacing:2px;">${escapeHtml(input.shortCode)}</strong></p>`,
+    text: `Join in ${input.platformName} with PIN ${input.shortCode}`,
+  } : null;
   const ctaNote = {
     html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>${pin?.html ?? ""}`,
     text: pin?.text ?? "",
@@ -110,13 +102,15 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
       platformName: input.platformName,
     },
     preheader: body.first || input.tripName,
-    eyebrow: variant === "invite" ? "Your next trip" : input.brandName,
-    title: variant === "invite" ? input.tripName : headings[variant],
-    subtitle: variant === "invite" ? subtitle : `${input.tripName} · ${subtitle}`,
-    image: variant === "invite" ? input.image : undefined,
+    presentation: "itinerary",
+    eyebrow: headings[variant],
+    title: input.tripName,
+    subtitle,
+    image: variant === "invite" || variant === "reminder" ? input.image : undefined,
     imageAfterTitle: true,
-    bodyHtml: variant === "reminder" ? departure + structuredMessage : variant === "update" ? updateMessage : structuredMessage + (variant === "invite" ? details.html : ""),
+    bodyHtml: body.html,
     bodyText: `${body.text}${showDetails ? `\n\n${details.text}` : ""}`,
+    contextHtml: showDetails ? `<p style="margin:0;font-size:13px;line-height:1.7;color:${PALETTE.muted};">${escapeHtml(input.destination || input.tripName)} &nbsp; / &nbsp; ${nights} night${nights === 1 ? "" : "s"}</p>` : undefined,
     cta: { label: variant === "update" ? "Review updated itinerary" : variant === "reminder" ? "Check your travel plans" : "View your itinerary", url: input.shareUrl },
     ctaNoteHtml: ctaNote.html,
     ctaNoteText: ctaNote.text,

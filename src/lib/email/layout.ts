@@ -22,6 +22,8 @@ export interface EmailCta {
 
 export interface EmailShellInput {
   brand: EmailBrand;
+  presentation?: "itinerary";
+  contextHtml?: string;
   /** Inbox preview line. */
   preheader: string;
   /** Small uppercase label above the heading, e.g. "Team invitation". */
@@ -192,11 +194,14 @@ export function pinLine(platformName: string, code: string): { html: string; tex
 }
 
 export function renderEmailShell(input: EmailShellInput): { html: string; text: string } {
+  const editorial = input.presentation === "itinerary";
   const accent = resolveAccent(input.brand.accentColor);
   const accentFg = readableOn(accent);
   const brandName = input.brand.brandName.trim() || input.brand.platformName;
 
-  const masthead = input.brand.logoUrl
+  const masthead = editorial
+    ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr>${input.brand.logoUrl ? `<td style="padding-right:14px;vertical-align:middle;"><img src="${escapeHtml(input.brand.logoUrl)}" alt="" height="32" style="height:32px;width:auto;max-width:120px;display:block;" /></td>` : ""}<td style="font-family:${FONT_BODY};font-size:22px;font-weight:600;letter-spacing:-0.5px;line-height:1.3;color:${PALETTE.ink};">${escapeHtml(brandName)}</td></tr></table>`
+    : input.brand.logoUrl
     ? `<img src="${escapeHtml(input.brand.logoUrl)}" alt="${escapeHtml(brandName)}" height="28" style="height:28px;width:auto;max-width:160px;display:block;" />`
     : `<span style="font-family:${FONT_BODY};font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${PALETTE.ink};">${escapeHtml(brandName)}</span>`;
 
@@ -226,6 +231,8 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
     .outer-pad { padding:16px 8px !important; }
     .content-pad { padding-left:24px !important; padding-right:24px !important; }
     .email-title { font-size:26px !important; }
+    .itinerary-title { font-size:34px !important; }
+    .itinerary-image { height:220px !important; }
     .email-card { border-radius:12px !important; }
   }
 </style>
@@ -234,9 +241,10 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(input.preheader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PALETTE.page};">
   <tr><td class="outer-pad" align="center" style="padding:40px 12px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="email-card" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:1px solid ${PALETTE.border};border-radius:16px;overflow:hidden;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="email-card" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:${editorial ? "0" : `1px solid ${PALETTE.border}`};border-radius:${editorial ? "0" : "16px"};overflow:hidden;">
 
-      <tr><td class="content-pad" style="padding:32px 40px;border-bottom:1px solid ${PALETTE.border};">
+      ${editorial ? `<tr><td style="height:4px;background:${accent};font-size:0;line-height:0;">&nbsp;</td></tr>` : ""}
+      <tr><td class="content-pad" style="padding:${editorial ? "32px 40px 16px" : "32px 40px"};${editorial ? "" : `border-bottom:1px solid ${PALETTE.border};`}">
         ${masthead}
       </td></tr>
 
@@ -245,12 +253,14 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
       </td></tr>` : ""}
 
       <tr><td class="content-pad" style="padding:36px 40px 0;">
-        ${eyebrowLabel(input.eyebrow)}
-        <h1 class="email-title" style="margin:14px 0 0;font-family:${FONT_DISPLAY};font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.6px;color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(input.title)}</h1>
+        ${editorial ? `<p style="margin:0;font-size:13px;line-height:1.5;font-weight:500;color:${PALETTE.muted};">${escapeHtml(input.eyebrow)}</p>` : eyebrowLabel(input.eyebrow)}
+        <h1 class="email-title ${editorial ? "itinerary-title" : ""}" style="margin:12px 0 0;font-family:${FONT_DISPLAY};font-size:${editorial ? "44px" : "30px"};line-height:1.2;font-weight:600;letter-spacing:${editorial ? "-1.5px" : "-0.6px"};color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(input.title)}</h1>
         ${input.subtitle ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
       </td></tr>
 
-      ${input.image && input.imageAfterTitle ? `<tr><td class="content-pad" style="padding:24px 40px 0;"><img src="${escapeHtml(input.image)}" alt="" width="518" style="width:100%;height:240px;object-fit:cover;display:block;border-radius:8px;background:${PALETTE.raised};" /></td></tr>` : ""}
+      ${input.image && input.imageAfterTitle ? `<tr><td class="${editorial ? "" : "content-pad"}" style="padding:${editorial ? "28px 0 0" : "24px 40px 0"};"><img class="${editorial ? "itinerary-image" : ""}" src="${escapeHtml(input.image)}" alt="" width="${editorial ? "600" : "518"}" style="width:100%;height:${editorial ? "300px" : "240px"};object-fit:cover;display:block;border-radius:${editorial ? "0" : "8px"};background:${PALETTE.raised};" /></td></tr>` : ""}
+
+      ${input.contextHtml ? `<tr><td class="content-pad" style="padding:16px 40px;border-bottom:1px solid ${PALETTE.border};">${input.contextHtml}</td></tr>` : ""}
 
       ${input.bodyHtml ? `<tr><td class="content-pad" style="padding:24px 40px 0;">${input.bodyHtml}</td></tr>` : ""}
 
@@ -260,6 +270,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 
       <tr><td class="content-pad" style="padding:32px 40px 36px;">
         <div style="height:1px;background:${PALETTE.border};margin-bottom:22px;"></div>
+        ${editorial ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${PALETTE.muted};">Powered by <a href="${SITE_URL}" style="font-family:${FONT_BODY};font-size:18px;letter-spacing:-0.5px;font-weight:700;color:${PALETTE.ink};text-decoration:none;">Dalefy</a></p>` : ""}
         <p style="margin:0;font-size:11px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText)}</p>
         <p style="margin:6px 0 0;font-size:11px;line-height:1.5;color:${PALETTE.muted};"><a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a></p>
       </td></tr>
