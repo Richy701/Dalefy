@@ -209,22 +209,22 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
+    <div className="relative sm:grid sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <p className="hidden sm:block pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
-      <div className="flex flex-col items-center">
+      <div className="absolute left-0 top-1.5 sm:static flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
-        {!last && <span className="w-px flex-1 bg-border my-1.5" />}
+        {!last && <span className="hidden sm:block w-px flex-1 bg-border my-1.5" />}
       </div>
       <div className={`min-w-0 break-words pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
-        {time && <p className="mb-1 text-xs font-medium text-muted-foreground tabular-nums sm:hidden">{time}</p>}
-        <p className="text-sm font-medium text-foreground leading-snug">
+        {time && <p className="mb-1 pl-11 text-xs font-medium text-muted-foreground tabular-nums sm:hidden">{time}</p>}
+        <p className="min-h-8 pl-11 sm:min-h-0 sm:pl-0 text-sm font-medium text-foreground leading-snug">
           {ev.title}
           {label && ev.type !== "activity" && <span className="ml-2 text-xs font-normal text-muted-foreground">{label}</span>}
         </p>
         {eventMeta(ev) && <p className="mt-0.5 text-sm text-muted-foreground">{eventMeta(ev)}</p>}
         {ev.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80"><Linkify text={ev.description} /></p>}
         {ev.image && ev.type !== "hotel" && (
-          <img src={ev.image} alt="" className="mt-3 w-full max-w-sm aspect-[16/9] rounded-lg object-cover print:hidden" />
+          <img src={ev.image} alt="" className="mt-3 mx-auto sm:mx-0 w-full sm:max-w-sm aspect-[16/9] rounded-lg object-cover print:hidden" />
         )}
         {ev.documents && ev.documents.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
