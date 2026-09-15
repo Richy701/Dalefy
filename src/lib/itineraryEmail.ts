@@ -11,6 +11,7 @@ import {
 export { escapeHtml };
 
 export interface ItineraryEmailInput {
+  template?: string;
   brandName: string;
   logoUrl?: string | null;
   accentColor?: string | null;
@@ -59,6 +60,12 @@ function nightsBetween(start: string, end: string): number {
 }
 
 export function renderItineraryEmail(input: ItineraryEmailInput): { html: string; text: string; subjectHint: string } {
+  const variant = ["invite", "reminder", "dresscode", "update", "custom"].includes(input.template ?? "") ? input.template! : "invite";
+  const headings: Record<string, string> = { invite: "Travel itinerary", reminder: "Before you travel", dresscode: "Dress code", update: "Itinerary updated", custom: "A message from your organiser" };
+  const showDetails = variant === "invite" || variant === "reminder";
+  const messageHtml = variant === "dresscode" || variant === "update"
+    ? `<div style="border-left:3px solid ${PALETTE.border};padding:4px 0 4px 20px;">${paragraphs(input.message).html}</div>`
+    : "";
   const nights = nightsBetween(input.start, input.end);
   const org = input.organizer && input.organizer.name?.trim() ? input.organizer : null;
   const body = paragraphs(input.message);
@@ -94,13 +101,13 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
       platformName: input.platformName,
     },
     preheader: body.first || input.tripName,
-    eyebrow: "Travel itinerary",
-    title: input.tripName,
-    subtitle,
-    image: input.image,
-    bodyHtml: body.html + details.html,
-    bodyText: `${body.text}\n\n${details.text}`,
-    cta: { label: "View your itinerary", url: input.shareUrl },
+    eyebrow: headings[variant],
+    title: variant === "invite" ? input.tripName : headings[variant],
+    subtitle: variant === "invite" ? subtitle : `${input.tripName} · ${subtitle}`,
+    image: variant === "invite" ? input.image : undefined,
+    bodyHtml: variant === "reminder" ? details.html + body.html : (messageHtml || body.html) + (showDetails ? details.html : ""),
+    bodyText: `${body.text}${showDetails ? `\n\n${details.text}` : ""}`,
+    cta: { label: variant === "update" ? "Review updated itinerary" : variant === "reminder" ? "Check your travel plans" : "View your itinerary", url: input.shareUrl },
     ctaNoteHtml: ctaNote.html,
     ctaNoteText: ctaNote.text,
     afterHtml: sig?.html,

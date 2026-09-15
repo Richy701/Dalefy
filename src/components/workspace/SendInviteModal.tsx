@@ -56,6 +56,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   const [subject, setSubject] = useState(EMAIL_TEMPLATES[0].subject);
   const [body, setBody] = useState(EMAIL_TEMPLATES[0].body);
   const [sendingEnabled, setSendingEnabled] = useState<boolean | null>(() => (isFirebaseConfigured() ? null : false));
+  const [serviceError, setServiceError] = useState(false);
+  const [serviceCheck, setServiceCheck] = useState(0);
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<SendResult[] | null>(null);
   const [copied, setCopied] = useState(false);
@@ -77,6 +79,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
   const shareUrl = `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${trip.id}`;
 
   const email = useMemo(() => renderItineraryEmail({
+    template: template.id,
     brandName: brand.name,
     logoUrl: brand.logoUrl,
     accentColor: resolvedAccent,
@@ -90,17 +93,19 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
     shareUrl,
     shortCode: trip.shortCode,
     organizer: trip.organizer,
-  }), [brand, resolvedAccent, trip, resolvedBody, shareUrl]);
+  }), [brand, resolvedAccent, trip, resolvedBody, shareUrl, template.id]);
 
   // Is a verified sender configured? Decides whether the primary action sends or hands off to the mail app.
   useEffect(() => {
     if (!open || !isFirebaseConfigured()) return;
     let cancelled = false;
+    setSendingEnabled(null);
+    setServiceError(false);
     apiFetch<{ enabled: boolean }>("/api/send-itinerary")
       .then(r => { if (!cancelled) setSendingEnabled(!!r.enabled); })
-      .catch(() => { if (!cancelled) setSendingEnabled(false); });
+      .catch(() => { if (!cancelled) setServiceError(true); });
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, serviceCheck]);
 
   const withEmail = useMemo(() => travelers.filter(t => t.email), [travelers]);
   const recipients = useMemo(
@@ -168,7 +173,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
         method: "POST",
         auth: idToken,
         timeoutMs: 30000,
-        body: { tripId: trip.id, subject: resolvedSubject, message: resolvedBody, recipients },
+        body: { template: template.id, tripId: trip.id, subject: resolvedSubject, message: resolvedBody, recipients },
       });
       setResults(r.results);
       if (r.failed === 0) toast.success(`Sent to ${r.sent} traveller${r.sent === 1 ? "" : "s"}`);
@@ -178,10 +183,11 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
     } finally {
       setSending(false);
     }
-  }, [recipients, resolvedSubject, resolvedBody, trip.id]);
+  }, [recipients, resolvedSubject, resolvedBody, trip.id, template.id]);
 
   const sendDisabled = sending || sendingEnabled === null || recipients.length === 0 || !resolvedSubject.trim();
   const primaryLabel = sending ? "Sending itinerary…"
+    : serviceError ? "Retry email service"
     : sendingEnabled === null ? "Checking email service…"
     : recipients.length === 0 ? "Choose travellers"
     : !resolvedSubject.trim() ? "Add a subject"
@@ -221,6 +227,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             <DialogDescription className="text-sm text-muted-foreground">
               {sendingEnabled
                 ? `Sent from ${brand.name}, replies go to ${trip.organizer?.email || "you"}.`
+                : sendingEnabled === null ? "Send a branded itinerary directly to your travellers."
                 : "Opens your mail app with the email ready to send."}
             </DialogDescription>
           </DialogHeader>
@@ -330,9 +337,9 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button
-                onClick={sendingEnabled ? sendNow : openInMailApp}
-                disabled={sendDisabled}
-                aria-busy={sending || sendingEnabled === null}
+                onClick={serviceError ? () => setServiceCheck(n => n + 1) : sendingEnabled ? sendNow : openInMailApp}
+                disabled={!serviceError && sendDisabled}
+                aria-busy={sending || (sendingEnabled === null && !serviceError)}
                 className="min-h-10 px-4 rounded-lg gap-2 disabled:opacity-100 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: sendDisabled ? "hsl(var(--secondary))" : "rgb(var(--brand-rgb))",
@@ -355,6 +362,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
                 </button>
               )}
             </div>
+            {serviceError && <p role="alert" className="text-xs text-destructive">Couldn't check the email service. Retry to enable direct sending.</p>}
+            {recipients.length === 0 && withEmail.length > 0 && <p className="text-xs text-muted-foreground">Select travellers above to send their itinerary directly.</p>}
             {sendingEnabled === false && isFirebaseConfigured() && (
               <p className="text-xs text-muted-foreground">
                 Direct sending isn't set up yet. The designed email is copied to your clipboard when you open your mail app, paste it over the plain text.
@@ -371,8 +380,8 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             <iframe
               ref={previewRef}
               title="Email preview"
-              srcDoc={email.html}
-              sandbox="allow-same-origin"
+              srcDoc={email.html.replace("<head>", '<head><base target="_blank">')}
+              sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
               scrolling="no"
               onLoad={fitPreview}
               className="w-full shrink-0 rounded-xl border border-border bg-white overflow-hidden"

@@ -83,6 +83,7 @@ export default async function handler(req: any, res: any) {
   const replyTo = organizer?.email || callerEmail;
 
   const { html, text } = renderItineraryEmail({
+    template: typeof body.template === "string" ? body.template : "invite",
     brandName,
     logoUrl,
     accentColor,
