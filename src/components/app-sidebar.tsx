@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/shared/Logo";
@@ -10,7 +10,9 @@ import { useBrand } from "@/context/BrandContext";
 import { useOrg } from "@/context/OrgContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CaretUpDown, Check } from "@phosphor-icons/react";
+import { CaretUpDown, Check, MapPin, ArrowRight } from "@phosphor-icons/react";
+import { Badge } from "@/components/ui/badge";
+import { differenceInCalendarDays, startOfDay, endOfDay } from "date-fns";
 import { parseTripDate } from "@/lib/dates";
 import {
   Sidebar,
@@ -18,6 +20,10 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarGroupAction,
   SidebarSeparator,
   SidebarGroup,
   SidebarGroupLabel,
@@ -27,21 +33,20 @@ import {
 
 function SidebarExtras() {
   const { trips } = useTrips();
-  const navigate = useNavigate();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { pathname } = useLocation();
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
 
   const upcomingTrip = React.useMemo(() => {
     const now = new Date();
     return [...trips]
-      .filter((t) => parseTripDate(t.start) > now)
+      .filter((t) => startOfDay(parseTripDate(t.start)) > startOfDay(now))
       .sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
   }, [trips]);
 
   const daysUntil = React.useMemo(() => {
     if (!upcomingTrip) return 0;
-    const diff = parseTripDate(upcomingTrip.start).getTime() - Date.now();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    return Math.max(0, differenceInCalendarDays(parseTripDate(upcomingTrip.start), new Date()));
   }, [upcomingTrip]);
 
   /** Next trip first, then active, then most recent. One list, one mental model. */
@@ -50,8 +55,8 @@ function SidebarExtras() {
     const rest = [...trips]
       .filter((t) => t.id !== upcomingTrip?.id)
       .sort((a, b) => {
-        const aActive = parseTripDate(a.start) <= now && parseTripDate(a.end) >= now;
-        const bActive = parseTripDate(b.start) <= now && parseTripDate(b.end) >= now;
+        const aActive = startOfDay(parseTripDate(a.start)) <= now && endOfDay(parseTripDate(a.end)) >= now;
+        const bActive = startOfDay(parseTripDate(b.start)) <= now && endOfDay(parseTripDate(b.end)) >= now;
         if (aActive !== bActive) return aActive ? -1 : 1;
         return new Date(b.start).getTime() - new Date(a.start).getTime();
       })
@@ -68,54 +73,55 @@ function SidebarExtras() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-muted-foreground px-2">
-        Trips
+      <SidebarSeparator className="mb-4" />
+      <SidebarGroupLabel className="text-[11px] font-medium text-sidebar-muted-foreground">
+        Your trips
       </SidebarGroupLabel>
+      <SidebarGroupAction
+        render={<Link to="/trips" />}
+        onClick={() => setOpenMobile(false)}
+        aria-label="View all trips"
+        title="View all trips"
+        className="top-8"
+      >
+        <ArrowRight />
+      </SidebarGroupAction>
       <SidebarGroupContent>
-        <div className="space-y-0.5 px-2">
+        <SidebarMenu className="gap-1">
           {listedTrips.map((trip) => {
             const now = new Date();
-            const start = parseTripDate(trip.start);
-            const end = parseTripDate(trip.end);
-            const isActive = start <= now && end >= now;
+            const isActive = startOfDay(parseTripDate(trip.start)) <= now && endOfDay(parseTripDate(trip.end)) >= now;
             const isNext = trip.id === upcomingTrip?.id;
+            const selected = pathname === `/trip/${trip.id}` || pathname.startsWith(`/trip/${trip.id}/`);
 
             return (
-              <button
-                key={trip.id}
-                onClick={() => navigate(`/trip/${trip.id}`)}
-                className="w-full flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-brand/5 transition-colors group text-left"
-              >
-                <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0 relative bg-sidebar-accent">
-                  {trip.image && (
-                    <img src={trip.image} alt="" className="h-full w-full object-cover" />
-                  )}
-                  {isActive && (
-                    <span className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-sidebar" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-sidebar-foreground truncate group-hover:text-brand transition-colors leading-tight">
-                    {trip.name}
-                  </p>
-                  <p className="text-[11px] text-sidebar-muted-foreground truncate leading-tight mt-0.5">
-                    {isNext ? dateRange(trip) : (trip.destination || trip.status)}
-                  </p>
-                </div>
-                {isNext && daysUntil > 0 && (
-                  <span className="shrink-0 text-[10px] font-semibold tabular-nums text-brand bg-brand/10 rounded-md px-1.5 py-0.5">
-                    {daysUntil === 1 ? "1d" : `${daysUntil}d`}
-                  </span>
-                )}
-                {isNext && daysUntil === 0 && (
-                  <span className="shrink-0 text-[10px] font-semibold text-brand bg-brand/10 rounded-md px-1.5 py-0.5">
-                    Today
-                  </span>
-                )}
-              </button>
+              <SidebarMenuItem key={trip.id}>
+                <SidebarMenuButton
+                  render={<Link to={`/trip/${trip.id}`} />}
+                  onClick={() => setOpenMobile(false)}
+                  isActive={selected}
+                  aria-current={selected ? "page" : undefined}
+                  className="h-auto min-h-16 gap-3 rounded-xl p-2 transition-colors data-active:bg-brand/10"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar-accent text-sidebar-muted-foreground">
+                    {trip.image ? (
+                      <img src={trip.image} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    ) : <MapPin className="size-4" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium leading-5 text-sidebar-foreground">{trip.name}</p>
+                    <p className="truncate text-[11px] leading-4 text-sidebar-muted-foreground">{dateRange(trip)}</p>
+                    {(isActive || isNext) && (
+                      <Badge variant="secondary" className="mt-1 h-4 rounded px-1 text-[10px] font-medium text-sidebar-foreground">
+                        {isActive ? "In progress" : `In ${daysUntil} ${daysUntil === 1 ? "day" : "days"}`}
+                      </Badge>
+                    )}
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             );
           })}
-        </div>
+        </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
   );
@@ -123,8 +129,8 @@ function SidebarExtras() {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
   const { brand } = useBrand();
   const { currentOrg, orgs, switchOrg } = useOrg();
   const { showToast } = useNotifications();
@@ -137,7 +143,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { error } = await switchOrg(orgId);
     setSwitching(false);
     if (error) showToast(error);
-    else { showToast("Switched organization"); navigate("/dashboard"); }
+    else { showToast("Switched organization"); navigate("/dashboard"); setOpenMobile(false); }
   };
 
   return (
@@ -208,7 +214,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </DropdownMenu>
         ) : (
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => { navigate("/dashboard"); setOpenMobile(false); }}
           aria-label="Go to dashboard"
           className={`flex items-center w-full h-16 overflow-hidden ${collapsed ? "justify-center px-0" : "gap-3 px-4"}`}
         >
@@ -228,7 +234,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </div>
               )}
               <div className="min-w-0">
-                <span className="text-[13px] font-semibold text-sidebar-foreground whitespace-nowrap block">
+                <span className="text-[13px] font-semibold text-sidebar-foreground whitespace-nowrap block truncate">
                   {brand.name}
                 </span>
                 {currentOrg && currentOrg.name.toLowerCase() !== brand.name.toLowerCase() && (
@@ -246,13 +252,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {/* ── Nav ── */}
       <SidebarContent className="gap-0 pt-2">
         <NavMain />
-        <SidebarSeparator className="my-2" />
         <SidebarExtras />
       </SidebarContent>
 
       {/* ── User footer ── */}
       <SidebarFooter className="border-t border-sidebar-border pb-3 gap-1">
         <NavUser />
+        {!collapsed && (
+          <nav aria-label="Legal" className="px-3 pt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            <a href="/support.html" className="hover:text-foreground">Support</a>
+            <a href="/changelog.html" className="hover:text-foreground">What's new</a>
+            <a href="/privacy.html" className="hover:text-foreground">Privacy</a>
+            <a href="/terms.html" className="hover:text-foreground">Terms</a>
+          </nav>
+        )}
       </SidebarFooter>
 
       <SidebarRail />

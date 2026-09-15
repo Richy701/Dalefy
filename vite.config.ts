@@ -1,4 +1,5 @@
 import path from "path"
+import { mobilePreviewPlugin, nativeWebResolution } from "./mobile-preview/vite-plugin"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { VitePWA } from "vite-plugin-pwa"
@@ -22,6 +23,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      mobilePreviewPlugin(__dirname),
       react(),
       tailwindcss(),
       apiRoutesPlugin(env),
@@ -49,6 +51,8 @@ export default defineConfig(({ mode }) => {
         workbox: {
           skipWaiting: true,
           clientsClaim: true,
+          // Firebase OAuth helpers must reach the server, never the cached app shell.
+          navigateFallbackDenylist: [/\.html$/, /^\/__(?:\/|$)/, /^\/api(?:\/|$)/],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           runtimeCaching: [
@@ -64,7 +68,15 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        input: Object.fromEntries(["index", "about", "changelog", "support", "privacy", "terms", "delete-account", "mobile-preview"].map(name => [name, path.resolve(__dirname, `${name}.html`)])),
+      },
+    },
+    define: { global: "globalThis", __DEV__: mode !== "production", "process.env.EXPO_PUBLIC_APP_URL": JSON.stringify(""), "process.env.EXPO_PUBLIC_MAPBOX_TOKEN": JSON.stringify("") },
+    optimizeDeps: { include: ["react-native-reanimated", "react-native-worklets"], rolldownOptions: { plugins: [nativeWebResolution] } },
     resolve: {
+      dedupe: ["react", "react-dom", "react-native-web", "react-native-reanimated", "react-native-worklets"],
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },

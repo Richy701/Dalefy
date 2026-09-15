@@ -49,12 +49,15 @@ export const PALETTE = {
   border: "#e4e4e9",
   ink: "#0e0e10",
   body: "#26272e",
-  muted: "#6b7280",
+  muted: "#616875",
   accent: "#0bd2b5",
 } as const;
 
-export const FONT_BODY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-export const FONT_DISPLAY = "'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif";
+/** Public site, used for the legal links in the footer. */
+export const SITE_URL = "https://dalefy.app";
+
+export const FONT_BODY = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+export const FONT_DISPLAY = FONT_BODY;
 export const FONT_MONO = "'SF Mono', Menlo, Consolas, monospace";
 
 export function escapeHtml(value: unknown): string {
@@ -113,15 +116,16 @@ export function eyebrowLabel(text: string): string {
 
 /** A row of label/value cells separated by hairlines above and below. */
 export function detailStrip(items: Array<{ label: string; value: string }>): { html: string; text: string } {
-  const cells = items.filter(i => i.value).map(i => `
-      <td style="padding:14px 16px 14px 0;vertical-align:top;">
-        ${eyebrowLabel(i.label)}
-        <div style="margin-top:4px;font-size:15px;color:${PALETTE.ink};font-weight:600;white-space:nowrap;">${escapeHtml(i.value)}</div>
-      </td>`).join("");
-  const html = `
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid ${PALETTE.border};border-bottom:1px solid ${PALETTE.border};">
-      <tr>${cells}</tr>
-    </table>`;
+  const values = items.filter(i => i.value);
+  const cells = values.map(i => `
+      <tr>
+        <td width="32%" style="padding:12px 16px;border-bottom:1px solid ${PALETTE.border};vertical-align:top;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(i.label)}</td>
+        <td style="padding:12px 16px;border-bottom:1px solid ${PALETTE.border};font-size:14px;line-height:1.5;color:${PALETTE.ink};font-weight:600;overflow-wrap:anywhere;">${escapeHtml(i.value)}</td>
+      </tr>`).join("");
+  const html = values.length ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PALETTE.raised};border-radius:8px;overflow:hidden;">
+      ${cells}
+    </table>` : "";
   const text = items.filter(i => i.value).map(i => `${i.label}: ${i.value}`).join("\n");
   return { html, text };
 }
@@ -164,7 +168,10 @@ export function signature(s: SignatureInput): { html: string; text: string } {
 
 export function pinLine(platformName: string, code: string): { html: string; text: string } {
   return {
-    html: `<p style="margin:6px 0 0;font-size:13px;color:${PALETTE.muted};">In the ${escapeHtml(platformName)} app, join with PIN <span style="font-family:${FONT_MONO};font-weight:600;color:${PALETTE.ink};letter-spacing:0.08em;">${escapeHtml(code)}</span></p>`,
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;border:1px solid ${PALETTE.border};border-radius:8px;background:${PALETTE.raised};"><tr><td style="padding:16px 20px;">
+      <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:${PALETTE.muted};">Join in the ${escapeHtml(platformName)} app with your trip PIN</p>
+      <p style="margin:0;font-family:${FONT_MONO};font-size:24px;line-height:1.4;font-weight:600;color:${PALETTE.ink};letter-spacing:0.18em;overflow-wrap:anywhere;">${escapeHtml(code)}</p>
+    </td></tr></table>`,
     text: `In the ${platformName} app, join with PIN ${code}`,
   };
 }
@@ -176,13 +183,13 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 
   const masthead = input.brand.logoUrl
     ? `<img src="${escapeHtml(input.brand.logoUrl)}" alt="${escapeHtml(brandName)}" height="28" style="height:28px;width:auto;max-width:160px;display:block;" />`
-    : `<span style="font-family:${FONT_DISPLAY};font-size:22px;font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:${PALETTE.ink};">${escapeHtml(brandName)}</span>`;
+    : `<span style="font-family:${FONT_BODY};font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${PALETTE.ink};">${escapeHtml(brandName)}</span>`;
 
   const cta = input.cta ? `
-      <tr><td style="padding:28px 32px 0;">
+      <tr><td class="content-pad" style="padding:28px 40px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="border-radius:10px;background:${accent};">
-            <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:13px 24px;font-family:${FONT_BODY};font-size:14px;font-weight:600;color:${accentFg};text-decoration:none;border-radius:10px;">${escapeHtml(input.cta.label)}</a>
+          <td style="border-radius:8px;background:${accent};mso-padding-alt:16px 28px;">
+            <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;padding:16px 28px;font-family:${FONT_BODY};font-size:14px;font-weight:600;color:${accentFg};text-decoration:none;border:1px solid ${accent};border-radius:8px;">${escapeHtml(input.cta.label)}</a>
           </td>
         </tr></table>
         ${input.ctaNoteHtml ?? ""}
@@ -196,41 +203,48 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
 <meta name="color-scheme" content="light" />
 <meta name="supported-color-schemes" content="light" />
 <title>${escapeHtml(input.title)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet" />
-<style>@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap');</style>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+<style>
+  table { border-collapse:separate; border-spacing:0; }
+  a { text-underline-offset:3px; }
+  @media only screen and (max-width:620px) {
+    .outer-pad { padding:16px 8px !important; }
+    .content-pad { padding-left:24px !important; padding-right:24px !important; }
+    .email-title { font-size:26px !important; }
+    .email-card { border-radius:12px !important; }
+  }
+</style>
 </head>
 <body style="margin:0;padding:0;background:${PALETTE.page};font-family:${FONT_BODY};-webkit-font-smoothing:antialiased;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(input.preheader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PALETTE.page};">
-  <tr><td align="center" style="padding:32px 12px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:1px solid ${PALETTE.border};border-radius:12px;overflow:hidden;">
+  <tr><td class="outer-pad" align="center" style="padding:40px 12px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="email-card" width="600" style="max-width:600px;width:100%;background:${PALETTE.card};border:1px solid ${PALETTE.border};border-radius:16px;overflow:hidden;">
 
-      <tr><td style="height:4px;background:${accent};font-size:0;line-height:0;">&nbsp;</td></tr>
-
-      <tr><td style="padding:22px 32px 18px;border-bottom:1px solid ${PALETTE.border};">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-          <td style="vertical-align:middle;">${masthead}</td>
-          <td align="right" style="vertical-align:middle;">${eyebrowLabel(input.eyebrow)}</td>
-        </tr></table>
+      <tr><td class="content-pad" style="padding:32px 40px;border-bottom:1px solid ${PALETTE.border};">
+        ${masthead}
       </td></tr>
 
-      ${input.image ? `<tr><td style="padding:24px 32px 0;">
-        <img src="${escapeHtml(input.image)}" alt="" width="536" style="width:100%;height:auto;max-height:220px;object-fit:cover;border-radius:10px;display:block;background:${PALETTE.raised};" />
+      ${input.image ? `<tr><td>
+        <img src="${escapeHtml(input.image)}" alt="" width="598" style="width:100%;height:auto;display:block;background:${PALETTE.raised};" />
       </td></tr>` : ""}
 
-      <tr><td style="padding:30px 32px 0;">
-        <h1 style="margin:0;font-family:${FONT_DISPLAY};font-size:34px;line-height:1.02;font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:${PALETTE.ink};">${escapeHtml(input.title)}</h1>
-        ${input.subtitle ? `<p style="margin:8px 0 0;font-size:15px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
+      <tr><td class="content-pad" style="padding:36px 40px 0;">
+        ${eyebrowLabel(input.eyebrow)}
+        <h1 class="email-title" style="margin:14px 0 0;font-family:${FONT_DISPLAY};font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.6px;color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(input.title)}</h1>
+        ${input.subtitle ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
       </td></tr>
 
-      ${input.bodyHtml ? `<tr><td style="padding:22px 32px 0;">${input.bodyHtml}</td></tr>` : ""}
+      ${input.bodyHtml ? `<tr><td class="content-pad" style="padding:24px 40px 0;">${input.bodyHtml}</td></tr>` : ""}
 
       ${cta}
 
-      ${input.afterHtml ? `<tr><td style="padding:26px 32px 0;">${input.afterHtml}</td></tr>` : ""}
+      ${input.afterHtml ? `<tr><td class="content-pad" style="padding:28px 40px 0;">${input.afterHtml}</td></tr>` : ""}
 
-      <tr><td style="padding:28px 32px 24px;">
+      <tr><td class="content-pad" style="padding:32px 40px 36px;">
+        <div style="height:1px;background:${PALETTE.border};margin-bottom:22px;"></div>
         <p style="margin:0;font-size:11px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(input.footerText)}</p>
+        <p style="margin:6px 0 0;font-size:11px;line-height:1.5;color:${PALETTE.muted};"><a href="${SITE_URL}/privacy.html" style="color:${PALETTE.muted};">Privacy</a> &middot; <a href="${SITE_URL}/terms.html" style="color:${PALETTE.muted};">Terms</a> &middot; <a href="${SITE_URL}/support.html" style="color:${PALETTE.muted};">Support</a></p>
       </td></tr>
 
     </table>
@@ -251,6 +265,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
     input.afterText ? `\n${input.afterText}` : "",
     "",
     input.footerText,
+    `Privacy: ${SITE_URL}/privacy.html · Terms: ${SITE_URL}/terms.html`,
   ].filter((line, i, arr) => !(line === "" && arr[i - 1] === "")).join("\n").trim();
 
   return { html, text };

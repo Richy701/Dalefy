@@ -100,7 +100,7 @@ export default async function handler(req: any, res: any) {
 
   const results = await Promise.all(recipients.map(async r => {
     const sent = await sendEmail({ to: r.email, toName: r.name, subject, html, text, replyTo, fromName: brandName });
-    return sent.ok ? { email: r.email, ok: true, id: sent.id } : { email: r.email, ok: false, error: sent.error };
+    return sent.ok === true ? { email: r.email, ok: true, id: sent.id } : { email: r.email, ok: false, error: sent.error };
   }));
 
   const sent = results.filter(r => r.ok).length;

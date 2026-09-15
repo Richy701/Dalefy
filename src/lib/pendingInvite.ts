@@ -13,8 +13,10 @@ export function getPendingInvite(): string | null {
 
 export function setPendingInvite(token: string, email?: string): void {
   try {
+    const previousToken = localStorage.getItem(KEY);
     localStorage.setItem(KEY, token);
     if (email) localStorage.setItem(EMAIL_KEY, email);
+    else if (previousToken !== token) localStorage.removeItem(EMAIL_KEY);
   } catch { /* storage unavailable */ }
 }
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User } from "@/types";
-import { isFirebaseConfigured } from "@/services/firebase";
+import { firebaseAuth, isFirebaseConfigured } from "@/services/firebase";
 import { initialsFrom } from "@/lib/names";
 import { STORAGE } from "@/config/storageKeys";
 import { apiFetch } from "@/lib/api";
@@ -120,7 +120,7 @@ interface AuthContextType {
   updateProfile: (patch: Partial<User>) => void;
   resendVerification: () => Promise<string | null>;
   refreshEmailVerified: () => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -135,7 +135,7 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: () => {},
   resendVerification: async () => null,
   refreshEmailVerified: async () => true,
-  logout: () => {},
+  logout: async () => {},
 });
 
 // ── Provider ────────────────────────────────────────────────────────────────
@@ -262,11 +262,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!useFirebase) return;
 
+    let active = true;
+    let authRevision = 0;
     const subscription = onAuthStateChange(async (event) => {
+      const revision = ++authRevision;
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         const session = await getSession();
         if (session?.user) {
           const profile = await fetchProfile(session.user.uid);
+          if (!active || revision !== authRevision || firebaseAuth().currentUser?.uid !== session.user.uid) return;
           const u = profile ?? {
             id: session.user.uid,
             name: session.user.displayName ?? session.user.email?.split("@")[0] ?? "User",
@@ -285,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => { subscription.unsubscribe(); };
+    return () => { active = false; subscription.unsubscribe(); };
   }, [useFirebase]);
 
   // ── Email/password sign in ───────────────────────────────────────────────
@@ -402,13 +406,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Logout ──────────────────────────────────────────────────────────────
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (useFirebase) await authSignOut();
     setUser(null);
     localStorage.removeItem(STORAGE.AUTH);
     clearUserData();
-    if (useFirebase) {
-      authSignOut().catch(() => {});
-    }
   }, [useFirebase]);
 
   return (

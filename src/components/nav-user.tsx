@@ -16,8 +16,8 @@ export function NavUser() {
   const { user, logout } = useAuth();
   const { orgRole } = useOrg();
   const navigate = useNavigate();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   const displayName = user?.name ?? "";
@@ -34,7 +34,7 @@ export function NavUser() {
         <SidebarMenuItem>
           <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "flex-col justify-center gap-1.5 px-0" : ""}`}>
             <button
-              onClick={() => navigate("/settings")}
+              onClick={() => { navigate("/settings"); setOpenMobile(false); }}
               className={`flex items-center gap-3 flex-1 min-w-0 rounded-xl hover:bg-brand/5 transition-colors py-1 px-1 -ml-1 ${collapsed ? "justify-center ml-0" : ""}`}
               aria-label={`${displayName}, open settings`}
               title={collapsed ? `${displayName} · Settings` : undefined}

@@ -24,7 +24,7 @@ function expiryLine(iso: string): string {
 
 function linkFallback(url: string, ttl: string): { html: string; text: string } {
   return {
-    html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">${escapeHtml(ttl)} If the button doesn't work, open this link: <a href="${escapeHtml(url)}" style="color:${PALETTE.muted};word-break:break-all;">${escapeHtml(url)}</a></p>`,
+    html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">${escapeHtml(ttl)}<br />Button not working? <a href="${escapeHtml(url)}" style="color:${PALETTE.muted};word-break:break-all;">Open the secure link</a></p>`,
     text: ttl,
   };
 }
@@ -131,7 +131,7 @@ export function magicLinkEmail(input: { signInUrl: string }): RenderedEmail {
   const brand = DALEFY_BRAND;
   const bodyHtml =
     paragraph(`Tap the button on the phone you signed in from and you'll be taken straight into the app.`) +
-    paragraph(`If you didn't request this, you can ignore it. Nobody can sign in without this link.`);
+    paragraph(`If you didn't request this, you can ignore it. Keep this link private.`);
   const bodyText = "Open the link below on the phone you signed in from and you'll be taken straight into the app.\n\nIf you didn't request this, you can ignore it.";
   const fb = linkFallback(input.signInUrl, "This link expires in 1 hour and works once.");
   const { html, text } = renderEmailShell({
@@ -161,9 +161,9 @@ export function tripUpdatedEmail(input: {
   const brand = input.brand;
   const changes = input.changes.map(c => c.trim()).filter(Boolean).slice(0, 12);
   const list = listCard(changes);
-  const bodyHtml =
-    paragraph(`${escapeHtml(brand.brandName)} has updated your itinerary. Here's what changed:`) + list.html;
-  const bodyText = `${brand.brandName} has updated your itinerary. Here's what changed:\n\n${list.text}`;
+  const introduction = changes.length ? `${brand.brandName} has updated your itinerary. Here's what changed:` : `${brand.brandName} has updated your itinerary. Open it below to review the latest details.`;
+  const bodyHtml = paragraph(escapeHtml(introduction)) + (changes.length ? list.html : "");
+  const bodyText = `${introduction}\n\n${list.text}`;
   const pin = input.shortCode ? pinLine(brand.platformName, input.shortCode) : null;
   const note = {
     html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Your itinerary is live, so this link always shows the latest version.</p>${pin?.html ?? ""}`,

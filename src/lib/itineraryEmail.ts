@@ -80,7 +80,7 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
 
   const pin = input.shortCode ? pinLine(input.platformName, input.shortCode) : null;
   const ctaNote = {
-    html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Or open this link: <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">${escapeHtml(input.shareUrl)}</a></p>${pin?.html ?? ""}`,
+    html: `<p style="margin:12px 0 0;font-size:12px;color:${PALETTE.muted};line-height:1.5;">Button not working? <a href="${escapeHtml(input.shareUrl)}" style="color:${PALETTE.muted};word-break:break-all;">Open your itinerary</a></p>${pin?.html ?? ""}`,
     text: pin?.text ?? "",
   };
 

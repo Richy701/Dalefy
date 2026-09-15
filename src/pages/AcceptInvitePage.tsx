@@ -142,11 +142,19 @@ export function AcceptInvitePage() {
     setNote(err ? err : `Verification email sent to ${user?.email ?? "your address"}. Check your inbox, then come back here.`);
   };
 
-  const handleSwitchAccount = () => {
+  const handleSwitchAccount = async () => {
+    if (busy) return;
+    setBusy(true);
     if (token && preview?.email) setPendingInvite(token, preview.email);
     else if (token) setPendingInvite(token);
-    logout();
-    navigate("/login");
+    try {
+      await logout();
+      navigate("/login");
+    } catch {
+      setMessage("Couldn’t sign out. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSignIn = () => {
@@ -243,6 +251,7 @@ export function AcceptInvitePage() {
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               onClick={handleSwitchAccount}
+              disabled={busy}
               className="w-full h-11 rounded-xl bg-brand hover:opacity-90 text-black text-sm font-medium"
             >
               Sign out and switch account

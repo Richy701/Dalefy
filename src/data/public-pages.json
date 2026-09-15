@@ -1,0 +1,395 @@
+{
+  "about": {
+    "title": "Trips, planned and followed in one place",
+    "eyebrow": "About Dalefy",
+    "description": "Dalefy is a trip companion app. Travel organisers build itineraries in a shared workspace, and travellers follow their trip live on their phone.",
+    "updated": "",
+    "sections": [
+      {
+        "heading": "For travel organisers",
+        "html": "<p>Dalefy is the workspace where a travel team plans a trip end to end.</p>\n        <ul>\n          <li>Build day-by-day itineraries with flights, stays, transfers and events.</li>\n          <li>Import bookings and confirmations, with flight details checked automatically.</li>\n          <li>Manage travellers, documents and compliance for each trip.</li>\n          <li>Publish the finished itinerary to travellers with your own branding, by email, link or in the app.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "For travellers",
+        "html": "<p>Travellers use the Dalefy app on iPhone and Android to follow the trip their organiser planned.</p>\n        <ul>\n          <li>See the full itinerary, updated live if plans change.</li>\n          <li>Get flight status, reminders for what's next, and a home screen widget counting down to departure.</li>\n          <li>Keep trip documents, maps and the shared photo gallery in one place.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Signing in",
+        "html": "<p>Dalefy is used by travel organisations and their clients. Access to the organiser workspace is by invitation from your team admin. Travellers join a trip from the link or PIN their organiser sends them.</p>\n        <p>Sign in with Google, Apple or your email address. We only use your account to confirm who you are. See the <a href=\"/privacy.html\">privacy policy</a> for what we store.</p>",
+        "faqs": [],
+        "signIn": true
+      }
+    ],
+    "releases": []
+  },
+  "changelog": {
+    "title": "What's new",
+    "eyebrow": "Changelog",
+    "description": "Recent changes across the Dalefy app and workspace. App updates arrive automatically; the App Store version number is shown under Profile → About.",
+    "updated": "",
+    "sections": [],
+    "releases": [
+      {
+        "date": "2026-09-15",
+        "dateLabel": "15 Sep 2026",
+        "heading": "Branded email, and widgets that land on the right day",
+        "platforms": [
+          "iOS",
+          "Android",
+          "Web"
+        ],
+        "items": [
+          "Team invitations, sign-in links, verification and password reset emails now arrive on Dalefy's own design instead of a generic template.",
+          "Itinerary updates reach travellers without the app by email, alongside the push notification for those who have it.",
+          "The home screen widget and Live Activities open the trip page scrolled to that day."
+        ]
+      },
+      {
+        "date": "2026-09-14",
+        "dateLabel": "14 Sep 2026",
+        "heading": "Mobile polish and stability",
+        "platforms": [
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Cover photos blend into the page instead of stopping in a hard line, on both light and dark themes.",
+          "Fixed the gallery stuttering, an app that hung when opened offline, and sections that stayed invisible on Home and Today.",
+          "The photo viewer is lighter and opens without a jump."
+        ]
+      },
+      {
+        "date": "2026-09-12",
+        "dateLabel": "12 Sep 2026",
+        "heading": "dalefy.app",
+        "platforms": [
+          "Web",
+          "iOS",
+          "Android"
+        ],
+        "items": [
+          "Dalefy moved to dalefy.app. Links and emails now use the new address.",
+          "PDF exports carry the organiser's logo, and flight rows use clearer icons.",
+          "The app starts faster and the notification sheet is quieter."
+        ]
+      },
+      {
+        "date": "2026-09-11",
+        "dateLabel": "11 Sep 2026",
+        "heading": "Widgets and Live Activities",
+        "platforms": [
+          "iOS"
+        ],
+        "items": [
+          "A home screen widget counts down to your next trip and shows what's next once you are travelling.",
+          "Flight progress and the next event can appear on the lock screen and in the Dynamic Island.",
+          "Travellers now only receive the events assigned to them."
+        ]
+      },
+      {
+        "date": "2026-09-09",
+        "dateLabel": "9 Sep 2026",
+        "heading": "Accounts, legal pages and the tab bar",
+        "platforms": [
+          "iOS",
+          "Android",
+          "Web"
+        ],
+        "items": [
+          "Sign in with Apple and Google use the official marks, and you can delete your account from Profile.",
+          "Privacy policy, terms and support pages published.",
+          "The tab bar tucks away as you scroll, and Today is a single scrolling page."
+        ]
+      },
+      {
+        "date": "2026-09-08",
+        "dateLabel": "8 Sep 2026",
+        "heading": "New Home and Trip design",
+        "platforms": [
+          "iOS",
+          "Android",
+          "Web"
+        ],
+        "items": [
+          "Home and Trip screens redesigned with a photo hero, inset cards and a timeline with category icons.",
+          "Every event has a category with its own colour and icon, on mobile, web and the shared itinerary.",
+          "Dashboard rebuilt around the next trip, upcoming flights and traveller invites."
+        ]
+      },
+      {
+        "date": "2026-09-01",
+        "dateLabel": "1 Sep 2026",
+        "heading": "Design parity",
+        "platforms": [
+          "Web"
+        ],
+        "items": [
+          "Reports, Travellers, Media, Destinations and Dashboard brought onto one visual system.",
+          "Destinations globe is interactive."
+        ]
+      }
+    ]
+  },
+  "support": {
+    "title": "Help & support",
+    "eyebrow": "Support",
+    "description": "Answers to the common questions, and how to reach us when you need a person.",
+    "updated": "Last updated: 15 September 2026",
+    "sections": [
+      {
+        "heading": "Contact us",
+        "html": "<p>Email <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a> and we will get back to you as soon as we can. If your question is about a booking, a hotel or a flight, your trip organiser is usually the fastest route, and their details are on the trip's Info page.</p>\n        <p>It helps if you include your app version. You will find it in the app under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">About</span> &rarr; <span class=\"path\">Version</span>. Tap it to copy it.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "For travellers",
+        "html": "",
+        "faqs": [
+          {
+            "question": "How do I join a trip?",
+            "answer": "Tap the plus button on the Home tab and enter the six-digit PIN your organiser sent you. You can also scan the QR code or paste the invite link from the same screen."
+          },
+          {
+            "question": "Where is my itinerary?",
+            "answer": "Open your trip from Home. Today shows what is coming up next, and the trip page shows every day in order. Tap any event for the details, tickets and documents your organiser attached."
+          },
+          {
+            "question": "What does the home screen widget do?",
+            "answer": "It counts down to your next trip and, once you are travelling, shows what is next. Tap it to open that day in the app. Add it from your phone's widget gallery."
+          },
+          {
+            "question": "Can I add photos?",
+            "answer": "Yes. Open the Gallery tab and tap the plus button to add photos or videos from your camera roll. Everyone on the trip can see what is shared there."
+          },
+          {
+            "question": "Do I need an account?",
+            "answer": "No. You can join and use a trip without one. Signing in with Apple, Google or an email link keeps your trips with you if you change phones. Go to <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Sign in</span>."
+          },
+          {
+            "question": "I asked for a sign-in link but nothing arrived",
+            "answer": "Check your spam folder for an email from team@dalefy.app. Links work once and expire after an hour, so request a fresh one if it has been a while."
+          },
+          {
+            "question": "How do notifications work?",
+            "answer": "Trip reminders arrive before each event, and itinerary updates arrive when your organiser changes the plan. If you have not installed the app, updates come by email instead. Both can be turned off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span>."
+          },
+          {
+            "question": "What is Live Activity?",
+            "answer": "On iPhone, flight progress can show on your lock screen and in the Dynamic Island while you travel. Turn it off under <span class=\"path\">Profile</span> &rarr; <span class=\"path\">Notifications</span> if you would rather not see it."
+          },
+          {
+            "question": "How do I delete my account?",
+            "answer": "Go to <span class=\"path\">Profile</span> and tap <span class=\"path\">Delete account</span> below Sign out. The full steps are on the <a href=\"/delete-account.html\">delete your account</a> page."
+          }
+        ],
+        "signIn": false
+      },
+      {
+        "heading": "For organisers",
+        "html": "",
+        "faqs": [
+          {
+            "question": "How do I get access to the workspace?",
+            "answer": "Ask your team admin to invite you from Settings &rarr; Team. You will receive an email with a sign-in link that also accepts the invitation."
+          },
+          {
+            "question": "How do travellers get the itinerary?",
+            "answer": "From a trip, use Send to email a branded itinerary with the trip link and PIN, or copy the link and PIN to share however you like. Travellers can view it on the web or in the app."
+          },
+          {
+            "question": "Will travellers see changes I make?",
+            "answer": "Yes. The shared link is live. Travellers with the app get a push notification, and travellers without it get an email summarising what changed."
+          },
+          {
+            "question": "Can I use my own branding?",
+            "answer": "Set your company name, logo and accent colour under Settings &rarr; Branding. They appear on the shared itinerary, the app screens for your trips, and the emails Dalefy sends on your behalf."
+          }
+        ],
+        "signIn": false
+      }
+    ],
+    "releases": []
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "eyebrow": "Legal",
+    "description": "What Dalefy collects, why, and how to get it removed.",
+    "updated": "Last updated: 15 September 2026",
+    "sections": [
+      {
+        "heading": "Who we are",
+        "html": "<p>Dalefy is a trip companion app. Travel organisers publish itineraries to it, and travellers use it to follow their trip. When a trip is branded \"Powered by\" an organiser, that organiser planned the trip, and Dalefy provides the app.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "What we collect",
+        "html": "<p><strong>If you sign in:</strong> your name, email address and profile photo, as provided by Apple, Google or the email link you used. Signing in is optional for travellers.</p>\n        <p><strong>Trip data:</strong> the trips you join, the traveller you link yourself to on a trip, and the photos and videos you add to a trip gallery.</p>\n        <p><strong>Device data:</strong> a random identifier for this installation so your trips stay with the device, and a push notification token if you allow notifications. On iPhone, a Live Activity token lets flight progress show on your lock screen.</p>\n        <p><strong>Location:</strong> the app does not track where you are. Event addresses set by your organiser are looked up on a map so the app can show them to you.</p>\n        <p><strong>Cookies:</strong> the website uses no tracking or advertising cookies. It stores a sign-in session and your theme choice in your browser, and nothing else.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "How we use it",
+        "html": "<ul>\n          <li>To show you your trips, and keep them in sync across your devices when you are signed in.</li>\n          <li>To send trip reminders and itinerary updates you have opted into, by push notification or email.</li>\n          <li>To send sign-in links, verification and password reset emails when you ask for them.</li>\n          <li>To share your name and avatar with the other people on the same trip.</li>\n          <li>To answer support requests you send us.</li>\n        </ul>\n        <p>We do not sell your personal information, and we do not use it for advertising.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Who we share it with",
+        "html": "<ul>\n          <li><strong>Your trip organiser</strong> can see who has joined their trip and which traveller you linked to.</li>\n          <li><strong>Google Firebase</strong> stores accounts, trip data and uploaded media, and delivers push notifications.</li>\n          <li><strong>Resend</strong> delivers the emails Dalefy sends, such as itineraries, invitations and sign-in links.</li>\n          <li><strong>Mapbox</strong> provides maps and looks up the event addresses on a trip.</li>\n          <li><strong>Apple and Google</strong> handle sign-in when you choose them, and Apple handles Live Activities.</li>\n          <li><strong>Expo</strong> routes push notifications and app updates to your device.</li>\n          <li><strong>Vercel</strong> hosts the website and the services behind the app.</li>\n        </ul>\n        <p>All of this data travels over encrypted connections. Each provider only receives what it needs for its job.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "How long we keep it",
+        "html": "<p>Trip data stays for as long as the trip exists with the organiser. Your account and profile stay until you delete them. Photos you add to a gallery stay with that trip until you or the organiser remove them. Email delivery records are kept by our email provider for a short period for troubleshooting.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Deleting your data",
+        "html": "<p>In the app, go to <span class=\"path\">Profile</span> and tap <span class=\"path\">Delete account</span>. That removes your profile, your trip memberships and your avatar, and signs you out. Photos you added to a trip gallery can be removed from the gallery itself.</p>\n        <p>You can also email <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a> from the address on your account and we will do it for you. The full steps are on the <a href=\"/delete-account.html\">delete your account</a> page.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Your rights",
+        "html": "<p>Depending on where you live, you may have the right to access, correct, export or erase the personal data we hold about you, and to object to certain uses. Email us and we will respond within 30 days. If you are in the UK or EU you can also complain to your data protection authority.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Children",
+        "html": "<p>Dalefy is not aimed at children under 16. Younger travellers on a family or group trip are added by their organiser, who is responsible for having the right consent.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Changes and contact",
+        "html": "<p>If this policy changes in a way that matters, we will update the date above and note it on the <a href=\"/changelog.html\">what's new</a> page. Questions go to <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a>.</p>",
+        "faqs": [],
+        "signIn": false
+      }
+    ],
+    "releases": []
+  },
+  "terms": {
+    "title": "Terms of service",
+    "eyebrow": "Legal",
+    "description": "The short version: be a good guest, and remember your organiser runs the trip.",
+    "updated": "Last updated: 15 September 2026",
+    "sections": [
+      {
+        "heading": "Agreeing to these terms",
+        "html": "<p>By using the Dalefy app or website you agree to these terms. If you do not agree, please do not use Dalefy.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Organisers and travellers",
+        "html": "<p>Dalefy is the app. The trip itself is planned and run by a travel organiser, who publishes the itinerary, times, bookings and documents you see. When a trip is branded \"Powered by\" a company, that company is your organiser.</p>\n        <p>Dalefy is not a travel agent, carrier or hotel, and is not a party to any booking. Your contract for flights, accommodation and activities is with your organiser or the provider. Times and details can change, so check with your organiser or the carrier before you travel.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Who can use Dalefy",
+        "html": "<p>You must be at least 16 to create an account. Younger travellers can be added to a trip by their organiser with the consent of a parent or guardian.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Your account",
+        "html": "<p>Signing in is optional for travellers. If you do sign in, keep your sign-in method secure and tell us if you think someone else has used it. Sign-in links and invitations we email you are personal to you and work once. You can delete your account at any time from the Profile tab.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Organiser workspaces",
+        "html": "<p>Organiser accounts belong to a team. Team admins decide who is invited, what role they hold and when access ends. Organisers are responsible for the accuracy of the itineraries they publish and for having the right to share the traveller details and documents they upload.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Your content",
+        "html": "<p>You own the photos, videos and text you add to a trip. By adding them to a shared gallery you allow the other people on that trip, and your organiser, to see them in the app. Dalefy does not claim ownership of your content.</p>\n        <p>Only add content you have the right to share. Do not add anything illegal, harmful, abusive, or that infringes someone else's rights. Organisers and Dalefy can remove content that breaks these terms.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Using the service fairly",
+        "html": "<ul>\n          <li>Do not share trip PINs, QR codes or invite links with people who are not on the trip.</li>\n          <li>Do not try to access trips, accounts or data that are not yours.</li>\n          <li>Do not interfere with the app, its servers or other people's use of it.</li>\n          <li>Do not use Dalefy to send unsolicited messages or emails.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Availability",
+        "html": "<p>We work hard to keep Dalefy available, but we cannot promise it will always be online or error free. We may change, pause or retire features at any time. Keep a copy of anything critical, such as tickets, outside the app.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Liability",
+        "html": "<p>Dalefy is provided \"as is\". To the extent the law allows, we are not liable for loss or damage arising from your use of the app, including missed connections, changed bookings or lost data. Nothing in these terms limits liability that cannot be limited by law.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Ending your use",
+        "html": "<p>You can stop using Dalefy and delete your account whenever you like. We may suspend or end access for anyone who breaks these terms.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Law and changes",
+        "html": "<p>These terms are governed by the laws of England and Wales. If we change them in a way that matters, we will update the date above and let you know in the app.</p>\n        <p>Questions go to <a href=\"mailto:support@dalefy.app\">support@dalefy.app</a>.</p>",
+        "faqs": [],
+        "signIn": false
+      }
+    ],
+    "releases": []
+  },
+  "delete-account": {
+    "title": "Delete your account",
+    "eyebrow": "Your data",
+    "description": "How to remove your Dalefy account and the data that goes with it.",
+    "updated": "Last updated: 15 September 2026",
+    "sections": [
+      {
+        "heading": "In the app",
+        "html": "<ol class=\"steps\">\n          <li>Open the <span class=\"path\">Profile</span> tab.</li>\n          <li>Scroll to the bottom and tap <span class=\"path\">Delete account</span>, below Sign out.</li>\n          <li>Confirm. If you signed in with Apple or Google you may be asked to sign in again first, which is a security check.</li>\n        </ol>\n        <p>Deletion is immediate and signs you out on that device.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "By email",
+        "html": "<p>If you no longer have the app, or you would rather we did it, email <a href=\"mailto:support@dalefy.app?subject=Delete%20my%20account\">support@dalefy.app</a> from the address on your account with the subject \"Delete my account\". We will confirm and complete it within 30 days.</p>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "What gets deleted",
+        "html": "<ul>\n          <li>Your profile: name, email address and avatar.</li>\n          <li>Your sign-in method with Apple, Google or email.</li>\n          <li>Your memberships of every trip you joined, and the traveller link on each.</li>\n          <li>Your push notification and Live Activity tokens.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "What stays",
+        "html": "<ul>\n          <li>Photos and videos you added to a shared trip gallery. Remove them from the gallery before you delete if you do not want them to stay with the trip.</li>\n          <li>The trip itself, which belongs to the organiser who planned it. Your name may still appear on the organiser's traveller list, as that is their record of who they took on the trip.</li>\n          <li>Records our providers keep for a short period for security and troubleshooting, such as email delivery logs.</li>\n        </ul>",
+        "faqs": [],
+        "signIn": false
+      },
+      {
+        "heading": "Organiser accounts",
+        "html": "<p>If you are part of an organiser team, ask your team admin to remove you from the team first under Settings &rarr; Team. Then delete your account the same way, or email us. Trips you created stay with the team.</p>",
+        "faqs": [],
+        "signIn": false
+      }
+    ],
+    "releases": []
+  }
+}

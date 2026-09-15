@@ -39,11 +39,11 @@ export default async function handler(req: any, res: any) {
     if (!rateLimit(req, res, { bucket: "auth-email-verify", limit: 5, windowMs: 10 * 60_000 })) return;
 
     const link = await generateVerificationLink(email, { url: `${APP_URL}/` });
-    if (!link.ok) return res.status(500).json({ error: friendly(link.error, link.code) });
+    if (link.ok === false) return res.status(500).json({ error: friendly(link.error, link.code) });
     const name = typeof payload.name === "string" ? payload.name : null;
     const mail = verifyEmail({ name, verifyUrl: link.url });
     const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
-    if (!sent.ok) return res.status(502).json({ error: sent.error });
+    if (sent.ok === false) return res.status(502).json({ error: sent.error });
     return res.status(200).json({ ok: true });
   }
 
@@ -55,19 +55,19 @@ export default async function handler(req: any, res: any) {
 
   if (kind === "magic-link") {
     const link = await generateSignInLink(email, { url: `${APP_URL}/auth-callback`, handleCodeInApp: true });
-    if (!link.ok) {
+    if (link.ok === false) {
       console.error("[auth-email] magic-link failed:", link.code, link.error);
       return res.status(500).json({ error: friendly(link.error, link.code) });
     }
     const mail = magicLinkEmail({ signInUrl: link.url });
     const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
-    if (!sent.ok) return res.status(502).json({ error: sent.error });
+    if (sent.ok === false) return res.status(502).json({ error: sent.error });
     return res.status(200).json({ ok: true });
   }
 
   // reset: never reveal whether the account exists
   const link = await generatePasswordResetLink(email, { url: `${APP_URL}/#/login` });
-  if (!link.ok) {
+  if (link.ok === false) {
     if (link.code !== "auth/user-not-found" && link.code !== "auth/email-not-found") {
       console.error("[auth-email] reset failed:", link.code, link.error);
       return res.status(500).json({ error: friendly(link.error, link.code) });
@@ -76,7 +76,7 @@ export default async function handler(req: any, res: any) {
   }
   const mail = resetPasswordEmail({ resetUrl: link.url });
   const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
-  if (!sent.ok) return res.status(502).json({ error: sent.error });
+  if (sent.ok === false) return res.status(502).json({ error: sent.error });
   return res.status(200).json({ ok: true });
 }
 

@@ -493,7 +493,11 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         {/* Footer */}
         <footer className="mt-14 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>Prepared by {brand.name}</p>
-          <p>Powered by {brand.platformName}</p>
+          <p className="flex items-center gap-3">
+            <span>Powered by {brand.platformName}</span>
+            <a href="/privacy.html" className="hover:text-foreground">Privacy</a>
+            <a href="/terms.html" className="hover:text-foreground">Terms</a>
+          </p>
         </footer>
       </div>
     </div>

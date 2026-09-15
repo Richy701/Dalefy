@@ -156,6 +156,7 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
 
   try {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
     let fbUser: FbUser;
 
     try {
@@ -164,11 +165,13 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
       fbUser = result.user;
     } catch (popupErr: unknown) {
       const code = (popupErr as { code?: string }).code ?? "";
-      // If popup was blocked or closed, fall back to redirect
+      // A cancellation must stop here, never launch another sign-in flow.
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return { user: null, error: "Google sign-in was cancelled. Select Continue with Google when you are ready." };
+      }
+      // Only a genuinely blocked popup needs the redirect fallback.
       if (
-        code === "auth/popup-blocked" ||
-        code === "auth/popup-closed-by-user" ||
-        code === "auth/cancelled-popup-request"
+        code === "auth/popup-blocked"
       ) {
         await signInWithRedirect(firebaseAuth(), provider);
         // signInWithRedirect navigates away - result handled by handleRedirectResult()

@@ -193,14 +193,14 @@ export default async function handler(req: any, res: any) {
   let emailSent = false;
   let emailError: string | undefined;
   const link = await generateSignInLink(email, { url: `${APP_URL}/?invite=${encodeURIComponent(inviteToken)}`, handleCodeInApp: true });
-  if (!link.ok) {
+  if (link.ok === false) {
     emailError = link.error;
   } else {
     const mail = inviteEmail({ inviterName, orgName, role, acceptUrl: link.url, expiresAt });
     const callerEmail = typeof payload.email === "string" ? payload.email : undefined;
     const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, replyTo: callerEmail });
     emailSent = sent.ok;
-    if (!sent.ok) emailError = sent.error;
+    if (sent.ok === false) emailError = sent.error;
   }
   if (emailError) console.error("[send-invite] email not sent:", emailError);
 

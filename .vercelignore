@@ -1,4 +1,18 @@
-mobile/
+# The web preview builds directly from mobile source.
+mobile/node_modules/
+mobile/.expo/
+mobile/.vercel/
+mobile/.claude/
+mobile/.env*
+mobile/.npmrc
+mobile/dist/
+mobile/ios/
+mobile/android/
+mobile/native-widgets/
+mobile/widgets/
+mobile/services/firebase.ts
+# Expo config is for the native compiler; Vite uses the root config.
+mobile/tsconfig.json
 .agents/
 .claude/
 .windsurf/

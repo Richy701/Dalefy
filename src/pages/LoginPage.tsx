@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { resetPassword } from "@/services/firebaseAuth";
-import { getPendingInvite, getPendingInviteEmail } from "@/lib/pendingInvite";
+import { getPendingInvite, getPendingInviteEmail, clearPendingInvite } from "@/lib/pendingInvite";
 
 // ── Shared sub-components ───────────────────────────────────────────────
 
@@ -79,7 +79,15 @@ export function LoginPage() {
   const { signIn, signInWithGoogle, demoLogin } = useAuth();
   const navigate = useNavigate();
 
-  const pendingInviteEmail = getPendingInvite() ? getPendingInviteEmail() : null;
+  const [pendingInvite, setPendingInviteToken] = useState(getPendingInvite);
+  const pendingInviteEmail = pendingInvite ? getPendingInviteEmail() : null;
+
+  const dismissInvite = () => {
+    clearPendingInvite();
+    setPendingInviteToken(null);
+    setEmail("");
+    setError(null);
+  };
 
   const goPostLogin = () => {
     const pending = getPendingInvite();
@@ -115,6 +123,7 @@ export function LoginPage() {
   };
 
   const handleGoogle = async () => {
+    if (googleLoading || loading) return;
     setError(null);
     setGoogleLoading(true);
     try {
@@ -163,16 +172,19 @@ export function LoginPage() {
               <div className="mb-8">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">Sign in</h1>
                 <p className="text-sm text-muted-foreground">
-                  Use the account you were invited with.
+                  {pendingInvite ? "Use the account you were invited with." : "Welcome back. Sign in to your workspace."}
                 </p>
               </div>
 
-              {pendingInviteEmail && (
+              {pendingInvite && (
                 <div className="mb-6 rounded-xl border border-border bg-card px-4 py-3">
                   <p className="text-xs font-medium text-muted-foreground mb-0.5">Team invitation</p>
                   <p className="text-sm text-foreground">
-                    Sign in with <span className="font-medium">{pendingInviteEmail}</span> to join your team.
+                    {pendingInviteEmail ? <>Sign in with <span className="font-medium">{pendingInviteEmail}</span> to join your team.</> : "Sign in to accept your pending team invitation."}
                   </p>
+                  <Button type="button" variant="link" onClick={dismissInvite} disabled={googleLoading || loading} className="mt-2 h-auto p-0 text-xs text-foreground">
+                    Cancel invitation and sign in normally
+                  </Button>
                 </div>
               )}
 
@@ -356,6 +368,13 @@ export function LoginPage() {
           )}
         </motion.div>
       </main>
+
+      <footer className="px-6 pb-6 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+        <a href="/about.html" className="hover:text-foreground">About</a>
+        <a href="/support.html" className="hover:text-foreground">Support</a>
+        <a href="/privacy.html" className="hover:text-foreground">Privacy</a>
+        <a href="/terms.html" className="hover:text-foreground">Terms</a>
+      </footer>
     </div>
   );
 }

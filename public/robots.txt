@@ -1,2 +1,8 @@
 User-agent: *
+Allow: /about.html
+Allow: /changelog.html
+Allow: /support.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /delete-account.html
 Disallow: /

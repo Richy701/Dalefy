@@ -16,7 +16,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Palette, Bell, Shield, UserCirclePlus,
   Vibrate, ArrowSquareOut, Info,
-  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon,
+  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Sparkle,
   SignOut, Trash,
 } from "phosphor-react-native";
 import { T, R, S, shadow, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
@@ -330,7 +330,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/support.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.app/support.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
@@ -341,7 +341,18 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/privacy.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.app/changelog.html"); }}
+            accessibilityRole="link"
+            accessibilityLabel="What's new"
+          >
+            <Sparkle size={18} color={C.textSecondary} weight="light" />
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>What's new</Text></View>
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
+          </Pressable>
+          <View style={s.divider} />
+          <Pressable
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.app/privacy.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
@@ -352,7 +363,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.vercel.app/terms.html"); }}
+            onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.app/terms.html"); }}
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >
