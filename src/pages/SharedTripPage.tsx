@@ -289,7 +289,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
       className="min-h-dvh w-full bg-background text-foreground print:bg-white"
       style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
     >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
+      <div className="w-full px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
         {/* Masthead */}
         <header className="flex items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-border">
           <div className="flex items-center gap-2.5 min-w-0">
