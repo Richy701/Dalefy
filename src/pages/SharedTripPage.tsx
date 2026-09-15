@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight } from "@phosphor-icons/react";
+import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight, CalendarBlank, Moon, Flag } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
@@ -238,11 +238,11 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   );
 }
 
-function OverviewCell({ label, value }: { label: string; value: React.ReactNode }) {
+function OverviewCell({ label, value, icon, prominent = false }: { label: string; value: React.ReactNode; icon: React.ReactNode; prominent?: boolean }) {
   return (
-    <div className="py-3 sm:py-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+    <div className="min-w-0 px-4 py-5 sm:px-6 sm:py-6">
+      <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">{icon}{label}</p>
+      <p className={`mt-3 tracking-tight text-foreground ${prominent ? "text-xl sm:text-2xl font-semibold" : "text-base font-medium"}`}>{value}</p>
     </div>
   );
 }
@@ -318,11 +318,11 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         </section>
 
         {/* Overview */}
-        <div className="rounded-xl border border-border bg-card px-4 sm:px-6 py-2 sm:py-5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4 sm:gap-6">
-          <OverviewCell label="Departure" value={fmtShort(trip.start)} />
-          <OverviewCell label="Return" value={fmtShort(trip.end)} />
-          <OverviewCell label="Duration" value={`${nights} night${nights !== 1 ? "s" : ""}`} />
-          <OverviewCell label="Status" value={tripPhase(trip.start, trip.end)} />
+        <div className="overflow-hidden rounded-xl border border-border border-t-2 border-t-brand bg-card grid grid-cols-2 sm:grid-cols-4 [&>div:nth-child(even)]:border-l [&>div:nth-child(even)]:border-border [&>div:nth-child(n+3)]:border-t [&>div:nth-child(n+3)]:border-border sm:[&>div:nth-child(n+3)]:border-t-0 sm:[&>div+div]:border-l sm:[&>div+div]:border-border">
+          <OverviewCell label="Departure" value={fmtShort(trip.start)} icon={<AirplaneTilt aria-hidden="true" className="h-4 w-4" />} prominent />
+          <OverviewCell label="Return" value={fmtShort(trip.end)} icon={<CalendarBlank aria-hidden="true" className="h-4 w-4" />} prominent />
+          <OverviewCell label="Duration" value={`${nights} night${nights !== 1 ? "s" : ""}`} icon={<Moon aria-hidden="true" className="h-4 w-4" />} prominent />
+          <OverviewCell label="Your trip" value={tripPhase(trip.start, trip.end)} icon={<Flag aria-hidden="true" className="h-4 w-4" />} />
         </div>
 
         <nav aria-label="Itinerary sections" className="mt-5 flex gap-1 overflow-x-auto border-b border-border pb-3 print:hidden">
