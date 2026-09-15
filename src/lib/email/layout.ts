@@ -29,6 +29,7 @@ export interface EmailShellInput {
   title: string;
   subtitle?: string | null;
   image?: string | null;
+  imageAfterTitle?: boolean;
   /** Inner HTML for the body. Use the helpers below to build it. */
   bodyHtml: string;
   bodyText: string;
@@ -239,7 +240,7 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
         ${masthead}
       </td></tr>
 
-      ${input.image ? `<tr><td>
+      ${input.image && !input.imageAfterTitle ? `<tr><td>
         <img src="${escapeHtml(input.image)}" alt="" width="598" style="width:100%;height:auto;display:block;background:${PALETTE.raised};" />
       </td></tr>` : ""}
 
@@ -248,6 +249,8 @@ export function renderEmailShell(input: EmailShellInput): { html: string; text: 
         <h1 class="email-title" style="margin:14px 0 0;font-family:${FONT_DISPLAY};font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.6px;color:${PALETTE.ink};overflow-wrap:anywhere;">${escapeHtml(input.title)}</h1>
         ${input.subtitle ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${PALETTE.muted};">${escapeHtml(input.subtitle)}</p>` : ""}
       </td></tr>
+
+      ${input.image && input.imageAfterTitle ? `<tr><td class="content-pad" style="padding:24px 40px 0;"><img src="${escapeHtml(input.image)}" alt="" width="518" style="width:100%;height:240px;object-fit:cover;display:block;border-radius:8px;background:${PALETTE.raised};" /></td></tr>` : ""}
 
       ${input.bodyHtml ? `<tr><td class="content-pad" style="padding:24px 40px 0;">${input.bodyHtml}</td></tr>` : ""}
 

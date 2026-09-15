@@ -33,7 +33,7 @@ Trip dates: {{dates}}
 Destination: {{destination}}
 
 Please make sure you have:
-• Valid passport (with at least 6 months validity)
+• Check passport validity requirements for your destination
 • Any required visas or travel documents
 • Travel insurance details
 • Copies of your booking confirmations
@@ -48,7 +48,9 @@ Looking forward to a great trip!`,
     subject: "Dress Code - {{tripName}}",
     body: `Please remember to follow the appropriate dress code for all flights and hosted events on the itinerary:
 
-Smart Casual, smart trainers are ok but no ripped jeans. Gentlemen must wear a collared shirt or polo shirt for flights.
+• Smart casual clothing for flights and hosted events
+• Smart trainers are welcome; no ripped jeans
+• Gentlemen: a collared shirt or polo shirt for flights
 
 For evening events, please dress smart casual or as specified in your itinerary.
 
