@@ -29,7 +29,7 @@ This workspace contains multiple apps/projects. Always confirm which app/codebas
 - Palette resolves per theme: dark page `#0E0E10`, card `#17181C`, raised `#202127`, border `#26272E`; light page `#F7F7F9`, card `#FFFFFF`, raised `#F1F1F4`, border `#E4E4E9`. Accent `#0bd2b5`.
 - Radius tops out at `rounded-xl`; `rounded-full` is only for avatars, dots, spinners, and circular icon buttons.
 - Build forms and surfaces from `src/components/ui/*` (real shadcn, Base UI primitives), not hand-rolled divs.
-- Font style: uppercase, black italic, tight tracking (Barlow Condensed).
+- Font style: uppercase, heavy weight, tight tracking (Barlow Condensed). No italics.
 - Every dark-mode color class needs a light-mode counterpart -- never use bare `bg-[#111111]` without a `light:` variant.
 
 ## Code Changes
