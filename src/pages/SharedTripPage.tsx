@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { MapPin, SpinnerGap, Check, CaretDown, AirplaneTilt, Printer, Paperclip, EnvelopeSimple, Phone, ArrowRight } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
 import { Linkify } from "@/lib/linkify";
 import { parseTripDate } from "@/lib/dates";
 import { tzAbbr, eventTz } from "@/lib/timezone";
@@ -102,15 +103,15 @@ function FlightCard({ ev }: { ev: TravelEvent }) {
   const arrivesNextDay = ev.endDate && ev.endDate !== ev.date;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-3 text-sm">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
+      <div className="flex items-baseline justify-between gap-3 text-xs sm:text-sm">
         <p className="font-medium text-foreground truncate">{carrier}</p>
         <p className="text-muted-foreground shrink-0">{fmtShort(ev.date)}</p>
       </div>
 
       <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="min-w-0">
-          <p className={`font-semibold tracking-tight text-foreground ${isCode(from) ? "text-2xl sm:text-3xl font-mono" : "text-base leading-tight"}`}>{from || "—"}</p>
+          <p className={`font-semibold tracking-tight text-foreground ${isCode(from) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{from || "—"}</p>
           <p className="mt-1 text-sm text-foreground whitespace-nowrap">
             {isPlaceholderTime(ev.time) ? "" : ev.time}
             {depTz && !isPlaceholderTime(ev.time) && <span className="ml-1 text-xs text-muted-foreground">{depTz}</span>}
@@ -120,15 +121,15 @@ function FlightCard({ ev }: { ev: TravelEvent }) {
 
         <div className="flex flex-col items-center gap-1 px-2 text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="h-px w-6 sm:w-10 bg-border" />
+            <span className="h-px w-3 sm:w-6 bg-border" />
             <AirplaneTilt className="h-4 w-4 text-cat-flight" weight="fill" />
-            <span className="h-px w-6 sm:w-10 bg-border" />
+            <span className="h-px w-3 sm:w-6 bg-border" />
           </div>
           {ev.duration && <p className="text-[11px]">{ev.duration}</p>}
         </div>
 
         <div className="min-w-0 text-right">
-          <p className={`font-semibold tracking-tight text-foreground ${isCode(to) ? "text-2xl sm:text-3xl font-mono" : "text-base leading-tight"}`}>{to || "—"}</p>
+          <p className={`font-semibold tracking-tight text-foreground ${isCode(to) ? "text-xl sm:text-2xl font-mono" : "text-base leading-tight"}`}>{to || "—"}</p>
           <p className="mt-1 text-sm text-foreground whitespace-nowrap">
             {isPlaceholderTime(ev.endTime) ? "" : ev.endTime}
             {arrTz && !isPlaceholderTime(ev.endTime) && <span className="ml-1 text-xs text-muted-foreground">{arrTz}</span>}
@@ -154,7 +155,7 @@ function StayCard({ ev, checkoutDate }: { ev: TravelEvent; checkoutDate?: string
   const nights = checkoutDate ? Math.max(0, Math.round((parseTripDate(checkoutDate).getTime() - parseTripDate(ev.date).getTime()) / DAY_MS)) : 0;
   const checkin = ev.checkin || (isPlaceholderTime(ev.time) ? "" : ev.time);
   return (
-    <div className="rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-base font-semibold tracking-tight text-foreground leading-tight">{ev.title}</p>
@@ -207,13 +208,13 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className="grid grid-cols-[3.75rem_2.25rem_1fr] sm:grid-cols-[4.5rem_2.25rem_1fr] gap-x-2 print:break-inside-avoid">
+    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <p className="pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
       <div className="flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
         {!last && <span className="w-px flex-1 bg-border my-1.5" />}
       </div>
-      <div className={`min-w-0 pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
+      <div className={`min-w-0 break-words pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
         <p className="text-sm font-medium text-foreground leading-snug">
           {ev.title}
           {label && ev.type !== "activity" && <span className="ml-2 text-xs font-normal text-muted-foreground">{label}</span>}
@@ -279,79 +280,56 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
   const nights = Math.max(0, Math.round((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS));
   const org = trip.organizer;
+  const hasDetails = !!(flights.length || stays.length || org?.name || trip.info?.length || trip.documents?.length);
+  const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   const dayNumber = (date: string) => Math.round((parseTripDate(date).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS) + 1;
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground print:bg-white"
+      className="min-h-dvh w-full bg-background text-foreground print:bg-white"
       style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
     >
-      <div className="max-w-2xl mx-auto px-5 sm:px-8 pt-6 sm:pt-10 pb-16">
+      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
         {/* Masthead */}
-        <header className="flex items-center justify-between gap-4 pb-6 border-b border-border">
+        <header className="flex items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-border">
           <div className="flex items-center gap-2.5 min-w-0">
-            {brand.logoUrl && <img src={brand.logoUrl} alt="" className="h-7 w-7 rounded object-contain" />}
-            <p className="text-sm font-semibold tracking-tight text-foreground truncate">{brand.name}</p>
+            {brand.logoUrl && <img src={brand.logoUrl} alt="" className="h-9 w-auto max-w-[140px] shrink-0 object-contain" />}
+            <p className="text-base font-semibold tracking-tight text-foreground truncate">{brand.name}</p>
           </div>
-          <button
+          <Button variant="outline"
             type="button"
             onClick={() => window.print()}
-            className="print:hidden inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-secondary transition-colors"
+            className="print:hidden min-h-11 gap-2 px-3 sm:px-4 shrink-0"
           >
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">Print or save PDF</span>
             <span className="sm:hidden">Print</span>
-          </button>
+          </Button>
         </header>
 
-        {/* Cover */}
-        {trip.image && (
-          <img src={trip.image} alt="" className="mt-8 w-full aspect-[16/7] rounded-xl object-cover bg-secondary print:hidden" />
-        )}
-
-        {/* Title */}
-        <div className="mt-8">
-          <p className="text-sm text-muted-foreground">Travel itinerary</p>
-          <h1 className="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            {fmtRange(trip.start, trip.end)}
-            {trip.destination ? ` · ${trip.destination}` : ""}
-          </p>
-        </div>
+        <section aria-labelledby="trip-title" className="grid items-center gap-6 py-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12 lg:py-10 print:block">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Travel itinerary</p>
+            <h1 id="trip-title" className="mt-2 max-w-[20ch] break-words text-3xl sm:text-4xl xl:text-5xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
+            {trip.destination && <p className="mt-4 text-base sm:text-lg text-muted-foreground">{trip.destination}</p>}
+            <p className="mt-2 text-sm sm:text-base text-muted-foreground">{fmtRange(trip.start, trip.end)}</p>
+          </div>
+          {trip.image && <img src={trip.image} alt="" className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[16/9] max-h-[420px] rounded-xl object-cover bg-secondary print:hidden" />}
+        </section>
 
         {/* Overview */}
-        <div className="mt-8 rounded-xl border border-border bg-card px-5 sm:px-6 py-2 sm:py-5 grid grid-cols-1 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border sm:[&>*]:px-5 sm:[&>*:first-child]:pl-0 sm:[&>*:last-child]:pr-0">
+        <div className="rounded-xl border border-border bg-card px-4 sm:px-6 py-2 sm:py-5 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4 sm:gap-6">
           <OverviewCell label="Departure" value={fmtShort(trip.start)} />
           <OverviewCell label="Return" value={fmtShort(trip.end)} />
           <OverviewCell label="Duration" value={`${nights} night${nights !== 1 ? "s" : ""}`} />
           <OverviewCell label="Status" value={tripPhase(trip.start, trip.end)} />
         </div>
 
-        {/* Organiser */}
-        {org?.name && (
-          <div className="mt-4 rounded-xl border border-border bg-card p-5 print:break-inside-avoid">
-            <div className="flex items-center gap-3">
-              {org.avatar ? (
-                <img src={org.avatar} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-brand/15 text-brand flex items-center justify-center text-sm font-semibold shrink-0">
-                  {org.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Your travel organiser</p>
-                <p className="text-sm font-medium text-foreground">{org.name}</p>
-                {(org.role || org.company) && <p className="text-sm text-muted-foreground">{[org.role, org.company].filter(Boolean).join(", ")}</p>}
-              </div>
-            </div>
-            {(org.email || org.phone) && (
-              <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                {org.phone && <a href={`tel:${org.phone}`} className="inline-flex items-center gap-1.5 text-brand hover:underline"><Phone className="h-4 w-4" />{org.phone}</a>}
-                {org.email && <a href={`mailto:${org.email}`} className="inline-flex items-center gap-1.5 text-brand hover:underline"><EnvelopeSimple className="h-4 w-4" />{org.email}</a>}
-              </div>
-            )}
-          </div>
-        )}
+        <nav aria-label="Itinerary sections" className="mt-5 flex gap-1 overflow-x-auto border-b border-border pb-3 print:hidden">
+          {[{ id: "schedule", label: "Itinerary", show: true }, { id: "flights", label: "Flights", show: flights.length > 0 }, { id: "stays", label: "Stays", show: stays.length > 0 }, { id: "information", label: "Good to know", show: !!trip.info?.length }, { id: "documents", label: "Documents", show: !!trip.documents?.length }].filter(section => section.show).map(section => (
+            <Button key={section.id} variant="ghost" className="min-h-11 shrink-0 px-3 text-sm" onClick={() => jumpTo(section.id)}>{section.label}</Button>
+          ))}
+        </nav>
 
         {/* Traveller picker */}
         {travelers.length > 0 && (
@@ -360,7 +338,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
               {viewAsTraveler ? `Showing ${visibleEvents.length} of ${trip.events.length} items for ${viewAsTraveler.name}` : "Showing the full group itinerary"}
             </p>
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-secondary transition-colors">
+              <DropdownMenuTrigger className="inline-flex items-center gap-2 min-h-11 max-w-full pl-3 pr-2.5 rounded-lg border border-border bg-card text-sm text-foreground hover:bg-secondary transition-colors">
                 {viewAsTraveler ? viewAsTraveler.name : "Everyone"}
                 <CaretDown className="h-3.5 w-3.5 text-muted-foreground" />
               </DropdownMenuTrigger>
@@ -381,51 +359,34 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </div>
         )}
 
-        {/* Flights */}
-        {flights.length > 0 && (
-          <section className="mt-10">
-            <SectionTitle>Flights</SectionTitle>
-            <div className="space-y-3">
-              {flights.map(ev => <FlightCard key={ev.id} ev={ev} />)}
-            </div>
-          </section>
-        )}
-
-        {/* Stays */}
-        {stays.length > 0 && (
-          <section className="mt-10">
-            <SectionTitle>Where you're staying</SectionTitle>
-            <div className="space-y-3">
-              {stays.map(({ ev, checkoutDate }) => <StayCard key={ev.id} ev={ev} checkoutDate={checkoutDate} />)}
-            </div>
-          </section>
-        )}
-
+        <div className={`mt-8 lg:mt-10 grid min-w-0 gap-10 xl:gap-14 print:block ${hasDetails ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)]" : ""}`}>
+          <main className="min-w-0">
         {/* Day by day */}
         {days.length > 0 && (
-          <section className="mt-10">
-            <SectionTitle>Day by day</SectionTitle>
+          <section id="schedule" aria-labelledby="daily-schedule" className="min-w-0 scroll-mt-6">
+            <h2 id="daily-schedule" className="mb-4 text-lg font-semibold tracking-tight text-foreground">Day by day</h2>
 
-            {days.length > 3 && (
-              <div className="print:hidden -mx-5 sm:mx-0 px-5 sm:px-0 mb-6 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none]">
+            {days.length > 1 && (
+              <div className="print:hidden mb-6 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:thin]">
                 {days.map(([date]) => (
-                  <a
+                  <Button
+                    variant="outline"
                     key={date}
-                    href={`#day-${dayNumber(date)}`}
-                    className="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
+                    onClick={() => jumpTo(`day-${date}`)}
+                    className="min-h-11 shrink-0 rounded-lg bg-card px-3 text-xs"
                   >
                     <span className="text-muted-foreground">Day {dayNumber(date)}</span>
                     <span className="mx-1.5 text-border">|</span>
                     {parseTripDate(date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}
-                  </a>
+                  </Button>
                 ))}
               </div>
             )}
 
             <div className="space-y-8">
               {days.map(([date, events]) => (
-                <div key={date} id={`day-${dayNumber(date)}`} className="scroll-mt-6 print:break-inside-avoid">
-                  <div className="flex items-baseline gap-3 pb-3 mb-4 border-b border-border">
+                <div key={date} id={`day-${date}`} className="scroll-mt-6 rounded-xl border border-border bg-card p-4 sm:p-6 print:border-0 print:p-0 print:break-inside-avoid">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 mb-4 border-b border-border">
                     <p className="text-sm font-medium text-muted-foreground tabular-nums">Day {dayNumber(date)}</p>
                     <h3 className="text-base font-semibold tracking-tight text-foreground">{fmtLong(date)}</h3>
                   </div>
@@ -444,13 +405,61 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </div>
         )}
 
+          </main>
+          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 print:mt-8">
+        {/* Flights */}
+        {flights.length > 0 && (
+          <section id="flights" className="min-w-0 scroll-mt-6">
+            <SectionTitle>Flights</SectionTitle>
+            <div className="space-y-3">
+              {flights.map(ev => <FlightCard key={ev.id} ev={ev} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Stays */}
+        {stays.length > 0 && (
+          <section id="stays" className="min-w-0 scroll-mt-6">
+            <SectionTitle>Where you're staying</SectionTitle>
+            <div className="space-y-3">
+              {stays.map(({ ev, checkoutDate }) => <StayCard key={ev.id} ev={ev} checkoutDate={checkoutDate} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Organiser */}
+        {org?.name && (
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5 print:break-inside-avoid">
+            <div className="flex items-center gap-3">
+              {org.avatar ? (
+                <img src={org.avatar} alt="" className="h-10 w-10 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-brand/15 text-brand flex items-center justify-center text-sm font-semibold shrink-0">
+                  {org.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Your travel organiser</p>
+                <p className="text-sm font-medium text-foreground">{org.name}</p>
+                {(org.role || org.company) && <p className="text-sm text-muted-foreground">{[org.role, org.company].filter(Boolean).join(", ")}</p>}
+              </div>
+            </div>
+            {(org.email || org.phone) && (
+              <div className="mt-4 pt-3 border-t border-border flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                {org.phone && <a href={`tel:${org.phone}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-brand hover:underline"><Phone className="h-4 w-4" />{org.phone}</a>}
+                {org.email && <a href={`mailto:${org.email}`} className="inline-flex min-h-11 items-center gap-1.5 break-all text-brand hover:underline"><EnvelopeSimple className="h-4 w-4" />{org.email}</a>}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Good to know */}
         {trip.info && trip.info.length > 0 && (
-          <section className="mt-10">
+          <section id="information" className="min-w-0 scroll-mt-6">
             <SectionTitle>Good to know</SectionTitle>
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
               {trip.info.map(item => (
-                <div key={item.id} className="p-5 print:break-inside-avoid">
+                <div key={item.id} className="p-4 sm:p-5 print:break-inside-avoid">
                   <p className="text-sm font-medium text-foreground">{item.title}</p>
                   {item.body && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>}
                   {item.deadline && <p className="mt-2 text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
@@ -476,7 +485,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
         {/* Documents */}
         {trip.documents && trip.documents.length > 0 && (
-          <section className="mt-10">
+          <section id="documents" className="min-w-0 scroll-mt-6">
             <SectionTitle>Documents</SectionTitle>
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
               {trip.documents.map(doc => (
@@ -489,6 +498,9 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
             </div>
           </section>
         )}
+
+          </aside>}
+        </div>
 
         {/* Footer */}
         <footer className="mt-14 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">

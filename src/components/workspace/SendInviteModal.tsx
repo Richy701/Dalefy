@@ -15,6 +15,7 @@ import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { firebaseAuth, isFirebaseConfigured } from "@/services/firebase";
+import { readableOn } from "@/lib/email/layout";
 import { renderItineraryEmail } from "@/lib/itineraryEmail";
 import { EMAIL_TEMPLATES, type EmailTemplate } from "@/data/emailTemplates";
 import type { Trip, User as UserType } from "@/types";
@@ -179,11 +180,13 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
     }
   }, [recipients, resolvedSubject, resolvedBody, trip.id]);
 
-  const primaryLabel = sending
-    ? "Sending"
-    : sendingEnabled
-      ? `Send to ${recipients.length || ""} traveller${recipients.length === 1 ? "" : "s"}`.replace("  ", " ")
-      : "Open in mail app";
+  const sendDisabled = sending || sendingEnabled === null || recipients.length === 0 || !resolvedSubject.trim();
+  const primaryLabel = sending ? "Sending itinerary…"
+    : sendingEnabled === null ? "Checking email service…"
+    : recipients.length === 0 ? "Choose travellers"
+    : !resolvedSubject.trim() ? "Add a subject"
+    : sendingEnabled ? `Send to ${recipients.length} traveller${recipients.length === 1 ? "" : "s"}`
+    : "Open in mail app";
 
   // Size the preview to the email so the panel scrolls as one page instead of a box inside a box.
   const previewRef = useRef<HTMLIFrameElement>(null);
@@ -328,15 +331,21 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Button
                 onClick={sendingEnabled ? sendNow : openInMailApp}
-                disabled={sending || sendingEnabled === null || recipients.length === 0}
-                className="h-9 px-4 rounded-lg gap-2"
+                disabled={sendDisabled}
+                aria-busy={sending || sendingEnabled === null}
+                className="min-h-10 px-4 rounded-lg gap-2 disabled:opacity-100 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: sendDisabled ? "hsl(var(--secondary))" : "rgb(var(--brand-rgb))",
+                  color: sendDisabled ? "hsl(var(--muted-foreground))" : readableOn(brand.accentColor || resolvedAccent),
+                  borderColor: sendDisabled ? "hsl(var(--border))" : "transparent",
+                }}
               >
                 {sending
                   ? <SpinnerGap className="h-4 w-4 animate-spin" />
                   : sendingEnabled ? <PaperPlaneTilt className="h-4 w-4" weight="fill" /> : <ArrowSquareOut className="h-4 w-4" />}
-                {primaryLabel}
+                <span style={{ color: "inherit" }}>{primaryLabel}</span>
               </Button>
-              <Button variant="outline" onClick={copyEmail} className="h-9 px-3 rounded-lg gap-2">
+              <Button variant="outline" onClick={copyEmail} className="min-h-10 px-3 rounded-lg gap-2">
                 {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 Copy email
               </Button>

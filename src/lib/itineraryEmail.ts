@@ -66,9 +66,9 @@ export function renderItineraryEmail(input: ItineraryEmailInput): { html: string
   const details = detailStrip([
     { label: "Departure", value: fmt(parseDate(input.start), { weekday: "short", day: "numeric", month: "short" }) },
     { label: "Return", value: fmt(parseDate(input.end), { weekday: "short", day: "numeric", month: "short" }) },
-    { label: "Duration", value: `${nights} night${nights === 1 ? "" : "s"}` },
     { label: "Destination", value: input.destination ?? "" },
-  ]);
+    { label: "Duration", value: `${nights} night${nights === 1 ? "" : "s"}` },
+  ], "grid");
 
   const sig = org ? signature({
     heading: "Your travel organiser",

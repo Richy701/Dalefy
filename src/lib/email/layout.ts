@@ -115,8 +115,22 @@ export function eyebrowLabel(text: string): string {
 }
 
 /** A row of label/value cells separated by hairlines above and below. */
-export function detailStrip(items: Array<{ label: string; value: string }>): { html: string; text: string } {
+export function detailStrip(items: Array<{ label: string; value: string }>, layout: "rows" | "grid" = "rows"): { html: string; text: string } {
   const values = items.filter(i => i.value);
+  if (layout === "grid") {
+    const rows: string[] = [];
+    for (let index = 0; index < values.length; index += 2) {
+      const pair = values.slice(index, index + 2);
+      rows.push(`<tr>${pair.map((item, column) => `<td width="50%" valign="top" style="padding:14px 16px;${index ? `border-top:1px solid ${PALETTE.border};` : ""}${column ? `border-left:1px solid ${PALETTE.border};` : ""}overflow-wrap:anywhere;word-wrap:break-word;">
+        <div style="font-family:${FONT_BODY};font-size:11px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(item.label)}</div>
+        <div style="margin-top:4px;font-family:${FONT_BODY};font-size:15px;font-weight:600;line-height:1.4;color:${PALETTE.ink};">${escapeHtml(item.value)}</div>
+      </td>`).join("")}${pair.length === 1 ? '<td width="50%"></td>' : ""}</tr>`);
+    }
+    return {
+      html: values.length ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="table-layout:fixed;border:1px solid ${PALETTE.border};border-radius:8px;background:${PALETTE.card};overflow:hidden;">${rows.join("")}</table>` : "",
+      text: values.map(item => `${item.label}: ${item.value}`).join("\n"),
+    };
+  }
   const cells = values.map(i => `
       <tr>
         <td width="32%" style="padding:12px 16px;border-bottom:1px solid ${PALETTE.border};vertical-align:top;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${escapeHtml(i.label)}</td>
