@@ -7,6 +7,7 @@ const trip = {
  id:'layout-review',name:'A long weekend in Paris',destination:'Paris, France',start:'2026-10-10',end:'2026-10-13',status:'Published',attendees:'2',
  image:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1400',
  events:[
+ {id:'transfer',type:'transfer',title:'Transfer to the airport',date:'2026-10-10',time:'',location:'Hotel → Airport',description:'A transfer without a scheduled time should align with the timed flight below.',image:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1400'},
  {id:'flight',type:'flight',title:'London to Paris',airline:'British Airways',flightNum:'BA304',depAirport:'LHR',arrAirport:'CDG',date:'2026-10-10',time:'09:00',endTime:'11:20',location:'London to Paris',duration:'1h 20m'},
  {id:'hotel',type:'hotel',title:'A stay in Saint-Germain-des-Prés',date:'2026-10-10',endDate:'2026-10-13',time:'15:00',checkout:'11:00',location:'Saint-Germain-des-Prés, Paris',roomType:'Deluxe double room'},
  {id:'walk',type:'activity',title:'An afternoon along the Seine',date:'2026-10-11',time:'14:00',location:'Pont Neuf, Paris',description:'Meet your guide at the bridge for a walk through the neighbourhood, with time to explore the cafés and galleries.'},

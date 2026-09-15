@@ -209,17 +209,16 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className={`${time ? "sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)]" : "sm:grid-cols-[2.25rem_minmax(0,1fr)]"} sm:grid gap-x-2 print:break-inside-avoid`}>
-      {time && <p className="hidden sm:block pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>}
+    <div className="sm:grid sm:grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <div className="hidden sm:flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
         {!last && <span className="hidden sm:block w-px flex-1 bg-border my-1.5" />}
       </div>
       <div className={`min-w-0 break-words pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
-        <div className="mb-2 flex items-center gap-3 sm:mb-0 sm:block">
-          <CategoryDot type={ev.type} transferType={ev.transferType} size="md" className="sm:hidden" />
-          <div className="min-w-0 flex-1">
-            {time && <p className="mb-1 text-xs font-medium text-muted-foreground tabular-nums sm:hidden">{time}</p>}
+        {time && <p className="mb-2 text-xs font-medium text-muted-foreground tabular-nums">{time}</p>}
+        <div className="mb-2 flex items-start gap-2 sm:mb-0 sm:block">
+          <CategoryDot type={ev.type} transferType={ev.transferType} size="sm" className="sm:hidden" />
+          <div className="min-w-0 flex-1 pt-1 sm:pt-0">
             <p className="text-sm font-medium text-foreground leading-snug">
               {ev.title}
               {label && ev.type !== "activity" && <span className="ml-2 text-xs font-normal text-muted-foreground">{label}</span>}
@@ -229,7 +228,7 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
         {eventMeta(ev) && <p className="mt-0.5 text-sm text-muted-foreground">{eventMeta(ev)}</p>}
         {ev.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80"><Linkify text={ev.description} /></p>}
         {ev.image && ev.type !== "hotel" && (
-          <img src={ev.image} alt="" className="mt-3 mx-auto sm:mx-0 w-full aspect-[16/9] rounded-lg object-cover print:hidden" />
+          <img src={ev.image} alt="" className="mt-3 mx-auto sm:mx-0 w-full aspect-[16/9] sm:max-h-80 rounded-lg object-cover print:hidden" />
         )}
         {ev.documents && ev.documents.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
