@@ -1,6 +1,5 @@
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { firebaseDb, firebaseAuth } from "./firebase";
-import { sendInviteSignInLink } from "./firebaseAuth";
 import { apiFetch, ApiError, getIdToken } from "@/lib/api";
 import type { OrgRole } from "@/types";
 
@@ -43,31 +42,18 @@ async function postInvite(body: Record<string, unknown>): Promise<SendInviteResu
   }
 }
 
-/** Where the Firebase sign-in link lands: the app root with the invite token as a query param.
- *  AuthContext completes the sign-in on boot and forwards to /#/invite/<token>. */
-function inviteContinueUrl(token: string): string {
-  const base = `${window.location.origin}${window.location.pathname}`.replace(/\/$/, "");
-  return `${base}/?invite=${encodeURIComponent(token)}`;
-}
-
-/** Creates (or reuses) the invite server-side, then emails a Firebase sign-in link that lands on it. */
-async function deliver(result: SendInviteResult): Promise<SendInviteResult> {
-  if (!result.ok || !result.inviteToken || !result.email) return result;
-  const { error } = await sendInviteSignInLink(result.email, inviteContinueUrl(result.inviteToken));
-  return { ...result, emailSent: !error, emailError: error ?? undefined };
-}
-
+/** Creates (or reuses) the invite server-side; the server mints the sign-in link and emails it. */
 export async function sendInvite(params: {
   email: string;
   role: "admin" | "agent" | "viewer";
   orgId: string;
   inviterName: string;
 }): Promise<SendInviteResult> {
-  return deliver(await postInvite(params));
+  return postInvite(params);
 }
 
 export async function resendInvite(params: { inviteToken: string; orgId: string; inviterName: string }): Promise<SendInviteResult> {
-  return deliver(await postInvite({ resendToken: params.inviteToken, orgId: params.orgId, inviterName: params.inviterName }));
+  return postInvite({ resendToken: params.inviteToken, orgId: params.orgId, inviterName: params.inviterName });
 }
 
 export async function fetchPendingInvites(orgId: string): Promise<OrgInvite[]> {

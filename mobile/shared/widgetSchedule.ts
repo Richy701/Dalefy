@@ -22,7 +22,7 @@ export function surfaceCandidates(trips: Trip[], now: number, flights: boolean) 
 }
 
 export function tripDayUrl(tripId: string, date: string) {
-  return `/trip/day?tripId=${encodeURIComponent(tripId)}&date=${encodeURIComponent(date)}`;
+  return `/trip/${encodeURIComponent(tripId)}?date=${encodeURIComponent(date)}`;
 }
 
 export function widgetProps(trips: Trip[], now: number, accentColor: string, images: Record<string, string> = {}) {

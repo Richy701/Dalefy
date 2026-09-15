@@ -12,6 +12,7 @@
 import { getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
+import { sendEmail, emailEnabled } from "./_mailer.js";
 import { renderItineraryEmail } from "../src/lib/itineraryEmail.js";
 
 const env = (k: string) => (process.env[k] ?? "").trim();
@@ -19,10 +20,6 @@ const APP_URL = (env("VITE_APP_URL") || "https://dalefy.app").replace(/\/$/, "")
 const PLATFORM_NAME = "Dalefy";
 const MAX_RECIPIENTS = 50;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function enabled(): boolean {
-  return !!env("RESEND_API_KEY") && !!env("RESEND_FROM_EMAIL");
-}
 
 interface Recipient { name: string; email: string }
 
@@ -42,9 +39,9 @@ function parseRecipients(value: unknown): Recipient[] | null {
 }
 
 export default async function handler(req: any, res: any) {
-  if (req.method === "GET") return res.status(200).json({ enabled: enabled() });
+  if (req.method === "GET") return res.status(200).json({ enabled: emailEnabled() });
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!enabled()) return res.status(501).json({ error: "Email sending isn't set up yet. Add RESEND_FROM_EMAIL on a verified domain." });
+  if (!emailEnabled()) return res.status(501).json({ error: "Email sending isn't set up yet. Add RESEND_FROM_EMAIL on a verified domain." });
 
   const auth: string = req.headers["authorization"] ?? "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
@@ -101,25 +98,9 @@ export default async function handler(req: any, res: any) {
     organizer,
   });
 
-  const { Resend } = await import("resend");
-  const resend = new Resend(env("RESEND_API_KEY"));
-  const from = `${brandName.replace(/[<>"]/g, "")} <${env("RESEND_FROM_EMAIL")}>`;
-
   const results = await Promise.all(recipients.map(async r => {
-    try {
-      const { data, error } = await resend.emails.send({
-        from,
-        to: r.name ? `${r.name.replace(/[<>"]/g, "")} <${r.email}>` : r.email,
-        replyTo,
-        subject,
-        html,
-        text,
-      });
-      if (error) return { email: r.email, ok: false, error: error.message };
-      return { email: r.email, ok: true, id: data?.id };
-    } catch (err) {
-      return { email: r.email, ok: false, error: err instanceof Error ? err.message : "Send failed" };
-    }
+    const sent = await sendEmail({ to: r.email, toName: r.name, subject, html, text, replyTo, fromName: brandName });
+    return sent.ok ? { email: r.email, ok: true, id: sent.id } : { email: r.email, ok: false, error: sent.error };
   }));
 
   const sent = results.filter(r => r.ok).length;

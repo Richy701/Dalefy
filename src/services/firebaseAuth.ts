@@ -8,9 +8,6 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   updatePassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
   type User as FbUser,
@@ -19,6 +16,7 @@ import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { firebaseAuth, firebaseDb, isFirebaseConfigured } from "./firebase";
 import { initialsFrom } from "@/lib/names";
 import type { User } from "@/types";
+import { apiFetch, ApiError } from "@/lib/api";
 
 // ── Sign Up ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +47,7 @@ export async function signUp(
       created_at: new Date().toISOString(),
     });
 
-    sendEmailVerification(fbUser).catch(() => {});
+    fbUser.getIdToken().then(t => requestAuthEmail({ kind: "verify" }, t)).catch(() => {});
 
     return { user: profile, error: null };
   } catch (err: unknown) {
@@ -60,19 +58,25 @@ export async function signUp(
 
 // ── Email Verification ──────────────────────────────────────────────────────
 
+/** Ask the server to send a branded auth email (verification, reset, sign-in link). */
+async function requestAuthEmail(body: { kind: "verify" } | { kind: "reset"; email: string }, idToken?: string): Promise<{ error: string | null }> {
+  try {
+    await apiFetch("/api/auth-email", { method: "POST", body, auth: idToken });
+    return { error: null };
+  } catch (err: unknown) {
+    if (err instanceof ApiError && err.status !== 0) return { error: err.message };
+    return { error: "Network error, please try again" };
+  }
+}
+
 export async function resendVerificationEmail(): Promise<{ error: string | null }> {
   if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
   const user = firebaseAuth().currentUser;
   if (!user) return { error: "Not signed in" };
   if (user.emailVerified) return { error: null };
-  try {
-    await sendEmailVerification(user);
-    return { error: null };
-  } catch (err: unknown) {
-    const code = (err as { code?: string }).code ?? "";
-    if (code === "auth/too-many-requests") return { error: "Too many attempts - try again later" };
-    return { error: err instanceof Error ? err.message : "Failed to send verification email" };
-  }
+  const idToken = await user.getIdToken().catch(() => null);
+  if (!idToken) return { error: "Not signed in" };
+  return requestAuthEmail({ kind: "verify" }, idToken);
 }
 
 export function isCurrentUserEmailVerified(): boolean {
@@ -182,18 +186,7 @@ export async function signInWithGoogle(): Promise<{ user: User | null; error: st
 }
 
 // ── Email link (used for team invites: no password, email auto-verified) ───
-
-/** Send a Firebase sign-in link that lands on `continueUrl` once clicked. */
-export async function sendInviteSignInLink(email: string, continueUrl: string): Promise<{ error: string | null }> {
-  if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
-  try {
-    await sendSignInLinkToEmail(firebaseAuth(), email, { url: continueUrl, handleCodeInApp: true });
-    return { error: null };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Couldn't send sign-in email";
-    return { error: msg.replace("Firebase: ", "") };
-  }
-}
+// The link itself is minted and emailed server-side by /api/send-invite.
 
 export function isEmailSignInLink(url: string): boolean {
   if (!isFirebaseConfigured()) return false;
@@ -317,16 +310,8 @@ export async function changePassword(newPassword: string): Promise<{ error: stri
   }
 }
 
+/** Sends a reset link if an account exists. Always succeeds from the caller's view so addresses can't be probed. */
 export async function resetPassword(email: string): Promise<{ error: string | null }> {
   if (!isFirebaseConfigured()) return { error: "Firebase not configured" };
-
-  try {
-    await sendPasswordResetEmail(firebaseAuth(), email);
-    return { error: null };
-  } catch (err: unknown) {
-    const code = (err as { code?: string }).code ?? "";
-    if (code === "auth/user-not-found") return { error: "No account found with that email" };
-    if (code === "auth/too-many-requests") return { error: "Too many attempts - try again later" };
-    return { error: err instanceof Error ? err.message : "Failed" };
-  }
+  return requestAuthEmail({ kind: "reset", email: email.trim().toLowerCase() });
 }

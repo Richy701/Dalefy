@@ -78,7 +78,7 @@ function cleanTitle(title: string): string {
 }
 
 export default function TripScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, date: landDate } = useLocalSearchParams<{ id: string; date?: string }>();
   const { trips, ready } = useTrips();
   const router = useRouter();
   const { C, isDark } = useTheme();
@@ -169,6 +169,17 @@ export default function TripScreen() {
     if (y == null) return;
     Haptics.selectionAsync();
     scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - S.sm), animated: true });
+  }, [insets.top]);
+
+  // Widget and Live Activity deep links carry ?date=; land on that day once it has been laid out
+  const pendingDate = useRef<string | null>(typeof landDate === "string" && landDate ? landDate : null);
+  const landOnPendingDate = useCallback(() => {
+    const date = pendingDate.current;
+    if (!date) return;
+    const y = dayY.current[date];
+    if (y == null || !timelineY.current) return;
+    pendingDate.current = null;
+    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - S.sm), animated: false });
   }, [insets.top]);
 
   const visibleEvents = useMemo(() => {
@@ -416,7 +427,7 @@ export default function TripScreen() {
         )}
 
         {/* ── Timeline ── */}
-        <View onLayout={e => { timelineY.current = e.nativeEvent.layout.y; }}>
+        <View onLayout={e => { timelineY.current = e.nativeEvent.layout.y; landOnPendingDate(); }}>
           {days.map(({ date, events }) => {
             const d = parseTripDate(date);
             const isToday = date === today;
@@ -424,7 +435,7 @@ export default function TripScreen() {
             return (
               <View
                 key={date}
-                onLayout={e => { dayY.current[date] = e.nativeEvent.layout.y; }}
+                onLayout={e => { dayY.current[date] = e.nativeEvent.layout.y; landOnPendingDate(); }}
                 style={[styles.dayBlock, dimPast && isPast && { opacity: 0.6 }]}
               >
                 <View style={styles.dayHeader}>

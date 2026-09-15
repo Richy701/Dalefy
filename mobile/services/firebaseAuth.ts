@@ -7,8 +7,6 @@ import {
   EmailAuthProvider,
   linkWithCredential,
   fetchSignInMethodsForEmail,
-  sendPasswordResetEmail,
-  sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
   signOut as fbSignOut,
@@ -25,6 +23,23 @@ import { firebaseAuth, firebaseDb, firebaseStorage, isFirebaseConfigured } from 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const MAGIC_LINK_EMAIL_KEY = "daf-magic-link-email";
+const API_BASE = (process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app").replace(/\/$/, "");
+
+/** Ask the server to send a branded auth email through Resend. */
+async function requestAuthEmail(body: { kind: "magic-link" | "reset"; email: string }): Promise<string | null> {
+  try {
+    const resp = await fetch(`${API_BASE}/api/auth-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok) return null;
+    const data = await resp.json().catch(() => ({}));
+    return typeof data?.error === "string" ? data.error : "Couldn't send that email. Please try again.";
+  } catch {
+    return "Network error. Check your connection and try again.";
+  }
+}
 
 export interface MobileUser {
   id: string;
@@ -186,22 +201,13 @@ export async function signInWithApple(
 
 export async function sendMagicLink(
   email: string,
-  appUrl: string,
 ): Promise<{ error: string | null }> {
   if (!isFirebaseConfigured()) return { error: "Not configured" };
 
-  try {
-    await sendSignInLinkToEmail(firebaseAuth(), email, {
-      url: `${appUrl}/auth-callback`,
-      handleCodeInApp: true,
-      iOS: { bundleId: "com.dafadventures.app" },
-      android: { packageName: "com.dafadventures.app", installApp: false },
-    });
-    await AsyncStorage.setItem(MAGIC_LINK_EMAIL_KEY, email);
-    return { error: null };
-  } catch (err: unknown) {
-    return { error: friendlyError(err) };
-  }
+  const error = await requestAuthEmail({ kind: "magic-link", email: email.trim().toLowerCase() });
+  if (error) return { error };
+  await AsyncStorage.setItem(MAGIC_LINK_EMAIL_KEY, email.trim().toLowerCase());
+  return { error: null };
 }
 
 export async function handleMagicLinkReturn(
@@ -362,12 +368,8 @@ export async function resetPassword(
 ): Promise<{ error: string | null }> {
   if (!isFirebaseConfigured()) return { error: "Not configured" };
 
-  try {
-    await sendPasswordResetEmail(firebaseAuth(), email);
-    return { error: null };
-  } catch (err: unknown) {
-    return { error: friendlyError(err) };
-  }
+  const error = await requestAuthEmail({ kind: "reset", email: email.trim().toLowerCase() });
+  return { error };
 }
 
 // ── Profile CRUD ────────────────────────────────────────────────────────────

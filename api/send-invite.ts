@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
+import { sendEmail } from "./_mailer.js";
+import { generateSignInLink } from "./_firebaseAuthAdmin.js";
+import { inviteEmail } from "../src/lib/email/templates.js";
 
 const PROJECT_ID = (process.env.VITE_FIREBASE_PROJECT_ID || "dalefy-d87c9").trim();
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -185,6 +188,21 @@ export default async function handler(req: any, res: any) {
 
   const acceptUrl = `${APP_URL}/#/invite/${inviteToken}`;
 
-  // Delivery happens client-side via a Firebase sign-in link (no external email service).
-  return res.status(200).json({ ok: true, inviteToken, acceptUrl, email, role, expiresAt, orgName, resent });
+  // Deliver: Firebase mints a sign-in link that lands on the invite, we send it on our own template.
+  // The web app completes the sign-in on boot (`/?invite=<token>`) and forwards to the accept page.
+  let emailSent = false;
+  let emailError: string | undefined;
+  const link = await generateSignInLink(email, { url: `${APP_URL}/?invite=${encodeURIComponent(inviteToken)}`, handleCodeInApp: true });
+  if (!link.ok) {
+    emailError = link.error;
+  } else {
+    const mail = inviteEmail({ inviterName, orgName, role, acceptUrl: link.url, expiresAt });
+    const callerEmail = typeof payload.email === "string" ? payload.email : undefined;
+    const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, replyTo: callerEmail });
+    emailSent = sent.ok;
+    if (!sent.ok) emailError = sent.error;
+  }
+  if (emailError) console.error("[send-invite] email not sent:", emailError);
+
+  return res.status(200).json({ ok: true, inviteToken, acceptUrl, email, role, expiresAt, orgName, resent, emailSent, emailError });
 }

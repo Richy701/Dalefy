@@ -142,8 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [cacheUser]);
 
   const sendMagicLink = useCallback(async (email: string) => {
-    const appUrl = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
-    const { error } = await authMagicLink(email, appUrl);
+    const { error } = await authMagicLink(email);
     return error;
   }, []);
 
