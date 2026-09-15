@@ -208,7 +208,7 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
+    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] lg:grid-cols-[3rem_2rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <p className="pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
       <div className="flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
@@ -307,14 +307,14 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </Button>
         </header>
 
-        <section aria-labelledby="trip-title" className="grid items-center gap-6 py-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12 lg:py-10 print:block">
+        <section aria-labelledby="trip-title" className="grid items-center gap-6 py-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-10 lg:py-7 print:block">
           <div className="min-w-0">
             <p className="text-sm text-muted-foreground">Travel itinerary</p>
-            <h1 id="trip-title" className="mt-2 max-w-[20ch] break-words text-3xl sm:text-4xl xl:text-5xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
+            <h1 id="trip-title" className="mt-2 max-w-[20ch] break-words text-3xl sm:text-4xl xl:text-4xl font-semibold tracking-tight leading-[1.1] text-foreground">{trip.name}</h1>
             {trip.destination && <p className="mt-4 text-base sm:text-lg text-muted-foreground">{trip.destination}</p>}
             <p className="mt-2 text-sm sm:text-base text-muted-foreground">{fmtRange(trip.start, trip.end)}</p>
           </div>
-          {trip.image && <img src={trip.image} alt="" className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[16/9] max-h-[420px] rounded-xl object-cover bg-secondary print:hidden" />}
+          {trip.image && <img src={trip.image} alt="" className="w-full aspect-[16/9] sm:aspect-[2/1] lg:aspect-[5/2] max-h-[420px] lg:max-h-[240px] rounded-xl object-cover bg-secondary print:hidden" />}
         </section>
 
         {/* Overview */}
@@ -359,7 +359,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </div>
         )}
 
-        <div className={`mt-8 lg:mt-10 grid min-w-0 gap-10 xl:gap-14 print:block ${hasDetails ? "lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)]" : ""}`}>
+        <div className="mt-8 lg:mt-8 min-w-0 space-y-10 lg:space-y-12 print:block">
           <main className="min-w-0">
         {/* Day by day */}
         {days.length > 0 && (
@@ -383,9 +383,9 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
               </div>
             )}
 
-            <div className="space-y-8">
+            <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] lg:items-start lg:gap-5 print:block print:space-y-8">
               {days.map(([date, events]) => (
-                <div key={date} id={`day-${date}`} className="scroll-mt-6 rounded-xl border border-border bg-card p-4 sm:p-6 print:border-0 print:p-0 print:break-inside-avoid">
+                <div key={date} id={`day-${date}`} className="scroll-mt-6 rounded-xl border border-border bg-card p-4 sm:p-6 lg:p-5 print:border-0 print:p-0 print:break-inside-avoid">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 mb-4 border-b border-border">
                     <p className="text-sm font-medium text-muted-foreground tabular-nums">Day {dayNumber(date)}</p>
                     <h3 className="text-base font-semibold tracking-tight text-foreground">{fmtLong(date)}</h3>
@@ -406,7 +406,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         )}
 
           </main>
-          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 print:mt-8">
+          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:items-start lg:gap-6 lg:border-t lg:border-border lg:pt-8 print:block print:space-y-8 print:mt-8">
         {/* Flights */}
         {flights.length > 0 && (
           <section id="flights" className="min-w-0 scroll-mt-6">
