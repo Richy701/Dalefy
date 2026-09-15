@@ -15,7 +15,6 @@ import { useBrand, hexToRgb } from "@/context/BrandContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { apiFetch, ApiError } from "@/lib/api";
 import { firebaseAuth, isFirebaseConfigured } from "@/services/firebase";
-import { readableOn } from "@/lib/email/layout";
 import { renderItineraryEmail } from "@/lib/itineraryEmail";
 import { EMAIL_TEMPLATES, type EmailTemplate } from "@/data/emailTemplates";
 import type { Trip, User as UserType } from "@/types";
@@ -335,40 +334,7 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <Button
-                onClick={serviceError ? () => setServiceCheck(n => n + 1) : sendingEnabled ? sendNow : openInMailApp}
-                disabled={!serviceError && sendDisabled}
-                aria-busy={sending || (sendingEnabled === null && !serviceError)}
-                className="min-h-10 px-4 rounded-lg gap-2 disabled:opacity-100 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: sendDisabled ? "hsl(var(--secondary))" : "rgb(var(--brand-rgb))",
-                  color: sendDisabled ? "hsl(var(--muted-foreground))" : readableOn(brand.accentColor || resolvedAccent),
-                  borderColor: sendDisabled ? "hsl(var(--border))" : "transparent",
-                }}
-              >
-                {sending
-                  ? <SpinnerGap className="h-4 w-4 animate-spin" />
-                  : sendingEnabled ? <PaperPlaneTilt className="h-4 w-4" weight="fill" /> : <ArrowSquareOut className="h-4 w-4" />}
-                <span style={{ color: "inherit" }}>{primaryLabel}</span>
-              </Button>
-              <Button variant="outline" onClick={copyEmail} className="min-h-10 px-3 rounded-lg gap-2">
-                {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                Copy email
-              </Button>
-              {sendingEnabled && (
-                <button type="button" onClick={openInMailApp} className="text-xs text-muted-foreground hover:text-foreground ml-auto">
-                  Use my mail app instead
-                </button>
-              )}
-            </div>
-            {serviceError && <p role="alert" className="text-xs text-destructive">Couldn't check the email service. Retry to enable direct sending.</p>}
-            {recipients.length === 0 && withEmail.length > 0 && <p className="text-xs text-muted-foreground">Select travellers above to send their itinerary directly.</p>}
-            {sendingEnabled === false && isFirebaseConfigured() && (
-              <p className="text-xs text-muted-foreground">
-                Direct sending isn't set up yet. The designed email is copied to your clipboard when you open your mail app, paste it over the plain text.
-              </p>
-            )}
+
           </div>
 
           {/* Preview: the exact HTML that goes out */}
@@ -388,6 +354,38 @@ export function SendInviteModal({ open, onOpenChange, trip, travelers }: SendInv
               style={{ height: previewHeight }}
             />
           </div>
+        </div>
+        <div className="shrink-0 border-t border-border bg-card px-5 py-4 sm:px-6 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={serviceError ? () => setServiceCheck(n => n + 1) : sendingEnabled ? sendNow : openInMailApp}
+                disabled={!serviceError && sendDisabled}
+                aria-busy={sending || (sendingEnabled === null && !serviceError)}
+                className="min-h-11 min-w-40 px-4 rounded-lg gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+
+              >
+                {sending
+                  ? <SpinnerGap className="h-4 w-4 animate-spin" />
+                  : sendingEnabled ? <PaperPlaneTilt className="h-4 w-4" weight="fill" /> : <ArrowSquareOut className="h-4 w-4" />}
+                <span>{primaryLabel}</span>
+              </Button>
+              <Button variant="outline" onClick={copyEmail} className="min-h-10 px-3 rounded-lg gap-2">
+                {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                Copy email
+              </Button>
+              {sendingEnabled && (
+                <button type="button" onClick={openInMailApp} className="text-xs text-muted-foreground hover:text-foreground ml-auto">
+                  Use my mail app instead
+                </button>
+              )}
+            </div>
+            {serviceError && <p role="alert" className="text-xs text-destructive">Couldn't check the email service. Retry to enable direct sending.</p>}
+            {recipients.length === 0 && withEmail.length > 0 && <p className="text-xs text-muted-foreground">Select travellers above to send their itinerary directly.</p>}
+            {sendingEnabled === false && isFirebaseConfigured() && (
+              <p className="text-xs text-muted-foreground">
+                Direct sending isn't set up yet. The designed email is copied to your clipboard when you open your mail app, paste it over the plain text.
+              </p>
+            )}
         </div>
       </DialogContent>
     </Dialog>
