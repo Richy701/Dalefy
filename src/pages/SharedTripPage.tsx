@@ -209,13 +209,14 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
-      <p className="pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
+    <div className="grid grid-cols-[2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
+      <p className="hidden sm:block pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
       <div className="flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
         {!last && <span className="w-px flex-1 bg-border my-1.5" />}
       </div>
       <div className={`min-w-0 break-words pt-1.5 ${last ? "pb-1" : "pb-6"}`}>
+        {time && <p className="mb-1 text-xs font-medium text-muted-foreground tabular-nums sm:hidden">{time}</p>}
         <p className="text-sm font-medium text-foreground leading-snug">
           {ev.title}
           {label && ev.type !== "activity" && <span className="ml-2 text-xs font-normal text-muted-foreground">{label}</span>}
