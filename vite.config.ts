@@ -69,6 +69,13 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     build: {
+      modulePreload: {
+        // HTML preloads can be fetched before a service worker takes control,
+        // then discarded when module imports run under that worker. Keep
+        // dynamic-import preloads; let entry modules load their own imports.
+        resolveDependencies: (_url, dependencies, { hostType }) =>
+          hostType === "html" ? [] : dependencies,
+      },
       rollupOptions: {
         input: Object.fromEntries(["index", "about", "changelog", "support", "privacy", "terms", "delete-account", "mobile-preview"].map(name => [name, path.resolve(__dirname, `${name}.html`)])),
       },
