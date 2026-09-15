@@ -2,36 +2,75 @@
  * Firebase Admin auth, used only to mint action links (sign-in, verification,
  * password reset) that we then deliver through our own email templates.
  *
- * Requires FIREBASE_SERVICE_ACCOUNT: the service-account JSON, either raw or
- * base64-encoded. Without it, link generation reports "not configured" and the
- * callers fall back to a clear error rather than crashing.
+ * Credentials are keyless: on Vercel the function's OIDC identity token is
+ * exchanged with Google STS for a short-lived token that impersonates the
+ * Firebase Admin service account (Workload Identity Federation). Requires
+ *   GCP_WIF_AUDIENCE   //iam.googleapis.com/projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+ *   GCP_SERVICE_ACCOUNT firebase-adminsdk-...@<project>.iam.gserviceaccount.com
+ *
+ * FIREBASE_SERVICE_ACCOUNT (service-account JSON, raw or base64) is honoured
+ * as a fallback for environments without an OIDC token.
  */
 
-import type { App } from "firebase-admin/app";
+import type { App, Credential } from "firebase-admin/app";
 import type { Auth, ActionCodeSettings } from "firebase-admin/auth";
+
+const env = (k: string) => (process.env[k] ?? "").trim();
+const PROJECT_ID = env("VITE_FIREBASE_PROJECT_ID") || "dalefy-d87c9";
 
 let appPromise: Promise<App | null> | null = null;
 
 function readServiceAccount(): Record<string, unknown> | null {
-  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
+  const raw = env("FIREBASE_SERVICE_ACCOUNT");
   if (!raw) return null;
   const json = raw.startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
   try { return JSON.parse(json); } catch { return null; }
 }
 
+function federationConfigured(): boolean {
+  return !!env("GCP_WIF_AUDIENCE") && !!env("GCP_SERVICE_ACCOUNT");
+}
+
 export function authAdminConfigured(): boolean {
-  return readServiceAccount() !== null;
+  return federationConfigured() || readServiceAccount() !== null;
+}
+
+/** A firebase-admin Credential backed by Vercel OIDC -> Google STS -> service account impersonation. */
+async function federatedCredential(): Promise<Credential | null> {
+  if (!federationConfigured()) return null;
+  const { ExternalAccountClient } = await import("google-auth-library");
+  const { getVercelOidcToken } = await import("@vercel/oidc");
+  const client = ExternalAccountClient.fromJSON({
+    type: "external_account",
+    audience: env("GCP_WIF_AUDIENCE"),
+    subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+    token_url: "https://sts.googleapis.com/v1/token",
+    service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${env("GCP_SERVICE_ACCOUNT")}:generateAccessToken`,
+    subject_token_supplier: { getSubjectToken: () => getVercelOidcToken() },
+  });
+  if (!client) return null;
+  client.scopes = ["https://www.googleapis.com/auth/cloud-platform"];
+  return {
+    async getAccessToken() {
+      const { token } = await client.getAccessToken();
+      if (!token) throw new Error("STS token exchange returned no access token");
+      const expiry = client.credentials.expiry_date ?? Date.now() + 3600_000;
+      return { access_token: token, expires_in: Math.max(60, Math.floor((expiry - Date.now()) / 1000)) };
+    },
+  };
 }
 
 async function getApp(): Promise<App | null> {
   if (!appPromise) {
     appPromise = (async () => {
-      const sa = readServiceAccount();
-      if (!sa) return null;
       const { initializeApp, getApps, cert } = await import("firebase-admin/app");
       const existing = getApps();
       if (existing.length) return existing[0];
-      return initializeApp({ credential: cert(sa as Parameters<typeof cert>[0]) });
+      const federated = await federatedCredential();
+      if (federated) return initializeApp({ credential: federated, projectId: PROJECT_ID });
+      const sa = readServiceAccount();
+      if (!sa) return null;
+      return initializeApp({ credential: cert(sa as Parameters<typeof cert>[0]), projectId: PROJECT_ID });
     })();
   }
   return appPromise;
@@ -48,7 +87,7 @@ export type LinkResult = { ok: true; url: string } | { ok: false; error: string;
 
 async function withAuth(fn: (auth: Auth) => Promise<string>): Promise<LinkResult> {
   const auth = await getAuthAdmin();
-  if (!auth) return { ok: false, error: "Auth emails aren't set up yet. Add FIREBASE_SERVICE_ACCOUNT.", code: "not-configured" };
+  if (!auth) return { ok: false, error: "Auth emails aren't set up yet. Configure GCP_WIF_AUDIENCE and GCP_SERVICE_ACCOUNT.", code: "not-configured" };
   try {
     return { ok: true, url: await fn(auth) };
   } catch (err) {

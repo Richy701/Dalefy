@@ -86,7 +86,7 @@ function apiRoutesPlugin(env: Record<string, string>) {
         }
         try {
           if (p === "/api/trip" || p === "/api/send-itinerary" || p === "/api/send-invite" || p === "/api/auth-email" || p === "/api/notify-trip-update") {
-            for (const key of ["VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "VITE_APP_URL", "FIREBASE_SERVICE_ACCOUNT"]) {
+            for (const key of ["VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_API_KEY", "VITE_FIREBASE_STORAGE_BUCKET", "CRON_EMAIL", "CRON_PASSWORD", "RESEND_API_KEY", "RESEND_FROM_EMAIL", "VITE_APP_URL", "FIREBASE_SERVICE_ACCOUNT", "GCP_WIF_AUDIENCE", "GCP_SERVICE_ACCOUNT", "VERCEL_OIDC_TOKEN"]) {
               if (env[key]) process.env[key] = env[key]
             }
             let body = ""
