@@ -208,7 +208,7 @@ function TimelineRow({ ev, last }: { ev: TravelEvent; last: boolean }) {
   const label = ev.type === "hotel" ? "Check in" : CATEGORY_CLASS[ev.type]?.label;
   const time = isPlaceholderTime(ev.time) ? "" : ev.time;
   return (
-    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] lg:grid-cols-[3rem_2rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
+    <div className="grid grid-cols-[3rem_2rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_2.25rem_minmax(0,1fr)] gap-x-2 print:break-inside-avoid">
       <p className="pt-1.5 text-sm font-medium text-foreground tabular-nums">{time}</p>
       <div className="flex flex-col items-center">
         <CategoryDot type={ev.type} transferType={ev.transferType} size="md" />
@@ -289,7 +289,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
       className="min-h-dvh w-full bg-background text-foreground print:bg-white"
       style={brand.accentColor ? { "--brand-rgb": hexToRgb(brand.accentColor) } as React.CSSProperties : undefined}
     >
-      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 lg:px-10 xl:px-14 pt-4 sm:pt-6 pb-10 sm:pb-16 print:max-w-none print:p-0">
         {/* Masthead */}
         <header className="flex items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-border">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -359,7 +359,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
           </div>
         )}
 
-        <div className="mt-8 lg:mt-8 min-w-0 space-y-10 lg:space-y-12 print:block">
+        <div className="mt-8 min-w-0 space-y-10 print:block">
           <main className="min-w-0">
         {/* Day by day */}
         {days.length > 0 && (
@@ -383,9 +383,9 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
               </div>
             )}
 
-            <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] lg:items-start lg:gap-5 print:block print:space-y-8">
+            <div className="space-y-8">
               {days.map(([date, events]) => (
-                <div key={date} id={`day-${date}`} className="scroll-mt-6 rounded-xl border border-border bg-card p-4 sm:p-6 lg:p-5 print:border-0 print:p-0 print:break-inside-avoid">
+                <div key={date} id={`day-${date}`} className="scroll-mt-6 rounded-xl border border-border bg-card p-4 sm:p-6 print:border-0 print:p-0 print:break-inside-avoid">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pb-3 mb-4 border-b border-border">
                     <p className="text-sm font-medium text-muted-foreground tabular-nums">Day {dayNumber(date)}</p>
                     <h3 className="text-base font-semibold tracking-tight text-foreground">{fmtLong(date)}</h3>
@@ -406,7 +406,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         )}
 
           </main>
-          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:items-start lg:gap-6 lg:border-t lg:border-border lg:pt-8 print:block print:space-y-8 print:mt-8">
+          {hasDetails && <aside aria-label="Trip details" className="min-w-0 space-y-8 print:mt-8">
         {/* Flights */}
         {flights.length > 0 && (
           <section id="flights" className="min-w-0 scroll-mt-6">
