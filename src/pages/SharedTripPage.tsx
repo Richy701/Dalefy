@@ -280,7 +280,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
 
   const nights = Math.max(0, Math.round((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS));
   const org = trip.organizer;
-  const hasDetails = !!(flights.length || stays.length || org?.name || trip.info?.length || trip.documents?.length);
+  const hasDetails = !!(flights.length || stays.length || org?.name || trip.documents?.length);
   const jumpTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   const dayNumber = (date: string) => Math.round((parseTripDate(date).getTime() - parseTripDate(trip.start).getTime()) / DAY_MS) + 1;
 
@@ -326,7 +326,7 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         </div>
 
         <nav aria-label="Itinerary sections" className="mt-5 flex gap-1 overflow-x-auto border-b border-border pb-3 print:hidden">
-          {[{ id: "schedule", label: "Itinerary", show: true }, { id: "flights", label: "Flights", show: flights.length > 0 }, { id: "stays", label: "Stays", show: stays.length > 0 }, { id: "information", label: "Good to know", show: !!trip.info?.length }, { id: "documents", label: "Documents", show: !!trip.documents?.length }].filter(section => section.show).map(section => (
+          {[{ id: "information", label: "Good to know", show: !!trip.info?.length }, { id: "schedule", label: "Itinerary", show: true }, { id: "flights", label: "Flights", show: flights.length > 0 }, { id: "stays", label: "Stays", show: stays.length > 0 }, { id: "documents", label: "Documents", show: !!trip.documents?.length }].filter(section => section.show).map(section => (
             <Button key={section.id} variant="ghost" className="min-h-11 shrink-0 px-3 text-sm" onClick={() => jumpTo(section.id)}>{section.label}</Button>
           ))}
         </nav>
@@ -360,7 +360,37 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
         )}
 
         <div className="mt-8 min-w-0 space-y-10 print:block">
-          <main className="min-w-0">
+          <main className="min-w-0 space-y-10">
+        {/* Good to know */}
+        {trip.info && trip.info.length > 0 && (
+          <section id="information" className="min-w-0 scroll-mt-6">
+            <SectionTitle>Good to know</SectionTitle>
+            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              {trip.info.map(item => (
+                <div key={item.id} className="p-4 sm:p-5 print:break-inside-avoid">
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  {item.body && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>}
+                  {item.deadline && <p className="mt-2 text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
+                  {item.actionUrl && (
+                    <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                      {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {item.documents && item.documents.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                      {item.documents.map(doc => (
+                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
+                          <Paperclip className="h-3.5 w-3.5" />{doc.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Day by day */}
         {days.length > 0 && (
           <section id="schedule" aria-labelledby="daily-schedule" className="min-w-0 scroll-mt-6">
@@ -451,36 +481,6 @@ export function SharedTripView({ trip, brand }: { trip: Trip; brand: Brand }) {
               </div>
             )}
           </div>
-        )}
-
-        {/* Good to know */}
-        {trip.info && trip.info.length > 0 && (
-          <section id="information" className="min-w-0 scroll-mt-6">
-            <SectionTitle>Good to know</SectionTitle>
-            <div className="rounded-xl border border-border bg-card divide-y divide-border">
-              {trip.info.map(item => (
-                <div key={item.id} className="p-4 sm:p-5 print:break-inside-avoid">
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  {item.body && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap"><Linkify text={item.body} /></p>}
-                  {item.deadline && <p className="mt-2 text-xs text-muted-foreground">Due {fmtShort(item.deadline)}</p>}
-                  {item.actionUrl && (
-                    <a href={item.actionUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                      {item.actionLabel || "Open link"}<ArrowRight className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                  {item.documents && item.documents.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                      {item.documents.map(doc => (
-                        <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-brand hover:underline">
-                          <Paperclip className="h-3.5 w-3.5" />{doc.name}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
         )}
 
         {/* Documents */}
