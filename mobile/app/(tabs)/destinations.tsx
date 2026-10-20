@@ -1,4 +1,3 @@
-import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
   View, Text, ScrollView, StyleSheet, Pressable, RefreshControl,
   ActivityIndicator, useWindowDimensions,
@@ -233,7 +232,6 @@ export default function TodayScreen() {
   const listY = useRef(0);
   const scheduleScrollRef = useRef<ScrollView>(null);
   const { onScroll, barStyle, scrollY } = useCollapsingHeader();
-  const { stretchStyle } = useBannerStretch(mapH, scrollY);
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   // The stay to measure from: today's hotel pin, else a hotel on this trip that sits near the destination.
   const stayCoord = useMemo((): [number, number] | null => {
@@ -471,17 +469,9 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <Animated.ScrollView
-        ref={scheduleScrollRef as any}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
-      >
-      {/* Full-width map hero; the plan scrolls over its lower edge. */}
-      {/* The map runs the full screen height so the glass sheet has map behind it to blur */}
-      <Animated.View style={[{ height: winH, backgroundColor: C.elevated }, stretchStyle]}>
+      {/* The map stays put behind the whole screen, so the glass sheet always has map under it.
+          Touches on the clear space above the sheet fall through to it. */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]}>
       {(!destCenter || !MapboxGL) && (
         <View style={[styles.mapFallback, { height: mapH, flex: 0 }]}>
           {mapLoading && MapboxGL ? <ActivityIndicator color={C.tealText} /> : <MapTrifold size={30} color={C.textTertiary} />}
@@ -627,10 +617,21 @@ export default function TodayScreen() {
           </Pressable>
         )}
       </View>
-      </Animated.View>
+      </View>
+
+      <Animated.ScrollView
+        ref={scheduleScrollRef as any}
+        pointerEvents="box-none"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
+      >
+      <View pointerEvents="none" style={{ height: mapH - 28 }} />
 
       {/* The plan rides up over the map like a Maps sheet */}
-      <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={[styles.sheet, { marginTop: -(winH - mapH) - 28 }]}>
+      <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={styles.sheet}>
         {/* The same Liquid Glass as the system sheets (Join, Notifications); a blur where it isn't available */}
         {SHEET_GLASS
           ? <GlassView glassEffectStyle="regular" style={[StyleSheet.absoluteFill, styles.sheetGlass]} />
