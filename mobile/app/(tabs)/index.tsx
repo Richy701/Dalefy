@@ -1,10 +1,9 @@
 import {
   View, Text, ScrollView, Pressable,
   StyleSheet, RefreshControl, Platform, Share,
-  Dimensions,
+  Dimensions, useWindowDimensions,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
-import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedScrollHandler,
   type SharedValue,
@@ -14,7 +13,7 @@ import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { Avatar } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
-import { CategoryDot } from "@/components/ui/CategoryDot";
+import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
@@ -28,10 +27,11 @@ import {
   Info, Export,
 } from "phosphor-react-native";
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
-import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { ListSkeleton } from "@/components/Skeleton";
-import { openJoinSheet } from "@/services/openJoin";
+import { openJoinSheet, openSheet } from "@/services/openJoin";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { SymbolView } from "expo-symbols";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,7 +41,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
 import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
-import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constants/theme";
+import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow, categoryTone } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
 
 const HERO_H = 300;
@@ -140,7 +140,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
             <Plus size={18} color={barIcon} weight="bold" />
           </IconCircleButton>
           <IconCircleButton variant="glass" size={36}
-            onPress={() => router.push("/notifications")}
+            onPress={() => openSheet("/notifications")}
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           >
             <Bell size={18} color={barIcon} weight="fill" />
@@ -323,12 +323,12 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
   });
 }
 
-// ── Trip Row (All Trips list) ──────────────────────────────────────────────────
-function TripRow({ trip }: { trip: Trip }) {
-  const { C, isDark } = useTheme();
+// ── Trip cards ──────────────────────────────────────────────────────────────
+// Other trips as Spotify-style squares, name and dates underneath. All one size: two fill the
+// width as a pair, more become a shelf that runs off the edge.
+function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number }) {
+  const { C } = useTheme();
   const { toast } = useToast();
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
-  const swipeRef = useRef<Swipeable>(null);
   const start   = parseTripDate(trip.start);
   const end     = parseTripDate(trip.end);
   const days    = daysUntil(trip.start);
@@ -341,32 +341,9 @@ function TripRow({ trip }: { trip: Trip }) {
     ? `${start.getDate()}–${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
     : `${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
   const whenLine = isPast ? dateRange : isActive ? tripFactLine(trip).split(", ")[0] : days === 1 ? "tomorrow" : `in ${days} days`;
-
-  const renderRightActions = useCallback(() => (
-    <View style={{ flexDirection: "row" }}>
-      <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
-          swipeRef.current?.close();
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Share trip"
-        style={{
-          backgroundColor: C.teal,
-          justifyContent: "center",
-          alignItems: "center",
-          width: 72,
-        }}
-      >
-        <ShareNetwork size={18} color={C.onAccent} weight="regular" />
-        <Text style={{ color: C.onAccent, fontSize: T.xs, fontWeight: "700", marginTop: 4 }}>Share</Text>
-      </Pressable>
-    </View>
-  ), [C, trip]);
+  const photo = <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />;
 
   return (
-    <Swipeable ref={swipeRef} renderRightActions={renderRightActions} overshootRight={false}>
     <ContextMenu
       actions={[
         { title: "Share Trip", systemIcon: "square.and.arrow.up" },
@@ -383,36 +360,30 @@ function TripRow({ trip }: { trip: Trip }) {
     >
     <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
-      style={styles.row}
+      style={StyleSheet.flatten([styles.tripCard, { width: size }])}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
-      {Platform.OS === "ios" && Link.AppleZoom ? (
-        <Link.AppleZoom>
-          <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
-        </Link.AppleZoom>
-      ) : (
-        <CachedImage uri={trip.image} style={styles.rowThumb} accessible={false} />
-      )}
-      <View style={styles.rowBody}>
-        <Text style={styles.rowName} numberOfLines={1}>{trip.name}</Text>
-        <Text style={styles.rowDest} numberOfLines={1}>
-          {flag ? `${flag}  ` : ""}{trip.destination ? `${trip.destination}, ` : ""}
+      <View style={[styles.tripArt, { width: size, height: size }]}>
+        {Platform.OS === "ios" && Link.AppleZoom ? <Link.AppleZoom>{photo}</Link.AppleZoom> : photo}
+      </View>
+      <View style={styles.tripCardBody}>
+        <Text style={styles.tripCardName} numberOfLines={1}>{trip.name}</Text>
+        <Text style={styles.tripCardSub} numberOfLines={1}>
+          {flag ? `${flag}  ` : ""}{!isPast && trip.destination ? `${trip.destination}, ` : ""}
           <Text style={isActive ? { color: C.tealText, fontWeight: T.semibold } : undefined}>{whenLine}</Text>
         </Text>
       </View>
     </ScalePress>
     </Link>
     </ContextMenu>
-    </Swipeable>
   );
 }
 
 // ── Home Screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
-  const { C, isDark } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const { trips, ready, offline, reload } = useTrips();
   const router = useRouter();
   const { toast } = useToast();
@@ -446,6 +417,12 @@ export default function HomeScreen() {
     (sorted.length ? sorted[sorted.length - 1] : null),
     [sorted]);
 
+  // Invites-style: the cover photo, blurred, carries down the whole page
+  const photoPage = !!heroTrip?.image;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeDark, themeC]);
+  const isDark = photoPage || themeDark;
+  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+
   const otherTrips = useMemo(() => sorted.filter(t => t.id !== heroTrip?.id), [sorted, heroTrip]);
   // Upcoming first (soonest at the top), then past (most recent at the top)
   const upcomingTrips = useMemo(() => otherTrips.filter(t => parseTripDate(t.end) >= new Date()), [otherTrips]);
@@ -460,6 +437,30 @@ export default function HomeScreen() {
     const events = date ? heroTrip.events.filter(e => e.date === date) : [];
     return { date, events, dayCount: dates.length };
   }, [heroTrip, todayStr]);
+  const nextEvent = heroDay.events[0];
+  const restEvents = heroDay.events.slice(1, 4);
+  const hasTime = (ev: TravelEvent) => !!ev.time && !/^tb[acd]$/i.test(ev.time);
+  const dayLabel = heroDay.date ? parseTripDate(heroDay.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "";
+  const dayIn = heroDay.date ? daysUntil(heroDay.date) : 0;
+  const countdown = dayIn <= 0 ? "Today" : dayIn === 1 ? "Tomorrow" : `In ${dayIn} days`;
+  const eventTitle = (ev: TravelEvent) => {
+    const t = normaliseTitle(ev.title, ev.type, ev.transferType);
+    return ev.type === "hotel" ? t.split(" – ")[0] : t;
+  };
+  // The headline reads as words; a leading flight number moves into the line underneath
+  const nextHeadline = useMemo(() => {
+    if (!nextEvent) return { title: "", sub: "" };
+    const title = eventTitle(nextEvent);
+    const place = nextEvent.location ? tidyLocation(nextEvent.location) : "";
+    const m = title.match(/^([A-Z0-9]{2}\s?\d{1,4})\s+[–-]\s+(.+)$/);
+    const flightNo = nextEvent.flightNum || m?.[1] || "";
+    return {
+      title: m ? m[2] : title,
+      sub: [flightNo && !place.includes(flightNo) ? flightNo : "", place].filter(Boolean).join(", "),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextEvent]);
+  const NextIcon = nextEvent ? categoryIcon(nextEvent.type, nextEvent.transferType) : CalendarDots;
 
   // Latest photos — diversify across uploaders, then fill chronologically
   const latestPhotos = useMemo(() => {
@@ -484,6 +485,9 @@ export default function HomeScreen() {
   }, [heroTrip]);
 
   const fmtDay = shortDay;
+  const { width: screenW } = useWindowDimensions();
+  const pairCard = Math.floor((screenW - S.md * 2 - S.sm2) / 2);
+  const shelfCard = Math.floor(pairCard * 0.86);
   // Pulling past the top stretches the photo from its top edge instead of dragging it off the status bar
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler(e => { scrollY.value = e.contentOffset.y; });
@@ -499,17 +503,18 @@ export default function HomeScreen() {
   // showing through instead of washing out to white.
   const onGround = isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
-    { label: "Itinerary", Icon: CalendarDots, go: () => router.push(`/trip/${heroTrip.id}`) },
-    { label: "Info", Icon: Info, go: () => router.push(`/trip/info?tripId=${heroTrip.id}`) },
+    { label: "Itinerary", Icon: CalendarDots, symbol: "calendar" as const, go: () => router.push(`/trip/${heroTrip.id}`) },
+    { label: "Info", Icon: Info, symbol: "info.circle" as const, go: () => router.push(`/trip/info?tripId=${heroTrip.id}`) },
     // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
     {
-      label: "Share", Icon: Export,
+      label: "Share", Icon: Export, symbol: "square.and.arrow.up" as const,
       go: () => Share.share({ message: `${heroTrip.name}: ${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/#/shared/${heroTrip.id}` }),
     },
   ] : [];
 
   return (
     <View style={styles.safe}>
+      {photoPage && heroTrip && <PhotoBackdrop uri={heroTrip.image} />}
       <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -543,11 +548,10 @@ export default function HomeScreen() {
               accessibilityLabel={`${heroTrip.name}. ${factLine(heroTrip)}`}
             >
               <View style={[styles.hero, { height: HERO_H + insets.top }]}>
-                {/* The photo resolves into the exact page colour before the cover ends. */}
+                {/* The photo melts into the blurred copy of itself behind the page */}
                 <Animated.View style={[StyleSheet.absoluteFill, heroStretch]}>
-                  <PhotoBlend>
-                    <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-                  </PhotoBlend>
+                  <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+                  <PhotoDissolve uri={heroTrip.image} scrollY={scrollY} />
                 </Animated.View>
                 <View style={styles.heroBody}>
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
@@ -569,8 +573,9 @@ export default function HomeScreen() {
                   style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
                 >
                   {LIQUID_GLASS ? (
-                    <GlassView glassEffectStyle="regular" style={[styles.actionCircle, styles.actionGlass]}>
-                      <a.Icon size={22} color={onGround} weight="fill" />
+                    // Always the dark glass: the page under it is the dark photo backdrop in either theme
+                    <GlassView glassEffectStyle="regular" colorScheme="dark" style={[styles.actionCircle, styles.actionGlass]}>
+                      <SymbolView name={a.symbol} size={21} tintColor="#fff" weight="medium" style={{ width: 24, height: 24 }} />
                     </GlassView>
                   ) : (
                     <View style={styles.actionCircle}>
@@ -590,47 +595,65 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* ── Itinerary ── */}
+            {/* ── Next up, then the rest of that day ── */}
             <FadeIn delay={0}>
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
+              {!nextEvent ? (
+                <View style={styles.card}>
                   <Text style={styles.cardTitle}>Itinerary</Text>
-                  {heroDay.date ? (
-                    <Text style={styles.cardMeta}>
-                      {parseTripDate(heroDay.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                    </Text>
-                  ) : null}
+                  <Text style={[styles.cardEmpty, { paddingHorizontal: 0, marginTop: S.xs }]}>Nothing on the itinerary yet. Your organiser is still adding to it.</Text>
                 </View>
-                {heroDay.events.length === 0 ? (
-                  <Text style={styles.cardEmpty}>Nothing on the itinerary yet. Your organiser is still adding to it.</Text>
-                ) : heroDay.events.slice(0, 4).map((ev, i) => (
+              ) : (
+                <>
                   <Pressable
-                    key={ev.id}
-                    onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
+                    onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${nextEvent.id}`); }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}${ev.time ? `, ${ev.time}` : ""}`}
-                    style={({ pressed }) => [styles.evRow, i > 0 && styles.evRowBorder, { backgroundColor: pressed ? C.elevated : "transparent" }]}
+                    accessibilityLabel={`Next up, ${dayLabel}${hasTime(nextEvent) ? ` at ${nextEvent.time}` : ""}, ${eventTitle(nextEvent)}`}
+                    style={({ pressed }) => [styles.card, styles.nextUp, { opacity: pressed ? 0.7 : 1 }]}
                   >
-                    <CategoryDot type={ev.type} transferType={ev.transferType} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.evTitle} numberOfLines={1}>{ev.type === "hotel" ? normaliseTitle(ev.title, ev.type, ev.transferType).split(" – ")[0] : normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
-                      {ev.location ? <Text style={styles.evSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text> : null}
+                    <View style={styles.nextMeta}>
+                      <NextIcon size={15} color={categoryTone(nextEvent.type, C).fg} weight="fill" />
+                      <Text style={styles.nextLabel}>Next up, {dayLabel}{hasTime(nextEvent) ? `, ${nextEvent.time}` : ""}</Text>
+                      <Text style={styles.nextCountdown}>{countdown}</Text>
                     </View>
-                    {ev.time && !/^tb[acd]$/i.test(ev.time)
-                      ? <Text style={styles.evTime}>{ev.time}</Text>
-                      : <Text style={[styles.evTime, { color: C.textTertiary }]}>TBC</Text>}
+                    <Text style={styles.nextTitle} numberOfLines={2}>{nextHeadline.title}</Text>
+                    {nextHeadline.sub ? <Text style={styles.nextSub} numberOfLines={2}>{nextHeadline.sub}</Text> : null}
                   </Pressable>
-                ))}
-                <Pressable
-                  onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.cardFooter, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <Text style={styles.cardLink}>
-                    {heroDay.dayCount > 1 ? `See all ${heroDay.dayCount} days` : "Open itinerary"}
-                  </Text>
-                </Pressable>
-              </View>
+
+                  <View style={styles.card}>
+                    {restEvents.length > 0 && (
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Then on {dayLabel}</Text>
+                        {restEvents.some(ev => !hasTime(ev)) ? <Text style={styles.cardMeta}>{restEvents.every(ev => !hasTime(ev)) ? "Times TBC" : "Some times TBC"}</Text> : null}
+                      </View>
+                    )}
+                    {restEvents.map((ev, i) => (
+                      <Pressable
+                        key={ev.id}
+                        onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${eventTitle(ev)}${hasTime(ev) ? `, ${ev.time}` : ""}`}
+                        style={({ pressed }) => [styles.evRow, i > 0 && styles.evRowBorder, { opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <CategoryDot palette={C} type={ev.type} transferType={ev.transferType} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.evTitle} numberOfLines={1}>{eventTitle(ev)}</Text>
+                          {ev.location ? <Text style={styles.evSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text> : null}
+                        </View>
+                        {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [styles.cardFooter, restEvents.length === 0 && { borderTopWidth: 0, paddingTop: 0 }, { opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <Text style={styles.cardLink}>
+                        {heroDay.dayCount > 1 ? `See all ${heroDay.dayCount} days` : "Open itinerary"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </FadeIn>
 
             {/* ── Photos: hidden before the trip starts unless someone already added some ── */}
@@ -695,14 +718,9 @@ export default function HomeScreen() {
           <FadeIn key={g.key} delay={80}>
             <View style={styles.section}>
               <Text style={styles.groupHeader}>{g.title}</Text>
-              <View style={styles.listCard}>
-                {g.list.map((trip, i) => (
-                  <View key={trip.id}>
-                    <TripRow trip={trip} />
-                    {i < g.list.length - 1 && <View style={styles.rowDivider} />}
-                  </View>
-                ))}
-              </View>
+              <ScrollView horizontal scrollEnabled={g.list.length > 2} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripCards}>
+                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} />)}
+              </ScrollView>
             </View>
           </FadeIn>
         ))}
@@ -748,12 +766,12 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Actions ──
     actions: {
-      flexDirection: "row", justifyContent: "space-evenly",
+      flexDirection: "row", justifyContent: "center", gap: S.xl,
       paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.md,
     },
     action: { alignItems: "center", gap: S.xs2, minWidth: 64 },
     actionCircle: {
-      width: 52, height: 52, borderRadius: 26,
+      width: 48, height: 48, borderRadius: 24,
       backgroundColor: isDark ? "rgba(255,255,255,0.16)" : C.card,
       alignItems: "center", justifyContent: "center",
       ...shadow("subtle", isDark),
@@ -785,19 +803,21 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     evSub: { fontSize: T.sm, color: C.textTertiary, marginTop: 1 },
     evTime: { fontSize: T.sm, fontWeight: T.medium, color: C.tealText, fontVariant: ["tabular-nums"] },
 
-    // ── Trip rows ──
-    listCard: {
-    },
-    row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: S.sm },
-    rowDivider: {
-      height: StyleSheet.hairlineWidth, backgroundColor: C.border,
-      marginLeft: S.md + 60 + S.md,
-    },
-    rowThumb: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.elevated },
-    rowBody: { flex: 1, gap: 2 },
-    rowName: { fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary },
-    rowDest: { fontSize: T.sm, color: C.textSecondary },
-    rowFact: { fontSize: T.sm, color: C.textTertiary },
+    // ── Next up ──
+    nextUp: { paddingHorizontal: S.md, gap: S.xs },
+    nextMeta: { flexDirection: "row", alignItems: "center", gap: S.xs },
+    nextLabel: { flex: 1, fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary },
+    nextCountdown: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
+    nextTitle: { fontSize: 24, lineHeight: 29, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
+    nextSub: { fontSize: T.base, color: C.textSecondary, lineHeight: 21 },
+
+    // ── Trip cards ──
+    tripCards: { gap: S.sm2, paddingHorizontal: S.md },
+    tripCard: { gap: S.xs },
+    tripArt: { borderRadius: R.sm, overflow: "hidden", backgroundColor: C.elevated },
+    tripCardBody: { gap: 1 },
+    tripCardName: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 17 },
+    tripCardSub: { fontSize: T.xs, color: C.textSecondary },
     photoStrip: { gap: S.sm2, paddingHorizontal: S.md, paddingBottom: S.md },
     latestPhoto: {
       width: 104, height: 138, borderRadius: R.sm,

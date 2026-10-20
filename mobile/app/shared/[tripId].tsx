@@ -178,7 +178,7 @@ export default function SharedTripScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={{ flex: 1, justifyContent: "center" }}>
           <EmptyState
-            icon={<WarningCircle size={28} color={C.teal} weight="light" />}
+            icon={<WarningCircle size={48} color={C.textTertiary} weight="light" />}
             title="Trip not found"
             message="This trip isn't available or hasn't been published yet."
             cta={{ label: "Go back", onPress: () => router.canGoBack() ? router.back() : router.replace("/(tabs)") }}

@@ -10,7 +10,7 @@ import ContextMenu from "@/components/ContextMenu";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  Play, Plus, Camera, X, Trash, Heart,
+  Play, Plus, Camera, X, Trash, Heart, Export, VideoCamera, ImageSquare,
   CaretRight, CaretDown,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
@@ -19,6 +19,9 @@ import Animated, {
   interpolate, Extrapolation,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { DragHandle } from "@/components/ui/DragHandle";
@@ -290,6 +293,24 @@ function TripPickerSheet({ visible, trips, onPick, onClose, C }: {
 
 // ── Zoomable Image ──────────────────────────────────────────────────────────
 
+// Viewer controls: real Liquid Glass where available, a dark frosted fill elsewhere
+const VIEWER_GLASS = isLiquidGlassAvailable();
+// A dark tint under the glass so the controls stay visible over bright and dark photos alike
+function ViewerGlass({ style, children }: { style: any; children: React.ReactNode }) {
+  return VIEWER_GLASS
+    ? <GlassView glassEffectStyle="regular" colorScheme="dark" tintColor="rgba(20,20,24,0.45)" isInteractive style={style}>{children}</GlassView>
+    : <View style={[style, { backgroundColor: "rgba(40,40,46,0.72)" }]}>{children}</View>;
+}
+const TEXT_ON_PHOTO = { textShadowColor: "rgba(0,0,0,0.55)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 };
+const viewerStyles = StyleSheet.create({
+  circle: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  toolbar: {
+    alignSelf: "center", flexDirection: "row", alignItems: "center", gap: S.sm,
+    paddingHorizontal: S.sm, height: 56, borderRadius: 28, overflow: "hidden",
+  },
+  tool: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
+});
+
 const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, height, onTap }: {
   uri: string; thumbUri?: string; width: number; height: number; onTap: () => void;
 }) {
@@ -386,13 +407,14 @@ const ZoomableImage = React.memo(function ZoomableImage({ uri, thumbUri, width, 
 
 // ── Fullscreen Viewer ────────────────────────────────────────────────────────
 
-function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, hearted, onToggleHeart, C }: {
+function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, canDelete, hearted, onToggleHeart, C }: {
   items: ViewerItem[];
   initialIndex: number;
   visible: boolean;
   origin: OriginRect | null;
   onClose: () => void;
   onDelete: (item: ViewerItem) => void;
+  canDelete: (item: ViewerItem) => boolean;
   hearted: Set<string>;
   onToggleHeart: (id: string) => void;
   C: ThemeColors;
@@ -528,6 +550,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
   const bgStyle = useAnimatedStyle(() => ({
     backgroundColor: `rgba(0,0,0,${bgOpacity.value})`,
   }));
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: bgOpacity.value * progress.value }));
 
   const chromeOpacity = useAnimatedStyle(() => ({
     opacity: chrome.value * progress.value,
@@ -555,6 +578,19 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent onShow={startOpen} onRequestClose={animateClose}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View style={[{ flex: 1 }, bgStyle]}>
+          {/* Like the trip pages: the photo, blurred and darkened, fills the space around it */}
+          {current.type === "image" && (
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: "hidden" }, backdropStyle]}>
+              <CachedImage
+                uri={current.thumbUrl ?? current.url}
+                blurRadius={60}
+                transition={250}
+                style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.3 }] }]}
+                accessible={false}
+              />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)" }]} />
+            </Animated.View>
+          )}
           <GestureDetector gesture={swipeToDismiss}>
             <Animated.View style={[{ flex: 1 }, dismissStyle]}>
               <FlatList
@@ -602,38 +638,26 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
             position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
           }, chromeOpacity]}>
             <LinearGradient
-              colors={["rgba(0,0,0,0.6)", "rgba(0,0,0,0.3)", "transparent"]}
+              // No dark band: the controls sit straight on the photo and its blurred surround
+              colors={["transparent", "transparent"]}
               style={{ paddingTop: insets.top + 8, paddingHorizontal: S.md, paddingBottom: 32 }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Pressable
-                  onPress={animateClose}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
-                >
-                  <X size={18} color="#fff" weight="bold" />
+              {/* Photos-style: close on the left, who added it and when in the middle */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
+                <Pressable onPress={animateClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+                  <ViewerGlass style={viewerStyles.circle}>
+                    <X size={18} color="#fff" weight="bold" />
+                  </ViewerGlass>
                 </Pressable>
-
-                <View style={{
-                  backgroundColor: "rgba(255,255,255,0.12)", borderRadius: R.full,
-                  paddingHorizontal: 12, paddingVertical: 6,
-                }}>
-                  <Text style={{ fontSize: T.xs, fontWeight: T.bold, color: "#fff", letterSpacing: 0.5 }}>
-                    {activeIndex + 1} <Text style={{ color: "rgba(255,255,255,0.4)" }}>/</Text> {items.length}
+                <View style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: "#fff", ...TEXT_ON_PHOTO }} numberOfLines={1}>
+                    {current.uploadedBy?.trim() || "Someone on the trip"}
+                  </Text>
+                  <Text style={{ fontSize: T.sm, color: "rgba(255,255,255,0.85)", marginTop: 1, ...TEXT_ON_PHOTO }} numberOfLines={1}>
+                    {[/^Day \d/.test(current.dayLabel) ? current.dayLabel : null, formatDateCompact(current.takenAt ?? current.uploadedAt)].filter(Boolean).join(", ")}
                   </Text>
                 </View>
-
-                <Pressable
-                  onPress={() => onDelete(current)}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete photo"
-                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.redDim, alignItems: "center", justifyContent: "center" }}
-                >
-                  <Trash size={16} color={C.red} weight="bold" />
-                </Pressable>
+                <View style={{ width: 44 }} />
               </View>
             </LinearGradient>
           </Animated.View>
@@ -643,76 +667,49 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
             position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
           }, chromeOpacity]}>
             <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.8)"]}
+              colors={["transparent", "transparent"]}
               style={{ paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: 48 }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
-                <View style={{
-                  width: 34, height: 34, borderRadius: 17,
-                  backgroundColor: "rgba(255,255,255,0.16)",
-                  alignItems: "center", justifyContent: "center",
-                }}>
-                  <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: "#fff" }}>
-                    {(current.uploadedBy?.trim()[0] ?? "?").toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: "#fff" }} numberOfLines={1}>
-                    {current.uploadedBy?.trim() || "Someone on the trip"}
-                  </Text>
-                  <Text style={{ fontSize: T.sm, color: "rgba(255,255,255,0.7)", marginTop: 1 }} numberOfLines={1}>
-                    {[current.dayLabel, formatDateCompact(current.takenAt ?? current.uploadedAt)].filter(Boolean).join(", ")}
-                  </Text>
-                </View>
+              {/* One glass toolbar: share, favourite, and delete on your own photos */}
+              <ViewerGlass style={viewerStyles.toolbar}>
+                <Pressable
+                  onPress={() => { Share.share({ url: current.url, message: Platform.OS === "android" ? current.url : undefined }); }}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share"
+                  style={({ pressed }) => [viewerStyles.tool, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Export size={22} color="#fff" weight="regular" />
+                </Pressable>
                 <Pressable
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     onToggleHeart(current.id);
                   }}
-                  hitSlop={10}
+                  hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={hearted.has(current.id) ? "Remove from favourites" : "Add to favourites"}
                   accessibilityState={{ selected: hearted.has(current.id) }}
-                  style={({ pressed }) => ({
-                    width: 44, height: 44, borderRadius: 22,
-                    alignItems: "center", justifyContent: "center",
-                    opacity: pressed ? 0.6 : 1,
-                  })}
+                  style={({ pressed }) => [viewerStyles.tool, { opacity: pressed ? 0.6 : 1 }]}
                 >
                   <Heart
-                    size={26}
+                    size={24}
                     color={hearted.has(current.id) ? "#ff4d6d" : "#fff"}
                     weight={hearted.has(current.id) ? "fill" : "regular"}
                   />
                 </Pressable>
-              </View>
-
-              {/* Scroll indicator */}
-              {items.length > 1 && (
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 14 }}>
-                  {items.length <= 20 ? (
-                    items.map((_, i) => (
-                      <View key={i} style={{
-                        width: i === activeIndex ? 18 : 5, height: 5,
-                        borderRadius: 2.5,
-                        backgroundColor: i === activeIndex ? C.teal : "rgba(255,255,255,0.25)",
-                      }} />
-                    ))
-                  ) : (
-                    <View style={{
-                      width: 120, height: 3, borderRadius: 1.5,
-                      backgroundColor: "rgba(255,255,255,0.15)", overflow: "hidden",
-                    }}>
-                      <View style={{
-                        width: Math.max(20, 120 / items.length),
-                        height: 3, borderRadius: 1.5,
-                        backgroundColor: C.teal,
-                        marginLeft: (120 - Math.max(20, 120 / items.length)) * (activeIndex / (items.length - 1)),
-                      }} />
-                    </View>
-                  )}
-                </View>
-              )}
+                {canDelete(current) && (
+                  <Pressable
+                    onPress={() => onDelete(current)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete photo"
+                    style={({ pressed }) => [viewerStyles.tool, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <Trash size={22} color="#fff" weight="regular" />
+                  </Pressable>
+                )}
+              </ViewerGlass>
             </LinearGradient>
           </Animated.View>
         </Animated.View>
@@ -795,7 +792,7 @@ const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C
 // ── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function MediaScreen() {
-  const { C } = useTheme();
+  const { C, isDark } = useTheme();
   const { toast } = useToast();
   const { prefs } = usePreferences();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -1154,19 +1151,13 @@ export default function MediaScreen() {
             </ContextMenu>
           )}
           <View style={{ flex: 1 }} />
-          {mediaChips.map(chip => (
-            <Pressable
-              key={chip.id}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              accessibilityRole="button"
-              accessibilityLabel={chip.label}
-              accessibilityState={{ selected: mediaFilter === chip.id }}
-              hitSlop={{ top: 12, bottom: 12 }}
-              onPress={() => { Haptics.selectionAsync(); setMediaFilter(chip.id); }}
-            >
-              <Pill label={chip.label} tone={mediaFilter === chip.id ? "accent" : "neutral"} />
-            </Pressable>
-          ))}
+          <SegmentedControl
+            values={mediaChips.map(chip => chip.label)}
+            selectedIndex={Math.max(0, mediaChips.findIndex(chip => chip.id === mediaFilter))}
+            onChange={(e) => { Haptics.selectionAsync(); setMediaFilter(mediaChips[e.nativeEvent.selectedSegmentIndex].id); }}
+            style={{ width: 210 }}
+            appearance={isDark ? "dark" : "light"}
+          />
         </View>
       )}
 
@@ -1188,16 +1179,19 @@ export default function MediaScreen() {
         <View style={styles.emptyWrap}>
           <EmptyState
             compact
+            icon={mediaFilter === "video"
+              ? <VideoCamera size={48} color={C.textTertiary} weight="light" />
+              : <ImageSquare size={48} color={C.textTertiary} weight="light" />}
             title={mediaFilter === "video" ? "No videos yet" : "No photos yet"}
             message={`Nothing ${mediaFilter === "video" ? "filmed" : "photographed"} on this trip so far.`}
-            cta={{ label: "Show everything", onPress: () => { Haptics.selectionAsync(); setMediaFilter("all"); } }}
+            cta={{ label: "Show all photos and videos", onPress: () => { Haptics.selectionAsync(); setMediaFilter("all"); } }}
           />
         </View>
       ) : (tripsWithMedia.length === 0 || filteredTrips.length === 0) && emptyTrip ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             compact
-            icon={<Camera size={26} color={C.tealText} weight="regular" />}
+            icon={<Camera size={48} color={C.textTertiary} weight="light" />}
             title={`No photos from ${emptyTrip.destination || emptyTrip.name} yet`}
             message="Anything you or the group add shows up here for everyone, newest first."
             cta={{ label: "Add photos", onPress: () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); } }}
@@ -1231,15 +1225,13 @@ export default function MediaScreen() {
             ) : (
             <ScreenTitle
               right={trips.length > 0 ? (
-                <Pressable
-                  style={({ pressed }) => [styles.headerUploadBtn, { opacity: pressed ? 0.8 : 1 }]}
+                <IconCircleButton
+                  variant="glass" size={36}
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
-                  accessibilityRole="button"
                   accessibilityLabel="Upload photos"
-                  hitSlop={5}
                 >
-                  <Plus size={16} color={C.onAccent} weight="bold" />
-                </Pressable>
+                  <Plus size={18} color={C.textPrimary} weight="bold" />
+                </IconCircleButton>
               ) : undefined}
             >
               Gallery
@@ -1276,6 +1268,7 @@ export default function MediaScreen() {
         origin={viewerOrigin}
         onClose={() => setViewerIndex(-1)}
         onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
+        canDelete={(item) => !!item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid)}
         hearted={hearted}
         onToggleHeart={toggleHeart}
         C={C}

@@ -1,9 +1,11 @@
 import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert } from "react-native";
-import { tripFactLine, tripLengthDays, daysUntil, destinationCountry, destinationFlag } from "@/shared/tripSummary";
+import { daysUntil } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
-import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+
+const GLASS = isLiquidGlassAvailable();
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { distanceKm } from "@/shared/coordinates";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
@@ -44,7 +46,7 @@ function deriveAvatarColor(name: string, C: ThemeColors): string {
 }
 
 export default function ProfileScreen() {
-  const { C, isDark, mode, setMode } = useTheme();
+  const { C: themeC, isDark: themeDark, mode, setMode } = useTheme();
   const { prefs, setPref } = usePreferences();
   const auth = useAuth();
   const { brand } = useBrand();
@@ -52,7 +54,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const haptic = useHaptic();
   const { toast } = useToast();
-  const s = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -64,7 +65,7 @@ export default function ProfileScreen() {
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
-  const avatarColor = useMemo(() => deriveAvatarColor(prefs.name || "?", C), [prefs.name, C]);
+  const avatarColor = useMemo(() => deriveAvatarColor(prefs.name || "?", themeC), [prefs.name, themeC]);
 
   // Next upcoming or active trip
   const now = new Date();
@@ -74,39 +75,13 @@ export default function ProfileScreen() {
     const active = sorted.find(t => daysUntil(t.start) <= 0 && daysUntil(t.end) >= 0);
     return active ?? sorted.find(t => daysUntil(t.start) > 0) ?? (sorted.length ? sorted[sorted.length - 1] : null);
   }, [trips]);
-  const nextTrip = useMemo(() => {
-    if (!heroTrip || daysUntil(heroTrip.end) < 0) return null;
-    return `${heroTrip.destination || heroTrip.name}, ${tripFactLine(heroTrip).split(", ")[0]}`;
-  }, [heroTrip]);
-  const flags = useMemo(() => {
-    const seen = new Set<string>();
-    const been: string[] = [];
-    for (const t of [...trips].sort((a, b) => a.start.localeCompare(b.start))) {
-      if (daysUntil(t.start) > 0) continue;
-      const f = destinationFlag(t.destination);
-      if (f && !seen.has(f)) { seen.add(f); been.push(f); }
-    }
-    const next = heroTrip && daysUntil(heroTrip.start) > 0 ? destinationFlag(heroTrip.destination) : null;
-    return { been, next };
-  }, [trips, heroTrip]);
+  // Like Home: the cover photo, blurred, runs down the whole page
+  const photoPage = !!heroTrip?.image;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = photoPage || themeDark;
+  const s = useMemo(() => makeStyles(C, isDark, photoPage), [C, isDark, photoPage]);
 
-  // Travel stats: what this traveller has done with us so far, or what is booked if nothing has started
-  const stats = useMemo(() => {
-    const started = trips.filter(t => daysUntil(t.start) <= 0);
-    const pool = started.length ? started : trips;
-    const countries = new Set(pool.map(t => destinationCountry(t.destination)).filter(Boolean));
-    const flights = pool.flatMap(t => t.events.filter(e => e.type === "flight"));
-    let km = 0;
-    for (const f of flights) if (f.depCoords && f.arrCoords) km += distanceKm([f.depCoords[1], f.depCoords[0]], [f.arrCoords[1], f.arrCoords[0]]);
-    return {
-      label: started.length ? "So far" : "Coming up",
-      trips: pool.length,
-      countries: countries.size,
-      days: pool.reduce((n, t) => n + tripLengthDays(t), 0),
-      flights: flights.length,
-      km: Math.round(km),
-    };
-  }, [trips]);
+
 
 
 
@@ -118,6 +93,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={s.safe}>
+      {photoPage && <PhotoBackdrop uri={heroTrip!.image} />}
       <ScrollViewMarker style={{ flex: 1 }} scrollEdgeEffects={{ top: "hidden", bottom: "hidden", left: "hidden", right: "hidden" }}>
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -131,9 +107,8 @@ export default function ProfileScreen() {
         <View style={heroTrip ? [s.hero, { height: HERO_H + insets.top }] : s.identityHeader}>
           {heroTrip ? (
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-              <PhotoBlend>
-                <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
-              </PhotoBlend>
+              <CachedImage uri={heroTrip.image} style={StyleSheet.absoluteFill} accessible={false} />
+              <PhotoDissolve uri={heroTrip.image} scrollY={scrollY} />
             </Animated.View>
           ) : null}
           <View style={heroTrip ? s.heroBody : s.identityRow}>
@@ -145,8 +120,7 @@ export default function ProfileScreen() {
               </View>
             )}
             <View style={heroTrip ? s.heroDetails : s.identityDetails}>
-              <Text accessibilityRole="header" style={heroTrip ? [s.heroName, s.heroShadow] : s.identityName}>{heroTrip ? (firstName || "Traveller") : (prefs.name.trim() || "Traveller")}</Text>
-              {nextTrip ? <Text style={[s.heroSub, s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
+              <Text accessibilityRole="header" style={heroTrip ? [s.heroName, s.heroShadow] : s.identityName}>{heroTrip ? (firstName ? firstName[0].toUpperCase() + firstName.slice(1) : "Traveller") : (prefs.name.trim() || "Traveller")}</Text>
               <Pressable
                 style={({ pressed }) => [heroTrip ? s.editBtn : s.identityEdit, { opacity: pressed ? 0.5 : 1 }]}
                 onPress={() => { haptic.selection(); router.push("/edit-profile"); }}
@@ -154,48 +128,19 @@ export default function ProfileScreen() {
                 accessibilityLabel="Edit your profile"
                 hitSlop={10}
               >
-                <Text style={heroTrip ? s.editText : s.identityEditText}>Edit profile</Text>
+                {heroTrip && GLASS ? (
+                  <GlassView glassEffectStyle="regular" colorScheme="dark" isInteractive style={s.editGlass}>
+                    <Text style={s.editText}>Edit profile</Text>
+                  </GlassView>
+                ) : (
+                  <Text style={heroTrip ? s.editText : s.identityEditText}>Edit profile</Text>
+                )}
               </Pressable>
             </View>
           </View>
         </View>
 
         <View style={s.body}>
-
-        {/* ── Travel stats ── */}
-        {trips.length > 0 && (
-          <FadeIn delay={40}>
-            <View style={s.statsCard}>
-              {stats.label === "Coming up" && <Text style={s.statsCaption}>Coming up</Text>}
-              <View style={s.statsRow}>
-                {[
-                  { n: stats.trips, l: stats.trips === 1 ? "Trip" : "Trips" },
-                  { n: stats.days, l: "Days" },
-                  { n: stats.km >= 1000 ? `${(stats.km / 1000).toFixed(stats.km >= 10000 ? 0 : 1)}k` : stats.flights, l: stats.km >= 1000 ? "km flown" : stats.flights === 1 ? "Flight" : "Flights" },
-                ].map(st => (
-                  <View key={st.l} style={s.stat}>
-                    <Text style={s.statNum}>{st.n}</Text>
-                    <Text style={s.statLabel}>{st.l}</Text>
-                  </View>
-                ))}
-              </View>
-              {(flags.been.length > 0 || flags.next) && (
-                <View style={s.flagsLine}>
-                  {flags.been.map(f => (
-                    <View key={f} style={s.flagChip} accessibilityLabel="Visited">
-                      <Text style={s.flagEmoji}>{f}</Text>
-                    </View>
-                  ))}
-                  {flags.next && (
-                    <View style={s.flagChip} accessibilityLabel="Next trip">
-                      <Text style={s.flagEmoji}>{flags.next}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          </FadeIn>
-        )}
 
         {/* ── Account upgrade CTA (anonymous users only) ── */}
         {auth.isAnonymous && (
@@ -226,7 +171,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           {/* Theme */}
           <View style={s.row}>
-            <Palette size={18} color={C.textSecondary} weight="regular" />
+            <IconTile Icon={Palette} color={"#5E5CE6"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
             <SegmentedControl
               values={["Light", "Dark", "Auto"]}
@@ -246,9 +191,7 @@ export default function ProfileScreen() {
 
           {/* Haptics */}
           <View style={s.row}>
-            <View style={s.rowIcon}>
-              <Vibrate size={18} color={C.textSecondary} weight="regular" />
-            </View>
+            <IconTile Icon={Vibrate} color={"#FF2D55"} />
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Haptic feedback</Text>
               <Text style={s.rowSub}>Subtle vibrations on actions</Text>
@@ -267,9 +210,7 @@ export default function ProfileScreen() {
         <MicroLabel style={s.sectionLabel}>Notifications</MicroLabel>
         <View style={s.card}>
           <View style={s.row}>
-            <View style={s.rowIcon}>
-              <Bell size={18} color={C.textSecondary} weight="regular" />
-            </View>
+            <IconTile Icon={Bell} color={"#FF3B30"} />
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Trip reminders</Text>
               <Text style={s.rowSub}>Push notifications before each event</Text>
@@ -282,9 +223,7 @@ export default function ProfileScreen() {
           </View>
           <View style={s.divider} />
           <View style={s.row}>
-            <View style={s.rowIcon}>
-              <CalendarCheck size={18} color={C.textSecondary} weight="regular" />
-            </View>
+            <IconTile Icon={CalendarCheck} color={"#FF9500"} />
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Itinerary updates</Text>
               <Text style={s.rowSub}>When your organiser changes the plan</Text>
@@ -299,9 +238,7 @@ export default function ProfileScreen() {
             <>
               <View style={s.divider} />
               <View style={s.row}>
-                <View style={s.rowIcon}>
-                  <Pulse size={18} color={C.textSecondary} weight="regular" />
-                </View>
+                <IconTile Icon={Pulse} color={"#34C759"} />
                 <View style={s.rowLabelGroup}>
                   <Text style={s.rowLabel}>Live Activity</Text>
                   <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
@@ -327,7 +264,7 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
-            <ChatCircle size={18} color={C.textSecondary} weight="regular" />
+            <IconTile Icon={ChatCircle} color={"#0A84FF"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Help & support</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
@@ -338,7 +275,7 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="What's new"
           >
-            <Newspaper size={18} color={C.textSecondary} weight="regular" />
+            <IconTile Icon={Newspaper} color={"#30B0C7"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>What's new</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
@@ -349,7 +286,7 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
-            <LockSimple size={18} color={C.textSecondary} weight="regular" />
+            <IconTile Icon={LockSimple} color={"#8E8E93"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Privacy policy</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
@@ -360,7 +297,7 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >
-            <FileCheckIcon size={18} color={C.textSecondary} weight="regular" />
+            <IconTile Icon={FileCheckIcon} color={"#8E8E93"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Terms of service</Text></View>
             <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
@@ -447,7 +384,16 @@ export default function ProfileScreen() {
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+/** Settings-app icon: a small coloured rounded square with a white glyph */
+function IconTile({ Icon, color }: { Icon: React.ComponentType<any>; color: string }) {
+  return (
+    <View style={{ width: 29, height: 29, borderRadius: 7, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
+      <Icon size={18} color="#fff" weight="fill" />
+    </View>
+  );
+}
+
+function makeStyles(C: ThemeColors, isDark: boolean, photoPage: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
     scroll: { paddingBottom: SCROLL_BOTTOM_PAD },
@@ -466,7 +412,10 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     heroShadow: {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
-    editBtn: { marginTop: S.xs2, paddingVertical: 4, paddingHorizontal: S.sm2, borderRadius: R.sm, backgroundColor: isDark ? "rgba(255,255,255,0.14)" : C.card },
+    editBtn: GLASS
+      ? { marginTop: S.sm }
+      : { marginTop: S.sm, paddingVertical: 6, paddingHorizontal: S.md, borderRadius: 18, backgroundColor: isDark ? "rgba(255,255,255,0.16)" : C.card },
+    editGlass: { paddingVertical: 8, paddingHorizontal: S.md, borderRadius: 18, overflow: "hidden" },
     flagsLine: {
       flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: S.xs2,
       marginTop: S.md, paddingTop: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
@@ -505,7 +454,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       alignItems: "center",
       justifyContent: "center",
     },
-    editText: { fontSize: T.sm, color: isDark ? "#fff" : C.textPrimary, fontWeight: T.semibold },
+    editText: { fontSize: T.base, color: isDark ? "#fff" : C.textPrimary, fontWeight: T.semibold },
     heroSub: { fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.92)", textAlign: "center", lineHeight: 18 },
     statsCard: {
       marginTop: S.sm,
@@ -528,10 +477,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       marginBottom: S.sm,
       marginTop: S.xl,
       paddingLeft: S["2xs"],
+      // MicroLabel reads the app theme; on the photo backdrop it must use the page's palette
+      color: C.textPrimary,
     },
-    // Boxless: rows run to the page edge (the body's gutter is undone) and split with hairlines
+    // Settings is the one place iOS keeps boxes: inset grouped cards
     card: {
-      marginHorizontal: -S.md,
+      borderRadius: R.lg, overflow: "hidden",
+      backgroundColor: photoPage ? "rgba(255,255,255,0.1)" : C.card,
     },
 
     // ── Rows ──
@@ -545,7 +497,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: C.border,
-      marginLeft: S.md + 18 + S.sm,
+      marginLeft: S.md + 29 + S.sm,
     },
     rowIcon: {
       alignSelf: "flex-start",

@@ -328,7 +328,7 @@ export default function EventDetailScreen() {
   const isDark = photoPage || themeDark;
   const { isLeader } = useTripRole(tripId);
   const insets = useSafeAreaInsets();
-  const { onScroll, stretchStyle } = useBannerStretch(EV_HERO_H + insets.top);
+  const { onScroll, stretchStyle, scrollY } = useBannerStretch(EV_HERO_H + insets.top);
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -503,7 +503,7 @@ export default function EventDetailScreen() {
               <PhotoBlend>
                 <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
               </PhotoBlend>
-              {photoPage && <PhotoDissolve uri={ev.image!} />}
+              {photoPage && <PhotoDissolve uri={ev.image!} scrollY={scrollY} />}
             </Animated.View>
           </View>
         ) : (
@@ -977,7 +977,7 @@ function FlightDetailScreen({
               <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
             )}
             {(hasMap || !trip?.image) && <>{isDark && <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />}
-            <LinearGradient colors={[`${C.bg}00`, C.bg]} locations={[0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" /></>}
+            <LinearGradient colors={[`${C.bg}00`, `${C.bg}B3`, C.bg]} locations={[0.45, 0.75, 0.95]} style={StyleSheet.absoluteFill} pointerEvents="none" /></>}
           </Animated.View>
 
           <View style={fs.body}>
@@ -1039,7 +1039,7 @@ function FlightDetailScreen({
                   <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Departs</Text>
                   <Text style={[fs.time, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
                   <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={1}>
-                    {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : depTerminal) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
+                    {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : `${depTerminal} terminal`) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
@@ -1064,8 +1064,14 @@ function FlightDetailScreen({
               </View>
 
               {/* stub: fixed slots, TBC until the airline or organiser confirms */}
+              {/* With no gate or seat yet, one line says so instead of a row of TBCs */}
+              {!stubFields[0].value && !stubFields[1].value ? (
+                <Text style={[fs.stubNote, { color: C.textSecondary }]}>
+                  Gate and seat at check-in{boardingEst ? <>, boarding from about <Text style={{ color: C.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text></> : null}
+                </Text>
+              ) : null}
               <View style={fs.stub}>
-                {stubFields.map(f => (
+                {(!stubFields[0].value && !stubFields[1].value ? stubFields.slice(3) : stubFields).map(f => (
                   <View key={f.label} style={fs.stubField}>
                     <Text style={[fs.stubLabel, { color: C.textTertiary }]} numberOfLines={1}>{f.label}</Text>
                     <Text style={[fs.stubValue, { color: f.value ? C.textPrimary : C.textTertiary }]} numberOfLines={1}>{f.value ?? "TBC"}</Text>
@@ -1164,14 +1170,12 @@ function makeFlightStyles(C: ThemeColors) {
     jTime: { fontSize: T.sm, fontWeight: T.semibold, fontVariant: ["tabular-nums"] },
     dayTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2, marginTop: S.sm },
     sideRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.sm2 },
-    stubNote: { fontSize: T.sm, lineHeight: 20, paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.md },
 
     pass: { borderRadius: R.lg, overflow: "visible" },
     airlineRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.md, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg },
     airlineTile: {
-      width: 40, height: 40, borderRadius: R.sm,
+      width: 40, height: 40, borderRadius: 10,
       backgroundColor: LOGO_PLATE,
-      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
       alignItems: "center", justifyContent: "center",
     },
     airlineIata: { fontSize: T.xs, fontWeight: T.black, color: LOGO_INK, letterSpacing: 0.5 },
@@ -1200,6 +1204,7 @@ function makeFlightStyles(C: ThemeColors) {
     // A cell takes a third of the row but widens when the row has room, so "International" never truncates
     stubField: { flexGrow: 1, flexBasis: "33.33%", paddingRight: S.xs },
     stubLabel: { fontSize: T.xs, marginBottom: 3 },
+    stubNote: { fontSize: T.base, lineHeight: 22, paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.sm },
     stubValue: { fontSize: T.xl, fontWeight: T.semibold, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
     refRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth },
 

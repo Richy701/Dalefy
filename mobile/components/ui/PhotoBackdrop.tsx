@@ -1,4 +1,5 @@
 import { View, StyleSheet, useWindowDimensions } from "react-native";
+import Animated, { useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
@@ -32,18 +33,23 @@ export function PhotoBackdrop({ uri }: { uri: string }) {
   );
 }
 
-/** Place inside the hero photo's container (absolute fill, top of the screen) so its bottom melts into the backdrop. */
-export function PhotoDissolve({ uri }: { uri: string }) {
+/**
+ * Place inside the hero photo's container (absolute fill, top of the screen) so its bottom melts into the backdrop.
+ * Pass the page's scroll offset: the backdrop stays put while the hero scrolls, so the copy here moves back down
+ * by the same amount to stay lined up with it, or a seam shows at the hero's bottom edge.
+ */
+export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedValue<number> }) {
   const { height } = useWindowDimensions();
+  const follow = useAnimatedStyle(() => ({ transform: [{ translateY: Math.max(0, scrollY?.value ?? 0) }] }));
   return (
     <MaskedView
       pointerEvents="none"
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}
       maskElement={<LinearGradient colors={["transparent", "rgba(0,0,0,0.55)", "#000"]} locations={[0.4, 0.72, 0.97]} style={{ flex: 1 }} />}
     >
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, height }}>
+      <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, height }, follow]}>
         <BlurredPhoto uri={uri} />
-      </View>
+      </Animated.View>
     </MaskedView>
   );
 }

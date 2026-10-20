@@ -18,7 +18,7 @@ import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArro
 import { Image, Linking as RNLinking } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
-import { T, R, S, shadow, type ThemeColors } from "@/constants/theme";
+import { T, R, S, shadow, categoryTone, type ThemeColors } from "@/constants/theme";
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
 import { CategoryDot } from "@/components/ui/CategoryDot";
@@ -54,6 +54,7 @@ const COLLAPSE_START = 180;
 const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 const COLLAPSE_END = HERO_H - HEADER_H;
 const DOT = 32;
+const RAIL_GAP = 5;
 
 // Safe conditional import — @rnmapbox/maps throws at eval time when native module
 // is not linked (Expo Go). Guard so the screen renders without crashing.
@@ -110,6 +111,16 @@ export default function TripScreen() {
   const trip = trips.find(t => t.id === id);
 
   // ── Parallax scroll state ──
+  // Timeline: where each category circle's centre sits inside its day, so the rail can run circle to circle
+  const [dotY, setDotY] = useState<Record<string, number>>({});
+  const evWrapY = useRef<Record<string, number>>({});
+  const evRowMid = useRef<Record<string, number>>({});
+  const syncDot = useCallback((id: string) => {
+    const y = (evWrapY.current[id] ?? NaN) + (evRowMid.current[id] ?? NaN);
+    if (!Number.isFinite(y)) return;
+    setDotY(prev => (Math.abs((prev[id] ?? -1) - y) < 0.5 ? prev : { ...prev, [id]: y }));
+  }, []);
+
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
@@ -394,7 +405,7 @@ export default function TripScreen() {
                 )}
               </Animated.View>
             </PhotoBlend>
-            {photoPage && <PhotoDissolve uri={trip.image} />}
+            {photoPage && <PhotoDissolve uri={trip.image} scrollY={scrollY} />}
           </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             {flag ? (
@@ -450,7 +461,7 @@ export default function TripScreen() {
               accessibilityLabel={`Next up: ${cleanTitle(upNext.title)}, ${untilLabel(upNext, now)}`}
               style={({ pressed }) => [styles.nextBody, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <CategoryDot type={upNext.type} transferType={upNext.transferType} size={40} />
+              <CategoryDot palette={C} type={upNext.type} transferType={upNext.transferType} size={40} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextTitle} numberOfLines={2}>{cleanTitle(upNext.title)}</Text>
                 <Text style={styles.nextSub} numberOfLines={1}>
@@ -517,18 +528,34 @@ export default function TripScreen() {
 
                 {events.length > 0 && (
                   <View style={styles.dayCard}>
-                    {/* the line the category circles sit on */}
-                    <View style={styles.tlLine} pointerEvents="none" />
+                    {/* The rail: one segment per gap, fading from one stop's colour to the next and
+                        stopping short of each circle, so the circles read as stops */}
+                    {events.slice(1).map((ev, i) => {
+                      const prev = events[i];
+                      const top = dotY[prev.id], bottom = dotY[ev.id];
+                      if (top == null || bottom == null) return null;
+                      const y1 = top + DOT / 2 + RAIL_GAP, y2 = bottom - DOT / 2 - RAIL_GAP;
+                      if (y2 - y1 < 4) return null;
+                      return (
+                        <LinearGradient
+                          key={`rail-${ev.id}`}
+                          pointerEvents="none"
+                          colors={[categoryTone(prev.type, C).fg, categoryTone(ev.type, C).fg]}
+                          style={[styles.tlRail, { top: y1, height: y2 - y1 }]}
+                        />
+                      );
+                    })}
                     {events.map((ev, i) => (
-                      <View key={ev.id}>
+                      <View key={ev.id} onLayout={e => { evWrapY.current[ev.id] = e.nativeEvent.layout.y; syncDot(ev.id); }}>
                         {i > 0 && <View style={styles.tlSep} />}
                         <Pressable
                           onPress={() => { router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                           accessibilityRole="button"
                           accessibilityLabel={`${cleanTitle(ev.title)}${isPlaceholderTime(ev.time) ? "" : `, ${ev.time}`}`}
+                          onLayout={e => { evRowMid.current[ev.id] = e.nativeEvent.layout.y + e.nativeEvent.layout.height / 2; syncDot(ev.id); }}
                           style={({ pressed }) => [styles.tlRow, { backgroundColor: pressed ? C.elevated : "transparent" }]}
                         >
-                          <CategoryDot type={ev.type} transferType={ev.transferType} size={DOT} />
+                          <CategoryDot palette={C} base={photoPage ? "transparent" : undefined} type={ev.type} transferType={ev.transferType} size={DOT} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.tlTitle} numberOfLines={2}>{cleanTitle(ev.title)}</Text>
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
@@ -761,10 +788,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
     dayHeaderText: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     dayHeaderMeta: { fontSize: T.sm, color: C.textTertiary },
     dayCard: {},
-    tlLine: {
-      position: "absolute", left: S.md + DOT / 2 - 1, top: S.sm + DOT / 2, bottom: S.sm + DOT / 2, width: 2,
-      backgroundColor: C.border,
-    },
+    tlRail: { position: "absolute", left: S.md + DOT / 2 - 1, width: 2, borderRadius: 1, opacity: 0.5 },
     tlRow: { flexDirection: "row", alignItems: "center", gap: S.sm2, paddingHorizontal: S.md, paddingVertical: S.sm, minHeight: 56 },
     tlSep: { height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginLeft: S.md + DOT + S.sm2 },
     tlTitle: { fontSize: T.md, fontWeight: T.medium, color: C.textPrimary },

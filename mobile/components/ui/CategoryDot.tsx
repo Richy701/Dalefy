@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
-import { categoryTone } from "@/constants/theme";
+import { categoryTone, type ThemeColors } from "@/constants/theme";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 
 const ICONS: Record<string, React.ComponentType<any>> = {
@@ -20,14 +20,17 @@ export function categoryIcon(type: string, transferType?: string): React.Compone
  * Category circle: soft tint with a solid glyph. This is the only place a glyph
  * is filled, so the circle reads as the category marker everywhere it appears.
  */
-export function CategoryDot({ type, transferType, size = 28, base }: {
+export function CategoryDot({ type, transferType, size = 28, base, palette }: {
   type: string;
   transferType?: string;
   size?: number;
   /** Opaque colour under the tint so lines behind the circle don't show through. Defaults to the card colour. */
   base?: string;
+  /** Colours to use instead of the theme's, e.g. the dark palette on photo pages in light mode. */
+  palette?: ThemeColors;
 }) {
-  const { C } = useTheme();
+  const theme = useTheme();
+  const C = palette ?? theme.C;
   const tone = categoryTone(type, C);
   const Icon = categoryIcon(type, transferType);
   return (

@@ -12,5 +12,5 @@ export function useBannerStretch(height: number, existingScrollY?: SharedValue<n
     const y = Math.min(0, scrollY.value);
     return { transform: [{ translateY: y / 2 }, { scale: 1 - y / height }] };
   });
-  return { onScroll, stretchStyle };
+  return { onScroll, stretchStyle, scrollY };
 }

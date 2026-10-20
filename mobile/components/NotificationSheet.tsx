@@ -4,19 +4,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
+import { Animated } from "react-native";
 import { useRouter } from "expo-router";
 import ContextMenu from "@/components/ContextMenu";
 import {
   Bell, Trash, AirplaneLanding, AirplaneTakeoff,
-  Warning, Bed, ForkKnife, CalendarDots, Car, Check, CaretRight,
+  Warning, Bed, ForkKnife, CalendarDots, Car, Check,
   CheckCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
-import { T, R, S, SHEET_BAR_H, type ThemeColors } from "@/constants/theme";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { MicroLabel } from "@/components/ui/MicroLabel";
+import { T, R, S, SHEET_BAR_H, categoryTone, type ThemeColors } from "@/constants/theme";
+import { SymbolView } from "expo-symbols";
 import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
 
@@ -90,6 +90,17 @@ function getNotifIcon(n: { type: string; message: string }) {
   return Bell;
 }
 
+/** Circle colours: the itinerary's category tones, red for problems, teal for everything else */
+function getNotifTone(n: { type: string; message: string }, Icon: React.ComponentType<any>, C: ThemeColors) {
+  if (Icon === Warning) return { fg: C.redText, bg: C.redDim };
+  if (Icon === PlaneIcon || Icon === AirplaneLanding || Icon === AirplaneTakeoff) return categoryTone("flight", C);
+  if (Icon === Bed) return categoryTone("hotel", C);
+  if (Icon === ForkKnife) return categoryTone("dining", C);
+  if (Icon === Car) return categoryTone("transfer", C);
+  if (Icon === CalendarDots) return categoryTone("activity", C);
+  return { fg: C.tealText, bg: C.tealDim };
+}
+
 /* ── Main sheet ── */
 
 /** Notification centre body; app/notifications.tsx presents it in a native sheet with a Done button. */
@@ -131,21 +142,21 @@ export function NotificationList({ onClose }: Props) {
         {/* Grouped list */}
         {notifications.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <EmptyState
-              compact
-              icon={<Check size={26} color={C.teal} weight="regular" />}
-              title="You're all caught up"
-              message="New trip updates, reminders, and alerts will appear here."
-            />
+            {/* Apple's empty-screen shape: one large grey symbol, a plain title, one line */}
+            {Platform.OS === "ios"
+              ? <SymbolView name="bell" size={52} tintColor={C.textTertiary} weight="regular" style={{ width: 52, height: 52 }} />
+              : <Bell size={52} color={C.textTertiary} weight="regular" />}
+            <Text style={styles.emptyTitle}>No notifications</Text>
+            <Text style={styles.emptyText}>Updates from your organiser and trip reminders will show up here.</Text>
           </View>
         ) : (
           <SectionList
             sections={sections}
             keyExtractor={n => n.id}
-            stickySectionHeadersEnabled
+            stickySectionHeadersEnabled={false}
             renderSectionHeader={({ section }) => (
               <View style={styles.sectionHeader}>
-                <MicroLabel>{section.label}</MicroLabel>
+                <Text style={styles.sectionTitle}>{section.label}</Text>
               </View>
             )}
             renderItem={({ item }) => (
@@ -181,12 +192,15 @@ interface RowProps {
 function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRemove }: RowProps) {
   const swipeRef = useRef<Swipeable>(null);
   const Icon = getNotifIcon(n);
+  const tone = getNotifTone(n, Icon, C);
   const navigable = n.tripId != null;
 
   const actionWidth = n.read ? 56 : 112;
-  const renderRightActions = useCallback(() => {
+  // Rows are see-through on the glass sheet, so the actions only appear once a swipe starts
+  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>) => {
+    const opacity = progress.interpolate({ inputRange: [0, 0.02, 1], outputRange: [0, 1, 1] });
     return (
-      <View style={[styles.swipeActions, { width: actionWidth }]}>
+      <Animated.View style={[styles.swipeActions, { width: actionWidth, opacity }]}>
         {!n.read && (
           <Pressable
             style={[styles.swipeBtn, { backgroundColor: C.toggleTrack }]}
@@ -207,7 +221,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
           <Trash size={16} color={ON_RED} weight="regular" />
           <Text style={[styles.swipeBtnLabel, { color: ON_RED }]}>Delete</Text>
         </Pressable>
-      </View>
+      </Animated.View>
     );
   }, [n.read, C, styles, onMarkRead, onRemove, actionWidth]);
 
@@ -248,33 +262,28 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
               pressed && styles.itemPressed,
             ]}
           >
+            {/* iOS notification shape: coloured circle, title with the time on the right, detail underneath */}
             <View style={styles.itemRow}>
-              <View style={styles.iconWrap}>
-                <Icon size={22} color={Icon === Warning ? C.redText : C.textSecondary} weight="regular" />
+              <View style={[styles.iconWrap, { backgroundColor: tone.bg }, n.read && { opacity: 0.6 }]}>
+                <Icon size={18} color={tone.fg} weight="fill" />
               </View>
 
               <View style={styles.itemContent}>
                 <View style={styles.itemTitleRow}>
                   <Text
                     style={[styles.itemMessage, n.read && styles.itemMessageRead]}
-                    numberOfLines={3}
+                    numberOfLines={2}
                   >
                     {n.message}
                   </Text>
+                  {!!n.time && <Text style={styles.itemTime}>{n.time}</Text>}
                 </View>
                 {!!n.detail && (
                   <Text style={[styles.itemDetail, n.read && styles.itemDetailRead]} numberOfLines={3}>
                     {n.detail}
                   </Text>
                 )}
-                {!!n.time && <Text style={styles.itemTime}>{n.time}</Text>}
               </View>
-
-              {navigable && (
-                <View style={styles.chevronWrap}>
-                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
-                </View>
-              )}
             </View>
           </Pressable>
         </ContextMenu>
@@ -285,7 +294,7 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: C.bg, overflow: "hidden" as const },
+    safe: { flex: 1, backgroundColor: "transparent", overflow: "hidden" as const },
 
     // Header
     header: {
@@ -335,11 +344,11 @@ function makeStyles(C: ThemeColors) {
     },
 
     // Section headers
+    sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     sectionHeader: {
       paddingHorizontal: 0,
       paddingTop: S.md,
       paddingBottom: S.xs2,
-      backgroundColor: C.bg,
     },
 
     // List
@@ -352,9 +361,8 @@ function makeStyles(C: ThemeColors) {
       borderBottomColor: C.border,
     },
 
-    // Opaque base
+    // Row base, see-through on the glass sheet
     itemOpaqueBase: {
-      backgroundColor: C.bg,
       overflow: "hidden" as const,
     },
 
@@ -370,20 +378,21 @@ function makeStyles(C: ThemeColors) {
     itemRow: {
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: S.sm,
+      gap: S.sm2,
     },
     iconWrap: {
-      width: 28,
-      height: 28,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
-    itemContent: { flex: 1, minWidth: 0, gap: 5 },
+    itemContent: { flex: 1, minWidth: 0, gap: 3 },
     itemTitleRow: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "baseline",
       justifyContent: "space-between",
-      gap: S.xs,
+      gap: S.sm,
     },
     itemMessage: {
       fontSize: T.base,
@@ -405,14 +414,9 @@ function makeStyles(C: ThemeColors) {
       color: C.textTertiary,
     },
     itemTime: {
-      marginTop: 3,
-      fontSize: 12,
+      fontSize: T.sm,
       fontWeight: T.medium,
       color: C.textTertiary,
-    },
-    chevronWrap: {
-      paddingLeft: S["2xs"],
-      alignSelf: "center" as const,
     },
 
     // Swipe actions
@@ -435,12 +439,16 @@ function makeStyles(C: ThemeColors) {
     },
 
     // Empty state
+    emptyTitle: { fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, textAlign: "center", marginTop: S.sm },
+    emptyText: { fontSize: T.base, color: C.textSecondary, textAlign: "center", lineHeight: 21 },
     emptyWrap: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      paddingBottom: S["2xl"],
       gap: S.xs,
+      paddingHorizontal: S.xl,
+      // A little above centre so it doesn't drift on the tall sheet
+      paddingBottom: "18%",
     },
   });
 }

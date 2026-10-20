@@ -11,7 +11,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, CaretLeft, Camera, User, Ticket, Check, CalendarBlank } from "phosphor-react-native";
+import { ArrowRight, CaretLeft, Camera, User, Ticket, Check, CalendarBlank, X } from "phosphor-react-native";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
@@ -71,6 +71,8 @@ export default function WelcomeScreen() {
 
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0;
+  // Edit mode: the save tick lights up only once something has changed
+  const canSave = canSubmit && (!isEdit || trimmed !== (prefs.name || "").trim() || avatar !== (prefs.avatar || auth.user?.avatar || ""));
 
   const goBackToCode = useCallback(() => {
     haptic.selection();
@@ -364,23 +366,28 @@ export default function WelcomeScreen() {
   // STEP 2 — Profile (name + avatar)
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <View style={styles.safe}>
+    <View style={[styles.safe, isEdit && { backgroundColor: "transparent" }]}>
       {isEdit && (
         <Stack.Screen
           options={{
             headerShown: true,
             title: "Edit profile",
-            headerStyle: { backgroundColor: C.bg },
+            // Glass sheet like Join: the bar sits on the system material
+            headerTransparent: true,
             headerTitleStyle: { color: C.textPrimary },
             headerShadowVisible: false,
+            scrollEdgeEffects: { top: "soft", bottom: "hidden", left: "hidden", right: "hidden" },
             headerLeft: () => (
-              <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
-                <Text style={{ fontSize: T.lg, color: C.tealText }}>Cancel</Text>
+              // iOS 26 sheets: an X to close and a filled tick to save, instead of Cancel and Save
+              <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} hitSlop={10} accessibilityRole="button" accessibilityLabel="Cancel" style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
+                <X size={20} color={C.textPrimary} weight="bold" />
               </Pressable>
             ),
             headerRight: () => (
-              <Pressable onPress={submit} disabled={!canSubmit} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save" accessibilityState={{ disabled: !canSubmit }}>
-                <Text style={{ fontSize: T.lg, fontWeight: T.semibold, color: C.tealText, opacity: canSubmit ? 1 : 0.35 }}>Save</Text>
+              <Pressable onPress={submit} disabled={!canSave} hitSlop={10} accessibilityRole="button" accessibilityLabel="Save" accessibilityState={{ disabled: !canSave }}
+                style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: canSave ? C.teal : "transparent" }}
+              >
+                <Check size={20} color={canSave ? C.onAccent : C.textTertiary} weight="bold" />
               </Pressable>
             ),
           }}
@@ -412,27 +419,36 @@ export default function WelcomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Avatar */}
-            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S.md }, !isEdit && { marginTop: S.md }]}>
+            <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.avatarSection, isEdit && { alignItems: "center", marginTop: S["2xl"] + S.lg }, !isEdit && { marginTop: S.md }]}>
               <Pressable
                 onPress={pickAvatar}
-                style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+                style={({ pressed }) => [styles.avatarWrap, isEdit && styles.avatarLarge, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
                 accessibilityRole="button"
                 accessibilityLabel="Add profile photo"
               >
-                <View style={styles.avatarCircle}>
+                <View style={[styles.avatarCircle, isEdit && styles.avatarLarge]}>
                   {avatar ? (
-                    <CachedImage uri={avatar} style={styles.avatarImage} blurhash={null} />
+                    <CachedImage uri={avatar} style={[styles.avatarImage, isEdit && styles.avatarLarge]} blurhash={null} />
+                  ) : isEdit && name.trim() ? (
+                    <Text style={styles.avatarInitial}>{name.trim()[0].toUpperCase()}</Text>
                   ) : (
                     <User size={36} color={C.textTertiary} weight="thin" />
                   )}
                 </View>
-                <View style={[styles.cameraBadge, { backgroundColor: C.teal }]}>
-                  <Camera size={11} color={C.onAccent} weight="bold" />
-                </View>
+                {!isEdit && (
+                  <View style={[styles.cameraBadge, { backgroundColor: C.teal }]}>
+                    <Camera size={11} color={C.onAccent} weight="bold" />
+                  </View>
+                )}
               </Pressable>
               {(!avatar || isEdit) && (
                 <Pressable onPress={pickAvatar} accessibilityRole="button" accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
-                  <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>{avatar ? "Change photo" : "Add photo"}</Text>
+                  <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{avatar ? "Change photo" : "Add photo"}</Text>
+                </Pressable>
+              )}
+              {isEdit && !!avatar && (
+                <Pressable onPress={() => setAvatar("")} accessibilityRole="button" accessibilityLabel="Remove profile photo" hitSlop={6} style={({ pressed }) => [{ marginTop: S.xs }, pressed && { opacity: 0.7 }]}>
+                  <Text style={{ fontSize: T.sm, color: C.textSecondary }}>Remove photo</Text>
                 </Pressable>
               )}
             </Animated.View>
@@ -451,7 +467,7 @@ export default function WelcomeScreen() {
             {/* Name input */}
             <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
               <View style={isEdit ? styles.groupRow : styles.inputRow}>
-                {isEdit ? <Text style={styles.groupLabel}>Name</Text> : <User size={18} color={C.textTertiary} weight="regular" />}
+                {isEdit ? null : <User size={18} color={C.textTertiary} weight="regular" />}
                 <TextInput
                   ref={nameRef}
                   value={name}
@@ -464,10 +480,11 @@ export default function WelcomeScreen() {
                   returnKeyType="done"
                   onSubmitEditing={submit}
                   maxLength={40}
-                  style={styles.input}
+                  accessibilityLabel="Name"
+                  style={[styles.input, isEdit && styles.nameInput]}
                 />
               </View>
-              {isEdit && <Text style={styles.groupFooter}>This is how you appear to your organiser and the other travellers.</Text>}
+              {isEdit && <Text style={[styles.groupFooter, { textAlign: "center" }]}>This is how you appear to your organiser and the other travellers.</Text>}
             </Animated.View>
           </ScrollView>
 
@@ -548,10 +565,12 @@ function makeStyles(C: ThemeColors) {
     editNavSide: { width: 72, justifyContent: "center" },
     editNavAction: { fontSize: T.lg, color: C.tealText },
     editNavTitle: { flex: 1, textAlign: "center", fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary },
+    // Contacts-style: one large centred name in a soft see-through field on the glass sheet
     groupRow: {
-      flexDirection: "row", alignItems: "center", gap: S.sm, minHeight: 48,
-      backgroundColor: C.elevated, borderRadius: R.sm, paddingHorizontal: S.md,
+      minHeight: 56, justifyContent: "center",
+      backgroundColor: "rgba(128,128,128,0.16)", borderRadius: 16, paddingHorizontal: S.md,
     },
+    nameInput: { flex: 0, textAlign: "center", fontSize: T.xl, fontWeight: T.semibold },
     groupLabel: { fontSize: T.lg, color: C.textPrimary, width: 84 },
     groupFooter: { fontSize: 13, lineHeight: 18, color: C.textTertiary, paddingHorizontal: S.md, marginTop: S.xs },
 
@@ -592,6 +611,8 @@ function makeStyles(C: ThemeColors) {
     avatarImage: {
       width: 88, height: 88, borderRadius: 44,
     },
+    avatarLarge: { width: 112, height: 112, borderRadius: 56 },
+    avatarInitial: { fontSize: 44, fontWeight: T.semibold, color: C.textSecondary },
     cameraBadge: {
       position: "absolute", bottom: 0, right: -2,
       width: 28, height: 28, borderRadius: 14,

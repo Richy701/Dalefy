@@ -1,8 +1,8 @@
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import { Stack, useRouter } from "expo-router";
+import { X } from "phosphor-react-native";
 import { NotificationList } from "@/components/NotificationSheet";
 import { useTheme } from "@/context/ThemeContext";
-import { T } from "@/constants/theme";
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -13,12 +13,14 @@ export default function NotificationsScreen() {
       <Stack.Screen
         options={{
           title: "Notifications",
-          headerStyle: { backgroundColor: C.card },
+          // Glass sheet like Join: the bar and list sit straight on the system material
+          headerTransparent: true,
           headerTitleStyle: { color: C.textPrimary },
           headerShadowVisible: false,
-          headerRight: () => (
-            <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close notifications">
-              <Text style={{ fontSize: T.lg, fontWeight: T.semibold, color: C.tealText }}>Done</Text>
+          scrollEdgeEffects: { top: "soft", bottom: "hidden", left: "hidden", right: "hidden" },
+          headerLeft: () => (
+            <Pressable onPress={close} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close notifications" style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
+              <X size={20} color={C.textPrimary} weight="bold" />
             </Pressable>
           ),
         }}

@@ -97,9 +97,9 @@ async function fetchFirstDayForecast(destination: string, date: string): Promise
 
 // ── Shared bits ──────────────────────────────────────────────────────────────
 
-function SectionHeader({ title, action, onAction, C }: { title: string; action?: string; onAction?: () => void; C: ThemeColors }) {
+function SectionHeader({ title, action, onAction, C, first }: { title: string; action?: string; onAction?: () => void; C: ThemeColors; first?: boolean }) {
   return (
-    <View style={s.sectionHeader}>
+    <View style={[s.sectionHeader, first && { marginTop: S.xs }]}>
       <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{title}</Text>
       {action && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
@@ -133,13 +133,13 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
   const flightSoon = !!flight && daysBetween(todayISO, flight.date) >= 0 && daysBetween(todayISO, flight.date) <= 1;
   const { data: live } = useFlightLiveData(flightSoon ? flight?.flightNum : undefined, flightSoon ? flight?.date : undefined);
 
+  // Two lists: things to do (dated or with an action, open first, then done), and the organiser's plain notes
   const todo = useMemo(() => {
     const all = (trip.info ?? []).filter(i => isLeader || !i.leaderOnly);
-    const open = all.filter(i => !i.completed && (i.deadline || i.actionUrl));
-    open.sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
-    // With nothing dated or actionable, surface the organiser's notes instead of an empty tick
-    const rows = open.length > 0 ? open.slice(0, 4) : all.slice(0, 3);
-    return { rows, total: all.length, actionable: open.length > 0 };
+    const tasks = all.filter(i => i.deadline || i.actionUrl);
+    tasks.sort((a, b) => Number(!!a.completed) - Number(!!b.completed) || (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
+    const notes = all.filter(i => !i.deadline && !i.actionUrl);
+    return { tasks: tasks.slice(0, 4), notes: notes.slice(0, 3), more: tasks.length > 4 || notes.length > 3 };
   }, [trip.info, isLeader]);
 
   const docCount = (trip.documents?.length ?? 0) + (trip.info ?? []).filter(item => isLeader || !item.leaderOnly).reduce((n, i) => n + (i.documents?.length ?? 0), 0);
@@ -163,44 +163,21 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
 
   return (
     <View>
-        {/* Header */}
-        <FadeIn delay={next()}>
-          <View style={s.header}>
-            {/* The countdown leads: how long until you go */}
-            <View style={s.countdown}>
-              {daysUntil > 1 ? (
-                <>
-                  <Text style={[s.countNum, { color: C.tealText }]}>{daysUntil}</Text>
-                  <Text style={[s.countLabel, { color: C.textSecondary }]}>days to go</Text>
-                </>
-              ) : (
-                <Text style={[s.countNum, { color: C.tealText, fontSize: 28, lineHeight: 34 }]}>{daysUntil === 0 ? "Today" : "Tomorrow"}</Text>
-              )}
+        {/* The map chip already says where and when; the sheet opens on what needs doing */}
+        {forecast && (
+          <FadeIn delay={next()}>
+            <View style={s.header}>
+              <Text style={[s.forecast, { color: C.textSecondary, marginTop: 0 }]}>First-day forecast, {forecast.temp}°, {forecast.description}</Text>
             </View>
-            <View>
-              <Pressable onPress={openTrip} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={`Open trip ${trip.name}`}>
-                <Text style={[s.tripName, { color: C.textPrimary }]} numberOfLines={2}>{trip.name}</Text>
-              </Pressable>
-
-            </View>
-            <Text style={[s.headerDates, { color: C.textSecondary }]}>{fmtShort(trip.start)} – {fmtShort(trip.end)}, {tripDays} {tripDays === 1 ? "day" : "days"}</Text>
-            {trip.destination ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs2, marginTop: S.xs2 }}>
-                <MapPin size={10} color={C.textTertiary} weight="fill" />
-                <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{trip.destination}</Text>
-
-              </View>
-            ) : null}
-            {forecast && <Text style={[s.forecast, { color: C.textSecondary }]}>First-day forecast, {forecast.temp}°, {forecast.description}</Text>}
-          </View>
-        </FadeIn>
+          </FadeIn>
+        )}
 
         {/* Before you go */}
-        {todo.total > 0 && (
+        {todo.tasks.length > 0 && (
           <FadeIn delay={next()}>
-            <SectionHeader title={todo.actionable ? "Before you go" : "From your organiser"} action={todo.total > todo.rows.length ? "See all" : undefined} onAction={openInfo} C={C} />
+            <SectionHeader title="Before you go" action={todo.more ? "See all" : undefined} onAction={openInfo} C={C} first />
             <Card C={C} isDark={isDark}>
-              {todo.rows.map((item, i) => {
+              {todo.tasks.map((item, i) => {
                 const st = infoStatusLabel(infoStatus(item, todayISO), item, todayISO);
                 const tone = st ? statusTone(st.toneKey, C) : null;
                 return (
@@ -209,15 +186,14 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
                     onPress={openInfo}
                     accessibilityRole="button"
                     accessibilityLabel={`${item.title}${st ? `, ${st.label}` : ""}`}
-                    style={({ pressed }) => [s.row, st && s.rowTop, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
+                    style={({ pressed }) => [s.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
                   >
-                    <View style={[s.rowIcon, st && s.iconOnTitle, {}]}>
-                      {st ? <st.Icon size={20} color={tone!.text} weight="regular" /> : <FileText size={20} color={C.textSecondary} weight="regular" />}
+                    <View style={[s.rowIcon, { backgroundColor: tone ? tone.bg : C.elevated }]}>
+                      {st ? <st.Icon size={17} color={tone!.text} weight="bold" /> : <FileText size={17} color={C.textSecondary} weight="regular" />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-                      {st ? <Text style={[s.rowSub, { color: tone!.text }]}>{st.label}</Text>
-                        : item.body ? <Text style={[s.rowSub, { color: C.textSecondary }]} numberOfLines={1}>{infoPreview(item.body)}</Text> : null}
+                      {st ? <Text style={[s.rowSub, { color: tone!.text, marginTop: 0 }]}>{st.label}</Text> : null}
                     </View>
                   </Pressable>
                 );
@@ -229,7 +205,7 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
         {/* First flight */}
         {flight && (
           <FadeIn delay={next()}>
-            <SectionHeader title={daysBetween(todayISO, flight.date) === 0 ? "Your flight today" : "Your first flight"} C={C} />
+            <SectionHeader title={daysBetween(todayISO, flight.date) === 0 ? "Your flight today" : "Your first flight"} C={C} first={todo.tasks.length === 0} />
             <ScalePress
               activeScale={0.985}
               onPress={() => { router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
@@ -258,6 +234,32 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
                 )}
               </Card>
             </ScalePress>
+          </FadeIn>
+        )}
+
+        {/* From your organiser */}
+        {todo.notes.length > 0 && (
+          <FadeIn delay={next()}>
+            <SectionHeader title="From your organiser" action={todo.tasks.length === 0 && todo.more ? "See all" : undefined} onAction={openInfo} C={C} />
+            <Card C={C} isDark={isDark}>
+              {todo.notes.map((item, i) => (
+                <Pressable
+                  key={item.id}
+                  onPress={openInfo}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.title}
+                  style={({ pressed }) => [s.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
+                >
+                  <View style={[s.rowIcon, { backgroundColor: C.elevated }]}>
+                    <FileText size={17} color={C.textSecondary} weight="regular" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={1}>{item.title}</Text>
+                    {item.body ? <Text style={[s.rowSub, { color: C.textSecondary, marginTop: 0 }]} numberOfLines={1}>{infoPreview(item.body)}</Text> : null}
+                  </View>
+                </Pressable>
+              ))}
+            </Card>
           </FadeIn>
         )}
 
@@ -385,7 +387,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: S.md, marginTop: S.xl, marginBottom: S.xs,
   },
-  sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, letterSpacing: -0.2 },
+  sectionTitle: { fontSize: T.xl, fontWeight: T.bold, letterSpacing: -0.3 },
   sectionAction: { fontSize: T.base, fontWeight: T.medium },
 
   card: {},

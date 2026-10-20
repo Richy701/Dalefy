@@ -226,6 +226,14 @@ function AppStack() {
     sheetGrabberVisible: true,
     sheetAllowedDetents: [1.0],
   };
+  // Frosted sheets (Join, Notifications): no dimming, the system glass shows through. Light glass is thin and
+  // picks up whatever is behind it, so light mode adds a pale veil to keep text readable.
+  const glassSheetOptions = {
+    ...sheetOptions,
+    sheetAllowedDetents: [0.94],
+    sheetLargestUndimmedDetentIndex: 0,
+    contentStyle: { backgroundColor: isDark ? "transparent" : "rgba(247,247,249,0.78)" },
+  };
 
   const onLayoutRootView = useCallback(() => {
     if (ready) {
@@ -252,9 +260,9 @@ function AppStack() {
               contentStyle: { backgroundColor: C.bg },
             }}
           >
-            <Stack.Screen name="join" options={{ ...sheetOptions, sheetAllowedDetents: [0.94], sheetLargestUndimmedDetentIndex: 0, contentStyle: { backgroundColor: "transparent" } }} />
-            <Stack.Screen name="notifications" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.card } }} />
-            <Stack.Screen name="edit-profile" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.bg } }} />
+            <Stack.Screen name="join" options={glassSheetOptions} />
+            <Stack.Screen name="notifications" options={glassSheetOptions} />
+            <Stack.Screen name="edit-profile" options={glassSheetOptions} />
           </Stack>
         </NavThemeProvider>
       </ErrorBoundary>

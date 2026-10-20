@@ -4,8 +4,19 @@ import {
   ActivityIndicator, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+
+const SHEET_GLASS = isLiquidGlassAvailable();
+
+/** Floating map controls: Liquid Glass like Apple Maps, a dark frosted fill where it isn't available */
+function MapGlass({ style, children }: { style: any; children: React.ReactNode }) {
+  return SHEET_GLASS
+    ? <GlassView glassEffectStyle="regular" style={[style, { overflow: "hidden" }]}>{children}</GlassView>
+    : <View style={[style, { backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE }]}>{children}</View>;
+}
 import { MapPin, Clock, Sun, CaretRight, Crosshair, MapTrifold, WifiSlash } from "phosphor-react-native";
-import { CategoryDot } from "@/components/ui/CategoryDot";
+import { CategoryDot, categoryIcon } from "@/components/ui/CategoryDot";
 import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
@@ -13,7 +24,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader } from "@/components/ui/CollapsingHeader";
 import { useTheme } from "@/context/ThemeContext";
-import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD } from "@/constants/theme";
+import { type ThemeColors, T, R, S, shadow, SCROLL_BOTTOM_PAD, categoryTone } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoTripsPage } from "@/components/ui/JoinTripNote";
 import { Pill } from "@/components/ui/Pill";
@@ -154,7 +165,7 @@ export default function TodayScreen() {
   const [focusedMapEventId, setFocusedMapEventId] = useState<string | null>(null);
   const contentY = useRef(0);
   const { height: winH } = useWindowDimensions();
-  const mapH = Math.round(winH * 0.46);
+  const mapH = Math.round(winH * 0.54);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -173,8 +184,21 @@ export default function TodayScreen() {
   const travellerTrip = useMemo(() => displayTrip ? { ...displayTrip, events: visibleEvents } : null, [displayTrip, visibleEvents]);
   const displayEvents = useMemo(() => activeTrip
     ? dayEvents(visibleEvents, todayISO, destTz, now)
-    : [...visibleEvents].filter(e => e.type !== "flight" && (e.location || e.locationCoords))
-        .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity)).slice(0, 40),
+    : (() => {
+        const placed = [...visibleEvents].filter(e => e.type !== "flight" && (e.location || e.locationCoords))
+          .sort((a, b) => a.date.localeCompare(b.date) || (scheduledMinutes(a.time) ?? Infinity) - (scheduledMinutes(b.time) ?? Infinity));
+        // Before and after the trip the map shows where you stay; every activity at once is just noise
+        // One pin per hotel: imports often add a hotel row for every night plus check-in and check-out rows
+        const seen = new Set<string>();
+        const stays = placed.filter(e => {
+          if (e.type !== "hotel" || /^check[- ]?out\b/i.test(e.title)) return false;
+          const key = (e.location ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        return (stays.length ? stays : placed).slice(0, 40);
+      })(),
   [activeTrip, visibleEvents, todayISO, destTz, now]);
   const next = useMemo(() => activeTrip ? currentOrNext(displayEvents, destTz, now) : null, [activeTrip, displayEvents, destTz, now]);
   const dayInfo = activeTrip ? { day: calendarDays(activeTrip.start, todayISO) + 1, total: calendarDays(activeTrip.start, activeTrip.end) + 1 } : null;
@@ -230,7 +254,9 @@ export default function TodayScreen() {
     const locMap = new Map<string, string[]>();
     for (const ev of displayEvents) {
       if (!ev.location) continue;
-      if (ev.locationCoords) continue;
+      const storedNear = toLngLat(ev.locationCoords, destCenter);
+      // Some imported coords are another city's airport; those get looked up again from the address
+      if (storedNear && distanceKm(storedNear, destCenter) < 1500) continue;
       const key = ev.location.toLowerCase().trim();
       if (!locMap.has(key)) locMap.set(key, []);
       locMap.get(key)!.push(ev.id);
@@ -239,7 +265,7 @@ export default function TodayScreen() {
     for (const ev of displayEvents) {
       const stored = toLngLat(ev.locationCoords, destCenter);
       // Stored coords equal to the destination centroid are a failed geocode, not a venue
-      if (stored && !isSamePoint(stored, destCenter)) directCoords[ev.id] = stored;
+      if (stored && !isSamePoint(stored, destCenter) && distanceKm(stored, destCenter) < 1500) directCoords[ev.id] = stored;
     }
     if (!cancelled) setEventCoords(prev => ({ ...prev, ...directCoords }));
 
@@ -289,6 +315,18 @@ export default function TodayScreen() {
     return { type: "FeatureCollection" as const, features };
   }, [displayEvents, eventCoords, now, destTz, destCenter, isLiveDay]);
 
+  // Nights per stay, for the map labels: to the stay's end date, else the next stay or the trip end
+  const stayNights = useMemo(() => {
+    const nights: Record<string, number> = {};
+    const hotels = displayEvents.filter(e => e.type === "hotel");
+    hotels.forEach((h, i) => {
+      const end = h.endDate || hotels[i + 1]?.date || displayTrip?.end;
+      const n = end ? calendarDays(h.date, end) : 0;
+      if (n > 0) nights[h.id] = n;
+    });
+    return nights;
+  }, [displayEvents, displayTrip?.end]);
+
   const markerCoords = useMemo(() =>
     markerFeatures.features.map((f: any) => f.geometry.coordinates as [number, number]),
     [markerFeatures]);
@@ -299,6 +337,7 @@ export default function TodayScreen() {
       if (destCenter) {
         cameraRef.current.setCamera({
           centerCoordinate: destCenter,
+          padding: { paddingTop: insets.top + 56, paddingBottom: winH - mapH, paddingLeft: 0, paddingRight: 0 },
           zoomLevel: isLiveDay ? 15 : 7,
           pitch: isLiveDay ? 55 : 0,
           animationDuration: 1200,
@@ -307,8 +346,9 @@ export default function TodayScreen() {
       }
       return;
     }
-    const padBottom = 56;
-    const padTop = insets.top + 56;
+    // Room for the recenter button at the top and for the labelled pins, which stand above their point
+    const padBottom = 56 + (winH - mapH);
+    const padTop = insets.top + (isLiveDay ? 56 : 130);
     const lngs = markerCoords.map(c => c[0]);
     const lats = markerCoords.map(c => c[1]);
     const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
@@ -332,7 +372,7 @@ export default function TodayScreen() {
       [padTop, 40, padBottom, 40],
       1200
     );
-  }, [markerCoords, destCenter, insets.top, isLiveDay]);
+  }, [markerCoords, destCenter, insets.top, isLiveDay, winH, mapH]);
 
   const homeCoord = destCenter;
   const snapBack = useCallback(() => {
@@ -341,6 +381,7 @@ export default function TodayScreen() {
     } else if (cameraRef.current && homeCoord) {
       cameraRef.current.setCamera({
         centerCoordinate: homeCoord,
+        padding: { paddingTop: insets.top + 56, paddingBottom: winH - mapH, paddingLeft: 0, paddingRight: 0 },
         zoomLevel: isLiveDay ? 15 : 7,
         pitch: isLiveDay ? 55 : 0,
         animationDuration: 1200,
@@ -385,7 +426,7 @@ export default function TodayScreen() {
     if (!mapReady || !focusedMapEventId) return;
     const coord = eventCoords[focusedMapEventId];
     if (!coord || !cameraRef.current) return;
-    cameraRef.current.setCamera({ centerCoordinate: coord, zoomLevel: 16.5, pitch: 45, animationDuration: 800, animationMode: "flyTo" });
+    cameraRef.current.setCamera({ centerCoordinate: coord, zoomLevel: 16.5, pitch: 45, padding: { paddingTop: insets.top + 56, paddingBottom: winH - mapH, paddingLeft: 0, paddingRight: 0 }, animationDuration: 800, animationMode: "flyTo" });
     scheduleScrollRef.current?.scrollTo({ y: 0, animated: true });
   }, [mapReady, focusedMapEventId, eventCoords]);
 
@@ -433,15 +474,16 @@ export default function TodayScreen() {
       <Animated.ScrollView
         ref={scheduleScrollRef as any}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PAD }}
+        contentContainerStyle={{ flexGrow: 1 }}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
       {/* Full-width map hero; the plan scrolls over its lower edge. */}
-      <Animated.View style={[{ height: mapH, backgroundColor: C.elevated }, stretchStyle]}>
+      {/* The map runs the full screen height so the glass sheet has map behind it to blur */}
+      <Animated.View style={[{ height: winH, backgroundColor: C.elevated }, stretchStyle]}>
       {(!destCenter || !MapboxGL) && (
-        <View style={styles.mapFallback}>
+        <View style={[styles.mapFallback, { height: mapH, flex: 0 }]}>
           {mapLoading && MapboxGL ? <ActivityIndicator color={C.tealText} /> : <MapTrifold size={30} color={C.textTertiary} />}
           <Text style={{ fontSize: T.base, color: C.textSecondary, textAlign: "center" }}>{mapLoading && MapboxGL ? "Finding your trip’s locations…" : "The map is unavailable. Your itinerary is still available below."}</Text>
           {!mapLoading && !!MapboxGL && <Pressable accessibilityRole="button" onPress={() => setMapAttempt(value => value + 1)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ fontSize: T.base, color: C.tealText }}>Try again</Text></Pressable>}
@@ -487,12 +529,40 @@ export default function TodayScreen() {
             zoomLevel={isLiveDay ? 15 : 7}
             centerCoordinate={homeCoord ?? destCenter}
             pitch={isLiveDay ? 55 : 0}
+            padding={{ paddingTop: insets.top + 56, paddingBottom: winH - mapH, paddingLeft: 0, paddingRight: 0 }}
             animationDuration={0}
           />
           {isLiveDay && (
             <MapboxGL.UserLocation visible showsUserHeadingIndicator androidRenderMode="compass" />
           )}
-          {mapReady && markerFeatures.features.length > 0 && (
+          {mapReady && !isLiveDay && markerFeatures.features.map((f: any) => {
+            const id = f.properties.id as string;
+            const PinIcon = categoryIcon(f.properties.type);
+            const nights = stayNights[id];
+            return (
+              <MapboxGL.MarkerView key={id} coordinate={f.geometry.coordinates} anchor={{ x: 0.5, y: 1 }} allowOverlap>
+                <Pressable
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: id } }); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${f.properties.title}${nights ? `, ${nights} nights` : ""}`}
+                  style={styles.pinWrap}
+                >
+                  <View style={styles.pin}>
+                    <View style={[styles.pinIcon, { backgroundColor: categoryTone(f.properties.type, C).fg }]}>
+                      <PinIcon size={14} color="#fff" weight="fill" />
+                    </View>
+                    <View style={{ flexShrink: 1 }}>
+                      <Text style={styles.pinTitle} numberOfLines={1}>{String(f.properties.title).split(" – ")[0]}</Text>
+                      {nights ? <Text style={styles.pinSub}>{nights} {nights === 1 ? "night" : "nights"}</Text> : null}
+                    </View>
+                  </View>
+                  <View style={styles.pinStem} />
+                  <View style={styles.pinPoint} />
+                </Pressable>
+              </MapboxGL.MarkerView>
+            );
+          })}
+          {mapReady && isLiveDay && markerFeatures.features.length > 0 && (
             <MapboxGL.ShapeSource
               id="today-event-markers"
               shape={markerFeatures}
@@ -540,30 +610,32 @@ export default function TodayScreen() {
         </MapboxGL.MapView>
       )}
 
-      {/* Recenter button over the map */}
-      <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }} pointerEvents="box-none">
+      {/* Over the map: recenter */}
+      <View style={styles.mapTop(insets.top)} pointerEvents="box-none">
+        <View />
         {markerCoords.length > 0 && (
           <Pressable
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setFocusedMapEventId(null); fitToMarkers(); }}
-            style={({ pressed }) => ({
-              width: 36, height: 36, borderRadius: 18,
-              backgroundColor: C.glass,
-              borderWidth: 1, borderColor: C.glassBorder,
-              alignItems: "center" as const, justifyContent: "center" as const,
-              marginRight: S.md, opacity: pressed ? 0.6 : 1,
-              ...shadow("deep", isDark),
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             accessibilityRole="button"
-            accessibilityLabel="Recenter map on events"
+            accessibilityLabel="Recenter map"
             hitSlop={6}
           >
-            <Crosshair size={18} color={C.teal} weight="bold" />
+            <MapGlass style={styles.mapButton}>
+              <Crosshair size={18} color={SHEET_GLASS ? C.textPrimary : "#fff"} weight="bold" />
+            </MapGlass>
           </Pressable>
         )}
       </View>
       </Animated.View>
 
-      <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={{ marginTop: -R.xl, backgroundColor: C.bg, borderTopLeftRadius: R.xl, borderTopRightRadius: R.xl, paddingTop: S.xs }}>
+      {/* The plan rides up over the map like a Maps sheet */}
+      <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={[styles.sheet, { marginTop: -(winH - mapH) - 28 }]}>
+        {/* The same Liquid Glass as the system sheets (Join, Notifications); a blur where it isn't available */}
+        {SHEET_GLASS
+          ? <GlassView glassEffectStyle="regular" style={[StyleSheet.absoluteFill, styles.sheetGlass]} />
+          : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={100} style={StyleSheet.absoluteFill} />}
+        <View style={styles.grabber} />
         {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}
         <View>
         {!isLiveDay && upcomingTrip ? (
@@ -789,7 +861,7 @@ export default function TodayScreen() {
         ) : (
           <EmptyState
             compact
-            icon={<Sun size={28} color={C.textTertiary} weight="regular" />}
+            icon={<Sun size={48} color={C.textTertiary} weight="light" />}
             title={isPreview ? "No events on your first day yet" : "No events scheduled for today"}
           />
         )}
@@ -803,8 +875,36 @@ export default function TodayScreen() {
   );
 }
 
+// Map overlays are always the dark glass so they read on both the day and night map
+const MAP_GLASS = "rgba(24,24,28,0.82)";
+const MAP_GLASS_EDGE = "rgba(255,255,255,0.18)";
+
 function makeStyles(C: ThemeColors) {
-  return StyleSheet.create({
+  return {
+    mapTop: (top: number) => ({
+      position: "absolute" as const, top: top + 4, left: S.md, right: S.md, zIndex: 10,
+      flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: S.sm,
+    }),
+    ...StyleSheet.create({
+    mapButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+    pinWrap: { alignItems: "center" },
+    pin: {
+      flexDirection: "row", alignItems: "center", gap: 7, maxWidth: 250,
+      paddingVertical: 5, paddingLeft: 5, paddingRight: 12, borderRadius: 20,
+      backgroundColor: MAP_GLASS, borderWidth: StyleSheet.hairlineWidth, borderColor: MAP_GLASS_EDGE,
+    },
+    pinIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+    pinTitle: { fontSize: T.sm, fontWeight: T.semibold, color: "#fff" },
+    pinSub: { fontSize: T.xs, color: "rgba(255,255,255,0.72)" },
+    pinStem: { width: 2, height: 7, backgroundColor: MAP_GLASS },
+    pinPoint: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#fff", borderWidth: 2, borderColor: "rgba(24,24,28,0.9)" },
+    // Runs to the bottom of the page so its shadow never shows as a band under the content
+    sheet: {
+      flexGrow: 1, paddingBottom: SCROLL_BOTTOM_PAD,
+      marginHorizontal: 6, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingTop: S.xs, overflow: "hidden",
+    },
+    sheetGlass: { borderTopLeftRadius: 34, borderTopRightRadius: 34 },
+    grabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 3, backgroundColor: C.border, marginBottom: S.xs },
     mapFallback: { flex: 1, justifyContent: "center", alignItems: "center", gap: S.sm, padding: S.lg },
     offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
     // Boxless: the next event leads the page on its own, no card around it
@@ -850,5 +950,6 @@ function makeStyles(C: ThemeColors) {
       gap: S["2xs"], paddingVertical: S.sm, borderRadius: R.xl,
     },
     seeAllBtnText: { fontSize: T.base, fontWeight: "700" },
-  });
+    }),
+  };
 }

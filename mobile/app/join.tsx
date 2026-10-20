@@ -364,6 +364,8 @@ export default function JoinScreen() {
           headerTransparent: true,
           headerTitleStyle: { color: C.textPrimary },
           headerShadowVisible: false,
+          // Newer iOS defaults sheets to a hard edge with a divider under the bar
+          scrollEdgeEffects: { top: "soft", bottom: "hidden", left: "hidden", right: "hidden" },
           headerLeft: () => (
             <Pressable onPress={closeSheet} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
               <X size={20} color={C.textPrimary} weight="bold" />
@@ -679,7 +681,7 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     pinBoxes: { flexDirection: "row", justifyContent: "center", gap: S.xs },
     pinBox: {
       width: 46, height: 58, borderRadius: R.lg, backgroundColor: C.elevated,
-      borderWidth: 1.5, borderColor: "transparent", alignItems: "center", justifyContent: "center",
+      borderWidth: 1.5, borderColor: C.border, alignItems: "center", justifyContent: "center",
     },
     pinBoxActive: { borderColor: C.teal },
     pinBoxFilled: { backgroundColor: C.card, borderColor: C.border },
@@ -710,7 +712,7 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     },
     rowAction: { fontSize: T.lg, color: C.tealText },
     groupFooter: {
-      fontSize: 13, lineHeight: 18, color: C.textTertiary,
+      fontSize: 13, lineHeight: 18, color: C.textSecondary,
       paddingHorizontal: S.md, marginTop: S.xs, marginBottom: S.lg,
     },
     groupHeader: {
@@ -722,7 +724,7 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     },
     previewThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: C.card },
     previewName: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary },
-    previewSub: { fontSize: T.sm, color: C.textTertiary },
+    previewSub: { fontSize: T.sm, color: C.textSecondary },
     tripRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm2,
       paddingVertical: S.xs2, minHeight: 56,

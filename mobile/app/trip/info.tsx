@@ -19,6 +19,10 @@ import type { TripInfo } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { CachedImage } from "@/components/CachedImage";
 import { CategoryDot } from "@/components/ui/CategoryDot";
+import { PhotoBackdrop, photoPalette } from "@/components/ui/PhotoBackdrop";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
+
+const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 import type { TravelEvent } from "@/shared/types";
 
 const URL_RE = /(https?:\/\/[^\s),]+)/g;
@@ -194,8 +198,13 @@ export default function InfoScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const { trips } = useTrips();
   const router = useRouter();
-  const { C, isDark } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
   const insets = useSafeAreaInsets();
+  // Like the trip page: the trip's photo, blurred, behind everything
+  const coverImage = trips.find(t => t.id === tripId)?.image;
+  const photoPage = !!coverImage;
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = photoPage || themeDark;
   const styles = useMemo(() => makeStyles(C), [C]);
 
   const safeBack = useCallback(() => {
@@ -210,10 +219,12 @@ export default function InfoScreen() {
     return isLeader ? all : all.filter(i => !i.leaderOnly);
   }, [trip?.info, isLeader]);
 
-  // Topics with a deadline come first, soonest due at the top
+  // Essentials first: what's due (soonest at the top), what's still to sort, where you're staying,
+  // then everything else, with costs last
   const ordered = useMemo(() => {
-    const due = infoItems.filter(i => !i.completed && !!i.deadline).sort((x, y) => x.deadline!.localeCompare(y.deadline!));
-    return [...due, ...infoItems.filter(i => !due.includes(i))];
+    const rank: Record<TopicKind, number> = { todo: 1, stay: 2, text: 3, costs: 4 };
+    const score = (i: TripInfo) => (!i.completed && i.deadline ? 0 : rank[topicKind(i.title || "")]);
+    return [...infoItems].sort((x, y) => score(x) - score(y) || (x.deadline ?? "").localeCompare(y.deadline ?? ""));
   }, [infoItems]);
 
   const headerOptions = (title: string) => ({
@@ -222,7 +233,9 @@ export default function InfoScreen() {
     headerBackTitle: " ",
     headerBackButtonDisplayMode: "minimal" as const,
     headerTransparent: Platform.OS === "ios",
-    headerBlurEffect: isDark ? "systemChromeMaterialDark" as const : "systemChromeMaterialLight" as const,
+    ...(photoPage && NATIVE_EDGE
+      ? { scrollEdgeEffects: { top: "soft" as const, bottom: "hidden" as const, left: "hidden" as const, right: "hidden" as const } }
+      : { headerBlurEffect: isDark ? "systemChromeMaterialDark" as const : "systemChromeMaterialLight" as const }),
     headerTintColor: C.textPrimary,
     headerTitleStyle: { color: C.textPrimary, fontWeight: "600" as const },
     headerShadowVisible: false,
@@ -293,7 +306,7 @@ export default function InfoScreen() {
                 const cat = costCategory(f.label);
                 return (
                   <View key={f.label} style={[styles.receiptRow, (i > 0 || totalIdx >= 0) && styles.rowBorder]}>
-                    {cat ? <CategoryDot type={cat} size={28} /> : null}
+                    {cat ? <CategoryDot palette={C} type={cat} size={28} /> : null}
                     <Text style={styles.receiptLabel} numberOfLines={2}>{cat ? shortCostLabel(f.label) : f.label}</Text>
                     <Text style={styles.receiptAmount}>{f.amount}</Text>
                   </View>
@@ -321,7 +334,7 @@ export default function InfoScreen() {
                     style={({ pressed }) => [styles.listRow, kind === "todo" && { alignItems: "flex-start" }, i > 0 && styles.rowBorder, pressed && linked ? { backgroundColor: C.elevated } : null]}
                   >
                     {kind === "stay" ? (
-                      hotel?.image ? <CachedImage uri={hotel.image} style={styles.stayThumb} /> : <CategoryDot type="hotel" size={28} />
+                      hotel?.image ? <CachedImage uri={hotel.image} style={styles.stayThumb} /> : <CategoryDot palette={C} type="hotel" size={28} />
                     ) : (
                       <Clock size={18} color={C.amberText} weight="regular" style={{ marginTop: 2 }} />
                     )}
@@ -435,6 +448,7 @@ export default function InfoScreen() {
 
   return (
     <View style={styles.safe}>
+      {photoPage && <PhotoBackdrop uri={coverImage!} />}
       <Stack.Screen options={headerOptions("Trip info")} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
         {ordered.length === 0 ? (
@@ -442,7 +456,13 @@ export default function InfoScreen() {
             <EmptyState compact title="Nothing here yet" message="Your organiser hasn't shared any trip information yet." />
           </View>
         ) : (
-          <View style={styles.content}>{ordered.map(renderTopic)}</View>
+          <View style={styles.content}>
+            <View style={styles.intro}>
+              <Text style={styles.introName} numberOfLines={2}>{trip.name}</Text>
+              <Text style={styles.introSub}>Everything your organiser has shared for this trip</Text>
+            </View>
+            {ordered.map(renderTopic)}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -455,6 +475,9 @@ function makeStyles(C: ThemeColors) {
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
     content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.xl },
+    intro: { gap: S.xs2 },
+    introName: { fontSize: T["2xl"], lineHeight: 30, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.4 },
+    introSub: { fontSize: T.base, color: C.textSecondary },
     topic: { gap: S.sm },
     groupTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     caption: { fontSize: T.base, color: C.textSecondary, lineHeight: 22 },

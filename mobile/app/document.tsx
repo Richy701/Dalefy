@@ -46,7 +46,7 @@ export default function DocumentScreen() {
       <SafeAreaView style={s.safe}>
         <View style={{ flex: 1, justifyContent: "center" }}>
           <EmptyState
-            icon={<FileX size={28} color={C.teal} weight="light" />}
+            icon={<FileX size={48} color={C.textTertiary} weight="light" />}
             title="Document not found"
             cta={{ label: "Go back", onPress: () => router.back() }}
           />

@@ -1,4 +1,5 @@
 import { View, Text, Image } from "react-native";
+import { useState } from "react";
 import { T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -12,6 +13,9 @@ export function Avatar({ size = 32, uri, initials, color, ringColor }: {
 }) {
   const { C } = useTheme();
   const fill = color ?? C.teal;
+  // A photo that fails to load falls back to the initials instead of an empty circle
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const showPhoto = !!uri && uri !== failedUri;
   return (
     <View
       style={{
@@ -21,12 +25,12 @@ export function Avatar({ size = 32, uri, initials, color, ringColor }: {
         overflow: "hidden",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: uri ? C.elevated : `${fill}22`,
+        backgroundColor: showPhoto ? C.elevated : `${fill}22`,
         ...(ringColor ? { borderWidth: 2, borderColor: ringColor } : {}),
       }}
     >
-      {uri ? (
-        <Image source={{ uri }} style={{ width: size, height: size }} />
+      {showPhoto ? (
+        <Image source={{ uri: uri! }} style={{ width: size, height: size }} onError={() => setFailedUri(uri!)} />
       ) : (
         <Text style={{ fontSize: Math.max(T["2xs"], Math.round(size * 0.38)), fontWeight: T.bold, color: fill }}>
           {initials ?? "?"}

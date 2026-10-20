@@ -1,6 +1,14 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { PlaneIcon } from "@/components/ui/PlaneIcon";
+
+const styles = StyleSheet.create({
+  plane: {
+    width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+  },
+});
 
 let MapboxGL: any = null;
 try {
@@ -155,6 +163,17 @@ export function FlightRouteMap({
     };
   }, [arcCoords, crosses]);
 
+  // Heading at the arc's midpoint: compass bearing, turned so the right-pointing plane icon follows it
+  const plane = useMemo(() => {
+    if (arcCoords.length < 3 || crosses) return null;
+    const i = Math.floor(arcCoords.length / 2);
+    const [a, b] = [arcCoords[i - 1], arcCoords[i + 1]];
+    const dx = (b[0] - a[0]) * Math.cos(((a[1] + b[1]) / 2) * Math.PI / 180);
+    const dy = b[1] - a[1];
+    const bearing = Math.atan2(dx, dy) * 180 / Math.PI;
+    return { at: arcCoords[i] as [number, number], rotate: bearing - 90 };
+  }, [arcCoords, crosses]);
+
   const camera = useMemo(() => {
     const fallback = { centerCoordinate: [0, 0] as [number, number], zoomLevel: 1 };
     if (!valid) return fallback;
@@ -241,9 +260,10 @@ export function FlightRouteMap({
                   id="route-flight-line-layer"
                   style={{
                     lineColor: accent,
-                    lineWidth: 2,
-                    lineOpacity: 0.8,
-                    lineDasharray: [3, 3],
+                    lineWidth: 3,
+                    lineOpacity: 0.9,
+                    lineCap: "round",
+                    lineJoin: "round",
                   }}
                 />
               </MapboxGL.ShapeSource>
@@ -287,6 +307,16 @@ export function FlightRouteMap({
                 />
               )}
             </MapboxGL.ShapeSource>
+            {/* A plane at the middle of the arc, pointing along it */}
+            {plane && (
+              <MapboxGL.MarkerView coordinate={plane.at} anchor={{ x: 0.5, y: 0.5 }} allowOverlap>
+                <View style={[styles.plane, { backgroundColor: isDark ? "#1c1c22" : "#fff" }]}>
+                  <View style={{ transform: [{ rotate: `${plane.rotate}deg` }] }}>
+                    <PlaneIcon size={14} color={accent} />
+                  </View>
+                </View>
+              </MapboxGL.MarkerView>
+            )}
           </>
         )}
       </MapboxGL.MapView>

@@ -14,41 +14,22 @@ export function EmptyState({ icon, title, message, cta, compact }: {
   compact?: boolean;
 }) {
   const { C } = useTheme();
+  // Apple's empty-screen shape: a bare symbol, a plain title, one line, and a text action
   return (
-    <View style={{ alignItems: "center", gap: S.sm, paddingVertical: compact ? S.lg : S["2xl"], paddingHorizontal: S.xl }}>
-      {icon && (
-        <View
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: C.tealDim,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: S["2xs"],
-          }}
-        >
-          {icon}
-        </View>
-      )}
-      <Text style={{ fontSize: T.lg, fontWeight: T.bold, color: C.textPrimary, textAlign: "center" }}>{title}</Text>
+    <View style={{ alignItems: "center", gap: S.xs, paddingVertical: compact ? S.lg : S["2xl"], paddingHorizontal: S.xl }}>
+      {icon ? <View style={{ marginBottom: S.xs }}>{icon}</View> : null}
+      <Text style={{ fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, textAlign: "center" }}>{title}</Text>
       {message && (
-        <Text style={{ fontSize: T.sm, color: C.textTertiary, textAlign: "center", lineHeight: 18 }}>{message}</Text>
+        <Text style={{ fontSize: T.base, color: C.textSecondary, textAlign: "center", lineHeight: 21 }}>{message}</Text>
       )}
       {cta && (
         <Pressable
           onPress={cta.onPress}
           accessibilityRole="button"
-          style={({ pressed }) => ({
-            backgroundColor: C.teal,
-            borderRadius: R.xl,
-            paddingHorizontal: S.lg,
-            paddingVertical: S.sm2,
-            marginTop: S.xs,
-            opacity: pressed ? 0.85 : 1,
-          })}
+          hitSlop={8}
+          style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontSize: T.base, fontWeight: T.bold, color: C.onAccent }}>{cta.label}</Text>
+          <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{cta.label}</Text>
         </Pressable>
       )}
     </View>

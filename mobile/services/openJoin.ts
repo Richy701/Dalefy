@@ -2,10 +2,14 @@ import { router } from "expo-router";
 
 let lastOpen = 0;
 
-/** Open the Join sheet once: navigate (not push) so an open sheet is reused, and ignore repeat taps while it animates in. */
-export function openJoinSheet() {
+/** Open a sheet once: navigate (not push) so an open sheet is reused, and swallow an accidental double tap. Kept short so reopening right after closing never feels ignored. */
+export function openSheet(path: "/join" | "/notifications") {
   const now = Date.now();
-  if (now - lastOpen < 800) return;
+  if (now - lastOpen < 350) return;
   lastOpen = now;
-  router.navigate("/join");
+  router.navigate(path);
+}
+
+export function openJoinSheet() {
+  openSheet("/join");
 }
