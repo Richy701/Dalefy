@@ -634,8 +634,8 @@ export default function TodayScreen() {
       <View onLayout={e => { contentY.current = e.nativeEvent.layout.y; }} style={styles.sheet}>
         {/* The same Liquid Glass as the system sheets (Join, Notifications); a blur where it isn't available */}
         {SHEET_GLASS
-          ? <GlassView glassEffectStyle="regular" style={[StyleSheet.absoluteFill, styles.sheetGlass]} />
-          : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={100} style={StyleSheet.absoluteFill} />}
+          ? <GlassView glassEffectStyle="regular" style={styles.sheetGlass} />
+          : <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={100} style={styles.sheetGlass} />}
         <View style={styles.grabber} />
         {offline && <View style={styles.offlineNote}><WifiSlash size={16} color={C.textSecondary} /><Text style={{ fontSize: T.base, color: C.textSecondary, flex: 1 }}>You’re offline. Showing saved trip details.</Text></View>}
         <View>
@@ -902,9 +902,14 @@ function makeStyles(C: ThemeColors) {
     // Runs to the bottom of the page so its shadow never shows as a band under the content
     sheet: {
       flexGrow: 1, paddingBottom: SCROLL_BOTTOM_PAD,
-      marginHorizontal: 6, borderTopLeftRadius: 34, borderTopRightRadius: 34, paddingTop: S.xs, overflow: "hidden",
+      marginHorizontal: 6, paddingTop: S.xs,
     },
-    sheetGlass: { borderTopLeftRadius: 34, borderTopRightRadius: 34 },
+    // Runs well past the content: iOS leaves room under the content for the tab bar, and the sheet
+    // should still reach the bottom of the screen there instead of ending in a hard edge
+    sheetGlass: {
+      position: "absolute", top: 0, left: 0, right: 0, bottom: -1200,
+      borderTopLeftRadius: 34, borderTopRightRadius: 34, overflow: "hidden",
+    },
     grabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 3, backgroundColor: C.border, marginBottom: S.xs },
     mapFallback: { flex: 1, justifyContent: "center", alignItems: "center", gap: S.sm, padding: S.lg },
     offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
