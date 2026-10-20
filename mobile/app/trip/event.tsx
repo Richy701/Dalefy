@@ -1,4 +1,5 @@
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
@@ -317,7 +318,14 @@ export default function EventDetailScreen() {
   const { tripId, eventId } = useLocalSearchParams<{ tripId: string; eventId: string }>();
   const { trips } = useTrips();
   const router = useRouter();
-  const { C, isDark } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
+  // Invites-style photo page for events with their own photo (flights keep their own map design)
+  const photoPage = (() => {
+    const e = trips.find(t => t.id === tripId)?.events.find(x => x.id === eventId);
+    return !!e?.image && e.type !== "transfer" && e.type !== "flight";
+  })();
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
+  const isDark = photoPage || themeDark;
   const { isLeader } = useTripRole(tripId);
   const insets = useSafeAreaInsets();
   const { onScroll, stretchStyle } = useBannerStretch(EV_HERO_H + insets.top);
@@ -456,7 +464,8 @@ export default function EventDetailScreen() {
   };
 
   return (
-    <View style={styles.safe}>
+    <View style={[styles.safe, photoPage && { backgroundColor: "#000" }]}>
+      {photoPage && <PhotoBackdrop uri={ev.image!} />}
       <Stack.Screen options={{
         headerShown: true,
         title: typeLabel,
@@ -482,10 +491,10 @@ export default function EventDetailScreen() {
         } : {}),
       }} />
 
-      <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <View style={{ flex: 1, backgroundColor: photoPage ? "transparent" : C.bg }}>
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24, backgroundColor: C.bg }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24, backgroundColor: photoPage ? "transparent" : C.bg }}
       >
         {/* Cover: only the event's own photo, with nothing written over it */}
         {showPhoto ? (
@@ -494,6 +503,7 @@ export default function EventDetailScreen() {
               <PhotoBlend>
                 <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
               </PhotoBlend>
+              {photoPage && <PhotoDissolve uri={ev.image!} />}
             </Animated.View>
           </View>
         ) : (
@@ -717,6 +727,7 @@ export default function EventDetailScreen() {
           </Animated.View>
         )}
       </Animated.ScrollView>
+
 
       </View>
     </View>

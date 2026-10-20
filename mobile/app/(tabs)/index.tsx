@@ -30,6 +30,7 @@ import {
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
 import { ListSkeleton } from "@/components/Skeleton";
+import { openJoinSheet } from "@/services/openJoin";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import * as Clipboard from "expo-clipboard";
@@ -100,7 +101,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ join?: string }>();
   useEffect(() => {
-    if (params.join) router.push("/join");
+    if (params.join) openJoinSheet();
   }, [params.join]);
   const styles = useMemo(() => makeGreetingStyles(C, isDark), [C, isDark]);
   // Glass circles are dark in dark mode and white in light mode; the glyph takes the opposite.
@@ -133,7 +134,7 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
         <Logo size={24} color={overPhoto ? "#fff" : C.textPrimary} />
         <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
           <IconCircleButton variant="glass" size={36}
-            onPress={() => router.push("/join")}
+            onPress={openJoinSheet}
             accessibilityLabel="Join a trip"
           >
             <Plus size={18} color={barIcon} weight="bold" />

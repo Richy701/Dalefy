@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { CoverFade } from "@/components/ui/CoverFade";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,15 +8,15 @@ import { CalendarBlank, Images, CaretDown, CaretRight, Plus, WifiSlash } from "p
 import { S, T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 import { ListSkeleton } from "@/components/Skeleton";
+import { openJoinSheet } from "@/services/openJoin";
 import { ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 
 /** A fresh route parameter reopens Home's existing join sheet after dismissal. */
 function useOpenJoin() {
-  const router = useRouter();
   return () => {
     void Haptics.selectionAsync();
-    router.push("/join");
+    openJoinSheet();
   };
 }
 

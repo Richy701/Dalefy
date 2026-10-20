@@ -225,7 +225,6 @@ function AppStack() {
     headerShown: true,
     sheetGrabberVisible: true,
     sheetAllowedDetents: [1.0],
-    sheetCornerRadius: 28,
   };
 
   const onLayoutRootView = useCallback(() => {
@@ -253,7 +252,7 @@ function AppStack() {
               contentStyle: { backgroundColor: C.bg },
             }}
           >
-            <Stack.Screen name="join" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.card } }} />
+            <Stack.Screen name="join" options={{ ...sheetOptions, sheetAllowedDetents: [0.94], sheetLargestUndimmedDetentIndex: 0, contentStyle: { backgroundColor: "transparent" } }} />
             <Stack.Screen name="notifications" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.card } }} />
             <Stack.Screen name="edit-profile" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.bg } }} />
           </Stack>

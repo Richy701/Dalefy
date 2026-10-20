@@ -17,7 +17,7 @@ import { useRouter, Stack } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
 import { destinationFlag } from "@/shared/tripSummary";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import {
+import { X,
   CaretRight, CaretLeft, LinkSimple, Scan, Check,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
@@ -361,19 +361,19 @@ export default function JoinScreen() {
         options={{
           headerShown: !foundTrip,
           title: "Join a trip",
-          headerStyle: { backgroundColor: C.card },
+          headerTransparent: true,
           headerTitleStyle: { color: C.textPrimary },
           headerShadowVisible: false,
           headerLeft: () => (
-            <Pressable onPress={closeSheet} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
-              <Text style={{ fontSize: T.lg, color: C.tealText }}>Cancel</Text>
+            <Pressable onPress={closeSheet} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}>
+              <X size={20} color={C.textPrimary} weight="bold" />
             </Pressable>
           ),
         }}
       />
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1, backgroundColor: C.card, overflow: "hidden" as const }}
+            style={{ flex: 1, overflow: "hidden" as const }}
           >
             <ScrollView
               bounces={false}
@@ -426,7 +426,6 @@ export default function JoinScreen() {
                       autoCorrect={false}
                       textContentType="oneTimeCode"
                       maxLength={6}
-                      autoFocus
                       editable={!resolving}
                       returnKeyType="go"
                       onSubmitEditing={() => { if (pinComplete) submitPin(pinValue); }}
@@ -505,7 +504,7 @@ export default function JoinScreen() {
                         {recentTrips.map((t, i) => (
                           <Pressable
                             key={t.id}
-                            onPress={() => { closeSheet(); router.push(`/trip/${t.id}`); }}
+                            onPress={() => { closeSheet(); setTimeout(() => router.push(`/trip/${t.id}`), 320); }}
                             accessibilityRole="button"
                             accessibilityLabel={`Open ${t.name}`}
                             style={({ pressed }) => [styles.tripRow, i > 0 && styles.tripRowBorder, { backgroundColor: pressed ? C.elevated : "transparent" }]}
@@ -660,7 +659,6 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
       lineHeight: 12,
     },
     codeSheet: {
-      backgroundColor: C.card,
       paddingHorizontal: S.lg, paddingTop: S.xs, paddingBottom: S.xl,
     },
     sheetHeader: {

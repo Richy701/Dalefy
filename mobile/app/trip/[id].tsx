@@ -11,6 +11,7 @@ import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
+import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArrow } from "phosphor-react-native";
@@ -89,7 +90,12 @@ export default function TripScreen() {
   const { id, date: landDate } = useLocalSearchParams<{ id: string; date?: string }>();
   const { trips, ready } = useTrips();
   const router = useRouter();
-  const { C, isDark } = useTheme();
+  const { C: themeC, isDark: themeDark } = useTheme();
+  // Invites-style: a trip with a cover photo gets a photo backdrop, so the page always uses the dark palette
+  const photoPage = !!trips.find(t => t.id === id)?.image;
+  // On the photo backdrop, secondary text is white at partial strength (like Invites) so it reads on any photo's colours
+  const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeDark, themeC]);
+  const isDark = photoPage || themeDark;
   const { brand } = useBrand();
   const { isLeader } = useTripRole(id);
   const linkedTravelerId = useLinkedTravelerId(id);
@@ -100,7 +106,7 @@ export default function TripScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/(tabs)");
   }, [router]);
-  const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
+  const styles = useMemo(() => makeStyles(C, isDark, photoPage), [C, isDark, photoPage]);
   const trip = trips.find(t => t.id === id);
 
   // ── Parallax scroll state ──
@@ -114,8 +120,9 @@ export default function TripScreen() {
   const stripY = useSharedValue(0);
   const stripH = useRef(0);
   const pinTop = insets.top + HEADER_H;
-  const stripStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: stripY.value > 0 ? Math.max(0, scrollY.value - (stripY.value - pinTop)) : 0 }],
+  // Frosted backing behind the strip, only once it has pinned under the bar
+  const stripBackingStyle = useAnimatedStyle(() => ({
+    opacity: stripY.value > 0 && scrollY.value >= stripY.value - pinTop ? 1 : 0,
   }));
 
   const { stretchStyle } = useBannerStretch(HERO_H, scrollY);
@@ -194,6 +201,11 @@ export default function TripScreen() {
 
   // The day being read highlights in the pinned strip
   const [activeDay, setActiveDay] = useState<string | null>(null);
+  const [stripPinned, setStripPinned] = useState(false);
+  useAnimatedReaction(
+    () => stripY.value > 0 && scrollY.value >= stripY.value - pinTop,
+    (now, prev) => { if (now !== prev) runOnJS(setStripPinned)(now); },
+  );
   const updateActiveDay = useCallback((y: number) => {
     if (y <= 0) { setActiveDay(null); return; }
     const line = y + insets.top + HEADER_H + stripH.current + S.md;
@@ -242,6 +254,37 @@ export default function TripScreen() {
     return keys.map(date => ({ date, events: grouped[date] ?? [] }));
   }, [trip, visibleEvents]);
 
+  const renderStrip = () => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.strip}
+  >
+    {days.map(({ date, events }) => {
+      const d = parseTripDate(date);
+      const isToday = date === today;
+      const isPast = date < today;
+      return (
+        <Pressable
+          key={date}
+          onPress={() => jumpToDay(date)}
+          accessibilityRole="button"
+          accessibilityLabel={`${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}, ${events.length} event${events.length === 1 ? "" : "s"}`}
+          style={({ pressed }) => [
+            styles.stripDay,
+            isToday && styles.stripDayToday,
+            activeDay === date && styles.stripDayActive,
+            { opacity: pressed ? 0.6 : dimPast && isPast ? 0.55 : 1 },
+          ]}
+        >
+          <Text style={[styles.stripWeekday, isToday && { color: C.tealText }, activeDay === date && { color: C.bg }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
+          <Text style={[styles.stripNumText, activeDay === date && { color: C.bg }]}>{d.getDate()}</Text>
+        </Pressable>
+      );
+    })}
+  </ScrollView>
+  );
+
   if (!trip) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -283,6 +326,7 @@ export default function TripScreen() {
 
   return (
     <View style={styles.safe}>
+      {photoPage && <PhotoBackdrop uri={trip.image} />}
       <Stack.Screen options={{
         headerShown: true,
         headerTransparent: true,
@@ -350,6 +394,7 @@ export default function TripScreen() {
                 )}
               </Animated.View>
             </PhotoBlend>
+            {photoPage && <PhotoDissolve uri={trip.image} />}
           </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             {flag ? (
@@ -387,39 +432,10 @@ export default function TripScreen() {
         </View>
 
         {/* ── Week strip: one cell per day, pinned under the title bar while scrolling ── */}
-        <Animated.View
-          style={[{ zIndex: 20, backgroundColor: C.bg }, stripStyle]}
-          onLayout={e => { stripY.value = e.nativeEvent.layout.y; stripH.current = e.nativeEvent.layout.height; }}
-        >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.strip}
-        >
-          {days.map(({ date, events }) => {
-            const d = parseTripDate(date);
-            const isToday = date === today;
-            const isPast = date < today;
-            return (
-              <Pressable
-                key={date}
-                onPress={() => jumpToDay(date)}
-                accessibilityRole="button"
-                accessibilityLabel={`${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}, ${events.length} event${events.length === 1 ? "" : "s"}`}
-                style={({ pressed }) => [
-                  styles.stripDay,
-                  isToday && styles.stripDayToday,
-                  activeDay === date && styles.stripDayActive,
-                  { opacity: pressed ? 0.6 : dimPast && isPast ? 0.55 : 1 },
-                ]}
-              >
-                <Text style={[styles.stripWeekday, isToday && { color: C.tealText }, activeDay === date && { color: C.bg }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
-                <Text style={[styles.stripNumText, activeDay === date && { color: C.bg }]}>{d.getDate()}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-        </Animated.View>
+        {/* ── Week strip: scrolls with the page; a fixed copy takes over once it reaches the bar ── */}
+        <View onLayout={e => { stripY.value = e.nativeEvent.layout.y; stripH.current = e.nativeEvent.layout.height; }}>
+          {renderStrip()}
+        </View>
 
         {/* ── Next up: the one thing a traveller needs right now ── */}
         {upNext && (
@@ -638,13 +654,25 @@ export default function TripScreen() {
           </ContextMenu>
         )}
       </Animated.ScrollView>
+
+
+      {/* Fixed copy of the strip under the bar, shown once the in-page strip scrolls up to it */}
+      <Animated.View
+        pointerEvents={stripPinned ? "box-none" : "none"}
+        style={[{ position: "absolute", top: 0, left: 0, right: 0, paddingTop: pinTop, zIndex: 15 }, stripBackingStyle]}
+      >
+        {photoPage
+          ? <BlurView intensity={100} tint="systemChromeMaterialDark" style={StyleSheet.absoluteFill} />
+          : <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />}
+        {renderStrip()}
+      </Animated.View>
     </View>
   );
 }
 
-function makeStyles(C: ThemeColors, isDark: boolean) {
+function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
   return StyleSheet.create({
-    safe:   { flex: 1, backgroundColor: C.bg },
+    safe:   { flex: 1, backgroundColor: photoBackdrop ? "#000" : C.bg },
     scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
     errorText: { color: C.textSecondary, fontSize: T.lg, marginBottom: S.md },
@@ -716,7 +744,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     stripDay: {
       width: 52, paddingTop: S.xs, paddingBottom: S.xs2, paddingHorizontal: S.xs2,
       alignItems: "center", gap: 2,
-      backgroundColor: C.card, borderRadius: R.sm,
+      backgroundColor: photoBackdrop ? "rgba(255,255,255,0.12)" : C.card, borderRadius: R.sm,
       borderWidth: 1.5, borderColor: "transparent",
     },
     stripDayToday: { borderColor: C.teal },
