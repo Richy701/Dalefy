@@ -1,4 +1,5 @@
-import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
+import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
@@ -36,7 +37,7 @@ import type { Trip } from "@/shared/types";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 
 function timeToMinutes(t: string): number {
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
@@ -54,7 +55,7 @@ function timeToMinutes(t: string): number {
 const DOT = 32;
 const HERO_H = 380;
 const isPlaceholderTime = (t?: string) => !t || /^tb[acd]$/i.test(t);
-const cleanTitle = (title: string) => title.replace(/\s*\([A-Z]{3}\)\s*$/, "");
+const cleanTitle = (title: string) => tidyTitleSeparators(title.replace(/\s*\([A-Z]{3}\)\s*$/, ""));
 
 export default function SharedTripScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -207,7 +208,7 @@ export default function SharedTripScreen() {
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const url = `https://dafadventures.com/shared/${trip.id}`;
+    const url = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/#/shared/${trip.id}`;
     try {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(url, { dialogTitle: trip.name });
@@ -220,7 +221,6 @@ export default function SharedTripScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={Platform.OS === "android" ? ["top", "bottom"] : ["bottom"]}>
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <PhotoWash uri={trip.image} heroHeight={HERO_H} />
 
         {/* Hero: photo that dissolves into the wash */}
         <View style={styles.hero}>
@@ -299,7 +299,7 @@ export default function SharedTripScreen() {
                   onPress={() => { setViewAsId(null); setPickerOpen(false); }} accessibilityRole="button" accessibilityState={{ selected: !viewAsId }}
                 >
                   <Avatar size={30} initials="ALL" color={C.textTertiary} />
-                  <Text style={styles.pickerOptionName}>Everyone · Full itinerary</Text>
+                  <Text style={styles.pickerOptionName}>Everyone, Full itinerary</Text>
                   {!viewAsId && <Check size={14} color={C.teal} weight="bold" />}
                 </Pressable>
 
@@ -379,11 +379,11 @@ export default function SharedTripScreen() {
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
                               <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
                             ) : ev.location ? (
-                              <Text style={styles.tlSub} numberOfLines={1}>{ev.location}</Text>
+                              <Text style={styles.tlSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text>
                             ) : null}
                           </View>
                           {ev.time ? (
-                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{ev.time}</Text>
+                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{isPlaceholderTime(ev.time) ? "TBC" : ev.time}</Text>
                           ) : null}
                         </View>
 
@@ -392,14 +392,14 @@ export default function SharedTripScreen() {
                             <View style={styles.leg}>
                               <AirplaneTakeoff size={13} color={C.textTertiary} weight="regular" />
                               <Text style={styles.legText} numberOfLines={1}>
-                                {[ev.depAirport, ev.terminal ? `Terminal ${ev.terminal}` : null].filter(Boolean).join(" · ")}
+                                {[ev.depAirport, ev.terminal ? `Terminal ${ev.terminal}` : null].filter(Boolean).join(", ")}
                               </Text>
                               {!isPlaceholderTime(ev.time) && <Text style={styles.legTime}>{ev.time}</Text>}
                             </View>
                             <View style={styles.leg}>
                               <AirplaneLanding size={13} color={C.textTertiary} weight="regular" />
                               <Text style={styles.legText} numberOfLines={1}>
-                                {[ev.arrAirport, ev.arrTerminal ? `Terminal ${ev.arrTerminal}` : null].filter(Boolean).join(" · ")}
+                                {[ev.arrAirport, ev.arrTerminal ? `Terminal ${ev.arrTerminal}` : null].filter(Boolean).join(", ")}
                               </Text>
                               {!isPlaceholderTime(ev.endTime) && <Text style={styles.legTime}>{ev.endTime}</Text>}
                             </View>

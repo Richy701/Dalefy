@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapPin, Clock, Sun, CaretRight, Crosshair, MapTrifold, WifiSlash } from "phosphor-react-native";
 import { CategoryDot } from "@/components/ui/CategoryDot";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { useTrips } from "@/context/TripsContext";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -28,6 +28,7 @@ import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { useMinuteClock } from "@/hooks/useMinuteClock";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
 import { calendarDays, dateInZone, scheduledMinutes, selectTodayTrips, visibleTodayEvents, dayEvents, eventTiming, currentOrNext } from "@/shared/today";
+import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -47,8 +48,7 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
   let t = cleanTitle(title, type, transferType);
-  t = t.replace(/\s+[-–—·]\s+|:\s+/g, " — ");
-  return t;
+  return tidyTitleSeparators(t);
 }
 
 let MapboxGL: any = null;
@@ -157,7 +157,6 @@ export default function TodayScreen() {
   const mapH = Math.round(winH * 0.46);
 
   const onRefresh = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     await reload();
     setRefreshing(false);
@@ -294,7 +293,6 @@ export default function TodayScreen() {
   const markerCoords = useMemo(() =>
     markerFeatures.features.map((f: any) => f.geometry.coordinates as [number, number]),
     [markerFeatures]);
-
   // ── Camera: fit to markers or fall back to destination center ──
   const fitToMarkers = useCallback(() => {
     if (!cameraRef.current) return;
@@ -414,7 +412,8 @@ export default function TodayScreen() {
 
   // ── Traveler avatars ──
   const [showTravelerNames, setShowTravelerNames] = useState(false);
-  const AVATAR_COLORS = useMemo(() => [C.teal, C.hotel, C.activity, C.dining, C.transfer, C.green], [C]);
+  // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
+  const AVATAR_COLORS = useMemo(() => [C.textSecondary], [C]);
 
   // No trips at all — empty state
   if (!displayTrip) {
@@ -580,20 +579,20 @@ export default function TodayScreen() {
         <View style={styles.headerSection}>
           <Text style={[styles.scope, { color: C.textTertiary }]}>
             {"Your day"}
-            {" · "}
+            {", "}
             {new Date(todayISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
           </Text>
           {/* Row A: Trip name + badge */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${displayTrip.id}`); }}
+              onPress={() => { router.push(`/trip/${displayTrip.id}`); }}
               style={{ flex: 1 }}
               accessibilityRole="button"
               accessibilityLabel={`Open trip ${displayTrip.name}`}
             >
               <Text style={[styles.tripName, { color: C.textPrimary }]} numberOfLines={2}>{displayTrip.name}</Text>
             </Pressable>
-            {dayInfo ? <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={`Day ${dayInfo.day} of ${dayInfo.total}`} /> : null}
+            {dayInfo ? <Pill tone="custom" bg={C.elevated} color={C.textSecondary} label={`Day ${dayInfo.day} of ${dayInfo.total}`} /> : null}
           </View>
 
           {/* Row B: Context strip — destination + weather + local time */}
@@ -604,9 +603,6 @@ export default function TodayScreen() {
                 <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary, flexShrink: 1 }} numberOfLines={1}>{displayTrip.destination}</Text>
               </>
             )}
-            {weather && displayTrip.destination && (
-              <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
-            )}
             {weather && (
               <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }} numberOfLines={1}>
                 {weather.temp}°, {weather.description}
@@ -614,7 +610,6 @@ export default function TodayScreen() {
             )}
             {showLocalTime && localTimeStr ? (
               <>
-                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textDim, opacity: 0.4 }} />
                 <Clock size={10} color={C.textTertiary} weight="bold" />
                 <Text style={{ fontSize: T.base, fontWeight: T.medium, color: C.textSecondary }}>
                   {localTimeStr} local
@@ -673,10 +668,10 @@ export default function TodayScreen() {
         {next && (
           <FadeIn delay={60}>
             <ScalePress
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } }); }}
+              onPress={() => { router.push({ pathname: "/trip/event", params: { tripId: displayTrip.id, eventId: next.event.id } }); }}
               accessibilityRole="button"
               accessibilityLabel={`${next.phase === "current" ? "Happening now" : "Next up"}: ${next.event.title}, ${next.event.time}`}
-              style={[styles.nextCard, { backgroundColor: C.card, borderColor: C.border }, shadow("card", isDark)]}
+              style={styles.nextCard}
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm }}>
                 <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.tealText }}>{next.phase === "current" ? "Happening now" : "Next up"}</Text>
@@ -686,14 +681,14 @@ export default function TodayScreen() {
                 <CategoryDot type={next.event.type} transferType={next.event.transferType} size={40} />
                 <View style={{ flex: 1, gap: S.xs2 }}>
                   <Text style={{ fontSize: T.xl, lineHeight: 26, fontWeight: T.bold, color: C.textPrimary }}>{normaliseTitle(next.event.title, next.event.type, next.event.transferType)}</Text>
-                  <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }}>{next.event.time}{next.event.type === "flight" ? " · Departure time" : " · Local time"}</Text>
-                  {!!next.event.location && <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }} numberOfLines={2}>{next.event.location}</Text>}
+                  <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }}>{next.event.time}{next.event.type === "flight" ? ", Departure time" : ", Local time"}</Text>
+                  {!!next.event.location && <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary }} numberOfLines={2}>{tidyLocation(next.event.location)}</Text>}
                 </View>
                 <CaretRight size={18} color={C.textTertiary} />
               </View>
               {nextFlightLive && (nextFlightLive.status || nextFlightLive.gate || nextFlightLive.terminal) ? (
                 <Text style={{ fontSize: T.base, lineHeight: 22, color: C.textSecondary, marginTop: S.sm }}>
-                  {[nextFlightLive.status, nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "", nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : ""].filter(Boolean).join(" · ")}
+                  {[nextFlightLive.status, nextFlightLive.terminal ? `Terminal ${nextFlightLive.terminal}` : "", nextFlightLive.gate ? `Gate ${nextFlightLive.gate}` : ""].filter(Boolean).join(", ")}
                 </Text>
               ) : null}
             </ScalePress>
@@ -706,7 +701,7 @@ export default function TodayScreen() {
         <View style={styles.timelineSection}>
           {!isPreview && displayEvents.length > 0 && (
             <Text style={[styles.sectionCount, { color: C.textTertiary, textAlign: "right", marginBottom: 2 }]}>
-              {pastCount > 0 ? `${pastCount} earlier · ` : ""}{displayEvents.length} {displayEvents.length === 1 ? "event" : "events"}
+              {pastCount > 0 ? `${pastCount} earlier, ` : ""}{displayEvents.length} {displayEvents.length === 1 ? "event" : "events"}
             </Text>
           )}
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.border, marginBottom: S.xs }} />
@@ -761,12 +756,12 @@ export default function TodayScreen() {
                         {(ev.location || km != null) && (
                           <Text style={[styles.eventLocation, { color: C.textTertiary, marginTop: 2 }]} numberOfLines={1}>
                             {km != null ? <Text style={{ color: C.tealText, fontWeight: "600" }}>{formatDistance(km)}</Text> : null}
-                            {km != null && ev.location ? " · " : ""}
-                            {ev.location}
+                            {km != null && ev.location ? ", " : ""}
+                            {tidyLocation(ev.location)}
                           </Text>
                         )}
                       </View>
-                      <Text style={[styles.eventTime, { color: C.textTertiary }]}>{timing.phase === "unscheduled" ? "TBC" : ev.time}</Text>
+                      <Text style={[styles.eventTime, { color: timing.phase === "unscheduled" ? C.textTertiary : C.tealText }]}>{timing.phase === "unscheduled" ? "TBC" : ev.time}</Text>
                     </View>
                   </ScalePress>
                   {showNowLine && (
@@ -785,7 +780,7 @@ export default function TodayScreen() {
             {/* See full itinerary */}
             <View style={{ marginTop: S.md }}>
               <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${displayTrip.id}`); }}
+                onPress={() => { router.push(`/trip/${displayTrip.id}`); }}
                 style={({ pressed }) => [styles.seeAllBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
               >
                 <Text style={[styles.seeAllBtnText, { color: C.tealText }]}>See full itinerary</Text>
@@ -814,7 +809,8 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     mapFallback: { flex: 1, justifyContent: "center", alignItems: "center", gap: S.sm, padding: S.lg },
     offlineNote: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingTop: S.sm },
-    nextCard: { marginHorizontal: S.md, marginTop: S.lg, padding: S.md, borderRadius: R.xl, borderWidth: StyleSheet.hairlineWidth },
+    // Boxless: the next event leads the page on its own, no card around it
+    nextCard: { marginTop: S.lg, paddingHorizontal: S.md, paddingVertical: S.sm },
     scope: { fontSize: T.base, fontWeight: "500", marginBottom: 2 },
 
     // Header

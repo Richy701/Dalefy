@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { setHapticsEnabled } from "@/services/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AccentId } from "@/constants/theme";
 
@@ -71,6 +72,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       return next;
     });
   };
+
+  useEffect(() => { setHapticsEnabled(prefs.haptics); }, [prefs.haptics]);
 
   const value = useMemo(() => ({ prefs, ready, setPref }), [prefs, ready]);
 

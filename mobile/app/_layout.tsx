@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
-import { Appearance, Platform, View, AppState, InteractionManager } from "react-native";
+import { Appearance, Platform, View, AppState, InteractionManager, Text, TextInput } from "react-native";
 import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -17,6 +17,11 @@ SystemUI.setBackgroundColorAsync(systemIsDark ? "#09090b" : "#f5f6fa").catch(() 
 
 // Eagerly apply saved preference — runs async but resolves before splash hides
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Text follows the iOS text-size setting up to 1.3x; past that, fixed rows and headers clip
+for (const C of [Text, TextInput] as any[]) {
+  C.defaultProps = { ...(C.defaultProps ?? {}), maxFontSizeMultiplier: 1.3 };
+}
 AsyncStorage.getItem("daf-prefs").then((raw) => {
   if (!raw) return;
   try {
@@ -214,6 +219,15 @@ function AppStack() {
     return { ...base, colors: { ...base.colors, background: C.bg, card: C.bg } };
   }, [isDark, C.bg]);
 
+  // Native sheets with the system grabber, full height, still swipe-down to dismiss
+  const sheetOptions = {
+    presentation: "formSheet" as const,
+    headerShown: true,
+    sheetGrabberVisible: true,
+    sheetAllowedDetents: [1.0],
+    sheetCornerRadius: 28,
+  };
+
   const onLayoutRootView = useCallback(() => {
     if (ready) {
       SplashScreen.hideAsync().catch(() => {});
@@ -238,7 +252,11 @@ function AppStack() {
               animation: "slide_from_right",
               contentStyle: { backgroundColor: C.bg },
             }}
-          />
+          >
+            <Stack.Screen name="join" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.card } }} />
+            <Stack.Screen name="notifications" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.card } }} />
+            <Stack.Screen name="edit-profile" options={{ ...sheetOptions, contentStyle: { backgroundColor: C.bg } }} />
+          </Stack>
         </NavThemeProvider>
       </ErrorBoundary>
     </View>

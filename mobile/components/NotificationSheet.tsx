@@ -1,29 +1,28 @@
 import { useMemo, useRef, useCallback } from "react";
 import {
-  View, Text, SectionList, Pressable, StyleSheet, Modal,
+  View, Text, SectionList, Pressable, StyleSheet, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView, Swipeable } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
 import ContextMenu from "@/components/ContextMenu";
 import {
-  Bell, Trash, AirplaneTilt, AirplaneLanding, AirplaneTakeoff,
+  Bell, Trash, AirplaneLanding, AirplaneTakeoff,
   Warning, Bed, ForkKnife, CalendarDots, Car, Check, CaretRight,
   CheckCircle,
 } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationContext";
 import { useHaptic } from "@/hooks/useHaptic";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
-import { DragHandle } from "@/components/ui/DragHandle";
+import { T, R, S, SHEET_BAR_H, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MicroLabel } from "@/components/ui/MicroLabel";
+import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
 
 const ON_RED = "#fff";
 
 interface Props {
-  visible: boolean;
   onClose: () => void;
 }
 
@@ -75,7 +74,7 @@ function getNotifIcon(n: { type: string; message: string }) {
   if (n.type === "boarding" || msg.includes("boarding"))
     return AirplaneTakeoff;
   if (n.type === "flight" || msg.includes("flight") || msg.includes("gate") || msg.includes("terminal"))
-    return AirplaneTilt;
+    return PlaneIcon;
   if (n.type === "hotel" || msg.includes("hotel") || msg.includes("check-in"))
     return Bed;
   if (n.type === "dining" || msg.includes("dining") || msg.includes("restaurant"))
@@ -87,13 +86,14 @@ function getNotifIcon(n: { type: string; message: string }) {
   if (n.type === "success")
     return CheckCircle;
   if (msg.includes("update") || msg.includes("vs") || msg.includes("ba") || msg.includes("depart"))
-    return AirplaneTilt;
+    return PlaneIcon;
   return Bell;
 }
 
 /* ── Main sheet ── */
 
-export function NotificationSheet({ visible, onClose }: Props) {
+/** Notification centre body; app/notifications.tsx presents it in a native sheet with a Done button. */
+export function NotificationList({ onClose }: Props) {
   const { C } = useTheme();
   const router = useRouter();
   const { notifications, unreadCount, markRead, markAllRead, removeNotification, clearAll } = useNotifications();
@@ -110,28 +110,8 @@ export function NotificationSheet({ visible, onClose }: Props) {
   }, [markRead, onClose, router]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
       <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        {/* Native drag indicator */}
-        <DragHandle />
-
-        <View style={styles.header}>
-          <Text accessibilityRole="header" style={styles.headerTitle}>Notifications</Text>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.headerTextBtn, { opacity: pressed ? 0.6 : 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Close notifications"
-          >
-            <Text style={styles.doneText}>Done</Text>
-          </Pressable>
-        </View>
+      <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === "ios" ? SHEET_BAR_H : 0 }]} edges={["bottom"]}>
         {notifications.length > 0 && (
           <View style={styles.countRow}>
             <Text style={styles.countText}>
@@ -184,7 +164,6 @@ export function NotificationSheet({ visible, onClose }: Props) {
         )}
       </SafeAreaView>
       </GestureHandlerRootView>
-    </Modal>
   );
 }
 

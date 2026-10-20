@@ -47,7 +47,7 @@ export function CompactHeader({ title, barStyle, right }: {
       ]}
     >
       {Platform.OS === "ios" ? (
-        <BlurView intensity={90} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={100} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} />
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} />
       )}

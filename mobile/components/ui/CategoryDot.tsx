@@ -1,10 +1,11 @@
 import { View } from "react-native";
-import { AirplaneTilt, Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "phosphor-react-native";
+import { Bed, ForkKnife, MapPin, Van, Car, Train, Bus, Boat, Anchor } from "phosphor-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { categoryTone } from "@/constants/theme";
+import { PlaneIcon } from "@/components/ui/PlaneIcon";
 
 const ICONS: Record<string, React.ComponentType<any>> = {
-  flight: AirplaneTilt, hotel: Bed, dining: ForkKnife, activity: MapPin, transfer: Van,
+  flight: PlaneIcon, hotel: Bed, dining: ForkKnife, activity: MapPin, transfer: Van,
 };
 const TRANSFER_ICONS: Record<string, React.ComponentType<any>> = {
   car: Car, train: Train, bus: Bus, ferry: Boat, cruise: Anchor,

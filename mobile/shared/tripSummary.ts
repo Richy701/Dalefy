@@ -11,17 +11,17 @@ export function tripLengthDays(trip: { start: string; end: string }): number {
   return Math.max(1, Math.round((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000) + 1);
 }
 
-/** "Starts in 60 days · 6-day trip", "Day 3 of 6 · Barbados", "Ended 4 days ago · 6-day trip" */
+/** "Starts in 60 days, 6-day trip", "Day 3 of 6, Barbados", "Ended 4 days ago, 6-day trip" */
 export function tripFactLine(trip: { start: string; end: string; destination?: string }): string {
   const days = daysUntil(trip.start);
   const endDays = daysUntil(trip.end);
   const len = tripLengthDays(trip);
   const lenText = `${len}-day trip`;
-  if (endDays < 0) return `Ended ${-endDays === 1 ? "yesterday" : `${-endDays} days ago`} · ${lenText}`;
-  if (days <= 0) return `Day ${Math.min(len, 1 - days)} of ${len}${trip.destination ? ` · ${trip.destination}` : ""}`;
-  if (days === 0) return `Starts today · ${lenText}`;
-  if (days === 1) return `Starts tomorrow · ${lenText}`;
-  return `Starts in ${days} days · ${lenText}`;
+  if (endDays < 0) return `Ended ${-endDays === 1 ? "yesterday" : `${-endDays} days ago`}, ${lenText}`;
+  if (days <= 0) return `Day ${Math.min(len, 1 - days)} of ${len}${trip.destination ? `, ${trip.destination}` : ""}`;
+  if (days === 0) return `Starts today, ${lenText}`;
+  if (days === 1) return `Starts tomorrow, ${lenText}`;
+  return `Starts in ${days} days, ${lenText}`;
 }
 
 export function shortDay(dateStr: string): string {

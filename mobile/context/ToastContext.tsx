@@ -6,7 +6,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { useTheme } from "./ThemeContext";
 import { CheckCircle, XCircle } from "phosphor-react-native";
 import { T } from "@/constants/theme";

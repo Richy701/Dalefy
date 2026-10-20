@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
 import { FileText, CaretRight } from "phosphor-react-native";
-import { type ThemeColors, R, S, T } from "@/constants/theme";
+import { type ThemeColors, S, T } from "@/constants/theme";
 import { ScalePress } from "@/components/ScalePress";
 
 interface InfoDocsRowProps {
@@ -16,7 +15,7 @@ export function InfoDocsRow({ count, C, onPress }: InfoDocsRowProps) {
     <ScalePress
       style={s.row}
       activeScale={0.98}
-      onPress={() => { Haptics.selectionAsync(); onPress(); }}
+      onPress={() => { onPress(); }}
       accessibilityRole="button"
       accessibilityLabel={`Information and documents, ${count} items`}
     >
@@ -38,18 +37,15 @@ function makeStyles(C: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       gap: S.sm,
-      marginHorizontal: S.md,
-      marginTop: S.sm,
+      marginTop: S.lg,
       paddingVertical: S.sm,
-      paddingHorizontal: S.sm,
-      backgroundColor: C.card,
-      borderRadius: R.xl,
+      paddingHorizontal: S.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: C.border,
     },
     iconBox: {
-      width: 36,
+      width: 28,
       height: 36,
-      borderRadius: R.full,
-      backgroundColor: C.elevated,
       alignItems: "center",
       justifyContent: "center",
     },

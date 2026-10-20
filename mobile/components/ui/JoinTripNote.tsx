@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { ActivityIndicator, View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { CoverFade } from "@/components/ui/CoverFade";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { CalendarBlank, Images, CaretDown, CaretRight, Plus, WifiSlash } from "phosphor-react-native";
 import { S, T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import { ListSkeleton } from "@/components/Skeleton";
 import { ScreenTitle } from "@/components/ui/CollapsingHeader";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 
@@ -16,7 +17,7 @@ function useOpenJoin() {
   const router = useRouter();
   return () => {
     void Haptics.selectionAsync();
-    router.navigate({ pathname: "/(tabs)", params: { join: String(Date.now()) } });
+    router.push("/join");
   };
 }
 
@@ -130,9 +131,8 @@ export function NoTripsPage({ screen, ready, offline, onRetry, retrying }: Recov
       ) : undefined}>{isToday ? "Today" : "Gallery"}</ScreenTitle>
       <View style={styles.context}>
         {!ready ? (
-          <View style={styles.loading} accessibilityRole="progressbar" accessibilityLabel="Loading trips" accessibilityState={{ busy: true }}>
-            <ActivityIndicator color={C.tealText} />
-            <Text style={[styles.body, { color: C.textSecondary }]}>Loading your trips…</Text>
+          <View style={{ alignSelf: "stretch" }}>
+            <ListSkeleton rows={3} />
           </View>
         ) : (
           <>

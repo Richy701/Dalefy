@@ -3,8 +3,8 @@ import { T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 
 /**
- * Quiet section label (eyebrows, card kickers): system font, sentence case,
- * tertiary text. One style everywhere.
+ * Section heading for boxless sections: system font, sentence case,
+ * 17pt semibold in the primary text colour. One style everywhere.
  */
 export function MicroLabel({ children, color, style }: {
   children: React.ReactNode;
@@ -15,9 +15,10 @@ export function MicroLabel({ children, color, style }: {
   return (
     <Text
       style={[{
-        fontSize: T.sm,
-        fontWeight: T.medium,
-        color: color ?? C.textTertiary,
+        fontSize: T.lg,
+        fontWeight: T.semibold,
+        letterSpacing: -0.2,
+        color: color ?? C.textPrimary,
       }, style]}
     >
       {children}

@@ -1,6 +1,12 @@
 // Location name → [lat, lng] lookup for dynamic map rendering
 export const LOCATION_COORDS: Record<string, [number, number]> = {
   // Airports
+  "HKT": [8.1132, 98.3169],
+  "CNX": [18.7668, 98.9626],
+  "DMK": [13.9126, 100.6068],
+  "USM": [9.5478, 100.0623],
+  "KBV": [8.0992, 98.9862],
+  "BGI": [13.0746, -59.4925],
   "MAN": [53.3537, -2.275],
   "DOH": [25.2731, 51.6080],
   "NBO": [-1.3192, 36.9278],

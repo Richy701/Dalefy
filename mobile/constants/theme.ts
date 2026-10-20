@@ -126,7 +126,7 @@ export const F = {
 export const T = {
   "2xs": 10,
   xs: 11,
-  sm: 12,
+  sm: 13,
   base: 15,
   md: 16,
   lg: 17,
@@ -144,11 +144,15 @@ export const T = {
   black: "900" as const,
 };
 
+/** iOS form sheets draw their navigation bar over the content; pad sheet content by this */
+export const SHEET_BAR_H = 64;
+
 export const R = {
   sm: 12,
   md: 14,
-  lg: 18,
-  xl: 22,
+  // Cards: one radius everywhere, closer to Wallet/Settings than to pills (was 18 and 22)
+  lg: 16,
+  xl: 16,
   "2xl": 28,
   full: 100,
 };

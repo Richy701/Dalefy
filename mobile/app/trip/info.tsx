@@ -1,26 +1,25 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, Platform, LayoutAnimation, Share, Linking,
+  StyleSheet, Platform, Share, Linking,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
   CaretRight, Calendar, Clock, Check,
   Warning, WarningCircle, ArrowSquareOut, Paperclip,
-  Receipt, Bed, ListChecks, Info, Airplane, Bus, ForkKnife,
-  ShieldCheck, Phone, Ticket, Suitcase, FirstAid,
 } from "phosphor-react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
-import { T, R, S, F, statusTone, type ThemeColors } from "@/constants/theme";
+import { T, R, S, statusTone, type ThemeColors } from "@/constants/theme";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback } from "react";
 import type { TripInfo } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
+import { CachedImage } from "@/components/CachedImage";
+import { CategoryDot } from "@/components/ui/CategoryDot";
+import type { TravelEvent } from "@/shared/types";
 
 const URL_RE = /(https?:\/\/[^\s),]+)/g;
 
@@ -54,23 +53,6 @@ function LinkedText({ text, style, linkColor, stripUrls, numberOfLines }: { text
 
 type InfoStatus = "overdue" | "urgent" | "upcoming" | "done" | null;
 
-/** Pick a leading icon from the item's title so each card has a subject at a glance. */
-function iconForTitle(title: string) {
-  const t = title.toLowerCase();
-  if (/cost|price|budget|payment|invoice|deposit|balance|£|\$|€/.test(t)) return Receipt;
-  if (/hotel|accommodation|room|resort|stay|lodge|camp/.test(t)) return Bed;
-  if (/outstanding|todo|to do|pending|action|checklist|remaining/.test(t)) return ListChecks;
-  if (/flight|airline|airport|baggage/.test(t)) return Airplane;
-  if (/transfer|transport|coach|bus|train|car/.test(t)) return Bus;
-  if (/dinner|lunch|breakfast|meal|dining|restaurant|food/.test(t)) return ForkKnife;
-  if (/visa|passport|insurance|entry|health|vaccin/.test(t)) return ShieldCheck;
-  if (/medical|emergency|doctor/.test(t)) return FirstAid;
-  if (/contact|phone|call|whatsapp/.test(t)) return Phone;
-  if (/ticket|entry|pass|booking/.test(t)) return Ticket;
-  if (/packing|pack|luggage|what to bring/.test(t)) return Suitcase;
-  return Info;
-}
-
 const FACT_RE = /([A-Za-z][^.,:;()\n]{2,48}?)\s*[:(]\s*((?:£|\$|€)\s?[\d,]+(?:\.\d{2})?)/g;
 
 /** Money amounts with the words that label them, so a cost paragraph gets a scannable row. */
@@ -85,9 +67,90 @@ function extractFacts(body: string): { label: string; amount: string }[] {
     if (!label || seen.has(key)) continue;
     seen.add(key);
     out.push({ label, amount });
-    if (out.length === 4) break;
+    if (out.length === 12) break;
   }
   return out;
+}
+
+/** Sentences that carry no amount, so a cost receipt isn't repeated as prose underneath it. */
+function nonMoneySentences(body: string): string {
+  return body.split(/(?<=[.!?])\s+/).filter(sn => !/(?:£|\$|€)\s?\d/.test(sn)).join(" ").trim();
+}
+
+type TopicKind = "costs" | "stay" | "todo" | "text";
+
+/** What a topic is about decides how it is laid out. */
+function topicKind(title: string): TopicKind {
+  const t = title.toLowerCase();
+  if (/cost|price|budget|payment|invoice|deposit|balance/.test(t)) return "costs";
+  if (/hotel|accommodation|room|resort|stay|lodg|camp/.test(t)) return "stay";
+  if (/outstanding|to do|todo|pending|action|checklist|remaining|to sort|tbc|tba/.test(t)) return "todo";
+  return "text";
+}
+
+/** The itinerary category a cost line belongs to, so it carries the same icon as on the itinerary. */
+function costCategory(label: string): TravelEvent["type"] | null {
+  const l = label.toLowerCase();
+  if (/accommodation|hotel|resort|lodge|camp|stay|room/.test(l)) return "hotel";
+  if (/flight|airfare|airline/.test(l)) return "flight";
+  if (/transfer|transport|coach|car|taxi/.test(l)) return "transfer";
+  if (/dinner|lunch|breakfast|meal|dining|restaurant/.test(l)) return "dining";
+  if (/tour|activity|excursion|experience|ticket/.test(l)) return "activity";
+  return null;
+}
+
+/** The hotel event a stay line talks about, for its photo. */
+function matchHotel(name: string, events: TravelEvent[]): TravelEvent | undefined {
+  const key = name.toLowerCase().split(/\s+/).slice(0, 2).join(" ");
+  return events.find(e => e.type === "hotel" && e.image && (e.title.toLowerCase().includes(key) || (e.location ?? "").toLowerCase().includes(key)));
+}
+
+/** The icon already says what kind of cost it is, so the label doesn't need to. */
+function shortCostLabel(label: string): string {
+  return label.replace(/\s+(accommodation|hotel stay|stay|hotel)$/i, "").trim() || label;
+}
+
+/** Shorthand in brackets that the sentence already spells out: (comp), (TBA), (TBC). */
+function dropShorthand(text: string): string {
+  return text.replace(/\s*\((?:comp|tba|tbc|tbd|n\/a)\)/gi, "").replace(/\s{2,}/g, " ").trim();
+}
+
+const MONTHS: Record<string, number> = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+/** "…, 8–10 Nov (2 nights, …)" -> the date range, a night count, and the details without them. */
+function stayDates(detail: string): { range: string; nights: number | null; rest: string } {
+  const m = detail.match(/(\d{1,2})\s*[–-]\s*(\d{1,2})\s+([A-Za-z]{3})[a-z]*/);
+  if (!m) return { range: "", nights: null, rest: detail };
+  const from = Number(m[1]), to = Number(m[2]);
+  const nights = MONTHS[m[3].toLowerCase()] !== undefined && to > from ? to - from : null;
+  const rest = detail.replace(m[0], "").replace(/\(\s*\d+\s+nights?,?\s*/i, "(").replace(/\(\s*\)/g, "")
+    .replace(/,\s*,/g, ",").replace(/,\s*\(/g, " (").replace(/\s{2,}/g, " ").replace(/[,\s]+$/, "").replace(/^[,\s]+/, "").trim();
+  return { range: `${m[1]}–${m[2]} ${m[3]}`, nights, rest };
+}
+
+/** The itinerary event a line talks about ("Phuket entertainment…" -> "Phuket Entertainment – Details TBC"). */
+function matchEvent(line: string, events: TravelEvent[], type?: TravelEvent["type"]): TravelEvent | undefined {
+  const l = line.toLowerCase();
+  return events.find(e => {
+    if (type && e.type !== type) return false;
+    const key = e.title.toLowerCase().replace(/^[a-z]{2}\d+\s*[–—-]\s*/, "").split(/\s+/).slice(0, 2).join(" ");
+    return key.length > 4 && l.includes(key);
+  });
+}
+
+const TOPIC_HEADING: Record<TopicKind, string | null> = { costs: "Costs", stay: "Where you're staying", todo: "Still to sort", text: null };
+
+/** Lines the organiser wrote, or failing that, sentences. */
+function splitLines(body: string): string[] {
+  const lines = body.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const parts = lines.length > 1 ? lines : body.split(/(?<=[.!?])\s+(?=[A-Z])/);
+  return parts.map(l => l.replace(/[.\s]+$/, "").trim()).filter(Boolean);
+}
+
+/** "Anantara Resort: 14 rooms, 7–8 Nov" -> name and details */
+function splitNamed(line: string): { name: string; detail: string } {
+  const i = line.indexOf(":");
+  return i > 0 && i < 70 ? { name: line.slice(0, i).trim(), detail: line.slice(i + 1).trim() } : { name: line, detail: "" };
 }
 
 function getStatus(item: TripInfo, now = new Date()): InfoStatus {
@@ -110,10 +173,10 @@ function statusConfig(status: InfoStatus, deadline: string | undefined, C: Theme
   const dl = deadline ? formatDeadlineShort(deadline) : "";
   switch (status) {
     case "overdue":
-      return { Icon: WarningCircle, label: `Overdue · was due ${dl}`, tone: statusTone("expired", C) };
+      return { Icon: WarningCircle, label: `Overdue, was due ${dl}`, tone: statusTone("expired", C) };
     case "urgent": {
       const days = Math.ceil((new Date(deadline + "T23:59:59").getTime() - Date.now()) / 86400000);
-      return { Icon: Clock, label: `Due in ${days} day${days !== 1 ? "s" : ""} · ${dl}`, tone: statusTone("expiring", C) };
+      return { Icon: Clock, label: `Due in ${days} day${days !== 1 ? "s" : ""}, ${dl}`, tone: statusTone("expiring", C) };
     }
     case "upcoming":
       return { Icon: Calendar, label: `Due ${dl}`, tone: statusTone("upcoming", C) };
@@ -147,14 +210,38 @@ export default function InfoScreen() {
     return isLeader ? all : all.filter(i => !i.leaderOnly);
   }, [trip?.info, isLeader]);
 
-  const [expandedId, setExpandedId] = useState<string | null>(infoItems[0]?.id ?? null);
+  // Topics with a deadline come first, soonest due at the top
+  const ordered = useMemo(() => {
+    const due = infoItems.filter(i => !i.completed && !!i.deadline).sort((x, y) => x.deadline!.localeCompare(y.deadline!));
+    return [...due, ...infoItems.filter(i => !due.includes(i))];
+  }, [infoItems]);
 
-  const toggle = useCallback((id: string) => {
-    Haptics.selectionAsync();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedId(prev => prev === id ? null : id);
-  }, []);
+  const headerOptions = (title: string) => ({
+    headerShown: true,
+    title,
+    headerBackTitle: " ",
+    headerBackButtonDisplayMode: "minimal" as const,
+    headerTransparent: Platform.OS === "ios",
+    headerBlurEffect: isDark ? "systemChromeMaterialDark" as const : "systemChromeMaterialLight" as const,
+    headerTintColor: C.textPrimary,
+    headerTitleStyle: { color: C.textPrimary, fontWeight: "600" as const },
+    headerShadowVisible: false,
+    ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
+  });
 
+  const shareMenu = (item: TripInfo) => ({
+    actions: [
+      { title: "Share", systemIcon: "square.and.arrow.up" },
+      { title: "Copy Text", systemIcon: "doc.on.doc" },
+    ],
+    onPress: (e: any) => {
+      const text = `${item.title}\n\n${item.body ?? ""}`;
+      if (e.nativeEvent.index === 0) Share.share({ message: text });
+      else if (e.nativeEvent.index === 1) {
+        import("expo-clipboard").then(Clipboard => Clipboard.setStringAsync(text)).catch(() => {});
+      }
+    },
+  });
 
   if (!trip) {
     return (
@@ -169,159 +256,194 @@ export default function InfoScreen() {
     );
   }
 
+  const renderTopic = (item: TripInfo) => {
+    const kind = topicKind(item.title || "");
+    const heading = TOPIC_HEADING[kind] ?? item.title ?? "Information";
+    const sc = statusConfig(getStatus(item), item.deadline, C);
+    const body = item.body ?? "";
+    const facts = kind === "costs" && body ? extractFacts(body) : [];
+    const totalIdx = facts.findIndex(f => /total/i.test(f.label));
+    const receipt = totalIdx >= 0 ? [...facts.filter((_, i) => i !== totalIdx), facts[totalIdx]] : facts;
+    const lines = (kind === "stay" || kind === "todo") && body ? splitLines(body) : [];
+    // Essentials: "Currency: Thai baht" lines become label/value rows; several separate lines become rows
+    const textLines = kind === "text" && body ? body.split(/\n+/).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean) : [];
+    const pairs = textLines.length >= 2 && textLines.filter(l => { const n = splitNamed(l); return !!n.detail && n.name.length <= 32; }).length >= Math.ceil(textLines.length * 0.6)
+      ? textLines.map(splitNamed) : [];
+    const textRows = pairs.length === 0 && textLines.length >= 2 ? textLines : [];
+    const prose = kind === "costs" && facts.length > 0 ? dropShorthand(nonMoneySentences(body))
+      : (kind === "stay" || kind === "todo") && lines.length > 0 ? ""
+      : pairs.length > 0 || textRows.length > 0 ? ""
+      : body;
+
+    return (
+      <ContextMenu key={item.id} {...shareMenu(item)}>
+        <View style={styles.topic}>
+          <Text style={styles.groupTitle} accessibilityRole="header">{heading}</Text>
+          {sc ? <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text> : null}
+
+          {receipt.length > 0 && (
+            <View style={styles.card}>
+              {totalIdx >= 0 && (
+                <View style={styles.totalHero}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalValue}>{facts[totalIdx].amount}</Text>
+                </View>
+              )}
+              {receipt.filter((_, i) => !(totalIdx >= 0 && i === receipt.length - 1)).map((f, i) => {
+                const cat = costCategory(f.label);
+                return (
+                  <View key={f.label} style={[styles.receiptRow, (i > 0 || totalIdx >= 0) && styles.rowBorder]}>
+                    {cat ? <CategoryDot type={cat} size={28} /> : null}
+                    <Text style={styles.receiptLabel} numberOfLines={2}>{cat ? shortCostLabel(f.label) : f.label}</Text>
+                    <Text style={styles.receiptAmount}>{f.amount}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {lines.length > 0 && (
+            <View style={styles.card}>
+              {lines.map((line, i) => {
+                const named = kind === "stay" ? splitNamed(line) : { name: line, detail: "" };
+                const dates = kind === "stay" ? stayDates(named.detail) : null;
+                const name = named.name;
+                const detail = dates ? dates.rest : named.detail;
+                const hotel = kind === "stay" ? matchHotel(name, trip.events) : undefined;
+                // Rows open the itinerary event they describe, when there is one
+                const linked = kind === "stay" ? (hotel ?? matchEvent(name, trip.events, "hotel")) : matchEvent(name, trip.events);
+                return (
+                  <Pressable
+                    key={i}
+                    disabled={!linked}
+                    onPress={() => linked && router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: linked.id } })}
+                    accessibilityRole={linked ? "button" : undefined}
+                    style={({ pressed }) => [styles.listRow, kind === "todo" && { alignItems: "flex-start" }, i > 0 && styles.rowBorder, pressed && linked ? { backgroundColor: C.elevated } : null]}
+                  >
+                    {kind === "stay" ? (
+                      hotel?.image ? <CachedImage uri={hotel.image} style={styles.stayThumb} /> : <CategoryDot type="hotel" size={28} />
+                    ) : (
+                      <Clock size={18} color={C.amberText} weight="regular" style={{ marginTop: 2 }} />
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={kind === "todo" ? styles.todoText : styles.rowTitle}>{name}</Text>
+                      {dates?.range ? (
+                        <Text style={styles.stayRange}>{dates.range}{dates.nights ? `, ${dates.nights} night${dates.nights === 1 ? "" : "s"}` : ""}</Text>
+                      ) : null}
+                      {detail ? <Text style={styles.rowSub}>{detail}</Text> : null}
+                    </View>
+                    {linked ? <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {pairs.length > 0 && (
+            <View style={styles.card}>
+              {pairs.map((pr, i) => {
+                const phone = /^\+?[\d\s()-]{6,}$/.test(pr.detail) ? pr.detail.replace(/[^\d+]/g, "") : null;
+                return (
+                  <Pressable
+                    key={i}
+                    disabled={!phone}
+                    onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+                    accessibilityRole={phone ? "button" : undefined}
+                    accessibilityLabel={phone ? `Call ${pr.name}, ${pr.detail}` : undefined}
+                    style={({ pressed }) => [styles.pairRow, i > 0 && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}
+                  >
+                    <Text style={styles.pairLabel}>{pr.name || " "}</Text>
+                    <Text style={[styles.pairValue, phone && { color: C.tealText }]} selectable={!phone}>{pr.detail || pr.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {textRows.length > 0 && (
+            <View style={styles.card}>
+              {textRows.map((row, i) => (
+                <View key={i} style={[styles.listRow, i > 0 && styles.rowBorder]}>
+                  <LinkedText text={row} style={[styles.todoText, { flex: 1 }]} linkColor={C.tealText} />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {prose && kind === "text" ? (
+            <View style={[styles.card, { padding: S.md }]}>
+              <LinkedText
+                text={prose}
+                style={styles.bodyText}
+                linkColor={C.tealText}
+                stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+              />
+            </View>
+          ) : prose ? (
+            <LinkedText
+              text={prose}
+              style={kind === "text" ? styles.bodyText : styles.caption}
+              linkColor={C.tealText}
+              stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
+            />
+          ) : null}
+
+          {item.notes?.map((note, i) => (
+            <View key={i} style={styles.noteCallout}>
+              <Warning size={14} color={C.amberText} weight="fill" style={{ marginTop: 3 }} />
+              <Text style={styles.noteCalloutText}>{note}</Text>
+            </View>
+          ))}
+
+          {(item.actionUrl || (item.documents?.length ?? 0) > 0) && (
+            <View style={styles.card}>
+              {item.actionUrl && (
+                <Pressable
+                  onPress={() => Linking.openURL(item.actionUrl!)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.actionLabel ?? "Open link"}
+                  style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: C.elevated }]}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.rowTitle, { color: C.tealText }]}>{item.actionLabel ?? "Open link"}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>{hostname(item.actionUrl)}</Text>
+                  </View>
+                  <ArrowSquareOut size={16} color={C.textTertiary} weight="regular" />
+                </Pressable>
+              )}
+              {item.documents?.map((d, i) => (
+                <Pressable
+                  key={d.id}
+                  onPress={() => openDocument(d.url, d.name).catch(() => {})}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open attachment ${d.name}`}
+                  style={({ pressed }) => [styles.listRow, (i > 0 || !!item.actionUrl) && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}
+                >
+                  <Paperclip size={16} color={C.textTertiary} weight="regular" />
+                  <Text style={[styles.rowTitle, { flex: 1 }]} numberOfLines={1}>{d.name}</Text>
+                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {item.source ? <Text style={styles.sourceText}>From {item.source}</Text> : null}
+        </View>
+      </ContextMenu>
+    );
+  };
+
   return (
     <View style={styles.safe}>
-      <Stack.Screen options={{
-        headerShown: true,
-        headerLargeTitle: true,
-        headerLargeTitleShadowVisible: false,
-        headerLargeTitleStyle: { color: C.textPrimary },
-        title: "Information",
-        headerBackTitle: " ",
-        headerBackButtonDisplayMode: "minimal",
-        headerTransparent: Platform.OS === "ios",
-        headerBlurEffect: isDark ? "dark" : "light",
-        headerTintColor: C.textPrimary,
-        headerTitleStyle: { color: C.textPrimary, fontWeight: "700" },
-        headerShadowVisible: false,
-        ...(Platform.OS === "android" ? { headerStyle: { backgroundColor: C.bg } } : {}),
-      }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} contentInsetAdjustmentBehavior="automatic">
-
-        <View style={styles.content}>
-          {infoItems.map((item, idx) => {
-            const isOpen = expandedId === item.id;
-            const status = getStatus(item);
-            const sc = statusConfig(status, item.deadline, C);
-            const LeadIcon = iconForTitle(item.title || "");
-            const facts = item.body ? extractFacts(item.body) : [];
-            const isLong = !!item.body && item.body.length > 220;
-            return (
-              <ContextMenu
-                key={item.id}
-                actions={[
-                  { title: "Share", systemIcon: "square.and.arrow.up" },
-                  { title: "Copy Text", systemIcon: "doc.on.doc" },
-                ]}
-                onPress={(e: any) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  const text = `${item.title}\n\n${item.body ?? ""}`;
-                  if (e.nativeEvent.index === 0) Share.share({ message: text });
-                  else if (e.nativeEvent.index === 1) {
-                    import("expo-clipboard").then(Clipboard => Clipboard.setStringAsync(text)).catch(() => {});
-                  }
-                }}
-              >
-                <View style={styles.section}>
-                  {/* Header: title, where it came from, and its status */}
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.iconTile}>
-                      <LeadIcon size={18} color={C.textPrimary} weight="regular" />
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.sectionTitle}>{item.title || "Information"}</Text>
-                      {item.source ? <Text style={styles.sourceText} numberOfLines={1}>From {item.source}</Text> : null}
-                    </View>
-                  </View>
-
-                  <View style={styles.sectionBody}>
-
-                      {/* 0. Deadline / completion as a plain date row */}
-                      {sc && (
-                        <View style={styles.metaRow}>
-                          <sc.Icon size={14} color={sc.tone.text} weight="bold" />
-                          <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text>
-                        </View>
-                      )}
-
-                      {/* 1. Key facts pulled from the body */}
-                      {facts.length > 0 && (
-                        <View style={styles.facts}>
-                          {facts.map(f => (
-                            <View key={f.label} style={styles.fact}>
-                              <Text style={styles.factAmount}>{f.amount}</Text>
-                              <Text style={styles.factLabel} numberOfLines={1}>{f.label}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-
-                      {/* 2. Action button */}
-                      {item.actionUrl && (
-                        <Pressable
-                          onPress={() => Linking.openURL(item.actionUrl!)}
-                          accessibilityRole="button"
-                          accessibilityLabel={item.actionLabel ?? "Open link"}
-                          style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}
-                        >
-                          <View style={styles.actionBtnIcon}>
-                            <ArrowSquareOut size={16} color={C.teal} weight="regular" />
-                          </View>
-                          <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={styles.actionBtnLabel}>{item.actionLabel ?? "Open link"}</Text>
-                            <Text style={styles.actionBtnHost} numberOfLines={1}>{hostname(item.actionUrl)}</Text>
-                          </View>
-                          <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
-                        </Pressable>
-                      )}
-
-                      {/* 3. Notes callouts */}
-                      {item.notes?.map((note, i) => (
-                        <View key={i} style={styles.noteCallout}>
-                          <Warning size={14} color={C.amberText} weight="fill" style={{ marginTop: 2 }} />
-                          <Text style={styles.noteCalloutText}>{note}</Text>
-                        </View>
-                      ))}
-
-                      {/* 4. Body text, clamped until opened */}
-                      {item.body ? (
-                        <View>
-                          <View>
-                            <LinkedText
-                              text={item.body}
-                              style={styles.bodyText}
-                              linkColor={C.tealText}
-                              stripUrls={item.actionUrl ? [item.actionUrl] : undefined}
-                              numberOfLines={isLong && !isOpen ? 5 : undefined}
-                            />
-                            {isLong && !isOpen && (
-                              <LinearGradient colors={[`${C.card}00`, C.card]} style={styles.bodyFade} pointerEvents="none" />
-                            )}
-                          </View>
-                          {isLong && (
-                            <Pressable onPress={() => toggle(item.id)} hitSlop={8} accessibilityRole="button" accessibilityLabel={isOpen ? "Show less" : "Read more"} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginTop: S.xs })}>
-                              <Text style={styles.readMore}>{isOpen ? "Show less" : "Read more"}</Text>
-                            </Pressable>
-                          )}
-                        </View>
-                      ) : null}
-
-                      {/* 5. Attachments */}
-                      {item.documents && item.documents.length > 0 && (
-                        <View style={styles.attachments}>
-                          {item.documents.map(d => (
-                            <Pressable
-                              key={d.id}
-                              onPress={() => openDocument(d.url, d.name).catch(() => {})}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Open attachment ${d.name}`}
-                              style={({ pressed }) => [styles.attachmentRow, { opacity: pressed ? 0.7 : 1 }]}
-                            >
-                              <Paperclip size={14} color={C.textTertiary} weight="regular" />
-                              <Text style={styles.attachmentName} numberOfLines={1}>{d.name}</Text>
-                              <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center" }} />
-                            </Pressable>
-                          ))}
-                        </View>
-                      )}
-
-                  </View>
-                </View>
-              </ContextMenu>
-            );
-          })}
-        </View>
-
+      <Stack.Screen options={headerOptions("Trip info")} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} contentInsetAdjustmentBehavior="automatic">
+        {ordered.length === 0 ? (
+          <View style={{ paddingTop: S.xl }}>
+            <EmptyState compact title="Nothing here yet" message="Your organiser hasn't shared any trip information yet." />
+          </View>
+        ) : (
+          <View style={styles.content}>{ordered.map(renderTopic)}</View>
+        )}
       </ScrollView>
     </View>
   );
@@ -330,106 +452,51 @@ export default function InfoScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: C.bg },
-    scroll: {},
     center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.sm },
+    content: { marginTop: S.sm, paddingHorizontal: S.md, gap: S.xl },
+    topic: { gap: S.sm },
+    groupTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
+    caption: { fontSize: T.base, color: C.textSecondary, lineHeight: 22 },
 
-    section: {
-      backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
-    },
-    sectionHeader: {
+    // Boxless: rows run to the page edge (undoing the content gutter) and split with hairlines
+    card: { marginHorizontal: -S.md },
+    listRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm,
+      paddingHorizontal: S.md, paddingVertical: S.sm2, minHeight: 56,
     },
-    iconTile: {
-      width: 36, height: 36, borderRadius: R.md,
-      backgroundColor: C.elevated,
-      alignItems: "center", justifyContent: "center",
-    },
-    sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
-    sourceText: { fontSize: T.sm, color: C.textTertiary, marginTop: 2 },
-    metaRow: { flexDirection: "row", alignItems: "center", gap: S.xs, marginBottom: S.sm },
+    rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+    rowTitle: { fontSize: T.md, fontWeight: T.medium, color: C.textPrimary },
+    rowSub: { fontSize: T.sm, color: C.textTertiary, marginTop: 2 },
+    todoText: { fontSize: T.base, color: C.textPrimary, lineHeight: 22 },
+    pairRow: { flexDirection: "row", alignItems: "flex-start", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.sm2 },
+    pairLabel: { width: 112, fontSize: T.base, color: C.textTertiary, lineHeight: 22 },
+    pairValue: { flex: 1, fontSize: T.base, color: C.textPrimary, lineHeight: 22 },
+
+    detail: { paddingHorizontal: S.md, paddingTop: S.xs, gap: S.md },
+    sourceText: { fontSize: T.sm, color: C.textTertiary },
     metaText: { fontSize: T.sm, fontWeight: T.semibold },
-    facts: {
-      flexDirection: "row", flexWrap: "wrap",
-      backgroundColor: C.elevated, borderRadius: R.lg,
-      paddingVertical: S.sm, paddingHorizontal: S.sm2,
-      marginBottom: S.sm, rowGap: S.sm,
-    },
-    fact: { width: "50%", paddingHorizontal: S.xs2 },
-    factAmount: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.2 },
-    factLabel: { fontSize: T.xs, color: C.textTertiary, marginTop: 1 },
-    bodyFade: { position: "absolute", left: 0, right: 0, bottom: S.sm, height: 28 },
-    readMore: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
 
-    sectionBody: {
-      paddingHorizontal: S.md,
-      paddingBottom: S.md,
-    },
-
-    actionBtn: {
+    totalHero: { paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.sm2 },
+    totalLabel: { fontSize: T.sm, color: C.textTertiary },
+    totalValue: { fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.5, marginTop: 2 },
+    stayThumb: { width: 48, height: 48, borderRadius: R.sm },
+    stayRange: { fontSize: T.sm, fontWeight: T.medium, color: C.textSecondary, marginTop: 2 },
+    receiptRow: {
       flexDirection: "row", alignItems: "center", gap: S.sm,
-      padding: S.md, borderRadius: R.xl,
-      backgroundColor: C.elevated,
-      marginBottom: S.sm,
+      paddingHorizontal: S.md, paddingVertical: S.sm2,
     },
-    actionBtnIcon: {
-      width: 36, height: 36, borderRadius: R.md,
-      backgroundColor: C.tealDim,
-      alignItems: "center", justifyContent: "center",
-    },
-    actionBtnLabel: {
-      fontSize: T.sm, fontWeight: T.semibold,
-      color: C.textPrimary,
-    },
-    actionBtnHost: {
-      fontSize: T.xs, color: C.textTertiary,
-      marginTop: 1,
-    },
+    receiptLabel: { flex: 1, fontSize: T.base, color: C.textPrimary, lineHeight: 21 },
+    receiptAmount: { fontSize: T.base, color: C.textPrimary, fontVariant: ["tabular-nums"], lineHeight: 21 },
+    receiptTotal: { fontWeight: T.semibold },
 
     noteCallout: {
       flexDirection: "row", alignItems: "flex-start", gap: S.xs,
-      padding: S.sm,
-      borderRadius: R.lg,
+      padding: S.sm, borderRadius: R.lg,
       backgroundColor: C.amberDim,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: C.amberMid,
-      marginBottom: S.sm,
     },
-    noteCalloutText: {
-      flex: 1,
-      fontSize: T.sm,
-      color: C.amberText,
-      lineHeight: 20,
-    },
+    noteCalloutText: { flex: 1, fontSize: T.sm, color: C.amberText, lineHeight: 20 },
 
-    bodyText: {
-      fontSize: T.base,
-      color: C.textSecondary,
-      lineHeight: 24,
-      fontWeight: T.regular,
-      marginBottom: S.sm,
-    },
-
-    attachments: {
-      gap: S.xs2,
-      marginTop: S.xs,
-    },
-    attachmentRow: {
-      flexDirection: "row" as const,
-      alignItems: "center" as const,
-      gap: S.xs,
-      paddingVertical: S.sm2,
-      paddingHorizontal: S.md,
-      borderRadius: R.lg,
-      backgroundColor: C.elevated,
-    },
-    attachmentName: {
-      flex: 1,
-      fontSize: T.sm,
-      fontWeight: T.medium as any,
-      color: C.textPrimary,
-    },
+    bodyText: { fontSize: T.md, color: C.textPrimary, lineHeight: 25 },
   });
 }

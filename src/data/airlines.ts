@@ -13,14 +13,14 @@ export const AIRLINE_COLORS: Record<string, string> = {
   AF: "#002157", // Air France
   KL: "#00a1de", // KLM
   QF: "#e0001b", // Qantas
-  SQ: "#f5a623", // Singapore Airlines
+  SQ: "#00266b", // Singapore Airlines
   CX: "#006564", // Cathay Pacific
   NH: "#13448f", // ANA
   JL: "#c80815", // Japan Airlines
   DL: "#003a70", // Delta
   AA: "#0078d2", // American Airlines
   UA: "#002244", // United Airlines
-  WN: "#f9b612", // Southwest
+  WN: "#304cb2", // Southwest
   FR: "#073590", // Ryanair
   U2: "#ff6600", // easyJet
   W6: "#c6007e", // Wizz Air
@@ -55,7 +55,7 @@ export const AIRLINE_COLORS: Record<string, string> = {
   LO: "#003189", // LOT Polish
   TP: "#006747", // TAP Portugal
   AZ: "#00563f", // ITA Airways
-  VN: "#e0861a", // Vietnam Airlines
+  VN: "#00627b", // Vietnam Airlines
   CZ: "#003399", // China Southern
   MU: "#003399", // China Eastern
   CA: "#c80815", // Air China

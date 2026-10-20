@@ -93,7 +93,7 @@ export default function DocumentScreen() {
 
         {/* Preamble */}
         <View style={s.preambleWrap}>
-          <View style={[s.preambleBar, { backgroundColor: C.teal }]} />
+          <View style={[s.preambleBar, { backgroundColor: C.border }]} />
           <Text style={s.preamble}>{content.preamble}</Text>
         </View>
 
@@ -102,7 +102,7 @@ export default function DocumentScreen() {
           <View key={i} style={s.section}>
             <View style={s.sectionNumberWrap}>
               <View style={[s.sectionNumber, { backgroundColor: C.elevated, borderColor: C.border }]}>
-                <Text style={[s.sectionNumberText, { color: C.tealText }]}>{i + 1}</Text>
+                <Text style={[s.sectionNumberText, { color: C.textTertiary }]}>{i + 1}</Text>
               </View>
             </View>
             <View style={s.sectionBody}>
@@ -118,10 +118,10 @@ export default function DocumentScreen() {
         {isSigned && doc.date && (
           <View style={[s.signedCard, { backgroundColor: C.tealDim, borderColor: C.tealMid }]}>
             <View style={[s.signedIcon, { backgroundColor: C.tealDim }]}>
-              <ShieldCheck size={20} color={C.teal} weight="light" />
+              <ShieldCheck size={20} color={C.green} weight="regular" />
             </View>
             <View style={s.signedTextWrap}>
-              <Text style={[s.signedLabel, { color: C.tealText }]}>Signed & verified</Text>
+              <Text style={[s.signedLabel, { color: C.greenText }]}>Signed & verified</Text>
               <Text style={s.signedDate}>
                 {new Date(doc.date).toLocaleDateString("en-GB", {
                   day: "2-digit",
@@ -139,7 +139,7 @@ export default function DocumentScreen() {
         <SafeAreaView edges={["bottom"]} style={s.footerSafe}>
           <View style={s.footer}>
             <View style={s.disclaimerRow}>
-              <Info size={12} color={C.textTertiary} weight="light" style={{ marginTop: 2 }} />
+              <Info size={12} color={C.textTertiary} weight="regular" style={{ marginTop: 2 }} />
               <Text style={s.disclaimer}>
                 By signing, you confirm you have read and accept all terms above.
               </Text>

@@ -1,14 +1,13 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, TextInput, RefreshControl, Modal, KeyboardAvoidingView, Platform, Share,
+  StyleSheet, RefreshControl, Platform, Share,
   Dimensions,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
-  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withSpring, withDelay, withTiming,
+  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler,
   type SharedValue,
-  Easing, FadeInDown,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -16,27 +15,26 @@ import { FadeIn } from "@/components/FadeIn";
 import { Avatar } from "@/components/ui/Avatar";
 import { IconCircleButton } from "@/components/ui/IconCircleButton";
 import { CategoryDot } from "@/components/ui/CategoryDot";
-import { DragHandle } from "@/components/ui/DragHandle";
-import { LinearGradient } from "expo-linear-gradient";
-import MaskedView from "@react-native-masked-view/masked-view";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { useRouter, Link, useLocalSearchParams } from "expo-router";
 import { parseTripDate } from "@/shared/dates";
-import { daysUntil, tripFactLine, tripLengthDays, shortDay, destinationFlag } from "@/shared/tripSummary";
+import { daysUntil, tripFactLine, shortDay, destinationFlag } from "@/shared/tripSummary";
 import { useToast } from "@/context/ToastContext";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  CaretRight, CaretLeft, LinkSimple, CalendarDots,
-  ShareNetwork, Bell, Plus, Scan,
-  Check, WifiSlash,
-  Camera, MapTrifold, Info,
+  CalendarDots,
+  ShareNetwork, Bell, Plus,
+  WifiSlash,
+  Info, Export,
 } from "phosphor-react-native";
 import { NoTripsHero } from "@/components/ui/JoinTripNote";
-import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
+import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { ListSkeleton } from "@/components/Skeleton";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
-import { NotificationSheet } from "@/components/NotificationSheet";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
@@ -44,17 +42,10 @@ import { useNotifications } from "@/context/NotificationContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { type ThemeColors, T, R, S, F, TAB_BAR_HEIGHT, shadow } from "@/constants/theme";
 import type { Trip, TravelEvent } from "@/shared/types";
-import { fetchTripByShortCode, fetchTripById } from "@/services/firebaseTrips";
 
 const HERO_H = 300;
-
-let CameraView: any = null;
-let useCameraPermissions: any = null;
-try {
-  const cam = require("expo-camera");
-  CameraView = cam.CameraView;
-  useCameraPermissions = cam.useCameraPermissions;
-} catch { /* native module not in this build */ }
+// iOS 26: the round actions under the cover use the real Liquid Glass material
+const LIQUID_GLASS = isLiquidGlassAvailable();
 
 const TYPE_LABELS: Record<string, string> = {
   flight: "Flight", hotel: "Hotel", activity: "Activity",
@@ -74,8 +65,7 @@ function cleanTitle(title: string, type: string, transferType?: string): string 
 
 function normaliseTitle(title: string, type: string, transferType?: string): string {
   let t = cleanTitle(title, type, transferType);
-  t = t.replace(/\s+[-–·:]\s+/g, " — ").replace(/\s+/g, " ").trim();
-  return t;
+  return tidyTitleSeparators(t);
 }
 
 
@@ -94,183 +84,6 @@ function relativeTime(iso: string): string {
 
 
 // ── Trip Found Reveal ────────────────────────────────────────────────────────
-function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; onContinue: () => void }) {
-  const imgOpacity = useSharedValue(0);
-  const imgScale = useSharedValue(1.08);
-  const checkScale = useSharedValue(0);
-  const copyOpacity = useSharedValue(0);
-  const copyY = useSharedValue(14);
-  const pillsOpacity = useSharedValue(0);
-  const ctaOpacity = useSharedValue(0);
-  const ctaY = useSharedValue(10);
-
-  useEffect(() => {
-    imgOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
-    imgScale.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
-    checkScale.value = withDelay(200, withSpring(1, { damping: 10, stiffness: 180 }));
-    copyOpacity.value = withDelay(350, withTiming(1, { duration: 300 }));
-    copyY.value = withDelay(350, withSpring(0, { damping: 14, stiffness: 100 }));
-    pillsOpacity.value = withDelay(450, withTiming(1, { duration: 300 }));
-    ctaOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
-    ctaY.value = withDelay(500, withSpring(0, { damping: 14, stiffness: 100 }));
-  }, []);
-
-  const imgStyle = useAnimatedStyle(() => ({
-    opacity: imgOpacity.value,
-    transform: [{ scale: imgScale.value }],
-  }));
-  const checkAnim = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-  }));
-  const copyStyle = useAnimatedStyle(() => ({
-    opacity: copyOpacity.value,
-    transform: [{ translateY: copyY.value }],
-  }));
-  const pillsStyle = useAnimatedStyle(() => ({ opacity: pillsOpacity.value }));
-  const ctaStyle = useAnimatedStyle(() => ({
-    opacity: ctaOpacity.value,
-    transform: [{ translateY: ctaY.value }],
-  }));
-
-  const nights = Math.max(0, Math.ceil((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000));
-  const startDate = parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endDate = parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-  const flag = destinationFlag(trip.destination);
-  return (
-    <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: S.md, paddingVertical: S.lg }}>
-      <View style={{ width: "100%", borderRadius: R.xl, overflow: "hidden", backgroundColor: C.card }}>
-        {/* Photo dissolves into the card, same treatment as the Home hero */}
-        <View style={{ height: 220, backgroundColor: C.elevated }}>
-          <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
-            <MaskedView
-              style={StyleSheet.absoluteFill}
-              maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
-            >
-              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} />
-            </MaskedView>
-          </Animated.View>
-        </View>
-
-        <View style={{ paddingHorizontal: S.md, paddingBottom: S.md, marginTop: -S.lg, gap: S.sm }}>
-          <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs }, checkAnim]}>
-            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.teal, alignItems: "center", justifyContent: "center" }}>
-              <Check size={13} color={C.onAccent} weight="bold" />
-            </View>
-            <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.tealText }}>You're in</Text>
-          </Animated.View>
-
-          <Animated.View style={[{ gap: 3 }, copyStyle]}>
-            <Text style={{ fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={2}>{trip.name}</Text>
-            {trip.destination ? (
-              <Text style={{ fontSize: T.base, color: C.textSecondary }} numberOfLines={1}>{flag ? `${flag}  ` : ""}{trip.destination}</Text>
-            ) : null}
-            <Text style={{ fontSize: T.sm, color: C.textTertiary }} numberOfLines={1}>
-              {startDate} – {endDate} · {nights} night{nights !== 1 ? "s" : ""}
-            </Text>
-          </Animated.View>
-
-          {trip.organizer?.name ? (
-            <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: S.xs, paddingTop: S.xs, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pillsStyle]}>
-              <Avatar size={24} uri={trip.organizer.avatar} initials={trip.organizer.name.trim().charAt(0).toUpperCase()} />
-              <Text style={{ fontSize: T.sm, color: C.textSecondary }} numberOfLines={1}>Hosted by {trip.organizer.name}</Text>
-            </Animated.View>
-          ) : null}
-        </View>
-      </View>
-
-      {/* CTA — appears after animation settles */}
-      <Animated.View style={[{ marginTop: S.md }, ctaStyle]}>
-        <ScalePress
-          onPress={onContinue}
-          style={{
-            height: 50, borderRadius: R.lg,
-            backgroundColor: C.teal,
-            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-          }}
-        >
-          <Text style={{ fontSize: T.md, fontWeight: T.semibold, color: C.onAccent }}>See itinerary</Text>
-          <CaretRight size={14} color={C.onAccent} weight="bold" />
-        </ScalePress>
-      </Animated.View>
-    </View>
-  );
-}
-
-// ── QR Scanner Pane ──────────────────────────────────────────────────────────
-function QRScanPane({ C, styles, onScanned }: {
-  C: ThemeColors; styles: any; onScanned: (data: string) => void;
-}) {
-  const [permission, setPermission] = useState<{ granted: boolean } | null>(null);
-  const scannedRef = useRef(false);
-
-  const requestPermission = useCallback(async () => {
-    if (!useCameraPermissions) return;
-    // Use Camera.requestCameraPermissionsAsync directly
-    try {
-      const cam = require("expo-camera");
-      const { status } = await cam.Camera.requestCameraPermissionsAsync();
-      setPermission({ granted: status === "granted" });
-    } catch {}
-  }, []);
-
-  const handleBarcode = useCallback(({ data }: { data: string }) => {
-    if (scannedRef.current) return;
-    scannedRef.current = true;
-    onScanned(data);
-  }, [onScanned]);
-
-  if (!CameraView) {
-    return (
-      <View style={styles.modeContent}>
-        <View style={[styles.qrFrame, { alignItems: "center", justifyContent: "center" }]}>
-          <Scan size={32} color={C.textTertiary} weight="thin" />
-          <Text style={{ color: C.textTertiary, fontSize: T.sm, fontWeight: T.medium, marginTop: S.sm, textAlign: "center" }}>
-            QR scanning isn't available in this version
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (!permission?.granted) {
-    return (
-      <View style={[styles.modeContent, { justifyContent: "center", paddingVertical: S.xl, paddingHorizontal: S.md }]}>
-        <Scan size={28} color={C.textTertiary} weight="thin" />
-        <Text style={{ color: C.textSecondary, fontSize: T.sm, fontWeight: T.medium, textAlign: "center", marginTop: S.sm, marginBottom: S.md }}>
-          Camera access is needed to scan QR codes
-        </Text>
-        <Pressable
-          onPress={requestPermission}
-          style={[styles.codeSubmit, { backgroundColor: C.teal, width: "100%" }]}
-        >
-          <Text style={[styles.codeSubmitText, { color: C.onAccent }]}>Allow camera</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.modeContent}>
-      <View style={styles.qrFrame}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-          onBarcodeScanned={handleBarcode}
-        />
-        {/* Corner markers */}
-        <View style={[styles.qrCorner, { top: 12, left: 12 }]} />
-        <View style={[styles.qrCorner, { top: 12, right: 12, transform: [{ rotate: "90deg" }] }]} />
-        <View style={[styles.qrCorner, { bottom: 12, left: 12, transform: [{ rotate: "-90deg" }] }]} />
-        <View style={[styles.qrCorner, { bottom: 12, right: 12, transform: [{ rotate: "180deg" }] }]} />
-      </View>
-      <Text style={[styles.checkingText, { marginTop: S.sm }]}>Point at a trip QR code</Text>
-    </View>
-  );
-}
-
-// ── Greeting Hero ─────────────────────────────────────────────────────────────
 function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!nextTrip }: {
   nextTrip: Trip | undefined;
   isActive: boolean;
@@ -283,164 +96,16 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
   const { C, isDark } = useTheme();
   const { unreadCount } = useNotifications();
   const { prefs } = usePreferences();
-  const { trips: joinedTrips } = useTrips();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ join?: string }>();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
   useEffect(() => {
-    if (params.join) setCodeOpen(true);
+    if (params.join) router.push("/join");
   }, [params.join]);
-  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
-  const [linkValue, setLinkValue] = useState("");
-  const [entryMode, setEntryMode] = useState<"pin" | "qr" | "link">("pin");
-  const [resolving, setResolving] = useState(false);
-  const [codeError, setCodeError] = useState<string | null>(null);
-  const [foundTrip, setFoundTrip] = useState<Trip | null>(null);
-  const [previewTrip, setPreviewTrip] = useState<Trip | null>(null);
-  const pinRefs = useRef<Array<TextInput | null>>([]);
-  const shakeX = useSharedValue(0);
-  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
-
-  const triggerShake = useCallback(() => {
-    shakeX.value = withSpring(0, { damping: 8, stiffness: 600 }, () => {});
-    shakeX.value = withTiming(-6, { duration: 50 }, () => {
-      shakeX.value = withTiming(6, { duration: 50 }, () => {
-        shakeX.value = withTiming(-4, { duration: 50 }, () => {
-          shakeX.value = withTiming(4, { duration: 50 }, () => {
-            shakeX.value = withTiming(0, { duration: 50 });
-          });
-        });
-      });
-    });
-  }, [shakeX]);
-
-  const handlePasteRef = useRef<() => void>(() => {});
-  handlePasteRef.current = async () => {
-    try {
-      const text = await Clipboard.getStringAsync();
-      const clean = text.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
-      if (!clean) return;
-      const next = ["", "", "", "", "", ""];
-      for (let i = 0; i < clean.length; i++) next[i] = clean[i];
-      setDigits(next);
-      setCodeError(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (clean.length === 6) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        submitPin(clean);
-      } else {
-        pinRefs.current[clean.length]?.focus();
-      }
-    } catch {}
-  };
-  const handlePaste = useCallback(() => { handlePasteRef.current(); }, []);
   const styles = useMemo(() => makeGreetingStyles(C, isDark), [C, isDark]);
   // Glass circles are dark in dark mode and white in light mode; the glyph takes the opposite.
   const barIcon = isDark ? "#fff" : C.textPrimary;
 
-  const closeSheet = () => {
-    setCodeOpen(false);
-    setDigits(["", "", "", "", "", ""]);
-    setLinkValue("");
-    setEntryMode("pin");
-    setCodeError(null);
-    setFoundTrip(null);
-    setPreviewTrip(null);
-  };
-
-  // Shared reveal → navigate flow for all entry modes
-  const revealAndNavigate = useCallback((trip: Trip) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setFoundTrip(trip);
-  }, []);
-
-  const handleRevealContinue = useCallback(() => {
-    if (!foundTrip) return;
-    router.push(`/shared/${foundTrip.id}`);
-    setTimeout(() => {
-      setCodeOpen(false);
-      setFoundTrip(null);
-      setDigits(["", "", "", "", "", ""]);
-      setLinkValue("");
-    }, 300);
-  }, [foundTrip, router]);
-
-  const submitPin = async (pin: string) => {
-    if (resolving) return;
-    setResolving(true);
-    setCodeError(null);
-    try {
-      const trip = await fetchTripByShortCode(pin);
-      if (!trip) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setCodeError("That PIN doesn't match any trip. Check with your organiser.");
-        triggerShake();
-        setDigits(["", "", "", "", "", ""]);
-        pinRefs.current[0]?.focus();
-        return;
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setPreviewTrip(trip);
-    } catch (err: any) {
-      triggerShake();
-      setCodeError(err?.message || "Couldn't reach the server. Try again.");
-    } finally {
-      setResolving(false);
-    }
-  };
-
-  const submitTripId = async (id: string) => {
-    if (resolving) return;
-    setResolving(true);
-    setCodeError(null);
-    try {
-      const trip = await fetchTripById(id);
-      if (!trip) {
-        // Fallback — navigate directly if fetch fails (trip might still load on the page)
-        setCodeOpen(false);
-        router.push(`/shared/${id}`);
-        return;
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setPreviewTrip(trip);
-    } catch {
-      setCodeOpen(false);
-      router.push(`/shared/${id}`);
-    } finally {
-      setResolving(false);
-    }
-  };
-
-  const submitLink = () => {
-    const raw = linkValue.trim();
-    if (!raw || resolving) return;
-    const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
-    const id = match ? match[1] : raw;
-    submitTripId(id);
-  };
-
-  const handlePinChange = (val: string) => {
-    const clean = val.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
-    const next = ["", "", "", "", "", ""];
-    for (let i = 0; i < clean.length; i++) next[i] = clean[i];
-    setDigits(next);
-    if (codeError) setCodeError(null);
-    if (previewTrip) setPreviewTrip(null);
-    if (clean.length === 6) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      submitPin(clean);
-    }
-  };
-
-  const pinValue = digits.join("");
-  const pinComplete = pinValue.length === 6;
-  const MODES = ["pin", "qr", "link"] as const;
-  const fmtDay = (d: string) => parseTripDate(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  const tripDates = (t: Trip) => `${fmtDay(t.start)} – ${fmtDay(t.end)}`;
-  const recentTrips = [...joinedTrips].sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
-  const canJoin = !!previewTrip && !resolving;
   const pinTop = useAnimatedStyle(() => {
     const y = scrollY?.value ?? 0;
     return { transform: [{ translateY: y < 0 ? y : 0 }] };
@@ -468,13 +133,13 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
         <Logo size={24} color={overPhoto ? "#fff" : C.textPrimary} />
         <View style={[styles.headerActions, { justifyContent: "flex-end" }]}>
           <IconCircleButton variant="glass" size={36}
-            onPress={() => setCodeOpen(true)}
+            onPress={() => router.push("/join")}
             accessibilityLabel="Join a trip"
           >
             <Plus size={18} color={barIcon} weight="bold" />
           </IconCircleButton>
           <IconCircleButton variant="glass" size={36}
-            onPress={() => setNotifOpen(true)}
+            onPress={() => router.push("/notifications")}
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           >
             <Bell size={18} color={barIcon} weight="fill" />
@@ -489,277 +154,6 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
         </View>
       </Animated.View>
 
-      <NotificationSheet visible={notifOpen} onClose={() => setNotifOpen(false)} />
-
-      <Modal
-        visible={codeOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={closeSheet}
-      >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1, backgroundColor: C.card, overflow: "hidden" as const }}
-          >
-            <ScrollView
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.codeSheet, { paddingBottom: insets.bottom + S.md, flexGrow: 1 }]}
-              showsVerticalScrollIndicator={false}
-            >
-              <DragHandle />
-
-              {/* Success reveal */}
-              {foundTrip ? (
-                <TripFoundReveal trip={foundTrip} C={C} onContinue={handleRevealContinue} />
-              ) : (
-              <>
-              {/* Nav row: Cancel · title */}
-              <View style={styles.navBar}>
-                <Pressable onPress={closeSheet} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel" style={({ pressed }) => [styles.navSide, { opacity: pressed ? 0.5 : 1 }]}>
-                  <Text style={styles.navAction}>Cancel</Text>
-                </Pressable>
-                <Text style={styles.navTitle}>Join a trip</Text>
-                <View style={styles.navSide} />
-              </View>
-
-              {entryMode !== "pin" && (
-                <Pressable
-                  onPress={() => { Haptics.selectionAsync(); setCodeError(null); setLinkValue(""); setPreviewTrip(null); setEntryMode("pin"); }}
-                  hitSlop={8} accessibilityRole="button" accessibilityLabel="Enter a PIN instead"
-                  style={({ pressed }) => [styles.backLink, { opacity: pressed ? 0.5 : 1 }]}
-                >
-                  <CaretLeft size={14} color={C.tealText} weight="bold" />
-                  <Text style={styles.altLink}>Enter a PIN instead</Text>
-                </Pressable>
-              )}
-
-              {/* PIN */}
-              {entryMode === "pin" && (
-                <>
-                  <Text style={styles.pinTitle}>Enter your trip PIN</Text>
-                  <Animated.View style={[styles.pinBoxes, shakeStyle]}>
-                    {Array.from({ length: 6 }).map((_, i) => {
-                      const ch = pinValue[i] ?? "";
-                      const active = !resolving && i === Math.min(pinValue.length, 5) && !pinComplete;
-                      return (
-                        <Pressable
-                          key={i}
-                          onPress={() => pinRefs.current[0]?.focus()}
-                          style={[styles.pinBox, active && styles.pinBoxActive, ch ? styles.pinBoxFilled : null]}
-                          accessible={false}
-                        >
-                          <Text style={styles.pinBoxText}>{ch}</Text>
-                        </Pressable>
-                      );
-                    })}
-                    <TextInput
-                      ref={(r) => { for (let i = 0; i < 6; i++) pinRefs.current[i] = r; }}
-                      value={pinValue}
-                      onChangeText={handlePinChange}
-                      keyboardType="default"
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      textContentType="oneTimeCode"
-                      maxLength={6}
-                      autoFocus
-                      editable={!resolving}
-                      returnKeyType="go"
-                      onSubmitEditing={() => { if (pinComplete) submitPin(pinValue); }}
-                      accessibilityLabel="Trip PIN"
-                      caretHidden
-                      style={styles.pinHiddenInput}
-                    />
-                  </Animated.View>
-                  <View style={styles.pinHintRow}>
-                    <Text style={[styles.groupFooter, styles.pinHint, codeError ? { color: C.redText } : null]}>
-                      {codeError ?? (resolving ? "Finding your trip…" : previewTrip ? "Check this is the right trip, then join." : "Six letters and numbers from your organiser.")}
-                    </Text>
-                    <Pressable onPress={handlePaste} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paste PIN from clipboard" style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-                      <Text style={styles.altLink}>Paste</Text>
-                    </Pressable>
-                  </View>
-
-                  {previewTrip && (
-                    <Animated.View entering={FadeInDown.duration(260)}>
-                      <Text style={styles.groupHeader}>Trip found</Text>
-                      <View style={styles.group}>
-                        <View style={styles.previewRow}>
-                          <CachedImage uri={previewTrip.image} style={styles.previewThumb} />
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text style={styles.previewName} numberOfLines={2}>{previewTrip.name}</Text>
-                            <Text style={styles.previewSub} numberOfLines={1}>
-                              {[previewTrip.destination, tripDates(previewTrip)].filter(Boolean).join(" · ")}
-                            </Text>
-                            {previewTrip.organizer?.name ? (
-                              <Text style={styles.previewSub} numberOfLines={1}>Organised by {previewTrip.organizer.name}</Text>
-                            ) : null}
-                          </View>
-                        </View>
-                      </View>
-                      <View style={{ height: S.lg }} />
-                    </Animated.View>
-                  )}
-
-                  <Pressable
-                    onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else if (pinComplete) submitPin(pinValue); }}
-                    disabled={resolving || (!previewTrip && !pinComplete)}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [
-                      styles.codeSubmit,
-                      {
-                        backgroundColor: canJoin ? C.teal : C.elevated,
-                        opacity: pressed && canJoin ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.codeSubmitText, { color: canJoin ? C.onAccent : C.textTertiary }]} numberOfLines={1}>
-                      {resolving ? "Finding trip…" : previewTrip ? `Join ${previewTrip.name}` : "Join Trip"}
-                    </Text>
-                  </Pressable>
-
-                  {!previewTrip && (
-                    <View style={styles.altRow}>
-                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("qr"); }} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.altBtn, { opacity: pressed ? 0.5 : 1 }]}>
-                        <Scan size={16} color={C.tealText} weight="bold" />
-                        <Text style={styles.altLink}>Scan QR code</Text>
-                      </Pressable>
-                      <View style={styles.altDivider} />
-                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("link"); }} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.altBtn, { opacity: pressed ? 0.5 : 1 }]}>
-                        <LinkSimple size={16} color={C.tealText} weight="bold" />
-                        <Text style={styles.altLink}>Paste a link</Text>
-                      </Pressable>
-                    </View>
-                  )}
-
-                  {!previewTrip && recentTrips.length > 0 && (
-                    <View style={{ marginTop: S.xl }}>
-                      <Text style={styles.groupHeader}>Your trips</Text>
-                      <View style={styles.group}>
-                        {recentTrips.map((t, i) => (
-                          <Pressable
-                            key={t.id}
-                            onPress={() => { Haptics.selectionAsync(); closeSheet(); router.push(`/trip/${t.id}`); }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Open ${t.name}`}
-                            style={({ pressed }) => [styles.tripRow, i > 0 && styles.tripRowBorder, { backgroundColor: pressed ? C.card : "transparent" }]}
-                          >
-                            <CachedImage uri={t.image} style={styles.tripThumb} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.tripName} numberOfLines={1}>{t.name}</Text>
-                              <Text style={styles.previewSub} numberOfLines={1}>{tripDates(t)}</Text>
-                            </View>
-                            <CaretRight size={14} color={C.textTertiary} weight="regular" />
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </>
-              )}
-
-              {/* QR scanner */}
-              {entryMode === "qr" && (
-                <View style={styles.group}>
-                <QRScanPane
-                  C={C}
-                  styles={styles}
-                  onScanned={(data) => {
-                    const match = data.match(/shared\/([A-Za-z0-9_-]+)/);
-                    const id = match ? match[1] : null;
-                    if (id) {
-                      setEntryMode("pin");
-                      submitTripId(id);
-                    } else {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                      setCodeError("QR code doesn't contain a valid trip link");
-                      setEntryMode("pin");
-                    }
-                  }}
-                />
-                </View>
-              )}
-
-              {/* Link paste */}
-              {entryMode === "link" && (
-                <>
-                  <View style={styles.group}>
-                    <View style={styles.groupRow}>
-                      <Text style={styles.rowLabel}>Link</Text>
-                      <TextInput
-                        value={linkValue}
-                        onChangeText={(t) => { setLinkValue(t); if (codeError) setCodeError(null); }}
-                        autoFocus
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                        placeholder="dalefy.app/trip/…"
-                        placeholderTextColor={C.textTertiary}
-                        style={styles.rowInput}
-                        onSubmitEditing={submitLink}
-                        returnKeyType="go"
-                        accessibilityLabel="Invite link"
-                      />
-                      <Pressable
-                        onPress={async () => {
-                          try {
-                            const text = await Clipboard.getStringAsync();
-                            if (text) { setLinkValue(text.trim()); setCodeError(null); }
-                          } catch {}
-                        }}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Paste link from clipboard"
-                        style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-                      >
-                        <Text style={styles.rowAction}>Paste</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                  <Text style={[styles.groupFooter, codeError ? { color: C.redText } : null]}>
-                    {codeError ?? (previewTrip ? "Check this is the right trip, then join." : "Paste the invite link your organiser shared.")}
-                  </Text>
-                  {previewTrip && (
-                    <Animated.View entering={FadeInDown.duration(260)}>
-                      <Text style={styles.groupHeader}>Trip found</Text>
-                      <View style={styles.group}>
-                        <View style={styles.previewRow}>
-                          <CachedImage uri={previewTrip.image} style={styles.previewThumb} />
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text style={styles.previewName} numberOfLines={2}>{previewTrip.name}</Text>
-                            <Text style={styles.previewSub} numberOfLines={1}>
-                              {[previewTrip.destination, tripDates(previewTrip)].filter(Boolean).join(" · ")}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                      <View style={{ height: S.lg }} />
-                    </Animated.View>
-                  )}
-                  <Pressable
-                    onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else submitLink(); }}
-                    disabled={resolving || (!previewTrip && !linkValue.trim())}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [
-                      styles.codeSubmit,
-                      {
-                        backgroundColor: canJoin ? C.teal : C.elevated,
-                        opacity: pressed && canJoin ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.codeSubmitText, { color: canJoin ? C.onAccent : C.textTertiary }]} numberOfLines={1}>
-                      {resolving ? "Finding trip…" : previewTrip ? `Join ${previewTrip.name}` : "Join Trip"}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-
-              </>
-              )}
-            </ScrollView>
-          </KeyboardAvoidingView>
-      </Modal>
 
     </View>
   );
@@ -931,6 +325,7 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
 // ── Trip Row (All Trips list) ──────────────────────────────────────────────────
 function TripRow({ trip }: { trip: Trip }) {
   const { C, isDark } = useTheme();
+  const { toast } = useToast();
   const styles = useMemo(() => makeStyles(C, isDark), [C, isDark]);
   const swipeRef = useRef<Swipeable>(null);
   const start   = parseTripDate(trip.start);
@@ -939,7 +334,12 @@ function TripRow({ trip }: { trip: Trip }) {
   const isPast  = daysUntil(trip.end) < 0;
   const isActive = days <= 0 && !isPast;
   const flag = destinationFlag(trip.destination);
-  const dateRange = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  // UK style: "11–16 May", or "19 May – 1 Jun" across months
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const dateRange = sameMonth
+    ? `${start.getDate()}–${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+    : `${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  const whenLine = isPast ? dateRange : isActive ? tripFactLine(trip).split(", ")[0] : days === 1 ? "tomorrow" : `in ${days} days`;
 
   const renderRightActions = useCallback(() => (
     <View style={{ flexDirection: "row" }}>
@@ -974,13 +374,15 @@ function TripRow({ trip }: { trip: Trip }) {
       onPress={(e: { nativeEvent: { index: number } }) => {
         if (e.nativeEvent.index === 0) {
           Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
+        } else if (e.nativeEvent.index === 1) {
+          const base = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
+          Clipboard.setStringAsync(`${base}/#/shared/${trip.id}`).then(() => toast("Link copied")).catch(() => {});
         }
       }}
     >
     <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       style={styles.row}
-      onPress={() => { Haptics.selectionAsync(); }}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
@@ -993,16 +395,11 @@ function TripRow({ trip }: { trip: Trip }) {
       )}
       <View style={styles.rowBody}>
         <Text style={styles.rowName} numberOfLines={1}>{trip.name}</Text>
-        {trip.destination ? (
-          <Text style={styles.rowDest} numberOfLines={1}>
-            {flag ? `${flag}  ` : ""}{trip.destination}
-          </Text>
-        ) : null}
-        <Text style={[styles.rowFact, isActive && { color: C.tealText }]} numberOfLines={1}>
-          {isPast ? `${dateRange} · ${tripLengthDays(trip)} days` : tripFactLine(trip)}
+        <Text style={styles.rowDest} numberOfLines={1}>
+          {flag ? `${flag}  ` : ""}{trip.destination ? `${trip.destination}, ` : ""}
+          <Text style={isActive ? { color: C.tealText, fontWeight: T.semibold } : undefined}>{whenLine}</Text>
         </Text>
       </View>
-      <CaretRight size={14} color={C.textTertiary} weight="regular" style={{ alignSelf: "center", marginLeft: 2 }} />
     </ScalePress>
     </Link>
     </ContextMenu>
@@ -1021,7 +418,6 @@ export default function HomeScreen() {
   const { prefs } = usePreferences();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRefreshing(true);
     const ok = await reload();
     setRefreshing(false);
@@ -1050,6 +446,9 @@ export default function HomeScreen() {
     [sorted]);
 
   const otherTrips = useMemo(() => sorted.filter(t => t.id !== heroTrip?.id), [sorted, heroTrip]);
+  // Upcoming first (soonest at the top), then past (most recent at the top)
+  const upcomingTrips = useMemo(() => otherTrips.filter(t => parseTripDate(t.end) >= new Date()), [otherTrips]);
+  const pastTrips = useMemo(() => otherTrips.filter(t => parseTripDate(t.end) < new Date()).reverse(), [otherTrips]);
 
   // The day the Itinerary card shows: today while travelling, otherwise the first day.
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -1100,9 +499,12 @@ export default function HomeScreen() {
   const onGround = isDark ? "#fff" : C.textPrimary;
   const heroActions = heroTrip ? [
     { label: "Itinerary", Icon: CalendarDots, go: () => router.push(`/trip/${heroTrip.id}`) },
-    { label: "Today", Icon: MapTrifold, go: () => router.push("/(tabs)/destinations") },
-    { label: "Photos", Icon: Camera, go: () => router.push("/(tabs)/media") },
     { label: "Info", Icon: Info, go: () => router.push(`/trip/info?tripId=${heroTrip.id}`) },
+    // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
+    {
+      label: "Share", Icon: Export,
+      go: () => Share.share({ message: `${heroTrip.name}: ${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/#/shared/${heroTrip.id}` }),
+    },
   ] : [];
 
   return (
@@ -1117,7 +519,6 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} style={{ zIndex: 5 }} />}
       >
-        {ready && heroTrip ? <PhotoWash uri={heroTrip.image} heroHeight={heroH} /> : null}
         {/* Top bar scrolls away with the cover; it also owns the join sheet */}
         <GreetingHero
           scrollY={scrollY}
@@ -1129,11 +530,14 @@ export default function HomeScreen() {
 
         {/* ── Cover ── */}
         {!ready ? (
-          <View style={[styles.hero, { height: HERO_H + insets.top, backgroundColor: C.elevated }]} />
+          <>
+            <View style={[styles.hero, { height: HERO_H + insets.top, backgroundColor: C.elevated }]} />
+            <ListSkeleton rows={4} />
+          </>
         ) : heroTrip ? (
           <>
             <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${heroTrip.id}`); }}
+              onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
               accessibilityRole="button"
               accessibilityLabel={`${heroTrip.name}. ${factLine(heroTrip)}`}
             >
@@ -1148,7 +552,7 @@ export default function HomeScreen() {
                   {heroTrip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{heroTrip.destination}</Text> : null}
                   <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{heroTrip.name}</Text>
                   <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{factLine(heroTrip)}</Text>
-                  <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{fmtDay(heroTrip.start)} → {fmtDay(heroTrip.end)}</Text>
+                  <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{fmtDay(heroTrip.start)} – {fmtDay(heroTrip.end)}</Text>
                 </View>
               </View>
             </Pressable>
@@ -1158,14 +562,20 @@ export default function HomeScreen() {
               {heroActions.map(a => (
                 <Pressable
                   key={a.label}
-                  onPress={() => { Haptics.selectionAsync(); a.go(); }}
+                  onPress={() => { a.go(); }}
                   accessibilityRole="button"
                   accessibilityLabel={a.label}
                   style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
                 >
-                  <View style={styles.actionCircle}>
-                    <a.Icon size={22} color={onGround} weight="fill" />
-                  </View>
+                  {LIQUID_GLASS ? (
+                    <GlassView glassEffectStyle="regular" style={[styles.actionCircle, styles.actionGlass]}>
+                      <a.Icon size={22} color={onGround} weight="fill" />
+                    </GlassView>
+                  ) : (
+                    <View style={styles.actionCircle}>
+                      <a.Icon size={22} color={onGround} weight="fill" />
+                    </View>
+                  )}
                   <Text style={[styles.actionLabel, { color: onGround }]}>{a.label}</Text>
                 </Pressable>
               ))}
@@ -1195,23 +605,23 @@ export default function HomeScreen() {
                 ) : heroDay.events.slice(0, 4).map((ev, i) => (
                   <Pressable
                     key={ev.id}
-                    onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
+                    onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
                     accessibilityRole="button"
                     accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}${ev.time ? `, ${ev.time}` : ""}`}
                     style={({ pressed }) => [styles.evRow, i > 0 && styles.evRowBorder, { backgroundColor: pressed ? C.elevated : "transparent" }]}
                   >
                     <CategoryDot type={ev.type} transferType={ev.transferType} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.evTitle} numberOfLines={1}>{normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
-                      {ev.location ? <Text style={styles.evSub} numberOfLines={1}>{ev.location}</Text> : null}
+                      <Text style={styles.evTitle} numberOfLines={1}>{ev.type === "hotel" ? normaliseTitle(ev.title, ev.type, ev.transferType).split(" – ")[0] : normaliseTitle(ev.title, ev.type, ev.transferType)}</Text>
+                      {ev.location ? <Text style={styles.evSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text> : null}
                     </View>
-                    {ev.time ? (
-                      <Text style={[styles.evTime, /^tb[acd]$/i.test(ev.time) && { color: C.textTertiary }]}>{ev.time}</Text>
-                    ) : null}
+                    {ev.time && !/^tb[acd]$/i.test(ev.time)
+                      ? <Text style={styles.evTime}>{ev.time}</Text>
+                      : <Text style={[styles.evTime, { color: C.textTertiary }]}>TBC</Text>}
                   </Pressable>
                 ))}
                 <Pressable
-                  onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${heroTrip.id}`); }}
+                  onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
                   accessibilityRole="button"
                   style={({ pressed }) => [styles.cardFooter, { opacity: pressed ? 0.6 : 1 }]}
                 >
@@ -1222,13 +632,14 @@ export default function HomeScreen() {
               </View>
             </FadeIn>
 
-            {/* ── Photos ── */}
+            {/* ── Photos: hidden before the trip starts unless someone already added some ── */}
+            {(latestPhotos.length > 0 || daysUntil(heroTrip.start) <= 0) && (
             <FadeIn delay={0}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>Photos</Text>
                   <Pressable
-                    onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
+                    onPress={() => { router.push("/(tabs)/media"); }}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel={latestPhotos.length > 0 ? "See all photos" : "Add a photo"}
@@ -1248,7 +659,7 @@ export default function HomeScreen() {
                       return (
                         <Pressable
                           key={photo.id}
-                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(tabs)/media"); }}
+                          onPress={() => { router.push("/(tabs)/media"); }}
                           accessibilityRole="button"
                           accessibilityLabel={firstName ? `Photo by ${firstName}` : "Trip photo"}
                           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
@@ -1258,7 +669,7 @@ export default function HomeScreen() {
                             <View style={styles.photoCaption}>
                               <Avatar size={16} initials={initial} />
                               <Text style={styles.photoCaptionText} numberOfLines={1}>
-                                {firstName} · {relativeTime(photo.uploadedAt)}
+                                {firstName}, {relativeTime(photo.uploadedAt)}
                               </Text>
                             </View>
                           ) : null}
@@ -1271,25 +682,29 @@ export default function HomeScreen() {
                 )}
               </View>
             </FadeIn>
+            )}
           </>
         ) : null}
 
-        {/* ── Other trips ── */}
-        {ready && otherTrips.length > 0 && (
-          <FadeIn delay={80}>
+        {/* ── Other trips: upcoming, then past ── */}
+        {ready && [
+          { key: "up", title: "Upcoming", list: upcomingTrips },
+          { key: "past", title: "Past trips", list: pastTrips },
+        ].filter(g => g.list.length > 0).map(g => (
+          <FadeIn key={g.key} delay={80}>
             <View style={styles.section}>
-              <Text style={styles.groupHeader}>Trips</Text>
+              <Text style={styles.groupHeader}>{g.title}</Text>
               <View style={styles.listCard}>
-                {otherTrips.map((trip, i) => (
+                {g.list.map((trip, i) => (
                   <View key={trip.id}>
                     <TripRow trip={trip} />
-                    {i < otherTrips.length - 1 && <View style={styles.rowDivider} />}
+                    {i < g.list.length - 1 && <View style={styles.rowDivider} />}
                   </View>
                 ))}
               </View>
             </View>
           </FadeIn>
-        )}
+        ))}
 
         {/* ── Empty state ── */}
         {ready && trips.length === 0 && (
@@ -1332,35 +747,34 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Actions ──
     actions: {
-      flexDirection: "row", justifyContent: "space-between",
+      flexDirection: "row", justifyContent: "space-evenly",
       paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.md,
     },
     action: { alignItems: "center", gap: S.xs2, minWidth: 64 },
     actionCircle: {
       width: 52, height: 52, borderRadius: 26,
-      backgroundColor: isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.09)",
+      backgroundColor: isDark ? "rgba(255,255,255,0.16)" : C.card,
       alignItems: "center", justifyContent: "center",
+      ...shadow("subtle", isDark),
     },
+    actionGlass: { backgroundColor: "transparent", overflow: "hidden", shadowOpacity: 0, elevation: 0 },
     actionLabel: { fontSize: T.xs, fontWeight: T.medium, color: C.textPrimary },
 
     // ── Inset cards ──
-    card: {
-      marginHorizontal: S.md, marginTop: S.sm,
-      backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
-      ...shadow("card", isDark),
-    },
+    // Boxless: sections sit on the page under a small grey label, rows split by hairlines
+    card: { marginTop: S.xl },
     cardHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: S.md, paddingTop: S.sm2, paddingBottom: S.xs2,
+      paddingHorizontal: S.md, paddingBottom: S.xs,
     },
-    cardTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary },
+    cardTitle: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     cardMeta: { fontSize: T.sm, color: C.textTertiary },
     cardEmpty: { fontSize: T.sm, color: C.textTertiary, lineHeight: 19, paddingHorizontal: S.md, paddingBottom: S.md },
     cardFooter: { paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
     cardLink: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
     groupHeader: {
-      fontSize: T.sm, color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.3,
-      paddingHorizontal: S.md + S.sm, marginBottom: S.xs,
+      fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2,
+      paddingHorizontal: S.md, marginBottom: S.xs,
     },
 
     // ── Itinerary rows ──
@@ -1372,10 +786,6 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
 
     // ── Trip rows ──
     listCard: {
-      marginHorizontal: S.md,
-      backgroundColor: C.card, borderRadius: R.xl,
-      overflow: "hidden",
-      ...shadow("card", isDark),
     },
     row: { flexDirection: "row", alignItems: "center", gap: S.md, padding: S.md, paddingVertical: S.sm },
     rowDivider: {

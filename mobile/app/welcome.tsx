@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { CachedImage } from "@/components/CachedImage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
@@ -23,7 +23,7 @@ import { fetchOrgByCode } from "@/services/firebaseBranding";
 import { fetchTripByShortCode } from "@/services/firebaseTrips";
 import { parseTripDate } from "@/shared/dates";
 import type { Trip } from "@/shared/types";
-import { T, R, S, type ThemeColors } from "@/constants/theme";
+import { T, R, S, SHEET_BAR_H, type ThemeColors } from "@/constants/theme";
 import { Logo } from "@/components/Logo";
 
 type Step = "code" | "profile";
@@ -316,7 +316,7 @@ export default function WelcomeScreen() {
                     <Text style={styles.matchTitle} numberOfLines={1}>{matchedTrip.name}</Text>
                     <Text style={styles.matchSub}>
                       {fmtDay(matchedTrip.start)} – {fmtDay(matchedTrip.end)}
-                      {matchedTrip.destination ? ` · ${matchedTrip.destination}` : ""}
+                      {matchedTrip.destination ? `, ${matchedTrip.destination}` : ""}
                     </Text>
                   </View>
                 </Animated.View>
@@ -365,7 +365,28 @@ export default function WelcomeScreen() {
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <View style={styles.safe}>
-      <SafeAreaView style={{ flex: 1 }}>
+      {isEdit && (
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: "Edit profile",
+            headerStyle: { backgroundColor: C.bg },
+            headerTitleStyle: { color: C.textPrimary },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel">
+                <Text style={{ fontSize: T.lg, color: C.tealText }}>Cancel</Text>
+              </Pressable>
+            ),
+            headerRight: () => (
+              <Pressable onPress={submit} disabled={!canSubmit} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save" accessibilityState={{ disabled: !canSubmit }}>
+                <Text style={{ fontSize: T.lg, fontWeight: T.semibold, color: C.tealText, opacity: canSubmit ? 1 : 0.35 }}>Save</Text>
+              </Pressable>
+            ),
+          }}
+        />
+      )}
+      <SafeAreaView style={{ flex: 1, paddingTop: isEdit && Platform.OS === "ios" ? SHEET_BAR_H : 0 }} edges={isEdit ? ["bottom"] : ["top", "bottom", "left", "right"]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
@@ -383,30 +404,7 @@ export default function WelcomeScreen() {
                 <CaretLeft size={18} color={C.textPrimary} weight="regular" />
               </Pressable>
             </Animated.View>
-          ) : (
-            <View style={styles.editNav}>
-              <Pressable
-                onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")}
-                style={({ pressed }) => [styles.editNavSide, { opacity: pressed ? 0.5 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-                hitSlop={8}
-              >
-                <Text style={styles.editNavAction}>Cancel</Text>
-              </Pressable>
-              <Text style={styles.editNavTitle}>Edit Profile</Text>
-              <Pressable
-                onPress={submit}
-                disabled={!canSubmit}
-                style={({ pressed }) => [styles.editNavSide, { alignItems: "flex-end", opacity: !canSubmit ? 0.35 : pressed ? 0.5 : 1 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Save"
-                hitSlop={8}
-              >
-                <Text style={[styles.editNavAction, { fontWeight: T.semibold }]}>Save</Text>
-              </Pressable>
-            </View>
-          )}
+          ) : null}
 
           <ScrollView
             contentContainerStyle={styles.stepScroll}

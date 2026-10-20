@@ -125,3 +125,22 @@ export function TripRowSkeleton() {
     </View>
   );
 }
+
+/** Placeholder for a boxless list while content loads: a small grey label, then rows of icon + two lines. */
+export function ListSkeleton({ rows = 4, label = true }: { rows?: number; label?: boolean }) {
+  const widths = ["72%", "58%", "66%", "50%", "62%"] as const;
+  return (
+    <View accessibilityRole="progressbar" accessibilityLabel="Loading" accessibilityState={{ busy: true }} style={{ marginTop: S.lg }}>
+      {label && <Skeleton width={90} height={11} style={{ marginHorizontal: S.md, marginBottom: S.sm }} />}
+      {Array.from({ length: rows }).map((_, i) => (
+        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: 12 }}>
+          <Skeleton width={28} height={28} borderRadius={14} />
+          <View style={{ flex: 1, gap: 7 }}>
+            <Skeleton width={widths[i % widths.length]} height={13} />
+            <Skeleton width="40%" height={10} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}

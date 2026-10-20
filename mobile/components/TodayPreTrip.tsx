@@ -1,18 +1,19 @@
 import { useMemo, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
 import {
-  AirplaneTilt, CaretRight, WarningCircle, Clock, Calendar, Check, Images, FileText, CloudSun, MapPin,
+  WarningCircle, Clock, Calendar, Check, Images, FileText, CloudSun, MapPin,
 } from "phosphor-react-native";
 import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { Avatar } from "@/components/ui/Avatar";
+import { CategoryDot } from "@/components/ui/CategoryDot";
+import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { Pill } from "@/components/ui/Pill";
 import { useTheme } from "@/context/ThemeContext";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useFlightLiveData } from "@/hooks/useFlightLiveData";
-import { type ThemeColors, T, R, S, shadow, statusTone } from "@/constants/theme";
+import { type ThemeColors, T, S, statusTone } from "@/constants/theme";
 import { calendarDays, scheduledMinutes, dateInZone } from "@/shared/today";
 import { getDestinationTz } from "@/shared/timezones";
 import type { Trip, TravelEvent, TripInfo } from "@/shared/types";
@@ -110,7 +111,13 @@ function SectionHeader({ title, action, onAction, C }: { title: string; action?:
 }
 
 function Card({ children, C, isDark, style }: { children: React.ReactNode; C: ThemeColors; isDark: boolean; style?: any }) {
-  return <View style={[s.card, { backgroundColor: C.card }, shadow("card", isDark), style]}>{children}</View>;
+  // Boxless: groups sit on the page, rows separated by hairlines
+  return <View style={[s.card, style]}>{children}</View>;
+}
+
+/** First sentence of an organiser note, without links, for a one-line preview */
+function infoPreview(body: string): string {
+  return body.replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0] ?? "";
 }
 
 // ── Pre-trip ─────────────────────────────────────────────────────────────────
@@ -146,9 +153,10 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
     return () => { cancelled = true; };
   }, [trip.destination, trip.start, daysUntil]);
 
-  const AVATAR_COLORS = [C.teal, C.hotel, C.activity, C.dining, C.transfer, C.green];
-  const openTrip = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${trip.id}`); };
-  const openInfo = () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/info", params: { tripId: trip.id } }); };
+  // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
+  const AVATAR_COLORS = [C.textSecondary];
+  const openTrip = () => { router.push(`/trip/${trip.id}`); };
+  const openInfo = () => { router.push({ pathname: "/trip/info", params: { tripId: trip.id } }); };
 
   let delay = 0;
   const next = () => { const d = delay; delay = Math.min(delay + 60, 360); return d; };
@@ -158,9 +166,16 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
         {/* Header */}
         <FadeIn delay={next()}>
           <View style={s.header}>
-            <View style={s.headingMeta}>
-              <Text style={[s.scope, { color: C.textSecondary }]}>Your next trip</Text>
-              <Pill tone="custom" bg={C.tealDim} color={C.tealText} label={daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `In ${daysUntil} days`} />
+            {/* The countdown leads: how long until you go */}
+            <View style={s.countdown}>
+              {daysUntil > 1 ? (
+                <>
+                  <Text style={[s.countNum, { color: C.tealText }]}>{daysUntil}</Text>
+                  <Text style={[s.countLabel, { color: C.textSecondary }]}>days to go</Text>
+                </>
+              ) : (
+                <Text style={[s.countNum, { color: C.tealText, fontSize: 28, lineHeight: 34 }]}>{daysUntil === 0 ? "Today" : "Tomorrow"}</Text>
+              )}
             </View>
             <View>
               <Pressable onPress={openTrip} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={`Open trip ${trip.name}`}>
@@ -168,7 +183,7 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
               </Pressable>
 
             </View>
-            <Text style={[s.headerDates, { color: C.textSecondary }]}>{fmtShort(trip.start)} – {fmtShort(trip.end)} · {tripDays} {tripDays === 1 ? "day" : "days"}</Text>
+            <Text style={[s.headerDates, { color: C.textSecondary }]}>{fmtShort(trip.start)} – {fmtShort(trip.end)}, {tripDays} {tripDays === 1 ? "day" : "days"}</Text>
             {trip.destination ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: S.xs2, marginTop: S.xs2 }}>
                 <MapPin size={10} color={C.textTertiary} weight="fill" />
@@ -176,7 +191,7 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
 
               </View>
             ) : null}
-            {forecast && <Text style={[s.forecast, { color: C.textSecondary }]}>First-day forecast · {forecast.temp}° · {forecast.description}</Text>}
+            {forecast && <Text style={[s.forecast, { color: C.textSecondary }]}>First-day forecast, {forecast.temp}°, {forecast.description}</Text>}
           </View>
         </FadeIn>
 
@@ -194,16 +209,16 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
                     onPress={openInfo}
                     accessibilityRole="button"
                     accessibilityLabel={`${item.title}${st ? `, ${st.label}` : ""}`}
-                    style={({ pressed }) => [s.row, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
+                    style={({ pressed }) => [s.row, st && s.rowTop, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
                   >
-                    <View style={[s.rowIcon, { backgroundColor: tone ? tone.bg : C.elevated }]}>
-                      {st ? <st.Icon size={16} color={tone!.text} weight="bold" /> : <FileText size={16} color={C.textSecondary} weight="regular" />}
+                    <View style={[s.rowIcon, st && s.iconOnTitle, {}]}>
+                      {st ? <st.Icon size={20} color={tone!.text} weight="regular" /> : <FileText size={20} color={C.textSecondary} weight="regular" />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>{item.title}</Text>
-                      {st && <Text style={[s.rowSub, { color: tone!.text }]}>{st.label}</Text>}
+                      {st ? <Text style={[s.rowSub, { color: tone!.text }]}>{st.label}</Text>
+                        : item.body ? <Text style={[s.rowSub, { color: C.textSecondary }]} numberOfLines={1}>{infoPreview(item.body)}</Text> : null}
                     </View>
-                    <CaretRight size={14} color={C.textTertiary} weight="regular" />
                   </Pressable>
                 );
               })}
@@ -217,25 +232,22 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
             <SectionHeader title={daysBetween(todayISO, flight.date) === 0 ? "Your flight today" : "Your first flight"} C={C} />
             <ScalePress
               activeScale={0.985}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
+              onPress={() => { router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
               accessibilityRole="button"
               accessibilityLabel={`Flight ${flight.flightNum || ""} on ${fmtLong(flight.date)} at ${flight.time}`}
             >
               <Card C={C} isDark={isDark}>
-                <View style={s.row}>
-                  <View style={[s.rowIcon, { backgroundColor: C.flightSoft }]}>
-                    <AirplaneTilt size={16} color={C.flight} weight="fill" />
-                  </View>
+                <View style={[s.row, s.rowTop]}>
+                  <View style={s.iconOnTitle}><CategoryDot type="flight" size={32} /></View>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.rowTitle, { color: C.textPrimary }]} numberOfLines={2}>
-                      {[flight.airline, flight.flightNum].filter(Boolean).join(" ") || flight.title}
+                      {[flight.airline, flight.flightNum].filter(Boolean).join(" ") || tidyTitleSeparators(flight.title.replace(/\s*\([A-Z]{3}\)\s*$/, ""))}
                     </Text>
                     <Text style={[s.rowSub, { color: C.textSecondary }]} numberOfLines={1}>
-                      {flight.depAirport && flight.arrAirport ? `${flight.depAirport} → ${flight.arrAirport} · ` : ""}
-                      {fmtLong(flight.date)} · {scheduledMinutes(flight.time) == null ? "Time to be confirmed" : flight.time}
+                      {flight.depAirport && flight.arrAirport ? `${flight.depAirport} → ${flight.arrAirport}, ` : ""}
+                      {fmtLong(flight.date)}, {scheduledMinutes(flight.time) == null ? "Time to be confirmed" : flight.time}
                     </Text>
                   </View>
-                  <CaretRight size={14} color={C.textTertiary} weight="regular" />
                 </View>
                 {(flight.terminal || live?.terminal || live?.gate || live?.status) && (
                   <View style={[s.flightMeta, { borderTopColor: C.border }]}>
@@ -255,11 +267,10 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
           <Card C={C} isDark={isDark}>
             {docCount > 0 && (
               <Pressable onPress={openInfo} accessibilityRole="button" accessibilityLabel={`${docCount} documents`} style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}>
-                <View style={[s.rowIcon, { backgroundColor: C.elevated }]}>
-                  <FileText size={16} color={C.textSecondary} weight="regular" />
+                <View style={s.rowIcon}>
+                  <FileText size={20} color={C.textSecondary} weight="regular" />
                 </View>
                 <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>{docCount} {docCount === 1 ? "document" : "documents"}</Text>
-                <CaretRight size={14} color={C.textTertiary} weight="regular" />
               </Pressable>
             )}
             {(trip.travelers?.length ?? 0) > 0 && (
@@ -277,11 +288,10 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
               </View>
             )}
             <Pressable onPress={openTrip} accessibilityRole="button" accessibilityLabel="See full itinerary" style={({ pressed }) => [s.row, (docCount > 0 || (trip.travelers?.length ?? 0) > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}>
-              <View style={[s.rowIcon, { backgroundColor: C.elevated }]}>
+              <View style={s.rowIcon}>
                 <Calendar size={16} color={C.textSecondary} weight="regular" />
               </View>
               <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>Full itinerary</Text>
-              <CaretRight size={14} color={C.textTertiary} weight="regular" />
             </Pressable>
           </Card>
         </FadeIn>
@@ -302,11 +312,11 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
       <FadeIn delay={0}>
         <View style={s.header}>
           <Text style={[s.scope, { color: C.textTertiary }]}>
-            {daysSince === 0 ? "Trip ended today" : daysSince === 1 ? "Trip ended yesterday" : `Trip ended ${daysSince} days ago`} · {fmtShort(trip.start)} – {fmtShort(trip.end)}
+            {daysSince === 0 ? "Trip ended today" : daysSince === 1 ? "Trip ended yesterday" : `Trip ended ${daysSince} days ago`}, {fmtShort(trip.start)} – {fmtShort(trip.end)}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${trip.id}`); }}
+              onPress={() => { router.push(`/trip/${trip.id}`); }}
               style={{ flex: 1 }}
               accessibilityRole="button"
               accessibilityLabel={`Open trip ${trip.name}`}
@@ -328,30 +338,28 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
         <SectionHeader title="Look back" C={C} />
         <Card C={C} isDark={isDark}>
           <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.navigate("/(tabs)/media"); }}
+            onPress={() => { router.navigate("/(tabs)/media"); }}
             accessibilityRole="button"
             accessibilityLabel="Open gallery"
             style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}
           >
-            <View style={[s.rowIcon, { backgroundColor: C.elevated }]}>
+            <View style={s.rowIcon}>
               <Images size={16} color={C.textSecondary} weight="regular" />
             </View>
             <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>
               {photoCount > 0 ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"} from the group` : "Add your photos for the group"}
             </Text>
-            <CaretRight size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
           <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/${trip.id}`); }}
+            onPress={() => { router.push(`/trip/${trip.id}`); }}
             accessibilityRole="button"
             accessibilityLabel="Open itinerary"
             style={({ pressed }) => [s.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
           >
-            <View style={[s.rowIcon, { backgroundColor: C.elevated }]}>
+            <View style={s.rowIcon}>
               <Calendar size={16} color={C.textSecondary} weight="regular" />
             </View>
             <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>Itinerary</Text>
-            <CaretRight size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
         </Card>
         <Text style={[s.footnote, { color: C.textTertiary }]}>Your next trip will appear here once your agent shares it.</Text>
@@ -364,23 +372,29 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
 
 const s = StyleSheet.create({
   header: { paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.xs },
+  countdown: { flexDirection: "row", alignItems: "baseline", gap: S.xs, marginBottom: S.xs },
+  countNum: { fontSize: 40, lineHeight: 46, fontWeight: T.bold, letterSpacing: -1, fontVariant: ["tabular-nums"] },
+  countLabel: { fontSize: T.lg, fontWeight: T.medium },
   headingMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: S.sm, marginBottom: S.sm },
   headerDates: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
   forecast: { fontSize: T.base, lineHeight: 22, marginTop: S.sm },
-  scope: { fontSize: T.base, lineHeight: 22, fontWeight: T.medium, marginBottom: 2 },
+  scope: { fontSize: T.sm, lineHeight: 18, fontWeight: T.semibold, marginBottom: 2 },
   tripName: { fontSize: T["3xl"], lineHeight: 33, fontWeight: T.bold, letterSpacing: -0.3 },
 
   sectionHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: S.md, marginTop: S.lg, marginBottom: S.sm,
+    paddingHorizontal: S.md, marginTop: S.xl, marginBottom: S.xs,
   },
   sectionTitle: { fontSize: T.lg, fontWeight: T.semibold, letterSpacing: -0.2 },
   sectionAction: { fontSize: T.base, fontWeight: T.medium },
 
-  card: { marginHorizontal: S.md, borderRadius: R.xl, overflow: "hidden" },
-  row: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.md, minHeight: 60 },
-  rowIcon: { width: 32, height: 32, borderRadius: R.sm, alignItems: "center", justifyContent: "center" },
-  rowTitle: { fontSize: T.md, lineHeight: 22, fontWeight: T.semibold },
+  card: {},
+  row: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: 13, minHeight: 52 },
+  rowIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  // Two-line rows: the icon sits on the title line (centred on its 22pt line height), the chevron stays centred
+  rowTop: { alignItems: "flex-start" },
+  iconOnTitle: { marginTop: -5 },
+  rowTitle: { fontSize: T.md, lineHeight: 22, fontWeight: T.medium },
   rowSub: { fontSize: 14, lineHeight: 20, marginTop: S["2xs"] },
   flightMeta: {
     flexDirection: "row", gap: S.md, paddingHorizontal: S.md, paddingVertical: S.xs,

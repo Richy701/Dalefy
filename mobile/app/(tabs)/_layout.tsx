@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Platform, Text, Pressable, DynamicColorIOS } from "react-native";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { useTheme } from "@/context/ThemeContext";
 import { useBrand } from "@/context/BrandContext";
 import { darkColors, lightColors } from "@/constants/theme";
@@ -15,7 +15,6 @@ const TABS: {
 }[] = [
   { name: "index",        label: "Home",         materialIcon: "home"         },
   { name: "destinations", label: "Today",        materialIcon: "today"        },
-  { name: "itinerary",    label: "Schedule",     materialIcon: "event",        hidden: true },
   { name: "media",        label: "Gallery",      materialIcon: "photo-camera" },
   { name: "profile",      label: "Profile",      materialIcon: "person"       },
 ];
@@ -47,14 +46,12 @@ function IOSTabLayout() {
   const sfIcons: Record<string, string> = {
     index: "house",
     destinations: "clock",
-    itinerary: "calendar",
     media: "camera",
     profile: "person.crop.circle",
   };
   const mdIcons: Record<string, string> = {
     index: "home",
     destinations: "today",
-    itinerary: "event",
     media: "photo_camera",
     profile: "person",
   };

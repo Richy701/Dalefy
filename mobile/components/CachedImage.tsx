@@ -19,6 +19,10 @@ interface Props {
   contentPosition?: { top?: string; left?: string };
   blurRadius?: number;
   onLoad?: (event: any) => void;
+  /** iOS: decode at the view's size instead of full resolution; use for small tiles of large photos */
+  enforceEarlyResizing?: boolean;
+  /** Reuse the native view across list cells without flashing the previous image */
+  recyclingKey?: string;
 }
 
 export function CachedImage({
@@ -31,6 +35,8 @@ export function CachedImage({
   contentPosition,
   blurRadius,
   onLoad,
+  enforceEarlyResizing,
+  recyclingKey,
 }: Props) {
   const [retries, setRetries] = useState(0);
   const maxRetries = 3;
@@ -84,6 +90,8 @@ export function CachedImage({
         accessibilityLabel={accessibilityLabel}
         onLoad={onLoad}
         onError={handleError}
+        enforceEarlyResizing={enforceEarlyResizing}
+        recyclingKey={recyclingKey}
       />
     );
   }

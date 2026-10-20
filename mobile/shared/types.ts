@@ -64,6 +64,8 @@ export interface TripMedia {
   thumbUrl?: string;
   size: number;
   uploadedAt: string;
+  /** When the photo was taken (EXIF, device local time); groups the gallery by trip day */
+  takenAt?: string;
   uploadedBy?: string;
   uploaderId?: string;
 }

@@ -1,14 +1,17 @@
-import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
+import { PhotoBlend } from "@/components/ui/PhotoBlend";
+import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
+import { Skeleton, ListSkeleton } from "@/components/Skeleton";
+import * as Clipboard from "expo-clipboard";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import {
-  View, Text, Pressable, ActivityIndicator, ScrollView,
-  StyleSheet, Platform, Linking, Share,
+  View, Text, Pressable, ScrollView,
+  StyleSheet, Platform, Linking,
 } from "react-native";
 import ContextMenu from "@/components/ContextMenu";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CachedImage } from "@/components/CachedImage";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
 import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArrow } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
@@ -34,6 +37,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useAnimatedScrollHandler,
+  useAnimatedReaction,
+  runOnJS,
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
@@ -74,7 +79,7 @@ const isPlaceholderTime = (t?: string) => !t || /^tb[acd]$/i.test(t);
 
 function cleanTitle(title: string): string {
   // "PG215 — Arrival into Chiang Mai (CNX)" → keep as is; strip trailing airport codes in parentheses for width
-  return title.replace(/\s*\([A-Z]{3}\)\s*$/, "");
+  return tidyTitleSeparators(title.replace(/\s*\([A-Z]{3}\)\s*$/, ""));
 }
 
 export default function TripScreen() {
@@ -101,6 +106,14 @@ export default function TripScreen() {
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
   });
   const scrollRef = useRef<any>(null);
+
+  // Date strip pins under the title bar once the page scrolls past it
+  const stripY = useSharedValue(0);
+  const stripH = useRef(0);
+  const pinTop = insets.top + HEADER_H;
+  const stripStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: stripY.value > 0 ? Math.max(0, scrollY.value - (stripY.value - pinTop)) : 0 }],
+  }));
 
   const { stretchStyle } = useBannerStretch(HERO_H, scrollY);
 
@@ -168,8 +181,25 @@ export default function TripScreen() {
     const y = dayY.current[date];
     if (y == null) return;
     Haptics.selectionAsync();
-    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - S.sm), animated: true });
+    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: true });
   }, [insets.top]);
+
+  // The day being read highlights in the pinned strip
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const updateActiveDay = useCallback((y: number) => {
+    if (y <= 0) { setActiveDay(null); return; }
+    const line = y + insets.top + HEADER_H + stripH.current + S.md;
+    let cur: string | null = null;
+    for (const [date, dy] of Object.entries(dayY.current).sort((a, b) => a[1] - b[1])) {
+      if (timelineY.current + dy <= line) cur = date;
+    }
+    setActiveDay(prev => (prev === cur ? prev : cur));
+  }, [insets.top]);
+  useAnimatedReaction(
+    () => Math.round(scrollY.value / 24),
+    (step, prev) => { if (step !== prev) runOnJS(updateActiveDay)(step * 24); },
+    [updateActiveDay],
+  );
 
   // Widget and Live Activity deep links carry ?date=; land on that day once it has been laid out
   const pendingDate = useRef<string | null>(typeof landDate === "string" && landDate ? landDate : null);
@@ -179,7 +209,7 @@ export default function TripScreen() {
     const y = dayY.current[date];
     if (y == null || !timelineY.current) return;
     pendingDate.current = null;
-    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - S.sm), animated: false });
+    scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: false });
   }, [insets.top]);
 
   const visibleEvents = useMemo(() => {
@@ -209,16 +239,20 @@ export default function TripScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           {!ready ? (
-            <>
-              <ActivityIndicator size="large" color={C.teal} style={{ marginBottom: S.md }} />
-              <Text style={styles.errorText}>Loading trip…</Text>
-            </>
+            <View style={{ alignSelf: "stretch", flex: 1 }}>
+              <Skeleton width="100%" height={300} borderRadius={0} />
+              <View style={{ paddingHorizontal: S.md, gap: 10, marginTop: S.lg }}>
+                <Skeleton width="70%" height={24} />
+                <Skeleton width="45%" height={13} />
+              </View>
+              <ListSkeleton rows={5} />
+            </View>
           ) : (
             <>
               <Text style={styles.errorText}>Trip not found</Text>
               {__DEV__ && (
                 <Text style={[styles.errorText, { fontSize: 12 }]}>
-                  DEBUG id={String(id)} · trips={trips.length} · ids={trips.map(t => t.id).join(",")} · ready={String(ready)}
+                  DEBUG id={String(id)}, trips={trips.length}, ids={trips.map(t => t.id).join(",")}, ready={String(ready)}
                 </Text>
               )}
               <Pressable onPress={safeBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
@@ -270,7 +304,7 @@ export default function TripScreen() {
         style={[styles.stickyHeader, { paddingTop: insets.top, height: HEADER_H + insets.top }, stickyHeaderStyle]}
       >
         {Platform.OS === "ios" ? (
-          <BlurView intensity={95} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <BlurView intensity={100} tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} style={StyleSheet.absoluteFill} />
         ) : (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? "rgba(9,9,11,0.97)" : "rgba(245,246,250,0.97)" }]} />
         )}
@@ -288,7 +322,6 @@ export default function TripScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        <PhotoWash uri={trip.image} heroHeight={HERO_H} />
 
         {/* ── Hero: parallax photo that dissolves into the wash ── */}
         <View style={styles.hero}>
@@ -314,7 +347,7 @@ export default function TripScreen() {
             {trip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
             <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
             <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
-            <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} → {shortDay(trip.end)}</Text>
+            <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
 
             {/* A hosted group, not a solo plan: who is coming and who is looking after them */}
             <View style={styles.groupRow}>
@@ -333,14 +366,18 @@ export default function TripScreen() {
                 </View>
               )}
               <Text style={[styles.groupText, isDark && styles.heroShadow]} numberOfLines={1}>
-                {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"} · ` : ""}Hosted by {brand.name}
+                {travellerCount > 0 ? `${travellerCount} traveller${travellerCount === 1 ? "" : "s"}, ` : ""}Hosted by {brand.name}
               </Text>
               {brand.logoUrl ? <Image source={{ uri: brand.logoUrl }} style={styles.hostLogo} accessible={false} /> : null}
             </View>
           </Animated.View>
         </View>
 
-        {/* ── Week strip: one cell per day ── */}
+        {/* ── Week strip: one cell per day, pinned under the title bar while scrolling ── */}
+        <Animated.View
+          style={[{ zIndex: 20, backgroundColor: C.bg }, stripStyle]}
+          onLayout={e => { stripY.value = e.nativeEvent.layout.y; stripH.current = e.nativeEvent.layout.height; }}
+        >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -359,15 +396,17 @@ export default function TripScreen() {
                 style={({ pressed }) => [
                   styles.stripDay,
                   isToday && styles.stripDayToday,
+                  activeDay === date && styles.stripDayActive,
                   { opacity: pressed ? 0.6 : dimPast && isPast ? 0.55 : 1 },
                 ]}
               >
-                <Text style={[styles.stripWeekday, isToday && { color: C.tealText }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
-                <Text style={styles.stripNumText}>{d.getDate()}</Text>
+                <Text style={[styles.stripWeekday, isToday && { color: C.tealText }, activeDay === date && { color: C.bg }]}>{d.toLocaleDateString("en-GB", { weekday: "short" })}</Text>
+                <Text style={[styles.stripNumText, activeDay === date && { color: C.bg }]}>{d.getDate()}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
+        </Animated.View>
 
         {/* ── Next up: the one thing a traveller needs right now ── */}
         {upNext && (
@@ -377,7 +416,7 @@ export default function TripScreen() {
               <Text style={styles.nextWhen}>{untilLabel(upNext, now)}</Text>
             </View>
             <Pressable
-              onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${upNext.id}`); }}
+              onPress={() => { router.push(`/trip/event?tripId=${trip.id}&eventId=${upNext.id}`); }}
               accessibilityRole="button"
               accessibilityLabel={`Next up: ${cleanTitle(upNext.title)}, ${untilLabel(upNext, now)}`}
               style={({ pressed }) => [styles.nextBody, { opacity: pressed ? 0.7 : 1 }]}
@@ -386,7 +425,7 @@ export default function TripScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextTitle} numberOfLines={2}>{cleanTitle(upNext.title)}</Text>
                 <Text style={styles.nextSub} numberOfLines={1}>
-                  {[isPlaceholderTime(upNext.time) ? null : upNext.time, upNext.location].filter(Boolean).join(" · ")}
+                  {[isPlaceholderTime(upNext.time) ? null : upNext.time, upNext.location].filter(Boolean).join(", ")}
                 </Text>
               </View>
             </Pressable>
@@ -402,7 +441,7 @@ export default function TripScreen() {
                 accessibilityLabel={`Directions to ${upNext.location}`}
                 style={({ pressed }) => [styles.nextAction, { opacity: pressed ? 0.6 : 1 }]}
               >
-                <NavigationArrow size={14} color={C.tealText} weight="fill" />
+                <NavigationArrow size={14} color={C.tealText} weight="fill" style={{ transform: [{ scaleX: -1 }] }} />
                 <Text style={styles.nextActionText}>Directions</Text>
               </Pressable>
             ) : null}
@@ -455,7 +494,7 @@ export default function TripScreen() {
                       <View key={ev.id}>
                         {i > 0 && <View style={styles.tlSep} />}
                         <Pressable
-                          onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
+                          onPress={() => { router.push(`/trip/event?tripId=${trip.id}&eventId=${ev.id}`); }}
                           accessibilityRole="button"
                           accessibilityLabel={`${cleanTitle(ev.title)}${isPlaceholderTime(ev.time) ? "" : `, ${ev.time}`}`}
                           style={({ pressed }) => [styles.tlRow, { backgroundColor: pressed ? C.elevated : "transparent" }]}
@@ -466,11 +505,11 @@ export default function TripScreen() {
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
                               <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
                             ) : ev.location ? (
-                              <Text style={styles.tlSub} numberOfLines={1}>{ev.location}</Text>
+                              <Text style={styles.tlSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text>
                             ) : null}
                           </View>
                           {ev.time ? (
-                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{ev.time}</Text>
+                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{isPlaceholderTime(ev.time) ? "TBC" : ev.time}</Text>
                           ) : null}
                         </Pressable>
 
@@ -480,14 +519,14 @@ export default function TripScreen() {
                             <View style={styles.leg}>
                               <AirplaneTakeoff size={13} color={C.textTertiary} weight="regular" />
                               <Text style={styles.legText} numberOfLines={1}>
-                                {[ev.depAirport, ev.terminal ? `Terminal ${ev.terminal}` : null].filter(Boolean).join(" · ")}
+                                {[ev.depAirport, ev.terminal ? `Terminal ${ev.terminal}` : null].filter(Boolean).join(", ")}
                               </Text>
                               {!isPlaceholderTime(ev.time) && <Text style={styles.legTime}>{ev.time}</Text>}
                             </View>
                             <View style={styles.leg}>
                               <AirplaneLanding size={13} color={C.textTertiary} weight="regular" />
                               <Text style={styles.legText} numberOfLines={1}>
-                                {[ev.arrAirport, ev.arrTerminal ? `Terminal ${ev.arrTerminal}` : null].filter(Boolean).join(" · ")}
+                                {[ev.arrAirport, ev.arrTerminal ? `Terminal ${ev.arrTerminal}` : null].filter(Boolean).join(", ")}
                               </Text>
                               {!isPlaceholderTime(ev.endTime) && <Text style={styles.legTime}>{ev.endTime}</Text>}
                             </View>
@@ -531,7 +570,7 @@ export default function TripScreen() {
             onPress={(e: any) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               if (e.nativeEvent.index === 0) openInMaps();
-              else if (e.nativeEvent.index === 1) Share.share({ message: trip.destination || trip.name });
+              else if (e.nativeEvent.index === 1) Clipboard.setStringAsync(trip.destination || trip.name).catch(() => {});
             }}
           >
           <ScalePress style={styles.mapSection} onPress={openInMaps} accessibilityRole="button" accessibilityLabel="Open location in Maps">
@@ -640,16 +679,15 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
     // Next up
+    // Boxless: sections sit on the page, rows at the standard 16pt gutter
     nextCard: {
-      marginHorizontal: S.md, marginTop: S.xs, marginBottom: S.xs,
-      backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
-      ...shadow("card", isDark),
+      marginTop: S.xs, marginBottom: S.xs,
     },
     nextHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       paddingHorizontal: S.md, paddingTop: S.sm2, paddingBottom: S.xs,
     },
-    nextEyebrow: { fontSize: T.sm, fontWeight: T.bold, color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+    nextEyebrow: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     nextWhen: { fontSize: T.sm, fontWeight: T.bold, color: C.tealText, fontVariant: ["tabular-nums"] },
     nextBody: { flexDirection: "row", alignItems: "center", gap: S.sm2, paddingHorizontal: S.md, paddingBottom: S.sm2 },
     nextTitle: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
@@ -670,6 +708,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       borderWidth: 1.5, borderColor: "transparent",
     },
     stripDayToday: { borderColor: C.teal },
+    stripDayActive: { backgroundColor: C.textPrimary },
     stripWeekday: { fontSize: T["2xs"], fontWeight: T.semibold, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 },
     stripNumText: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
 
@@ -677,14 +716,11 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     filterText: { fontSize: T.sm, fontWeight: T.semibold },
 
     // Timeline
-    dayBlock: { marginTop: S.sm },
-    dayHeader: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md + S.xs, paddingBottom: S.xs },
-    dayHeaderText: { fontSize: T.sm, fontWeight: T.bold, color: C.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 },
+    dayBlock: { marginTop: S.lg },
+    dayHeader: { flexDirection: "row", alignItems: "center", gap: S.xs, paddingHorizontal: S.md, paddingBottom: S.xs },
+    dayHeaderText: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
     dayHeaderMeta: { fontSize: T.sm, color: C.textTertiary },
-    dayCard: {
-      marginHorizontal: S.md, backgroundColor: C.card, borderRadius: R.lg, overflow: "hidden",
-      ...shadow("card", isDark),
-    },
+    dayCard: {},
     tlLine: {
       position: "absolute", left: S.md + DOT / 2 - 1, top: S.sm + DOT / 2, bottom: S.sm + DOT / 2, width: 2,
       backgroundColor: C.border,

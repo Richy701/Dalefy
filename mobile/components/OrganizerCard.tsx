@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Linking, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/services/haptics";
 import { Phone, Envelope } from "phosphor-react-native";
 import { type ThemeColors, T, R, S } from "@/constants/theme";
 import { Avatar } from "@/components/ui/Avatar";
@@ -41,7 +41,7 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
         <View style={s.info}>
           <Text style={s.name} numberOfLines={1}>{organizer.name}</Text>
           <Text style={s.subtitle} numberOfLines={1}>
-            {["Your organiser", organizer.role, organizer.company].filter(Boolean).join(" · ")}
+            {["Your organiser", organizer.role, organizer.company].filter(Boolean).join(", ")}
           </Text>
         </View>
       </View>
@@ -79,12 +79,11 @@ export function OrganizerCard({ organizer, C, isLeader = false }: OrganizerCardP
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
+    // Boxless: sits on the page at the standard 16pt gutter
     card: {
       marginHorizontal: S.md,
       marginTop: S.sm,
-      backgroundColor: C.card,
-      borderRadius: R.xl,
-      padding: S.md,
+      paddingVertical: S.sm,
     },
     topRow: {
       flexDirection: "row",

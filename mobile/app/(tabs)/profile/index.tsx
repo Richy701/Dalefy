@@ -1,25 +1,24 @@
 import { View, Text, Pressable, StyleSheet, Switch, RefreshControl, Image, Platform, Alert } from "react-native";
 import { tripFactLine, tripLengthDays, daysUntil, destinationCountry, destinationFlag } from "@/shared/tripSummary";
 import { CachedImage } from "@/components/CachedImage";
-import { PhotoBlend, PhotoWash } from "@/components/ui/PhotoBlend";
+import { PhotoBlend } from "@/components/ui/PhotoBlend";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { distanceKm } from "@/shared/coordinates";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import ContextMenu from "@/components/ContextMenu";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
 import * as Application from "expo-application";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
-  User, Palette, Bell, Shield, UserCirclePlus,
-  Vibrate, ArrowSquareOut, Info,
-  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Sparkle,
-  SignOut, Trash,
+  User, Palette, Bell, LockSimple, UserCirclePlus,
+  Vibrate, ArrowSquareOut, CaretUpDown,
+  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Newspaper,
 } from "phosphor-react-native";
-import { T, R, S, shadow, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
+import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
 import { useTheme } from "@/context/ThemeContext";
 import { ScrollViewMarker } from "react-native-screens/src/components/gamma/scroll-view-marker";
@@ -77,7 +76,7 @@ export default function ProfileScreen() {
   }, [trips]);
   const nextTrip = useMemo(() => {
     if (!heroTrip || daysUntil(heroTrip.end) < 0) return null;
-    return `${heroTrip.destination || heroTrip.name} · ${tripFactLine(heroTrip).split(" · ")[0]}`;
+    return `${heroTrip.destination || heroTrip.name}, ${tripFactLine(heroTrip).split(", ")[0]}`;
   }, [heroTrip]);
   const flags = useMemo(() => {
     const seen = new Set<string>();
@@ -127,7 +126,6 @@ export default function ProfileScreen() {
         scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.teal} progressBackgroundColor={C.bg} />}
       >
-        {heroTrip ? <PhotoWash uri={heroTrip.image} heroHeight={HERO_H + insets.top} /> : null}
         {/* A photo cover when a trip exists; a compact identity header before joining. */}
         {!heroTrip && <ScreenTitle>Profile</ScreenTitle>}
         <View style={heroTrip ? [s.hero, { height: HERO_H + insets.top }] : s.identityHeader}>
@@ -148,13 +146,13 @@ export default function ProfileScreen() {
             )}
             <View style={heroTrip ? s.heroDetails : s.identityDetails}>
               <Text accessibilityRole="header" style={heroTrip ? [s.heroName, s.heroShadow] : s.identityName}>{heroTrip ? (firstName || "Traveller") : (prefs.name.trim() || "Traveller")}</Text>
-              {nextTrip ? <Text style={[s.heroSub, isDark && s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
+              {nextTrip ? <Text style={[s.heroSub, s.heroShadow]} numberOfLines={2}>{nextTrip}</Text> : null}
               <Pressable
                 style={({ pressed }) => [heroTrip ? s.editBtn : s.identityEdit, { opacity: pressed ? 0.5 : 1 }]}
-                onPress={() => { haptic.selection(); router.push("/welcome"); }}
+                onPress={() => { haptic.selection(); router.push("/edit-profile"); }}
                 accessibilityRole="button"
                 accessibilityLabel="Edit your profile"
-                hitSlop={8}
+                hitSlop={10}
               >
                 <Text style={heroTrip ? s.editText : s.identityEditText}>Edit profile</Text>
               </Pressable>
@@ -168,22 +166,7 @@ export default function ProfileScreen() {
         {trips.length > 0 && (
           <FadeIn delay={40}>
             <View style={s.statsCard}>
-              {(flags.been.length > 0 || flags.next) && (
-                <View style={s.flagsRow}>
-                  {flags.been.length > 0 && (
-                    <View style={s.flagsGroup}>
-                      <Text style={s.flagsLabel}>Been to</Text>
-                      <Text style={s.flags}>{flags.been.join(" ")}</Text>
-                    </View>
-                  )}
-                  {flags.next && (
-                    <View style={[s.flagsGroup, flags.been.length > 0 && s.flagsGroupEnd]}>
-                      <Text style={s.flagsLabel}>Next</Text>
-                      <Text style={s.flags}>{flags.next}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+              {stats.label === "Coming up" && <Text style={s.statsCaption}>Coming up</Text>}
               <View style={s.statsRow}>
                 {[
                   { n: stats.trips, l: stats.trips === 1 ? "Trip" : "Trips" },
@@ -196,6 +179,20 @@ export default function ProfileScreen() {
                   </View>
                 ))}
               </View>
+              {(flags.been.length > 0 || flags.next) && (
+                <View style={s.flagsLine}>
+                  {flags.been.map(f => (
+                    <View key={f} style={s.flagChip} accessibilityLabel="Visited">
+                      <Text style={s.flagEmoji}>{f}</Text>
+                    </View>
+                  ))}
+                  {flags.next && (
+                    <View style={s.flagChip} accessibilityLabel="Next trip">
+                      <Text style={s.flagEmoji}>{flags.next}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </FadeIn>
         )}
@@ -228,29 +225,36 @@ export default function ProfileScreen() {
         <MicroLabel style={s.sectionLabel}>Appearance</MicroLabel>
         <View style={s.card}>
           {/* Theme */}
-          <View style={s.row}>
-            <Palette size={18} color={C.textSecondary} weight="light" />
-            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
-            <SegmentedControl
-              values={["Light", "Dark", "Auto"]}
-              selectedIndex={mode === "light" ? 0 : mode === "dark" ? 1 : 2}
-              onChange={(e) => {
-                const idx = e.nativeEvent.selectedSegmentIndex;
-                const val = (["light", "dark", "system"] as const)[idx];
-                haptic.selection();
-                setMode(val);
-              }}
-              style={{ width: 180, ...shadow("card", isDark) }}
-              appearance={isDark ? "dark" : "light"}
-            />
-          </View>
+          {/* Theme: a plain row whose value opens the native menu */}
+          <ContextMenu
+            dropdownMenuMode
+            title="Theme"
+            actions={[
+              { title: "Light", selected: mode === "light" },
+              { title: "Dark", selected: mode === "dark" },
+              { title: "Match iPhone", selected: mode === "system" },
+            ]}
+            onPress={(e: any) => {
+              const val = (["light", "dark", "system"] as const)[e.nativeEvent.index];
+              if (!val) return;
+              haptic.selection();
+              setMode(val);
+            }}
+          >
+            <View style={s.row} accessibilityRole="button" accessibilityLabel={`Theme, ${mode === "light" ? "Light" : mode === "dark" ? "Dark" : "Match iPhone"}`}>
+              <Palette size={18} color={C.textSecondary} weight="regular" />
+              <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
+              <Text style={s.rowValue}>{mode === "light" ? "Light" : mode === "dark" ? "Dark" : "Match iPhone"}</Text>
+              <CaretUpDown size={14} color={C.textTertiary} weight="regular" />
+            </View>
+          </ContextMenu>
 
           <View style={s.divider} />
 
           {/* Haptics */}
           <View style={s.row}>
             <View style={s.rowIcon}>
-              <Vibrate size={18} color={C.textSecondary} weight="light" />
+              <Vibrate size={18} color={C.textSecondary} weight="regular" />
             </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Haptic feedback</Text>
@@ -259,8 +263,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.haptics}
               onValueChange={(v) => { haptic.selection(); setPref("haptics", v); }}
-              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
-              thumbColor={prefs.haptics ? C.teal : C.textTertiary}
+              trackColor={{ false: C.toggleTrack, true: C.teal }}
             />
           </View>
         </View>
@@ -272,7 +275,7 @@ export default function ProfileScreen() {
         <View style={s.card}>
           <View style={s.row}>
             <View style={s.rowIcon}>
-              <Bell size={18} color={C.textSecondary} weight="light" />
+              <Bell size={18} color={C.textSecondary} weight="regular" />
             </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Trip reminders</Text>
@@ -281,14 +284,13 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.tripReminders}
               onValueChange={(v) => { haptic.selection(); setPref("tripReminders", v); }}
-              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
-              thumbColor={prefs.tripReminders ? C.teal : C.textTertiary}
+              trackColor={{ false: C.toggleTrack, true: C.teal }}
             />
           </View>
           <View style={s.divider} />
           <View style={s.row}>
             <View style={s.rowIcon}>
-              <CalendarCheck size={18} color={C.textSecondary} weight="light" />
+              <CalendarCheck size={18} color={C.textSecondary} weight="regular" />
             </View>
             <View style={s.rowLabelGroup}>
               <Text style={s.rowLabel}>Itinerary updates</Text>
@@ -297,8 +299,7 @@ export default function ProfileScreen() {
             <Switch
               value={prefs.itineraryUpdates}
               onValueChange={(v) => { haptic.selection(); setPref("itineraryUpdates", v); }}
-              trackColor={{ false: C.toggleTrack, true: C.tealMid }}
-              thumbColor={prefs.itineraryUpdates ? C.teal : C.textTertiary}
+              trackColor={{ false: C.toggleTrack, true: C.teal }}
             />
           </View>
           {Platform.OS === "ios" && (
@@ -306,7 +307,7 @@ export default function ProfileScreen() {
               <View style={s.divider} />
               <View style={s.row}>
                 <View style={s.rowIcon}>
-                  <Pulse size={18} color={C.textSecondary} weight="light" />
+                  <Pulse size={18} color={C.textSecondary} weight="regular" />
                 </View>
                 <View style={s.rowLabelGroup}>
                   <Text style={s.rowLabel}>Live Activity</Text>
@@ -315,8 +316,7 @@ export default function ProfileScreen() {
                 <Switch
                   value={prefs.liveActivity !== false}
                   onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
-                  trackColor={{ false: C.toggleTrack, true: C.tealMid }}
-                  thumbColor={prefs.liveActivity !== false ? C.teal : C.textTertiary}
+                  trackColor={{ false: C.toggleTrack, true: C.teal }}
                 />
               </View>
             </>
@@ -334,9 +334,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Help & support"
           >
-            <ChatCircle size={18} color={C.textSecondary} weight="light" />
+            <ChatCircle size={18} color={C.textSecondary} weight="regular" />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Help & support</Text></View>
-            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
           <View style={s.divider} />
           <Pressable
@@ -345,9 +345,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="What's new"
           >
-            <Sparkle size={18} color={C.textSecondary} weight="light" />
+            <Newspaper size={18} color={C.textSecondary} weight="regular" />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>What's new</Text></View>
-            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
           <View style={s.divider} />
           <Pressable
@@ -356,9 +356,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Privacy policy"
           >
-            <Shield size={18} color={C.textSecondary} weight="light" />
+            <LockSimple size={18} color={C.textSecondary} weight="regular" />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Privacy policy</Text></View>
-            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
           <View style={s.divider} />
           <Pressable
@@ -367,24 +367,9 @@ export default function ProfileScreen() {
             accessibilityRole="link"
             accessibilityLabel="Terms of service"
           >
-            <FileCheckIcon size={18} color={C.textSecondary} weight="light" />
+            <FileCheckIcon size={18} color={C.textSecondary} weight="regular" />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Terms of service</Text></View>
-            <ArrowSquareOut size={14} color={C.textTertiary} weight="light" />
-          </Pressable>
-          <View style={s.divider} />
-          <Pressable
-            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={async () => {
-              haptic.selection();
-              await Clipboard.setStringAsync(`Dalefy v${appVersion}`);
-              toast("Version copied");
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Copy version to clipboard"
-          >
-            <Info size={18} color={C.textSecondary} weight="light" />
-            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Version</Text></View>
-            <Text style={s.rowValue}>{appVersion}</Text>
+            <ArrowSquareOut size={14} color={C.textTertiary} weight="regular" />
           </Pressable>
         </View>
         </FadeIn>
@@ -393,6 +378,7 @@ export default function ProfileScreen() {
         {/* ── Sign Out ── */}
         {auth.isAuthenticated && (
           <FadeIn delay={240}>
+            <View style={[s.card, { marginTop: S.lg }]}>
             <Pressable
               onPress={() => {
                 haptic.medium();
@@ -401,12 +387,12 @@ export default function ProfileScreen() {
                   { text: "Sign out", style: "destructive", onPress: async () => { await auth.signOut(); router.replace("/auth"); } },
                 ]);
               }}
-              style={({ pressed }) => [s.signOutBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [s.row, pressed && { backgroundColor: C.elevated }]}
               accessibilityRole="button"
             >
-              <SignOut size={18} color={C.red} weight="regular" />
-              <Text style={[s.signOutText, { color: C.redText }]}>Sign out</Text>
+              <Text style={[s.rowLabel, { color: C.redText }]}>Sign out</Text>
             </Pressable>
+            <View style={[s.divider, { marginLeft: S.md }]} />
             <Pressable
               onPress={() => {
                 haptic.medium();
@@ -428,13 +414,13 @@ export default function ProfileScreen() {
                   ],
                 );
               }}
-              style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [s.row, pressed && { backgroundColor: C.elevated }]}
               accessibilityRole="button"
               accessibilityLabel="Delete account"
             >
-              <Trash size={16} color={C.textTertiary} weight="regular" />
-              <Text style={[s.deleteText, { color: C.textTertiary }]}>Delete account</Text>
+              <Text style={[s.rowLabel, { color: C.redText }]}>Delete account</Text>
             </Pressable>
+            </View>
           </FadeIn>
         )}
 
@@ -447,6 +433,18 @@ export default function ProfileScreen() {
           )}
           <Text style={s.footerText}>Powered by {brand.name}</Text>
         </View>
+        <Pressable
+          onPress={async () => {
+            haptic.selection();
+            await Clipboard.setStringAsync(`Dalefy v${appVersion}`);
+            toast("Version copied");
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Dalefy version ${appVersion}, copy`}
+          style={({ pressed }) => ({ alignSelf: "center", paddingVertical: S.xs, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={s.footerText}>Dalefy {appVersion}</Text>
+        </Pressable>
         </View>
 
       </Animated.ScrollView>
@@ -476,11 +474,15 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       textShadowColor: "rgba(0,0,0,0.6)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
     editBtn: { marginTop: S.xs2, paddingVertical: 4, paddingHorizontal: S.sm2, borderRadius: R.sm, backgroundColor: isDark ? "rgba(255,255,255,0.14)" : C.card },
-    flagsRow: { flexDirection: "row", alignItems: "flex-end", gap: S.lg, marginBottom: S.md },
-    flagsGroup: { gap: 2 },
-    flagsGroupEnd: { marginLeft: "auto", alignItems: "flex-end" },
-    flagsLabel: { fontSize: T.xs, color: C.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 },
-    flags: { fontSize: 26, lineHeight: 32 },
+    flagsLine: {
+      flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: S.xs2,
+      marginTop: S.md, paddingTop: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
+    },
+    flagChip: {
+      flexDirection: "row", alignItems: "center", gap: S["2xs"],
+      backgroundColor: C.elevated, borderRadius: R.sm, paddingHorizontal: S.xs, paddingVertical: 3,
+    },
+    flagEmoji: { fontSize: 18, lineHeight: 22 },
     upgradeCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -489,11 +491,11 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       backgroundColor: C.card,
       borderRadius: R.xl,
       marginTop: S.sm,
-      borderWidth: 1,
-      borderColor: C.tealMid,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: C.border,
     },
     upgradeIcon: {
-      width: 40, height: 40, borderRadius: R.md,
+      width: 40, height: 40, borderRadius: 20,
       alignItems: "center", justifyContent: "center",
     },
     upgradeTitle: {
@@ -511,13 +513,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       justifyContent: "center",
     },
     editText: { fontSize: T.sm, color: isDark ? "#fff" : C.textPrimary, fontWeight: T.semibold },
-    heroSub: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.85)" : C.textPrimary, textAlign: "center", lineHeight: 18 },
+    heroSub: { fontSize: T.sm, fontWeight: T.medium, color: "rgba(255,255,255,0.92)", textAlign: "center", lineHeight: 18 },
     statsCard: {
-      backgroundColor: C.card, borderRadius: R.xl, marginTop: S.sm,
-      paddingVertical: S.md, paddingHorizontal: S.md,
-      ...shadow("card", isDark),
+      marginTop: S.sm,
+      paddingVertical: S.md,
     },
     statsRow: { flexDirection: "row" },
+    statsCaption: { fontSize: T.sm, color: C.textTertiary, textAlign: "center", marginBottom: S.xs },
     stat: { flex: 1, alignItems: "center", gap: 2 },
     statNum: { fontSize: T["2xl"], fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], letterSpacing: -0.3 },
     statLabel: { fontSize: T.xs, color: C.textTertiary },
@@ -534,11 +536,9 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
       marginTop: S.xl,
       paddingLeft: S["2xs"],
     },
+    // Boxless: rows run to the page edge (the body's gutter is undone) and split with hairlines
     card: {
-      backgroundColor: C.card,
-      borderRadius: R.xl,
-      overflow: "hidden",
-      ...shadow("card", isDark),
+      marginHorizontal: -S.md,
     },
 
     // ── Rows ──
