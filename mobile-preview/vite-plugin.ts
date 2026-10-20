@@ -13,6 +13,7 @@ export function mobilePreviewPlugin(root:string):Plugin {
     'react-native-context-menu-view':path.join(root,'mobile-preview/unavailable.ts'), '@rnmapbox/maps':path.join(root,'mobile-preview/unavailable.ts'),
     'expo-router':platform,'react-native-safe-area-context':platform,'expo-linear-gradient':platform,
     '@react-native-masked-view/masked-view':platform,'expo-blur':platform,'expo-haptics':platform,'expo-clipboard':platform,
+    'expo-glass-effect':platform,'expo-symbols':platform,
   };
   return {name:'mobile-preview-source',enforce:'pre',
     async resolveId(id,importer){
