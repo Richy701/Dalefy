@@ -7,7 +7,7 @@ import { distanceKm } from "@/shared/coordinates";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
 import Animated from "react-native-reanimated";
 import { useCollapsingHeader, CompactHeader, ScreenTitle } from "@/components/ui/CollapsingHeader";
-import ContextMenu from "@/components/ContextMenu";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
@@ -15,7 +15,7 @@ import * as Application from "expo-application";
 import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Palette, Bell, LockSimple, UserCirclePlus,
-  Vibrate, ArrowSquareOut, CaretUpDown,
+  Vibrate, ArrowSquareOut,
   CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Newspaper,
 } from "phosphor-react-native";
 import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
@@ -225,29 +225,22 @@ export default function ProfileScreen() {
         <MicroLabel style={s.sectionLabel}>Appearance</MicroLabel>
         <View style={s.card}>
           {/* Theme */}
-          {/* Theme: a plain row whose value opens the native menu */}
-          <ContextMenu
-            dropdownMenuMode
-            title="Theme"
-            actions={[
-              { title: "Light", selected: mode === "light" },
-              { title: "Dark", selected: mode === "dark" },
-              { title: "Match iPhone", selected: mode === "system" },
-            ]}
-            onPress={(e: any) => {
-              const val = (["light", "dark", "system"] as const)[e.nativeEvent.index];
-              if (!val) return;
-              haptic.selection();
-              setMode(val);
-            }}
-          >
-            <View style={s.row} accessibilityRole="button" accessibilityLabel={`Theme, ${mode === "light" ? "Light" : mode === "dark" ? "Dark" : "Match iPhone"}`}>
-              <Palette size={18} color={C.textSecondary} weight="regular" />
-              <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
-              <Text style={s.rowValue}>{mode === "light" ? "Light" : mode === "dark" ? "Dark" : "Match iPhone"}</Text>
-              <CaretUpDown size={14} color={C.textTertiary} weight="regular" />
-            </View>
-          </ContextMenu>
+          <View style={s.row}>
+            <Palette size={18} color={C.textSecondary} weight="regular" />
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
+            <SegmentedControl
+              values={["Light", "Dark", "Auto"]}
+              selectedIndex={mode === "light" ? 0 : mode === "dark" ? 1 : 2}
+              onChange={(e) => {
+                const idx = e.nativeEvent.selectedSegmentIndex;
+                const val = (["light", "dark", "system"] as const)[idx];
+                haptic.selection();
+                setMode(val);
+              }}
+              style={{ width: 180 }}
+              appearance={isDark ? "dark" : "light"}
+            />
+          </View>
 
           <View style={s.divider} />
 

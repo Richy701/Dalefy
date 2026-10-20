@@ -4,6 +4,9 @@ export function record(value: unknown): Data {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Data : {};
 }
 
+/** Photo capture time from EXIF, device-local "YYYY-MM-DDTHH:MM:SS"; groups the gallery by trip day */
+const TAKEN_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
+
 function strings(value: unknown, keys: string[]): Data {
   const data = record(value);
   return Object.fromEntries(keys.filter(k => typeof data[k] === "string").map(k => [k, data[k]]));
@@ -69,7 +72,7 @@ export function publishedTripView(tripId: string, trip: Data, leader = false, me
     // Names support the intentional itinerary-personalization picker; never expose emails.
     travelers: list(snap.travelers).map(v => strings(v, ["id", "name", "initials"])),
     media: member ? list(trip.media).map(v => ({
-      ...strings(v, ["id", "type", "name", "url", "thumbUrl", "uploadedAt", "uploadedBy", "uploaderId"]),
+      ...strings(v, ["id", "type", "name", "url", "thumbUrl", "uploadedAt", "takenAt", "uploadedBy", "uploaderId"]),
       size: typeof record(v).size === "number" ? record(v).size : 0,
     })) : [],
   };
@@ -104,7 +107,8 @@ export function mergeTravelerMedia(current: unknown, additions: unknown, removal
     if (storageMediaOwner(item.url, tripId, bucket) !== uid) throw new Error("Upload must belong to your account and this trip");
     if (item.thumbUrl !== undefined && storageMediaOwner(item.thumbUrl, tripId, bucket) !== uid) throw new Error("Upload must belong to your account and this trip");
     if (typeof item.size !== "number" || item.size < 0 || item.size > 25 * 1024 * 1024) throw new Error("Invalid upload size");
-    result.push({ ...strings(item, ["id", "type", "name", "url", "thumbUrl", "uploadedBy"]), size: item.size, uploaderId: uid, uploadedAt: new Date().toISOString() });
+    const takenAt = typeof item.takenAt === "string" && TAKEN_AT.test(item.takenAt) ? { takenAt: item.takenAt } : {};
+    result.push({ ...strings(item, ["id", "type", "name", "url", "thumbUrl", "uploadedBy"]), ...takenAt, size: item.size, uploaderId: uid, uploadedAt: new Date().toISOString() });
   }
   if (result.length > 1000) throw new Error("Trip media limit reached");
   return result;

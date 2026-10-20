@@ -43,11 +43,14 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
 import type { TravelEvent } from "@/shared/types";
 
 const HERO_H = 380;
 const HEADER_H = 56;
 const COLLAPSE_START = 180;
+// iOS 26 has the native scroll edge effect; Liquid Glass availability is the same version gate
+const NATIVE_EDGE = Platform.OS === "ios" && isLiquidGlassAvailable();
 const COLLAPSE_END = HERO_H - HEADER_H;
 const DOT = 32;
 
@@ -131,6 +134,11 @@ export default function TripScreen() {
   }));
 
   // Compact sticky header: fades in as hero collapses
+  const [collapsed, setCollapsed] = useState(false);
+  useAnimatedReaction(
+    () => scrollY.value > COLLAPSE_END,
+    (now, prev) => { if (now !== prev) runOnJS(setCollapsed)(now); },
+  );
   const stickyHeaderStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [COLLAPSE_START, COLLAPSE_END], [0, 1], Extrapolation.CLAMP),
   }));
@@ -278,10 +286,13 @@ export default function TripScreen() {
       <Stack.Screen options={{
         headerShown: true,
         headerTransparent: true,
-        title: "",
+        // iOS 26: the system's own soft scroll edge sits behind the bar, and the trip name appears once the photo scrolls away
+        title: NATIVE_EDGE && collapsed ? trip.name : "",
+        headerTitleStyle: { color: C.textPrimary, fontWeight: "600" },
+        ...(NATIVE_EDGE ? { scrollEdgeEffects: { top: "soft" as const, bottom: "hidden" as const, left: "hidden" as const, right: "hidden" as const } } : {}),
         headerBackTitle: " ",
         headerBackButtonDisplayMode: "minimal",
-        headerTintColor: "#fff",
+        headerTintColor: NATIVE_EDGE && collapsed ? C.textPrimary : "#fff",
         headerShadowVisible: false,
         ...(Platform.OS === "android" ? {
           headerLeft: () => (
@@ -298,7 +309,8 @@ export default function TripScreen() {
         } : {}),
       }} />
 
-      {/* ── Sticky compact header — fades in as hero collapses ── */}
+      {/* ── Fallback sticky header for systems without the iOS 26 scroll edge effect ── */}
+      {!NATIVE_EDGE && (
       <Animated.View
         pointerEvents="box-none"
         style={[styles.stickyHeader, { paddingTop: insets.top, height: HEADER_H + insets.top }, stickyHeaderStyle]}
@@ -314,6 +326,7 @@ export default function TripScreen() {
           <View style={{ width: 44 }} />
         </View>
       </Animated.View>
+      )}
 
       <Animated.ScrollView
         ref={scrollRef}
@@ -582,7 +595,6 @@ export default function TripScreen() {
             </View>
             <View style={[styles.mapWrap, shadow("card", isDark)]}>
               <MapboxGL.MapView
-                key={isDark ? "dark" : "light"}
                 style={StyleSheet.absoluteFill}
                 styleURL={MAP_STYLE}
                 projection="mercator"

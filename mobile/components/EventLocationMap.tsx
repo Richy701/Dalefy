@@ -29,7 +29,6 @@ export function EventLocationMap({ coords, height = 140, accentColor, isDark }: 
   return (
     <View style={{ height, overflow: "hidden" }} pointerEvents="none">
       <MapboxGL.MapView
-        key={isDark ? "dark" : "light"}
         style={StyleSheet.absoluteFill}
         styleURL="mapbox://styles/mapbox/standard"
         projection="mercator"

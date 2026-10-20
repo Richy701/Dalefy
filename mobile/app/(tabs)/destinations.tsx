@@ -202,7 +202,6 @@ export default function TodayScreen() {
     return () => { cancelled = true; };
   }, [displayTrip?.destination, mapAttempt]);
 
-  useEffect(() => { setMapReady(false); }, [isDark]);
 
   // ── Geocode event locations for map markers ──
   const [eventCoords, setEventCoords] = useState<Record<string, [number, number]>>({});
@@ -451,7 +450,6 @@ export default function TodayScreen() {
       {!!destCenter && !!MapboxGL && (
         <MapboxGL.MapView
           ref={mapViewRef}
-          key={isDark ? "dark" : "light"}
           style={StyleSheet.absoluteFill}
           styleURL="mapbox://styles/mapbox/standard"
           projection="mercator"

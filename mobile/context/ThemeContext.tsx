@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, startTransition } from "react";
 import { Appearance, Platform } from "react-native";
 import * as SystemUI from "expo-system-ui";
 import { darkColors, lightColors, applyAccentHex, type ThemeColors } from "@/constants/theme";
@@ -63,7 +63,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
     const willBeDark = m === "system" ? Appearance.getColorScheme() !== "light" : m === "dark";
     SystemUI.setBackgroundColorAsync(willBeDark ? "#09090b" : "#f5f6fa");
-    setPref("themeMode", m);
+    // Restyling every open screen is heavy; let the tap and switch animation finish first
+    startTransition(() => setPref("themeMode", m));
   }, [setPref]);
 
   const toggle = useCallback(() => {
