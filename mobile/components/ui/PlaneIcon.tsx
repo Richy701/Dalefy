@@ -19,5 +19,7 @@ export function PlaneIcon({ size = 18, color, style }: { size?: number; color?: 
       />
     );
   }
+  // The admin's web preview renders Phosphor's DOM icon, which takes a CSS transform, not a style array
+  if (Platform.OS === "web") return <Airplane size={size} color={color} weight="fill" style={{ transform: "rotate(90deg)" } as any} />;
   return <Airplane size={size} color={color} weight="fill" style={[{ transform: [{ rotate: "90deg" }] }, style as any]} />;
 }
