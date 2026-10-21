@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { View, Text, StyleSheet, Linking, Platform, ActionSheetIOS, Alert } from "react-native";
+import { View, Text, StyleSheet, Linking, Platform, Alert } from "react-native";
+// Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
+const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
 import { FileText } from "phosphor-react-native";
 import * as Haptics from "@/services/haptics";
 import { ScalePress } from "@/components/ScalePress";
@@ -31,7 +33,7 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const open = (url: string) => Linking.openURL(url).catch(() => {});
     const title = [org.name, org.company].filter(Boolean).join(", ");
-    if (Platform.OS === "ios") {
+    if (ActionSheetIOS) {
       ActionSheetIOS.showActionSheetWithOptions(
         { title, options: [...contacts.map(c => c.label), "Cancel"], cancelButtonIndex: contacts.length },
         (i) => { if (i < contacts.length) open(contacts[i].url); },

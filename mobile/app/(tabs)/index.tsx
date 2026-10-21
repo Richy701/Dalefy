@@ -1,8 +1,10 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl, Platform, Share, ActionSheetIOS, Alert,
+  StyleSheet, RefreshControl, Platform, Share, Alert,
   Dimensions, useWindowDimensions,
 } from "react-native";
+// Native only: react-native-web (the admin's web preview) has no ActionSheetIOS export
+const ActionSheetIOS: typeof import("react-native").ActionSheetIOS | null = Platform.OS === "ios" ? require("react-native").ActionSheetIOS : null;
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedScrollHandler,
   type SharedValue,
@@ -350,7 +352,7 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
   const copyLink = () => { Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {}); };
   const openActions = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (Platform.OS === "ios") {
+    if (ActionSheetIOS) {
       ActionSheetIOS.showActionSheetWithOptions(
         { title: trip.name, options: ["Share Trip", "Copy Link", "Cancel"], cancelButtonIndex: 2 },
         (i) => { if (i === 0) shareTrip(trip.name, tripLink); else if (i === 1) copyLink(); },
