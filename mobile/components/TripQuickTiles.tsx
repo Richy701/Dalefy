@@ -58,7 +58,7 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
           </View>
           <View style={s.text}>
             <Text style={s.title} numberOfLines={1}>Trip info</Text>
-            <Text style={s.sub} numberOfLines={1}>From your organiser</Text>
+            <Text style={s.sub} numberOfLines={1}>All the details</Text>
           </View>
         </ScalePress>
       ) : null}
