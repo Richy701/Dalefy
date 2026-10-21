@@ -29,7 +29,7 @@ import { useFlightLiveData } from "@/hooks/useFlightLiveData";
 import { T, R, S, F, shadow, statusTone, categoryTone, type ThemeColors } from "@/constants/theme";
 import { LOCATION_COORDS, toLngLat, isSamePoint, distanceKm } from "@/shared/coordinates";
 import { useMemo, useCallback, useState, useEffect } from "react";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import type { TravelEvent } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { StatusIndicator } from "@/components/StatusIndicator";
@@ -602,7 +602,7 @@ export default function EventDetailScreen() {
 
         {/* Location card */}
         {ev.location && (
-          <Animated.View entering={FadeIn.duration(200)}>
+          <Animated.View>
             <Pressable
               onPress={() => openInMaps(ev.location, locationCoords)}
               accessibilityRole="button"
@@ -636,7 +636,7 @@ export default function EventDetailScreen() {
 
         {/* Details list */}
         {detailRows.length > 0 && (
-          <Animated.View entering={FadeIn.duration(200)} style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+          <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
             {detailRows.map((row, i) => {
               const RowIcon = row.icon;
               return (
@@ -662,7 +662,7 @@ export default function EventDetailScreen() {
 
         {/* Notes / description — single section, no double label */}
         {(ev.description || ev.notes) && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.infoCard}>
+          <Animated.View style={styles.infoCard}>
             <MicroLabel style={{ marginBottom: S.sm }}>Good to know</MicroLabel>
             {ev.description && (
               <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{ev.description}</Text>
@@ -676,7 +676,7 @@ export default function EventDetailScreen() {
 
         {/* Documents */}
         {hasDocs && (
-          <Animated.View entering={FadeIn.duration(200)} style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+          <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
             <View style={{ paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs }}>
               <MicroLabel>Documents</MicroLabel>
             </View>
@@ -712,7 +712,7 @@ export default function EventDetailScreen() {
 
         {/* Before / up next on the same day */}
         {neighbours.length > 0 && (
-          <Animated.View entering={FadeIn.duration(200)} style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+          <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
             <Text style={[styles.sectionLabel, { paddingHorizontal: S.md }]}>On this day</Text>
             {neighbours.map(({ label, e }, i) => (
               <Pressable
@@ -742,7 +742,7 @@ export default function EventDetailScreen() {
 
         {/* Organiser contact */}
         {trip.organizer && (
-          <Animated.View entering={FadeIn.duration(200)} style={{ marginTop: -S.sm, marginBottom: S.md }}>
+          <Animated.View style={{ marginTop: -S.sm, marginBottom: S.md }}>
             <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />
           </Animated.View>
         )}
@@ -1018,7 +1018,7 @@ function FlightDetailScreen({
 
           <View style={fs.body}>
             {/* The pass: one object with everything you need at the airport */}
-            <Animated.View entering={FadeInDown.delay(40).duration(320)} style={[fs.pass, { backgroundColor: C.card }, shadow("deep", isDark)]}>
+            <Animated.View style={[fs.pass, { backgroundColor: C.card }, shadow("deep", isDark)]}>
               <View style={[fs.airlineRow, { backgroundColor: bandColor }]}>
                 <View style={fs.airlineTile}>
                   {airlineIata && !logoError ? (
@@ -1159,7 +1159,7 @@ function FlightDetailScreen({
 
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
-              <Animated.View entering={FadeIn.duration(200)}>
+              <Animated.View>
                 <MicroLabel style={{ marginBottom: S.xs }}>Documents</MicroLabel>
                 {ev.documents.map(doc => (
                   <Pressable

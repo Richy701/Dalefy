@@ -256,7 +256,10 @@ function AppStack() {
               headerShown: false,
               headerBackTitle: " ",
               headerBackButtonDisplayMode: "minimal",
-              animation: "slide_from_right",
+              // The native iOS push (parallax, shadow, edge swipe back). Replace slides like a push too, so
+              // stepping to the previous or next event isn't an instant cut.
+              animation: "default",
+              animationTypeForReplace: "push",
               contentStyle: { backgroundColor: C.bg },
             }}
           >
