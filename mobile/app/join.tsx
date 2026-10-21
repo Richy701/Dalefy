@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
+import { TripPreviewCard } from "@/components/TripPreviewCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
@@ -212,43 +213,6 @@ function PinCell({ ch, index, active, resolving, lit, C, styles, onPress }: {
         ) : null}
       </Animated.View>
     </Pressable>
-  );
-}
-
-// ── Trip preview ─────────────────────────────────────────────────────────────
-function TripPreviewCard({ trip, C, styles, dates }: { trip: Trip; C: ThemeColors; styles: any; dates: string }) {
-  // The photo settles into place as the card rises
-  const imgScale = useSharedValue(1.1);
-  useEffect(() => { imgScale.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) }); }, []);
-  const imgStyle = useAnimatedStyle(() => ({ transform: [{ scale: imgScale.value }] }));
-  const flag = destinationFlag(trip.destination);
-  return (
-    <View style={styles.previewCard}>
-      <View style={styles.previewPhoto}>
-        <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
-          <MaskedView
-            style={StyleSheet.absoluteFill}
-            maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
-          >
-            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />
-          </MaskedView>
-        </Animated.View>
-      </View>
-      <View style={styles.previewBody}>
-        <Text style={styles.previewEyebrow}>Trip found</Text>
-        <Text style={styles.previewTitle} numberOfLines={2}>{trip.name}</Text>
-        {trip.destination ? (
-          <Text style={styles.previewLine} numberOfLines={1}>{flag ? `${flag}  ` : ""}{trip.destination}</Text>
-        ) : null}
-        <Text style={styles.previewSub} numberOfLines={1}>{dates}</Text>
-        {trip.organizer?.name ? (
-          <View style={styles.previewHost}>
-            <Avatar size={24} uri={trip.organizer.avatar} initials={trip.organizer.name.trim().charAt(0).toUpperCase()} />
-            <Text style={styles.previewSub} numberOfLines={1}>Organised by {trip.organizer.name}</Text>
-          </View>
-        ) : null}
-      </View>
-    </View>
   );
 }
 
@@ -514,7 +478,7 @@ export default function JoinScreen() {
                 // Trip found: the card rises in, the join button follows a beat later
                 <View key="preview">
                   <Animated.View entering={FadeInDown.delay(140).springify().damping(18).stiffness(170)}>
-                    <TripPreviewCard trip={previewTrip} C={C} styles={styles} dates={tripDates(previewTrip)} />
+                    <TripPreviewCard trip={previewTrip} dates={tripDates(previewTrip)} />
                   </Animated.View>
                   <Animated.View entering={FadeInDown.delay(260).springify().damping(18).stiffness(170)}>
                     <ScalePress
@@ -721,16 +685,6 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     pasteChipText: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
     joinedCard: { width: 140, gap: 2 },
     joinedThumb: { width: 140, height: 96, borderRadius: R.md, backgroundColor: C.card, marginBottom: S.xs },
-    previewCard: { borderRadius: R.xl, overflow: "hidden", backgroundColor: C.card },
-    previewPhoto: { height: 200, backgroundColor: C.elevated, overflow: "hidden" },
-    previewBody: { paddingHorizontal: S.md, paddingBottom: S.md, marginTop: -S.lg, gap: 3 },
-    previewEyebrow: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText, marginBottom: 2 },
-    previewTitle: { fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
-    previewLine: { fontSize: T.base, color: C.textSecondary },
-    previewHost: {
-      flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.xs, paddingTop: S.sm,
-      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
-    },
     startOver: { alignSelf: "center", paddingVertical: S.md },
     qrNote: { fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary, marginTop: S.sm, textAlign: "center", paddingHorizontal: S.lg },
     qrHint: { fontSize: T.base, color: C.textSecondary, textAlign: "center", marginTop: S.md },

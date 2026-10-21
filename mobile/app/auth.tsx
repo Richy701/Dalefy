@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, useWindowDimensions,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Envelope, LockKey, ArrowRight, CaretLeft, Check,
@@ -65,7 +66,6 @@ export default function AuthScreen() {
   const [busyProvider, setBusyProvider] = useState<"google" | "apple" | null>(null);
 
   const styles = useMemo(() => makeStyles(C), [C]);
-  const { height: windowHeight } = useWindowDimensions();
 
   const finish = useCallback(() => {
     haptic.light();
@@ -186,55 +186,102 @@ export default function AuthScreen() {
 
   const providerBusy = busyProvider !== null;
 
+  // Resend waits 30 seconds so a second tap doesn't fire another email straight away
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn(n => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+  useEffect(() => { if (step === "sent") setResendIn(30); }, [step]);
+
+  const providers = (onPhoto: boolean) => (
+    <View style={styles.stack}>
+      {Platform.OS === "ios" && (
+        <Pressable
+          onPress={handleApple}
+          disabled={providerBusy}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Apple"
+          style={({ pressed }) => [styles.providerBtn, onPhoto ? styles.providerOnPhotoPrimary : styles.providerPrimary, pressed && styles.pressed]}
+        >
+          {busyProvider === "apple"
+            ? <ActivityIndicator size="small" color={onPhoto ? "#000" : C.bg} />
+            : <>
+                <AppleMark size={20} color={onPhoto ? "#000" : C.bg} />
+                <Text style={[styles.providerText, { color: onPhoto ? "#000" : C.bg }]}>Continue with Apple</Text>
+              </>}
+        </Pressable>
+      )}
+      {googleEnabled && (
+        <Pressable
+          onPress={handleGoogle}
+          disabled={providerBusy}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Google"
+          style={({ pressed }) => [styles.providerBtn, onPhoto && styles.providerOnPhoto, pressed && styles.pressed]}
+        >
+          {busyProvider === "google"
+            ? <ActivityIndicator size="small" color={onPhoto ? "#fff" : C.textPrimary} />
+            : <>
+                <GoogleG size={20} />
+                <Text style={[styles.providerText, onPhoto && { color: "#fff" }]}>Continue with Google</Text>
+              </>}
+        </Pressable>
+      )}
+      <Pressable
+        onPress={() => go("email")}
+        disabled={providerBusy}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with email"
+        style={({ pressed }) => [styles.providerBtn, onPhoto && styles.providerOnPhoto, pressed && styles.pressed]}
+      >
+        <Envelope size={20} color={onPhoto ? "#fff" : C.textPrimary} weight="regular" />
+        <Text style={[styles.providerText, onPhoto && { color: "#fff" }]}>Continue with email</Text>
+      </Pressable>
+    </View>
+  );
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Splash
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === "splash") {
-    const heroHeight = Math.round(windowHeight * 0.58);
     return (
-      <View style={styles.safe}>
-        <View style={[styles.hero, { height: heroHeight }]}>
-          <Image
-            source={require("@/assets/images/welcome-hero.jpg")}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={300}
-            accessibilityIgnoresInvertColors
-          />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.25)", "rgba(0,0,0,0)"]}
-            style={[StyleSheet.absoluteFill, { height: 140 }]}
-          />
-          <LinearGradient
-            colors={["transparent", C.bg]}
-            locations={[0, 1]}
-            style={styles.heroFade}
-          />
-        </View>
+      <View style={[styles.safe, { backgroundColor: "#000" }]}>
+        <StatusBar style="light" />
+        <Image
+          source={require("@/assets/images/welcome-hero.jpg")}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={300}
+          accessibilityIgnoresInvertColors
+        />
+        {/* Dark only where the text sits, so white type holds over any part of the photo */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.88)"]}
+          locations={[0, 0.22, 0.5, 0.78]}
+          style={StyleSheet.absoluteFill}
+        />
 
         <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <View style={styles.splash} pointerEvents="box-none">
             <Animated.View entering={FadeIn.duration(500)} style={styles.splashTop}>
-              <Logo size={26} color="#FFFFFF" />
+              <Logo size={34} color="#FFFFFF" />
             </Animated.View>
 
             <View style={styles.splashBottom}>
               <Animated.Text entering={FadeInUp.duration(350).delay(150)} style={styles.heroTitle}>
-                Your trip,{"\n"}handled.
+                Welcome aboard
               </Animated.Text>
               <Animated.Text entering={FadeInUp.duration(350).delay(220)} style={styles.heroSub}>
-                Your itinerary, flights, documents and updates from your travel agent, all in one place.
+                Sign in to find the trip your organiser has planned for you.
               </Animated.Text>
 
               <Animated.View entering={FadeInUp.duration(350).delay(300)}>
-                <Pressable
-                  onPress={() => go("options")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue"
-                  style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
-                >
-                  <Text style={styles.ctaText}>Continue</Text>
-                  <ArrowRight size={16} color={C.onAccent} weight="bold" />
+                {providers(true)}
+                {error ? <Text style={[styles.errorText, styles.errorOnPhoto]}>{error}</Text> : null}
+                <Pressable onPress={handleGuest} disabled={providerBusy} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
+                  <Text style={[styles.mutedLinkText, { color: "rgba(255,255,255,0.78)" }]}>Continue without an account</Text>
                 </Pressable>
               </Animated.View>
             </View>
@@ -271,14 +318,17 @@ export default function AuthScreen() {
           <Animated.View entering={FadeInUp.duration(300).delay(200)} style={styles.footer}>
             {error ? <Text style={[styles.errorText, { textAlign: "center", marginBottom: S.sm }]}>{error}</Text> : null}
             <Pressable
-              onPress={sendLink}
-              disabled={loading}
+              onPress={() => { sendLink(); setResendIn(30); }}
+              disabled={loading || resendIn > 0}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+              accessibilityState={{ disabled: loading || resendIn > 0 }}
+              style={({ pressed }) => [styles.secondaryBtn, pressed && resendIn <= 0 && styles.pressed]}
             >
               {loading
                 ? <ActivityIndicator size="small" color={C.textPrimary} />
-                : <Text style={styles.secondaryText}>Resend link</Text>}
+                : <Text style={[styles.secondaryText, resendIn > 0 && { color: C.textTertiary }]}>
+                    {resendIn > 0 ? `Resend link in 0:${String(resendIn).padStart(2, "0")}` : "Resend link"}
+                  </Text>}
             </Pressable>
             <Pressable onPress={() => go("email")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
               <Text style={styles.linkText}>Use a different email</Text>
@@ -294,7 +344,7 @@ export default function AuthScreen() {
   // ═══════════════════════════════════════════════════════════════════════════
   const backTarget: Step | null =
     step === "options" ? (isUpgrade ? null : "splash")
-    : step === "email" ? "options"
+    : step === "email" ? (isUpgrade ? "options" : "splash")
     : step === "password" ? "email"
     : null;
 
@@ -307,7 +357,7 @@ export default function AuthScreen() {
     step === "options"
       ? (isUpgrade
         ? "Add an account so your trips follow you to a new phone."
-        : "Use the email your travel agent has for you, so your trips find you.")
+        : "Use the email your organiser has for you, so your trips find you.")
     : step === "email"
       ? "We'll send you a sign-in link. No password to remember."
       : "For accounts that were set up with a password.";
@@ -353,49 +403,8 @@ export default function AuthScreen() {
             </Animated.Text>
 
             {step === "options" && (
-              <Animated.View entering={FadeInUp.duration(300).delay(120)} style={styles.stack}>
-                {Platform.OS === "ios" && (
-                  <Pressable
-                    onPress={handleApple}
-                    disabled={providerBusy}
-                    accessibilityRole="button"
-                    accessibilityLabel="Continue with Apple"
-                    style={({ pressed }) => [styles.providerBtn, styles.providerPrimary, pressed && styles.pressed]}
-                  >
-                    {busyProvider === "apple"
-                      ? <ActivityIndicator size="small" color={C.bg} />
-                      : <>
-                          <AppleMark size={20} color={C.bg} />
-                          <Text style={[styles.providerText, { color: C.bg }]}>Continue with Apple</Text>
-                        </>}
-                  </Pressable>
-                )}
-                {googleEnabled && (
-                  <Pressable
-                    onPress={handleGoogle}
-                    disabled={providerBusy}
-                    accessibilityRole="button"
-                    accessibilityLabel="Continue with Google"
-                    style={({ pressed }) => [styles.providerBtn, pressed && styles.pressed]}
-                  >
-                    {busyProvider === "google"
-                      ? <ActivityIndicator size="small" color={C.textPrimary} />
-                      : <>
-                          <GoogleG size={20} />
-                          <Text style={styles.providerText}>Continue with Google</Text>
-                        </>}
-                  </Pressable>
-                )}
-                <Pressable
-                  onPress={() => go("email")}
-                  disabled={providerBusy}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with email"
-                  style={({ pressed }) => [styles.providerBtn, pressed && styles.pressed]}
-                >
-                  <Envelope size={20} color={C.textPrimary} weight="regular" />
-                  <Text style={styles.providerText}>Continue with email</Text>
-                </Pressable>
+              <Animated.View entering={FadeInUp.duration(300).delay(120)}>
+                {providers(false)}
               </Animated.View>
             )}
 
@@ -467,8 +476,8 @@ export default function AuthScreen() {
                   {loading
                     ? <ActivityIndicator size="small" color={C.onAccent} />
                     : <>
-                        <Text style={[styles.ctaText, !emailValid && { color: C.textTertiary }]}>Send link</Text>
-                        <ArrowRight size={16} color={emailValid ? C.onAccent : C.textTertiary} weight="bold" />
+                        <Text style={[styles.ctaText, !emailValid && { color: C.tealText }]}>Send link</Text>
+                        <ArrowRight size={16} color={emailValid ? C.onAccent : C.tealText} weight="bold" />
                       </>}
                 </Pressable>
                 <Pressable onPress={() => go("password")} accessibilityRole="button" style={({ pressed }) => [styles.linkBtn, pressed && { opacity: 0.6 }]}>
@@ -488,8 +497,8 @@ export default function AuthScreen() {
                 {loading
                   ? <ActivityIndicator size="small" color={C.onAccent} />
                   : <>
-                      <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.textTertiary }]}>Sign in</Text>
-                      <ArrowRight size={16} color={emailValid && password ? C.onAccent : C.textTertiary} weight="bold" />
+                      <Text style={[styles.ctaText, (!emailValid || !password) && { color: C.tealText }]}>Sign in</Text>
+                      <ArrowRight size={16} color={emailValid && password ? C.onAccent : C.tealText} weight="bold" />
                     </>}
               </Pressable>
             )}
@@ -512,19 +521,21 @@ function makeStyles(C: ThemeColors) {
     pressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
 
     // ── Splash ──
-    hero: { width: "100%", overflow: "hidden" },
-    heroFade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%" },
     splash: { flex: 1, justifyContent: "space-between" },
-    splashTop: { paddingHorizontal: S.xl, paddingTop: S.lg },
-    splashBottom: { paddingHorizontal: S.xl, paddingBottom: S.md },
+    splashTop: { paddingHorizontal: S.lg, paddingTop: S.md },
+    splashBottom: { paddingHorizontal: S.lg, paddingBottom: S.sm },
     heroTitle: {
-      fontSize: 40, fontWeight: T.bold, color: C.textPrimary,
-      letterSpacing: -0.8, lineHeight: 44, marginBottom: S.sm,
+      fontSize: 42, fontWeight: T.bold, color: "#fff",
+      letterSpacing: -0.8, lineHeight: 46, marginBottom: S.sm,
     },
     heroSub: {
-      fontSize: T.md, color: C.textSecondary, lineHeight: T.md + 8,
-      marginBottom: S.xl, maxWidth: 320,
+      fontSize: T.md, color: "rgba(255,255,255,0.86)", lineHeight: T.md + 8,
+      marginBottom: S.lg, maxWidth: 330,
     },
+    // On the photo: Apple's white style, the others frosted
+    providerOnPhotoPrimary: { backgroundColor: "#fff", borderColor: "#fff" },
+    providerOnPhoto: { backgroundColor: "rgba(255,255,255,0.16)", borderColor: "rgba(255,255,255,0.28)" },
+    errorOnPhoto: { color: "#ffb4b4", textAlign: "center" },
 
     // ── Nav ──
     topNav: { height: 44, paddingHorizontal: S.md, justifyContent: "center" },
@@ -579,7 +590,7 @@ function makeStyles(C: ThemeColors) {
       height: 52, borderRadius: R.xl, backgroundColor: C.teal,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: S.xs,
     },
-    ctaDisabled: { backgroundColor: C.elevated },
+    ctaDisabled: { backgroundColor: C.tealDim },
     ctaText: { fontSize: T.md, fontWeight: T.bold, color: C.onAccent },
     secondaryBtn: {
       height: 52, borderRadius: R.xl,

@@ -11,8 +11,9 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { uploadAvatar } from "@/services/avatarUpload";
 import { updateMemberProfile } from "@/services/firebaseTrips";
-import { ArrowRight, CaretLeft, Camera, User, Ticket, Check, CalendarBlank, X } from "phosphor-react-native";
-import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import { ArrowRight, CaretLeft, Camera, User, Ticket, Check, X } from "phosphor-react-native";
+import { TripPreviewCard } from "@/components/TripPreviewCard";
+import Animated, { FadeIn, FadeInUp, FadeInDown } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useBrand } from "@/context/BrandContext";
@@ -100,7 +101,7 @@ export default function WelcomeScreen() {
   const lookupCode = async () => {
     const raw = code.trim();
     if (!raw) {
-      setCodeError("Enter the code your agent gave you.");
+      setCodeError("Enter the code your organiser gave you.");
       return;
     }
     setCodeLoading(true);
@@ -131,7 +132,8 @@ export default function WelcomeScreen() {
           refreshBranding();
         }
         setMatchedTrip(trip);
-        setTimeout(() => afterCode(trip), 900);
+        // Long enough to see the trip card before moving on
+        setTimeout(() => afterCode(trip), 1600);
         return;
       }
 
@@ -256,11 +258,11 @@ export default function WelcomeScreen() {
               </Animated.View>
 
               <Animated.Text entering={FadeInUp.duration(350).delay(100)} style={styles.stepTitle}>
-                Got a code from{"\n"}your agent?
+                Got a code from{"\n"}your organiser?
               </Animated.Text>
 
               <Animated.Text entering={FadeInUp.duration(350).delay(160)} style={styles.stepSub}>
-                {firstName ? `Hi ${firstName}. ` : ""}Enter your agency code or a six-character trip PIN. You can also add trips later from Home.
+                {firstName ? `Hi ${firstName}. ` : ""}Enter your organiser's code or a six-character trip PIN. You can also add trips later from Home.
               </Animated.Text>
 
               <Animated.View entering={FadeInUp.duration(350).delay(220)} style={styles.inputWrap}>
@@ -310,17 +312,8 @@ export default function WelcomeScreen() {
               ) : null}
 
               {matchedTrip ? (
-                <Animated.View entering={FadeInUp.duration(300)} style={styles.matchCard}>
-                  <View style={styles.matchIcon}>
-                    <CalendarBlank size={18} color={C.textPrimary} weight="regular" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.matchTitle} numberOfLines={1}>{matchedTrip.name}</Text>
-                    <Text style={styles.matchSub}>
-                      {fmtDay(matchedTrip.start)} – {fmtDay(matchedTrip.end)}
-                      {matchedTrip.destination ? `, ${matchedTrip.destination}` : ""}
-                    </Text>
-                  </View>
+                <Animated.View entering={FadeInDown.springify().damping(18).stiffness(170)}>
+                  <TripPreviewCard trip={matchedTrip} dates={`${fmtDay(matchedTrip.start)} – ${fmtDay(matchedTrip.end)}`} />
                 </Animated.View>
               ) : null}
             </ScrollView>
@@ -341,8 +334,8 @@ export default function WelcomeScreen() {
                   <ActivityIndicator size="small" color={C.onAccent} />
                 ) : (
                   <>
-                    <Text style={[styles.ctaText, !code.trim() && { color: C.textTertiary }]}>Continue</Text>
-                    <ArrowRight size={16} color={code.trim() ? C.onAccent : C.textTertiary} weight="bold" />
+                    <Text style={[styles.ctaText, !code.trim() && { color: C.tealText }]}>Continue</Text>
+                    <ArrowRight size={16} color={code.trim() ? C.onAccent : C.tealText} weight="bold" />
                   </>
                 )}
               </Pressable>
@@ -467,7 +460,7 @@ export default function WelcomeScreen() {
             {/* Name input */}
             <Animated.View entering={FadeInUp.duration(400).delay(300)} style={styles.inputWrap}>
               <View style={isEdit ? styles.groupRow : styles.inputRow}>
-                {isEdit ? null : <User size={18} color={C.textTertiary} weight="regular" />}
+                {isEdit ? <Text style={styles.groupLabel}>Name</Text> : <User size={18} color={C.textTertiary} weight="regular" />}
                 <TextInput
                   ref={nameRef}
                   value={name}
@@ -484,7 +477,7 @@ export default function WelcomeScreen() {
                   style={[styles.input, isEdit && styles.nameInput]}
                 />
               </View>
-              {isEdit && <Text style={[styles.groupFooter, { textAlign: "center" }]}>This is how you appear to your organiser and the other travellers.</Text>}
+              {isEdit && <Text style={styles.groupFooter}>This is how you appear to your organiser and the other travellers.</Text>}
             </Animated.View>
           </ScrollView>
 
@@ -567,10 +560,11 @@ function makeStyles(C: ThemeColors) {
     editNavTitle: { flex: 1, textAlign: "center", fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary },
     // Contacts-style: one large centred name in a soft see-through field on the glass sheet
     groupRow: {
-      minHeight: 56, justifyContent: "center",
-      backgroundColor: "rgba(128,128,128,0.16)", borderRadius: 16, paddingHorizontal: S.md,
+      minHeight: 52, flexDirection: "row", alignItems: "center",
+      backgroundColor: C.card, borderRadius: R.lg, paddingHorizontal: S.md,
+      borderWidth: StyleSheet.hairlineWidth, borderColor: C.border,
     },
-    nameInput: { flex: 0, textAlign: "center", fontSize: T.xl, fontWeight: T.semibold },
+    nameInput: { flex: 1, textAlign: "left", fontSize: T.lg },
     groupLabel: { fontSize: T.lg, color: C.textPrimary, width: 84 },
     groupFooter: { fontSize: 13, lineHeight: 18, color: C.textTertiary, paddingHorizontal: S.md, marginTop: S.xs },
 
@@ -639,7 +633,7 @@ function makeStyles(C: ThemeColors) {
       gap: S.xs,
     },
     ctaDisabled: {
-      backgroundColor: C.elevated,
+      backgroundColor: C.tealDim,
     },
     ctaText: {
       fontSize: T.md, fontWeight: T.bold, color: C.onAccent,
