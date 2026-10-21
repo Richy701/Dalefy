@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play, Plus, Camera, X, Trash, Heart, Export, VideoCamera, ImageSquare,
-  CaretRight, CaretDown,
+  CaretRight, CaretDown, Images,
 } from "phosphor-react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
@@ -69,8 +69,10 @@ const GRID_GAP = 2;
 const GRID_COLS = 3;
 // Edge to edge like Photos: no side gutter, hairline gaps, square corners
 const GRID_ITEM_SIZE = (SCREEN_W - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
-const TRIP_HEADER_H = 60;
-const DAY_HEADER_H = 44;
+// Photo banner per trip: the card plus room above (a gap between trips) and below
+const TRIP_BANNER_H = 176;
+const TRIP_HEADER_H = TRIP_BANNER_H + S.lg + S.xs;
+const DAY_HEADER_H = 46;
 
 type OriginRect = { x: number; y: number; width: number; height: number; aspect?: number };
 
@@ -85,7 +87,7 @@ function fitRect(aspect?: number): OriginRect {
 }
 
 type GalleryRow =
-  | { type: "trip-header"; key: string; name: string; dateRange: string; count: number }
+  | { type: "trip-header"; key: string; name: string; dateRange: string; count: number; cover?: string; first: boolean }
   | { type: "day-header"; key: string; label: string; date: string; count: number }
   | { type: "grid-row"; key: string; tripId: string; tripName: string; items: TripMedia[] };
 
@@ -129,19 +131,18 @@ function formatDayDate(key: string): string {
 }
 
 function buildGalleryRows(
-  filteredTrips: Array<{ id: string; name: string; destination?: string; start: string; end: string; media?: TripMedia[] }>,
+  filteredTrips: Array<{ id: string; name: string; destination?: string; start: string; end: string; image?: string; media?: TripMedia[] }>,
 ): GalleryRow[] {
   const rows: GalleryRow[] = [];
-  const showTripHeaders = filteredTrips.length > 1;
-  for (const trip of filteredTrips) {
+  for (const [tripIndex, trip] of filteredTrips.entries()) {
     const media = trip.media ?? [];
     if (media.length === 0) continue;
     const tripName = trip.destination || trip.name;
 
-    if (showTripHeaders) {
-      const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
-      rows.push({ type: "trip-header", key: `h-${trip.id}`, name: tripName, dateRange, count: media.length });
-    }
+    // Each trip opens on a banner of its own newest photo, falling back to the trip cover
+    const dateRange = `${parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+    const newestPhoto = media.filter(m => m.type === "image").sort((a, b) => mediaTime(b) - mediaTime(a))[0];
+    rows.push({ type: "trip-header", key: `h-${trip.id}`, name: tripName, dateRange, count: media.length, cover: newestPhoto?.url || trip.image, first: tripIndex === 0 });
 
     // Newest day first, newest photo first within a day
     const byDay = new Map<string, TripMedia[]>();
@@ -150,12 +151,16 @@ function buildGalleryRows(
       const list = byDay.get(k);
       if (list) list.push(m); else byDay.set(k, [m]);
     }
-    const days = [...byDay.keys()].sort((a, b) => b.localeCompare(a));
-    for (const k of days) {
+    // Older uploads have no taken time; outside the trip dates their day is only when they were uploaded,
+    // so those days go last instead of reading like trip days
+    const days = [...byDay.keys()].sort((a, b) => b.localeCompare(a)).map(k => {
       const items = byDay.get(k)!.slice().sort((a, b) => mediaTime(b) - mediaTime(a));
-      // Older uploads have no taken time; outside the trip dates their day is only when they were added
       let label = dayLabelFor(k, trip.start, trip.end);
-      if (label.endsWith("the trip") && !items.some(m => m.takenAt)) label = "Added";
+      if (label.endsWith("the trip") && !items.some(m => m.takenAt)) label = "Uploaded";
+      return { k, items, label };
+    });
+    days.sort((a, b) => Number(a.label === "Uploaded") - Number(b.label === "Uploaded"));
+    for (const { k, items, label } of days) {
       rows.push({ type: "day-header", key: `d-${trip.id}-${k}`, label, date: formatDayDate(k), count: items.length });
       for (let i = 0; i < items.length; i += GRID_COLS) {
         rows.push({ type: "grid-row", key: `r-${trip.id}-${k}-${i}`, tripId: trip.id, tripName, items: items.slice(i, i + GRID_COLS) });
@@ -1001,19 +1006,31 @@ export default function MediaScreen() {
   const renderGalleryRow = useCallback(({ item: row }: { item: GalleryRow }) => {
     if (row.type === "trip-header") {
       return (
-        <View style={{ height: TRIP_HEADER_H, paddingHorizontal: S.md, paddingBottom: S.xs, justifyContent: "flex-end" }}>
-          <Text style={{ fontSize: T.xl, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 }} numberOfLines={1}>{row.name}</Text>
-          <Text style={{ fontSize: T.sm, color: C.textTertiary, marginTop: 2 }} numberOfLines={1}>
-            {row.dateRange}, {row.count} photo{row.count !== 1 ? "s" : ""}
-          </Text>
+        <View style={{ height: TRIP_HEADER_H, paddingHorizontal: S.md, paddingTop: row.first ? S.xs : S.lg, paddingBottom: row.first ? S.lg : S.xs }}>
+          <View style={styles.tripBanner}>
+            {row.cover ? <CachedImage uri={row.cover} style={StyleSheet.absoluteFill} accessible={false} /> : null}
+            {/* Dark at the foot so white text holds at 4.5:1 even on a white photo */}
+            <LinearGradient
+              pointerEvents="none"
+              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.2)", "rgba(0,0,0,0.68)"]}
+              locations={[0.3, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.tripBannerText} accessible accessibilityRole="header" accessibilityLabel={`${row.name}, ${row.dateRange}, ${row.count} photo${row.count !== 1 ? "s" : ""}`}>
+              <Text style={styles.tripBannerName} numberOfLines={1}>{row.name}</Text>
+              <Text style={styles.tripBannerSub} numberOfLines={1}>
+                {row.dateRange}, {row.count} photo{row.count !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          </View>
         </View>
       );
     }
 
     if (row.type === "day-header") {
       return (
-        <View style={{ height: DAY_HEADER_H, paddingHorizontal: S.md, paddingBottom: S.xs, flexDirection: "row", alignItems: "flex-end", gap: S.xs }}>
-          <Text style={{ fontSize: T.base, fontWeight: T.semibold, color: C.textPrimary }} numberOfLines={1}>{row.label}</Text>
+        <View style={{ height: DAY_HEADER_H, paddingHorizontal: S.md, paddingBottom: S.xs2, flexDirection: "row", alignItems: "flex-end", gap: 6 }}>
+          <Text style={{ fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary }} numberOfLines={1}>{row.label}</Text>
           <Text style={{ fontSize: T.sm, color: C.textTertiary, flex: 1 }} numberOfLines={1}>{row.date}</Text>
         </View>
       );
@@ -1033,7 +1050,7 @@ export default function MediaScreen() {
         ))}
       </View>
     );
-  }, [C, allItemsIndex, handleDelete, isMine]);
+  }, [C, styles, allItemsIndex, handleDelete, isMine]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     const trip = trips.find(t => t.id === tripId);
@@ -1134,6 +1151,8 @@ export default function MediaScreen() {
     return t?.destination || t?.name || "All trips";
   }, [resolvedTripFilter, trips]);
 
+  const tripMenuImage = resolvedTripFilter === "all" ? undefined : trips.find(x => x.id === resolvedTripFilter)?.image;
+
   const { onScroll, barStyle } = useCollapsingHeader();
 
   const listHeader = useMemo(() => (
@@ -1156,6 +1175,13 @@ export default function MediaScreen() {
               }}
             >
               <View style={styles.tripMenuBtn} accessibilityRole="button" accessibilityLabel={`Trip: ${tripMenuLabel}`}>
+                {tripMenuImage ? (
+                  <CachedImage uri={tripMenuImage} style={styles.tripMenuThumb} accessible={false} />
+                ) : (
+                  <View style={[styles.tripMenuThumb, { alignItems: "center", justifyContent: "center" }]}>
+                    <Images size={14} color={C.textSecondary} weight="fill" />
+                  </View>
+                )}
                 <Text style={styles.tripMenuText} numberOfLines={1}>{tripMenuLabel}</Text>
                 <CaretDown size={12} color={C.textSecondary} weight="bold" />
               </View>
@@ -1213,7 +1239,7 @@ export default function MediaScreen() {
         </View>
       ) : null}
     </View>
-  ), [C, mediaChips, tripMenuLabel, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, uploadProgress, router, handleUploadNew]);
+  ), [C, mediaChips, tripMenuLabel, tripMenuImage, trips, filteredTrips.length, mediaFilter, resolvedTripFilter, styles, tripsWithMedia.length, emptyTrip, uploadProgress, router, handleUploadNew]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -1299,9 +1325,15 @@ function makeStyles(C: ThemeColors) {
       paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: S.md,
     },
     tripMenuBtn: {
-      flexDirection: "row", alignItems: "center", gap: S["2xs"],
-      maxWidth: 180, paddingVertical: 5, paddingRight: S.xs,
+      flexDirection: "row", alignItems: "center", gap: S.xs,
+      maxWidth: 220, paddingVertical: 5, paddingLeft: 5, paddingRight: S.sm,
+      borderRadius: R.md, backgroundColor: C.elevated,
     },
+    tripMenuThumb: { width: 24, height: 24, borderRadius: R.sm, backgroundColor: C.card, overflow: "hidden" },
+    tripBanner: { flex: 1, borderRadius: R.xl, overflow: "hidden", backgroundColor: C.elevated, justifyContent: "flex-end" },
+    tripBannerText: { paddingHorizontal: S.md, paddingBottom: S.sm2 },
+    tripBannerName: { fontSize: T["2xl"], fontWeight: T.bold, color: "#fff", letterSpacing: -0.3 },
+    tripBannerSub: { fontSize: T.sm, color: "rgba(255,255,255,0.88)", marginTop: 2 },
     tripMenuText: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, flexShrink: 1 },
 
     // ── Upload progress ──
