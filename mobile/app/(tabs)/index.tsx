@@ -474,7 +474,6 @@ export default function HomeScreen() {
   const hasTime = (ev: TravelEvent) => !!ev.time && !/^tb[acd]$/i.test(ev.time);
   const dayLabel = heroDay.date ? parseTripDate(heroDay.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "";
   const dayIn = heroDay.date ? daysUntil(heroDay.date) : 0;
-  const countdown = dayIn <= 0 ? "Today" : dayIn === 1 ? "Tomorrow" : `In ${dayIn} days`;
   const eventTitle = (ev: TravelEvent) => {
     const t = normaliseTitle(ev.title, ev.type, ev.transferType);
     return ev.type === "hotel" ? t.split(" – ")[0] : t;
@@ -645,8 +644,11 @@ export default function HomeScreen() {
                   >
                     <View style={styles.nextMeta}>
                       <NextIcon size={15} color={categoryTone(nextEvent.type, C).fg} weight="fill" />
-                      <Text style={styles.nextLabel}>Next up, {dayLabel}{hasTime(nextEvent) ? `, ${nextEvent.time}` : ""}</Text>
-                      <Text style={styles.nextCountdown}>{countdown}</Text>
+                      {/* What and when; the trip countdown already sits in the hero above */}
+                      <Text style={[styles.nextLabel, { color: categoryTone(nextEvent.type, C).fg }]}>
+                        {nextEvent.type.charAt(0).toUpperCase() + nextEvent.type.slice(1)}, {dayIn <= 0 ? "today" : dayIn === 1 ? "tomorrow" : dayLabel}
+                      </Text>
+                      {hasTime(nextEvent) ? <Text style={styles.nextCountdown}>{nextEvent.time}</Text> : null}
                     </View>
                     <Text style={styles.nextTitle} numberOfLines={2}>{nextHeadline.title}</Text>
                     {nextHeadline.sub ? <Text style={styles.nextSub} numberOfLines={2}>{nextHeadline.sub}</Text> : null}
@@ -881,7 +883,7 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     nextUp: { paddingHorizontal: S.md, gap: S.xs },
     nextMeta: { flexDirection: "row", alignItems: "center", gap: S.xs },
     nextLabel: { flex: 1, fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary },
-    nextCountdown: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
+    nextCountdown: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
     nextTitle: { fontSize: 24, lineHeight: 29, fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
     nextSub: { fontSize: T.base, color: C.textSecondary, lineHeight: 21 },
 

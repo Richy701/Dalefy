@@ -206,6 +206,7 @@ export default function TripScreen() {
   // A tapped or linked day stays highlighted even when the page can't scroll it to the top
   // (the last days sit near the end); scrolling by hand hands control back to the scroll position
   const chosenDay = useRef<string | null>(null);
+  const shownDay = useRef<string | null>(null);
   const viewH = useRef(0);
   const contentH = useRef(0);
   const jumpToDay = useCallback((date: string) => {
@@ -213,6 +214,7 @@ export default function TripScreen() {
     if (y == null) return;
     Haptics.selectionAsync();
     chosenDay.current = date;
+    shownDay.current = date;
     setActiveDay(date);
     scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: true });
   }, [insets.top]);
@@ -226,7 +228,7 @@ export default function TripScreen() {
   );
   const updateActiveDay = useCallback((y: number) => {
     if (chosenDay.current) return;
-    if (y <= 0) { setActiveDay(null); return; }
+    if (y <= 0) { shownDay.current = null; setActiveDay(null); return; }
     const line = y + insets.top + HEADER_H + stripH.current + S.md;
     const ordered = Object.entries(dayY.current).sort((a, b) => a[1] - b[1]);
     let cur: string | null = null;
@@ -235,7 +237,11 @@ export default function TripScreen() {
     }
     // At the very bottom the last day is what you're looking at, even if its header never reached the top
     if (ordered.length && viewH.current && y + viewH.current >= contentH.current - 24) cur = ordered[ordered.length - 1][0];
-    setActiveDay(prev => (prev === cur ? prev : cur));
+    if (shownDay.current === cur) return;
+    // A picker-style tick as each new day takes over while scrolling by hand
+    if (shownDay.current && cur) Haptics.selectionAsync();
+    shownDay.current = cur;
+    setActiveDay(cur);
   }, [insets.top]);
   useAnimatedReaction(
     () => Math.round(scrollY.value / 24),
@@ -252,6 +258,7 @@ export default function TripScreen() {
     if (y == null || !timelineY.current) return;
     pendingDate.current = null;
     chosenDay.current = date;
+    shownDay.current = date;
     setActiveDay(date);
     scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: false });
   }, [insets.top]);
