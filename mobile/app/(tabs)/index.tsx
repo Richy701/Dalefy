@@ -1,9 +1,8 @@
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl, Platform, Share,
+  StyleSheet, RefreshControl, Platform, Share, ActionSheetIOS, Alert,
   Dimensions, useWindowDimensions,
 } from "react-native";
-import ContextMenu from "@/components/ContextMenu";
 import Animated, {
   useSharedValue, useAnimatedStyle, useAnimatedScrollHandler,
   type SharedValue,
@@ -331,7 +330,7 @@ function shareTrip(name: string, link: string) {
 // ── Trip cards ──────────────────────────────────────────────────────────────
 // Other trips as Spotify-style squares, name and dates underneath. All one size: two fill the
 // width as a pair, more become a shelf that runs off the edge.
-function TripCard({ trip, styles, size, previewBg }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number; previewBg: string }) {
+function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number }) {
   const { C } = useTheme();
   const { toast } = useToast();
   const start   = parseTripDate(trip.start);
@@ -348,29 +347,32 @@ function TripCard({ trip, styles, size, previewBg }: { trip: Trip; styles: Retur
   const whenLine = isPast ? dateRange : isActive ? tripFactLine(trip).split(", ")[0] : days === 1 ? "tomorrow" : `in ${days} days`;
   const photo = <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />;
   const tripLink = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${trip.id}`;
+  const copyLink = () => { Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {}); };
+  const openActions = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: trip.name, options: ["Share Trip", "Copy Link", "Cancel"], cancelButtonIndex: 2 },
+        (i) => { if (i === 0) shareTrip(trip.name, tripLink); else if (i === 1) copyLink(); },
+      );
+    } else {
+      Alert.alert(trip.name, undefined, [
+        { text: "Share Trip", onPress: () => shareTrip(trip.name, tripLink) },
+        { text: "Copy Link", onPress: copyLink },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
+  };
 
   return (
-    <ContextMenu
-      // The lifted preview sits on the page's own card colour, so the card's text stays readable
-      previewBackgroundColor={previewBg}
-      actions={[
-        { title: "Share Trip", systemIcon: "square.and.arrow.up" },
-        { title: "Copy Link", systemIcon: "link" },
-      ]}
-      onPress={(e: { nativeEvent: { index: number } }) => {
-        if (e.nativeEvent.index === 0) {
-          // Same as the Share button on Home: the trip and its link, which opens the app if it's installed
-          shareTrip(trip.name, tripLink);
-        } else if (e.nativeEvent.index === 1) {
-          Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {});
-        }
-      }}
-    >
     <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       style={StyleSheet.flatten([styles.tripCard, { width: size }])}
       // Link owns onPress for navigation; the tick goes on press-in
       onPressIn={() => { Haptics.selectionAsync(); }}
+      // A plain action sheet rather than a context menu, which always lifts and zooms the card
+      onLongPress={openActions}
+      delayLongPress={350}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
@@ -386,7 +388,6 @@ function TripCard({ trip, styles, size, previewBg }: { trip: Trip; styles: Retur
       </View>
     </ScalePress>
     </Link>
-    </ContextMenu>
   );
 }
 
@@ -732,7 +733,7 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.groupHeader} accessibilityRole="header">{g.title}</Text>
               <ScrollView horizontal scrollEnabled={g.list.length > 2} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripCards}>
-                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} previewBg={C.card} />)}
+                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} />)}
               </ScrollView>
             </View>
           </FadeIn>
