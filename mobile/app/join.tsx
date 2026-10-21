@@ -1,11 +1,12 @@
 import {
   View, Text, ScrollView, Pressable,
   StyleSheet, TextInput, KeyboardAvoidingView, Platform,
-  Dimensions,
+  Dimensions, Keyboard, Linking,
 } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming,
-  Easing, FadeInDown,
+  withRepeat, withSequence, cancelAnimation, interpolateColor,
+  Easing, FadeIn, FadeInDown, FadeOut,
 } from "react-native-reanimated";
 import { CachedImage } from "@/components/CachedImage";
 import { ScalePress } from "@/components/ScalePress";
@@ -18,9 +19,10 @@ import { parseTripDate } from "@/shared/dates";
 import { destinationFlag } from "@/shared/tripSummary";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { X,
-  CaretRight, CaretLeft, LinkSimple, Scan, Check,
+  CaretRight, Scan, Check, ClipboardText,
 } from "phosphor-react-native";
 import * as Clipboard from "expo-clipboard";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -141,22 +143,140 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
   );
 }
 
+// ── PIN cell ─────────────────────────────────────────────────────────────────
+const PIN_LEN = 6;
+const PIN_GAP = S.xs;
+const PIN_W = Math.min(54, Math.floor((Dimensions.get("window").width - S.lg * 2 - PIN_GAP * (PIN_LEN - 1)) / PIN_LEN));
+const EMPTY_PIN = ["", "", "", "", "", ""];
+// Reanimated 4.5.1 never starts withDelay(0), so the first cell runs undelayed
+const after = (ms: number, anim: any) => (ms > 0 ? withDelay(ms, anim) : anim);
+const INVITE_LINK = /shared\/([A-Za-z0-9_-]+)/;
+
+function PinCell({ ch, index, active, resolving, lit, C, styles, onPress }: {
+  ch: string; index: number; active: boolean; resolving: boolean; lit: boolean;
+  C: ThemeColors; styles: any; onPress: () => void;
+}) {
+  const pop = useSharedValue(ch ? 1 : 0);
+  const caret = useSharedValue(0);
+  const lift = useSharedValue(0);
+  const glow = useSharedValue(0);
+
+  // Each character springs into its cell as it's typed
+  useEffect(() => {
+    pop.value = ch ? withSequence(withTiming(0, { duration: 0 }), withSpring(1, { damping: 13, stiffness: 280, mass: 0.5 })) : 0;
+  }, [ch]);
+
+  // A soft breathing caret in the cell you're typing into
+  useEffect(() => {
+    if (active) caret.value = withRepeat(withTiming(1, { duration: 560, easing: Easing.inOut(Easing.ease) }), -1, true);
+    else { cancelAnimation(caret); caret.value = 0; }
+  }, [active]);
+
+  // While we look the PIN up, the cells ripple left to right
+  useEffect(() => {
+    if (resolving) {
+      lift.value = after(index * 70, withRepeat(withSequence(
+        withTiming(-5, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 260, easing: Easing.inOut(Easing.quad) }),
+      ), -1));
+    } else {
+      cancelAnimation(lift);
+      lift.value = withTiming(0, { duration: 160 });
+    }
+  }, [resolving]);
+
+  // Trip found: the cells light up one after another
+  useEffect(() => {
+    glow.value = lit ? after(index * 45, withTiming(1, { duration: 220 })) : withTiming(0, { duration: 160 });
+  }, [lit]);
+
+  const restBorder = active ? C.teal : C.border;
+  const cellStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: lift.value }],
+    backgroundColor: interpolateColor(glow.value, [0, 1], [C.elevated, C.tealDim]),
+    borderColor: interpolateColor(glow.value, [0, 1], [restBorder, C.teal]),
+  }));
+  const charStyle = useAnimatedStyle(() => ({
+    opacity: pop.value,
+    transform: [{ translateY: (1 - pop.value) * 6 }, { scale: 0.6 + 0.4 * pop.value }],
+  }));
+  const caretStyle = useAnimatedStyle(() => ({ opacity: 0.25 + 0.75 * caret.value }));
+
+  return (
+    <Pressable onPress={onPress} accessible={false}>
+      <Animated.View style={[styles.pinCell, cellStyle]}>
+        {ch ? (
+          <Animated.Text style={[styles.pinCellText, charStyle]}>{ch}</Animated.Text>
+        ) : active ? (
+          <Animated.View style={[styles.pinCaret, caretStyle]} />
+        ) : null}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// ── Trip preview ─────────────────────────────────────────────────────────────
+function TripPreviewCard({ trip, C, styles, dates }: { trip: Trip; C: ThemeColors; styles: any; dates: string }) {
+  // The photo settles into place as the card rises
+  const imgScale = useSharedValue(1.1);
+  useEffect(() => { imgScale.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) }); }, []);
+  const imgStyle = useAnimatedStyle(() => ({ transform: [{ scale: imgScale.value }] }));
+  const flag = destinationFlag(trip.destination);
+  return (
+    <View style={styles.previewCard}>
+      <View style={styles.previewPhoto}>
+        <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
+          <MaskedView
+            style={StyleSheet.absoluteFill}
+            maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
+          >
+            <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />
+          </MaskedView>
+        </Animated.View>
+      </View>
+      <View style={styles.previewBody}>
+        <Text style={styles.previewEyebrow}>Trip found</Text>
+        <Text style={styles.previewTitle} numberOfLines={2}>{trip.name}</Text>
+        {trip.destination ? (
+          <Text style={styles.previewLine} numberOfLines={1}>{flag ? `${flag}  ` : ""}{trip.destination}</Text>
+        ) : null}
+        <Text style={styles.previewSub} numberOfLines={1}>{dates}</Text>
+        {trip.organizer?.name ? (
+          <View style={styles.previewHost}>
+            <Avatar size={24} uri={trip.organizer.avatar} initials={trip.organizer.name.trim().charAt(0).toUpperCase()} />
+            <Text style={styles.previewSub} numberOfLines={1}>Organised by {trip.organizer.name}</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 // ── QR Scanner Pane ──────────────────────────────────────────────────────────
 function QRScanPane({ C, styles, onScanned }: {
   C: ThemeColors; styles: any; onScanned: (data: string) => void;
 }) {
-  const [permission, setPermission] = useState<{ granted: boolean } | null>(null);
+  const [permission, setPermission] = useState<{ granted: boolean; canAskAgain: boolean } | null>(null);
   const scannedRef = useRef(false);
 
-  const requestPermission = useCallback(async () => {
-    if (!useCameraPermissions) return;
-    // Use Camera.requestCameraPermissionsAsync directly
+  // Read the current state first so a granted camera opens straight away
+  useEffect(() => {
+    if (!CameraView) return;
     try {
-      const cam = require("expo-camera");
-      const { status } = await cam.Camera.requestCameraPermissionsAsync();
-      setPermission({ granted: status === "granted" });
+      require("expo-camera").Camera.getCameraPermissionsAsync()
+        .then((r: any) => setPermission({ granted: r.granted, canAskAgain: r.canAskAgain }))
+        .catch(() => setPermission({ granted: false, canAskAgain: true }));
     } catch {}
   }, []);
+
+  const requestPermission = useCallback(async () => {
+    Haptics.selectionAsync();
+    if (permission && !permission.canAskAgain) { Linking.openSettings(); return; }
+    try {
+      const r = await require("expo-camera").Camera.requestCameraPermissionsAsync();
+      setPermission({ granted: r.status === "granted", canAskAgain: r.canAskAgain });
+    } catch {}
+  }, [permission]);
 
   const handleBarcode = useCallback(({ data }: { data: string }) => {
     if (scannedRef.current) return;
@@ -164,53 +284,39 @@ function QRScanPane({ C, styles, onScanned }: {
     onScanned(data);
   }, [onScanned]);
 
-  if (!CameraView) {
-    return (
-      <View style={styles.modeContent}>
-        <View style={[styles.qrFrame, { alignItems: "center", justifyContent: "center" }]}>
-          <Scan size={32} color={C.textTertiary} weight="thin" />
-          <Text style={{ color: C.textTertiary, fontSize: T.sm, fontWeight: T.medium, marginTop: S.sm, textAlign: "center" }}>
-            QR scanning isn't available in this version
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (!permission?.granted) {
-    return (
-      <View style={[styles.modeContent, { justifyContent: "center", paddingVertical: S.xl, paddingHorizontal: S.md }]}>
-        <Scan size={28} color={C.textTertiary} weight="thin" />
-        <Text style={{ color: C.textSecondary, fontSize: T.sm, fontWeight: T.medium, textAlign: "center", marginTop: S.sm, marginBottom: S.md }}>
-          Camera access is needed to scan QR codes
-        </Text>
-        <Pressable
-          onPress={requestPermission}
-          accessibilityRole="button"
-          style={[styles.codeSubmit, { backgroundColor: C.teal, width: "100%" }]}
-        >
-          <Text style={[styles.codeSubmitText, { color: C.onAccent }]}>Allow camera</Text>
-        </Pressable>
-      </View>
-    );
-  }
+  const granted = !!CameraView && !!permission?.granted;
+  const blocked = !!permission && !permission.granted && !permission.canAskAgain;
 
   return (
     <View style={styles.modeContent}>
-      <View style={styles.qrFrame}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-          onBarcodeScanned={handleBarcode}
-        />
-        {/* Corner markers */}
+      {/* The viewfinder is always there, so granting access doesn't move anything */}
+      <View style={[styles.qrFrame, !granted && { backgroundColor: C.elevated, alignItems: "center", justifyContent: "center" }]}>
+        {granted ? (
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={handleBarcode}
+          />
+        ) : (
+          <>
+            <Scan size={36} color={C.textTertiary} weight="light" />
+            <Text style={styles.qrNote}>
+              {!CameraView ? "QR scanning isn't available in this version" : blocked ? "Camera is off for Dalefy" : "The camera opens here"}
+            </Text>
+          </>
+        )}
         <View style={[styles.qrCorner, { top: 12, left: 12 }]} />
         <View style={[styles.qrCorner, { top: 12, right: 12, transform: [{ rotate: "90deg" }] }]} />
         <View style={[styles.qrCorner, { bottom: 12, left: 12, transform: [{ rotate: "-90deg" }] }]} />
         <View style={[styles.qrCorner, { bottom: 12, right: 12, transform: [{ rotate: "180deg" }] }]} />
       </View>
-      <Text style={[styles.checkingText, { marginTop: S.sm }]}>Point at a trip QR code</Text>
+      <Text style={styles.qrHint}>Point at the QR code from your organiser</Text>
+      {!!CameraView && permission && !granted && (
+        <ScalePress onPress={requestPermission} accessibilityRole="button" style={[styles.codeSubmit, { backgroundColor: C.tealDim, marginTop: S.md }]}>
+          <Text style={[styles.codeSubmitText, { color: C.tealText }]}>{blocked ? "Open Settings" : "Allow camera"}</Text>
+        </ScalePress>
+      )}
     </View>
   );
 }
@@ -222,13 +328,13 @@ export default function JoinScreen() {
   const { trips: joinedTrips } = useTrips();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
-  const [linkValue, setLinkValue] = useState("");
-  const [entryMode, setEntryMode] = useState<"pin" | "qr" | "link">("pin");
+  const [digits, setDigits] = useState<string[]>(EMPTY_PIN);
+  const [entryMode, setEntryMode] = useState<"pin" | "qr">("pin");
   const [resolving, setResolving] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [foundTrip, setFoundTrip] = useState<Trip | null>(null);
   const [previewTrip, setPreviewTrip] = useState<Trip | null>(null);
+  const [pinLit, setPinLit] = useState(false);
   const pinRefs = useRef<Array<TextInput | null>>([]);
   const shakeX = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
@@ -246,17 +352,29 @@ export default function JoinScreen() {
     });
   }, [shakeX]);
 
+  // Found: light the cells, then let the trip card rise once they've lit
+  const showFound = (trip: Trip, fromPin: boolean) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Keyboard.dismiss();
+    if (!fromPin) { setPreviewTrip(trip); return; }
+    setPinLit(true);
+    setTimeout(() => setPreviewTrip(trip), 480);
+  };
+
   const handlePasteRef = useRef<() => void>(() => {});
   handlePasteRef.current = async () => {
     try {
       const text = await Clipboard.getStringAsync();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // An invite link works here too, so there's no separate link screen
+      const linkId = text.match(INVITE_LINK)?.[1];
+      if (linkId) { setDigits(EMPTY_PIN); submitTripId(linkId); return; }
       const clean = text.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
       if (!clean) return;
-      const next = ["", "", "", "", "", ""];
+      const next = [...EMPTY_PIN];
       for (let i = 0; i < clean.length; i++) next[i] = clean[i];
       setDigits(next);
       setCodeError(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (clean.length === 6) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         submitPin(clean);
@@ -293,12 +411,11 @@ export default function JoinScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         setCodeError("That PIN doesn't match any trip. Check with your organiser.");
         triggerShake();
-        setDigits(["", "", "", "", "", ""]);
+        setDigits(EMPTY_PIN);
         pinRefs.current[0]?.focus();
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setPreviewTrip(trip);
+      showFound(trip, true);
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       triggerShake();
@@ -320,8 +437,7 @@ export default function JoinScreen() {
         router.push(`/shared/${id}`);
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setPreviewTrip(trip);
+      showFound(trip, false);
     } catch {
       if (router.canGoBack()) router.back();
       router.push(`/shared/${id}`);
@@ -330,25 +446,30 @@ export default function JoinScreen() {
     }
   };
 
-  const submitLink = () => {
-    const raw = linkValue.trim();
-    if (!raw || resolving) return;
-    const match = raw.match(/shared\/([A-Za-z0-9_-]+)/);
-    const id = match ? match[1] : raw;
-    submitTripId(id);
-  };
-
   const handlePinChange = (val: string) => {
+    // Keyboard paste of a whole invite link lands here too
+    const linkId = val.match(INVITE_LINK)?.[1];
+    if (linkId) { setDigits(EMPTY_PIN); submitTripId(linkId); return; }
     const clean = val.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6);
-    const next = ["", "", "", "", "", ""];
+    const next = [...EMPTY_PIN];
     for (let i = 0; i < clean.length; i++) next[i] = clean[i];
+    if (clean.length > pinValue.length) Haptics.selectionAsync();
     setDigits(next);
     if (codeError) setCodeError(null);
-    if (previewTrip) setPreviewTrip(null);
     if (clean.length === 6) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       submitPin(clean);
     }
+  };
+
+  const startOver = () => {
+    Haptics.selectionAsync();
+    setPreviewTrip(null);
+    setPinLit(false);
+    setDigits(EMPTY_PIN);
+    setCodeError(null);
+    setEntryMode("pin");
+    setTimeout(() => pinRefs.current[0]?.focus(), 350);
   };
 
   const pinValue = digits.join("");
@@ -356,7 +477,7 @@ export default function JoinScreen() {
   const fmtDay = (d: string) => parseTripDate(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   const tripDates = (t: Trip) => `${fmtDay(t.start)} – ${fmtDay(t.end)}`;
   const recentTrips = [...joinedTrips].sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
-  const canJoin = !!previewTrip && !resolving;
+  const focusPin = () => pinRefs.current[0]?.focus();
 
   return (
     <>
@@ -389,39 +510,60 @@ export default function JoinScreen() {
               {/* Success reveal */}
               {foundTrip ? (
                 <TripFoundReveal trip={foundTrip} C={C} onContinue={handleRevealContinue} />
+              ) : previewTrip ? (
+                // Trip found: the card rises in, the join button follows a beat later
+                <View key="preview">
+                  <Animated.View entering={FadeInDown.delay(140).springify().damping(18).stiffness(170)}>
+                    <TripPreviewCard trip={previewTrip} C={C} styles={styles} dates={tripDates(previewTrip)} />
+                  </Animated.View>
+                  <Animated.View entering={FadeInDown.delay(260).springify().damping(18).stiffness(170)}>
+                    <ScalePress
+                      onPress={() => revealAndNavigate(previewTrip)}
+                      accessibilityRole="button"
+                      style={[styles.codeSubmit, { backgroundColor: C.teal, marginTop: S.md }]}
+                    >
+                      <Text style={[styles.codeSubmitText, { color: C.onAccent }]} numberOfLines={1}>Join {previewTrip.name}</Text>
+                    </ScalePress>
+                    <Pressable onPress={startOver} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.startOver, { opacity: pressed ? 0.5 : 1 }]}>
+                      <Text style={styles.altLink}>Not this trip? Try another PIN</Text>
+                    </Pressable>
+                  </Animated.View>
+                </View>
               ) : (
-              <>
-
-              {entryMode !== "pin" && (
-                <Pressable
-                  onPress={() => { Haptics.selectionAsync(); setCodeError(null); setLinkValue(""); setPreviewTrip(null); setEntryMode("pin"); }}
-                  hitSlop={8} accessibilityRole="button" accessibilityLabel="Enter a PIN instead"
-                  style={({ pressed }) => [styles.backLink, { opacity: pressed ? 0.5 : 1 }]}
-                >
-                  <CaretLeft size={14} color={C.tealText} weight="bold" />
-                  <Text style={styles.altLink}>Enter a PIN instead</Text>
-                </Pressable>
-              )}
+              <Animated.View key="entry" exiting={FadeOut.duration(120)}>
+                <SegmentedControl
+                  accessibilityLabel="How to join"
+                  values={["PIN", "Scan QR"]}
+                  selectedIndex={entryMode === "pin" ? 0 : 1}
+                  onChange={(e) => {
+                    Haptics.selectionAsync();
+                    setCodeError(null);
+                    const mode = e.nativeEvent.selectedSegmentIndex === 0 ? "pin" : "qr";
+                    if (mode === "qr") Keyboard.dismiss();
+                    setEntryMode(mode);
+                  }}
+                  appearance={isDark ? "dark" : "light"}
+                  style={styles.modeTabs}
+                />
 
               {/* PIN */}
               {entryMode === "pin" && (
-                <>
+                <Animated.View entering={FadeIn.duration(180)}>
                   <Text style={styles.pinTitle}>Enter the 6-character PIN from your organiser</Text>
                   <Animated.View style={[styles.pinBoxes, shakeStyle]}>
-                    {Array.from({ length: 6 }).map((_, i) => {
-                      const ch = pinValue[i] ?? "";
-                      const active = !resolving && i === Math.min(pinValue.length, 5) && !pinComplete;
-                      return (
-                        <Pressable
-                          key={i}
-                          onPress={() => pinRefs.current[0]?.focus()}
-                          style={[styles.pinBox, active && styles.pinBoxActive, ch ? styles.pinBoxFilled : null]}
-                          accessible={false}
-                        >
-                          <Text style={styles.pinBoxText}>{ch}</Text>
-                        </Pressable>
-                      );
-                    })}
+                    {Array.from({ length: PIN_LEN }).map((_, i) => (
+                      <PinCell
+                        key={i}
+                        index={i}
+                        ch={pinValue[i] ?? ""}
+                        active={!resolving && !pinLit && i === Math.min(pinValue.length, 5) && !pinComplete}
+                        resolving={resolving}
+                        lit={pinLit}
+                        C={C}
+                        styles={styles}
+                        onPress={focusPin}
+                      />
+                    ))}
                     <TextInput
                       ref={(r) => { for (let i = 0; i < 6; i++) pinRefs.current[i] = r; }}
                       value={pinValue}
@@ -430,8 +572,7 @@ export default function JoinScreen() {
                       autoCapitalize="characters"
                       autoCorrect={false}
                       textContentType="oneTimeCode"
-                      maxLength={6}
-                      editable={!resolving}
+                      editable={!resolving && !pinLit}
                       returnKeyType="go"
                       onSubmitEditing={() => { if (pinComplete) submitPin(pinValue); }}
                       accessibilityLabel="Trip PIN"
@@ -441,194 +582,68 @@ export default function JoinScreen() {
                   </Animated.View>
                   <View style={styles.pinHintRow}>
                     <Text style={[styles.groupFooter, styles.pinHint, codeError ? { color: C.redText } : null]}>
-                      {codeError ?? (resolving ? "Finding your trip…" : previewTrip ? "Check this is the right trip, then join." : "Letters and numbers, not case-sensitive.")}
+                      {codeError ?? (resolving ? "Finding your trip…" : "Not case-sensitive. Links work too.")}
                     </Text>
-                    <Pressable onPress={handlePaste} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paste PIN from clipboard" style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
-                      <Text style={styles.altLink}>Paste</Text>
-                    </Pressable>
+                    {codeError && pinComplete && !resolving ? (
+                      <Pressable onPress={() => submitPin(pinValue)} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.pasteChip, { opacity: pressed ? 0.6 : 1 }]}>
+                        <Text style={styles.pasteChipText}>Try again</Text>
+                      </Pressable>
+                    ) : (
+                      <Pressable onPress={handlePaste} hitSlop={8} accessibilityRole="button" accessibilityLabel="Paste PIN or invite link" style={({ pressed }) => [styles.pasteChip, { opacity: pressed ? 0.6 : 1 }]}>
+                        <ClipboardText size={14} color={C.tealText} weight="bold" />
+                        <Text style={styles.pasteChipText}>Paste</Text>
+                      </Pressable>
+                    )}
                   </View>
 
-                  {previewTrip && (
-                    <Animated.View entering={FadeInDown.duration(260)}>
-                      <Text style={styles.groupHeader}>Trip found</Text>
-                      <View style={styles.group}>
-                        <View style={styles.previewRow}>
-                          <CachedImage uri={previewTrip.image} style={styles.previewThumb} />
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text style={styles.previewName} numberOfLines={2}>{previewTrip.name}</Text>
-                            <Text style={styles.previewSub} numberOfLines={1}>
-                              {[previewTrip.destination, tripDates(previewTrip)].filter(Boolean).join(", ")}
-                            </Text>
-                            {previewTrip.organizer?.name ? (
-                              <Text style={styles.previewSub} numberOfLines={1}>Organised by {previewTrip.organizer.name}</Text>
-                            ) : null}
-                          </View>
-                        </View>
-                      </View>
-                      <View style={{ height: S.lg }} />
-                    </Animated.View>
-                  )}
-
-                  <Pressable
-                    onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else if (pinComplete) submitPin(pinValue); }}
-                    disabled={resolving || (!previewTrip && !pinComplete)}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: resolving || (!previewTrip && !pinComplete), busy: resolving }}
-                    style={({ pressed }) => [
-                      styles.codeSubmit,
-                      {
-                        backgroundColor: canJoin ? C.teal : C.elevated,
-                        opacity: pressed && canJoin ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.codeSubmitText, { color: canJoin ? C.onAccent : C.textTertiary }]} numberOfLines={1}>
-                      {resolving ? "Finding trip…" : previewTrip ? `Join ${previewTrip.name}` : "Join trip"}
-                    </Text>
-                  </Pressable>
-
-                  {!previewTrip && (
-                    <View style={styles.altGroup}>
-                      <Text style={styles.groupHeader}>Other ways to join</Text>
-                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("qr"); }} accessibilityRole="button" accessibilityLabel="Scan a QR code" style={({ pressed }) => [styles.altRowItem, pressed && { opacity: 0.6 }]}>
-                        <Scan size={20} color={C.textSecondary} weight="regular" />
-                        <Text style={styles.altItemText}>Scan a QR code</Text>
-                        <CaretRight size={14} color={C.textTertiary} weight="regular" />
-                      </Pressable>
-                      <Pressable onPress={() => { Haptics.selectionAsync(); setCodeError(null); setEntryMode("link"); }} accessibilityRole="button" accessibilityLabel="Paste an invite link" style={({ pressed }) => [styles.altRowItem, styles.tripRowBorder, pressed && { opacity: 0.6 }]}>
-                        <LinkSimple size={20} color={C.textSecondary} weight="regular" />
-                        <Text style={styles.altItemText}>Paste an invite link</Text>
-                        <CaretRight size={14} color={C.textTertiary} weight="regular" />
-                      </Pressable>
-                    </View>
-                  )}
-
-                  {!previewTrip && recentTrips.length > 0 && (
+                  {recentTrips.length > 0 && (
                     <View style={{ marginTop: S.xl }}>
                       <Text style={styles.groupHeader}>Already joined</Text>
-                      <View style={styles.group}>
-                        {recentTrips.map((t, i) => (
-                          <Pressable
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginHorizontal: -S.lg }}
+                        contentContainerStyle={{ paddingHorizontal: S.lg, gap: S.sm }}
+                      >
+                        {recentTrips.map(t => (
+                          <ScalePress
                             key={t.id}
                             onPress={() => { closeSheet(); setTimeout(() => router.push(`/trip/${t.id}`), 320); }}
                             accessibilityRole="button"
                             accessibilityLabel={`Open ${t.name}`}
-                            style={({ pressed }) => [styles.tripRow, i > 0 && styles.tripRowBorder, { backgroundColor: pressed ? C.elevated : "transparent" }]}
+                            style={styles.joinedCard}
                           >
-                            <CachedImage uri={t.image} style={styles.tripThumb} />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.tripName} numberOfLines={1}>{t.name}</Text>
-                              <Text style={styles.previewSub} numberOfLines={1}>{tripDates(t)}</Text>
-                            </View>
-                            <CaretRight size={14} color={C.textTertiary} weight="regular" />
-                          </Pressable>
+                            <CachedImage uri={t.image} style={styles.joinedThumb} />
+                            <Text style={styles.tripName} numberOfLines={2}>{t.name}</Text>
+                            <Text style={styles.previewSub} numberOfLines={1}>{tripDates(t)}</Text>
+                          </ScalePress>
                         ))}
-                      </View>
+                      </ScrollView>
                     </View>
                   )}
-                </>
+                </Animated.View>
               )}
 
               {/* QR scanner */}
               {entryMode === "qr" && (
-                <View style={styles.group}>
-                <QRScanPane
-                  C={C}
-                  styles={styles}
-                  onScanned={(data) => {
-                    const match = data.match(/shared\/([A-Za-z0-9_-]+)/);
-                    const id = match ? match[1] : null;
-                    if (id) {
-                      setEntryMode("pin");
-                      submitTripId(id);
-                    } else {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                      setCodeError("QR code doesn't contain a valid trip link");
-                      setEntryMode("pin");
-                    }
-                  }}
-                />
-                </View>
+                <Animated.View entering={FadeIn.duration(180)}>
+                  <QRScanPane
+                    C={C}
+                    styles={styles}
+                    onScanned={(data) => {
+                      const id = data.match(INVITE_LINK)?.[1] ?? null;
+                      if (id) {
+                        submitTripId(id);
+                      } else {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        setCodeError("That QR code isn't a trip invite.");
+                        setEntryMode("pin");
+                      }
+                    }}
+                  />
+                </Animated.View>
               )}
-
-              {/* Link paste */}
-              {entryMode === "link" && (
-                <>
-                  <View style={styles.group}>
-                    <View style={styles.groupRow}>
-                      <Text style={styles.rowLabel}>Link</Text>
-                      <TextInput
-                        value={linkValue}
-                        onChangeText={(t) => { setLinkValue(t); if (codeError) setCodeError(null); }}
-                        autoFocus
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                        placeholder="dalefy.app/trip/…"
-                        placeholderTextColor={C.textTertiary}
-                        style={styles.rowInput}
-                        onSubmitEditing={submitLink}
-                        returnKeyType="go"
-                        accessibilityLabel="Invite link"
-                      />
-                      <Pressable
-                        onPress={async () => {
-                          try {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            const text = await Clipboard.getStringAsync();
-                            if (text) { setLinkValue(text.trim()); setCodeError(null); }
-                          } catch {}
-                        }}
-                        hitSlop={8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Paste link from clipboard"
-                        style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-                      >
-                        <Text style={styles.rowAction}>Paste</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                  <Text style={[styles.groupFooter, codeError ? { color: C.redText } : null]}>
-                    {codeError ?? (previewTrip ? "Check this is the right trip, then join." : "Paste the invite link your organiser shared.")}
-                  </Text>
-                  {previewTrip && (
-                    <Animated.View entering={FadeInDown.duration(260)}>
-                      <Text style={styles.groupHeader}>Trip found</Text>
-                      <View style={styles.group}>
-                        <View style={styles.previewRow}>
-                          <CachedImage uri={previewTrip.image} style={styles.previewThumb} />
-                          <View style={{ flex: 1, gap: 2 }}>
-                            <Text style={styles.previewName} numberOfLines={2}>{previewTrip.name}</Text>
-                            <Text style={styles.previewSub} numberOfLines={1}>
-                              {[previewTrip.destination, tripDates(previewTrip)].filter(Boolean).join(", ")}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                      <View style={{ height: S.lg }} />
-                    </Animated.View>
-                  )}
-                  <Pressable
-                    onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else submitLink(); }}
-                    disabled={resolving || (!previewTrip && !linkValue.trim())}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: resolving || (!previewTrip && !linkValue.trim()), busy: resolving }}
-                    style={({ pressed }) => [
-                      styles.codeSubmit,
-                      {
-                        backgroundColor: canJoin ? C.teal : C.elevated,
-                        opacity: pressed && canJoin ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.codeSubmitText, { color: canJoin ? C.onAccent : C.textTertiary }]} numberOfLines={1}>
-                      {resolving ? "Finding trip…" : previewTrip ? `Join ${previewTrip.name}` : "Join trip"}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-
-              </>
+              </Animated.View>
               )}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -692,8 +707,35 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
     pinBoxActive: { borderColor: C.teal },
     pinBoxFilled: { backgroundColor: C.card, borderColor: C.border },
     pinBoxText: { fontSize: T["2xl"], fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
+    modeTabs: { marginTop: S.xs, marginBottom: S.lg },
+    pinCell: {
+      width: PIN_W, height: Math.round(PIN_W * 1.25), borderRadius: R.lg,
+      borderWidth: 1.5, alignItems: "center", justifyContent: "center",
+    },
+    pinCellText: { fontSize: T["3xl"], fontWeight: T.bold, color: C.textPrimary, fontVariant: ["tabular-nums"] },
+    pinCaret: { width: 2, height: Math.round(PIN_W * 0.5), borderRadius: 1, backgroundColor: C.teal },
+    pasteChip: {
+      flexDirection: "row", alignItems: "center", gap: 4,
+      paddingHorizontal: S.sm, paddingVertical: 6, borderRadius: R.sm, backgroundColor: C.tealDim,
+    },
+    pasteChipText: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
+    joinedCard: { width: 140, gap: 2 },
+    joinedThumb: { width: 140, height: 96, borderRadius: R.md, backgroundColor: C.card, marginBottom: S.xs },
+    previewCard: { borderRadius: R.xl, overflow: "hidden", backgroundColor: C.card },
+    previewPhoto: { height: 200, backgroundColor: C.elevated, overflow: "hidden" },
+    previewBody: { paddingHorizontal: S.md, paddingBottom: S.md, marginTop: -S.lg, gap: 3 },
+    previewEyebrow: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText, marginBottom: 2 },
+    previewTitle: { fontSize: T["2xl"], fontWeight: T.bold, color: C.textPrimary, letterSpacing: -0.3 },
+    previewLine: { fontSize: T.base, color: C.textSecondary },
+    previewHost: {
+      flexDirection: "row", alignItems: "center", gap: S.xs, marginTop: S.xs, paddingTop: S.sm,
+      borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border,
+    },
+    startOver: { alignSelf: "center", paddingVertical: S.md },
+    qrNote: { fontSize: T.sm, fontWeight: T.medium, color: C.textTertiary, marginTop: S.sm, textAlign: "center", paddingHorizontal: S.lg },
+    qrHint: { fontSize: T.base, color: C.textSecondary, textAlign: "center", marginTop: S.md },
     pinHiddenInput: { position: "absolute", opacity: 0, width: 1, height: 1 },
-    pinHintRow: { flexDirection: "row", alignItems: "flex-start", gap: S.sm, paddingHorizontal: S.xs, marginTop: S.sm, marginBottom: S.lg },
+    pinHintRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.xs, marginTop: S.sm, marginBottom: S.lg },
     pinHint: { flex: 1, paddingHorizontal: 0, marginTop: 0, marginBottom: 0 },
     altGroup: { marginTop: S.xl },
     altRowItem: { flexDirection: "row", alignItems: "center", gap: S.sm, minHeight: 50 },
