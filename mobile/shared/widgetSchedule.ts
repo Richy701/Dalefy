@@ -39,9 +39,13 @@ export function widgetProps(trips: Trip[], now: number, accentColor: string, ima
   const focus = currentOrNext(events, zone, now)?.event;
   if (focus) events.sort((a, b) => a.id === focus.id ? -1 : b.id === focus.id ? 1 : 0);
   const next = events[0];
-  const line = (index: number) => events[index] ? `${events[index].time || 'TBD'}  ${events[index].title}` : '';
+  // Before the trip, the large widget lists the first day's plan instead
+  const listed = active ? events : trip.events
+    .filter(event => event.date === trip.start)
+    .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  const line = (index: number) => listed[index] ? `${listed[index].time || 'TBD'}  ${listed[index].title}` : '';
   return { ...empty, state: active ? 'active' : 'upcoming', tripName: trip.name, destination: trip.destination || trip.name,
-    tripImage: active ? '' : images[trip.id] || '', daysLeft: Math.max(0, calendarDays(date, trip.start)),
+    tripImage: images[trip.id] || '', daysLeft: Math.max(0, calendarDays(date, trip.start)),
     startDate: new Date(`${trip.start}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
     currentDay: active ? calendarDays(trip.start, date) + 1 : 0, totalDays: calendarDays(trip.start, trip.end) + 1,
     event1: line(0), event2: line(1), event3: line(2), eventTime: next?.time || '', eventTitle: next?.title || '', eventLocation: next?.location || '',

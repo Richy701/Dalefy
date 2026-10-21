@@ -27,6 +27,14 @@ export type FlightTrackerProps = {
   gate: string;
   duration?: string;
   progress?: number;
+  /** Timestamps (ms) for the countdown; the native Live Activity (native-widgets/) draws from these */
+  boardsAt?: number;
+  departsAt?: number;
+  arrivesAt?: number;
+  phase?: "boards" | "boarding" | "airborne";
+  /** The airline's colour, adjusted to stay readable on the dark and the light Lock Screen */
+  accentDark?: string;
+  accentLight?: string;
 };
 
 function FlightTrackerActivity(

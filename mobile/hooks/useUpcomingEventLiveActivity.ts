@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform, AppState } from "react-native";
 import type { useSurfaceTrips } from "./useSurfaceTrips";
+import { categoryTone, darkColors } from "@/constants/theme";
 import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
@@ -13,12 +14,16 @@ try {
   /* not available */
 }
 
+// SF Symbol twins of the app timeline's category icons (components/ui/CategoryDot.tsx)
 const TYPE_ICONS: Record<string, string> = {
   dining: "fork.knife",
-  activity: "safari",
-  transfer: "car.fill",
-  hotel: "building.2",
+  activity: "mappin.and.ellipse",
+  transfer: "bus.fill",
+  hotel: "bed.double.fill",
   flight: "airplane",
+};
+const TRANSFER_ICONS: Record<string, string> = {
+  car: "car.fill", train: "tram.fill", bus: "bus.fill", ferry: "ferry.fill", cruise: "ferry.fill",
 };
 
 function truncate(s: string, max: number): string {
@@ -80,7 +85,9 @@ function eventToProps(ev: TravelEvent): UpcomingEventProps {
     type: ev.type as UpcomingEventProps["type"],
     time: ev.time || "",
     location: shortLocation,
-    icon: TYPE_ICONS[ev.type] || "calendar",
+    icon: (ev.type === "transfer" && ev.transferType && TRANSFER_ICONS[ev.transferType]) || TYPE_ICONS[ev.type] || "calendar",
+    // The category's colour on the dark Lock Screen, same as the timeline dot
+    accent: categoryTone(ev.type, darkColors).fg,
   };
 }
 
@@ -130,7 +137,7 @@ export function useUpcomingEventLiveActivity(surface: ReturnType<typeof useSurfa
       } else {
         const { event, trip, start, end } = selected;
         const key = `${trip.id}:${event.id}`;
-        const props = { ...eventToProps(event), startTimestamp: start!, endTimestamp: end! };
+        const props = { ...eventToProps(event), startTimestamp: start!, endTimestamp: end!, live: now >= start! };
         const staleDate = new Date(end!);
         if (activityRef.current?.eventId === key) {
           safe(() => activityRef.current!.activity.update(props, staleDate));

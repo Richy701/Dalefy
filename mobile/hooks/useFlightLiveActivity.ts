@@ -5,6 +5,13 @@ import { surfaceCandidates, tripDayUrl } from "@/shared/widgetSchedule";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { TravelEvent } from "@/shared/types";
 import type { FlightTrackerProps } from "@/widgets/FlightTracker";
+import { airlineAccent } from "@/shared/airlines";
+
+// Lock Screen surfaces the airline colour has to read on, and the teal fallback for each
+const LOCK_DARK = "#1c1c1e";
+const LOCK_LIGHT = "#f2f2f7";
+// Same rule as the flight page's "Boarding from about"
+const BOARDING_LEAD_MS = 40 * 60000;
 
 // Lazy-load to avoid crash on Android / Expo Go
 let FlightTracker: any = null;
@@ -87,7 +94,24 @@ function eventToProps(ev: TravelEvent): FlightTrackerProps {
     status: ev.status || "Scheduled",
     gate: ev.gate || "",
     duration: ev.duration || "",
+    ...airlineAccents(ev.flightNum),
   };
+}
+
+function airlineAccents(flightNum?: string): Pick<FlightTrackerProps, "accentDark" | "accentLight"> {
+  const iata = flightNum?.match(/^([A-Z0-9]{2})/)?.[1] || "";
+  return {
+    accentDark: (iata && airlineAccent(iata, LOCK_DARK, true)) || "#0bd2b5",
+    accentLight: (iata && airlineAccent(iata, LOCK_LIGHT, false)) || "#007a68",
+  };
+}
+
+/** Countdown targets, the phase and the progress bar, as of `now` */
+function flightTiming(start: number, end: number, now: number): Pick<FlightTrackerProps, "boardsAt" | "departsAt" | "arrivesAt" | "phase" | "progress"> {
+  const boardsAt = start - BOARDING_LEAD_MS;
+  const phase = now >= start ? "airborne" : now >= boardsAt ? "boarding" : "boards";
+  const progress = end > start ? Math.max(0, Math.min(1, (now - start) / (end - start))) : 0;
+  return { boardsAt, departsAt: start, arrivesAt: end, phase, progress };
 }
 
 /**
@@ -144,7 +168,7 @@ export function useFlightLiveActivity(surface: ReturnType<typeof useSurfaceTrips
       const key = `${selected!.trip.id}:${bestFlight.id}`;
       if (startingRef.current === key) return;
 
-      const props = eventToProps(bestFlight);
+      const props = { ...eventToProps(bestFlight), ...flightTiming(selected!.start!, selected!.end!, now) };
       const staleDate = new Date(selected!.end!);
 
       if (activityRef.current && activityRef.current.eventId === key) {

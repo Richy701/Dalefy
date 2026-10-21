@@ -111,12 +111,13 @@ private struct TripBackground: View {
         Image(uiImage: img)
           .resizable()
           .aspectRatio(contentMode: .fill)
+        // Dark only behind the text at the foot (and a touch at the top for the label), so the photo shows
         LinearGradient(
-          colors: [
-            Color.black.opacity(0.3),
-            Color.black.opacity(0.55),
-            Color.black.opacity(0.8),
-            Color.black.opacity(0.92)
+          stops: [
+            .init(color: Color.black.opacity(0.35), location: 0),
+            .init(color: Color.black.opacity(0.05), location: 0.28),
+            .init(color: Color.black.opacity(0.25), location: 0.5),
+            .init(color: Color.black.opacity(0.82), location: 1),
           ],
           startPoint: .top,
           endPoint: .bottom
@@ -153,7 +154,7 @@ private struct Router: View {
 
   var body: some View {
     let d = TD(props: entry.props)
-    let hasImage = d.state == "upcoming" && !d.tripImage.isEmpty
+    let hasImage = d.state != "empty" && !d.tripImage.isEmpty
     let dark = hasImage ? true : cs == .dark
     Group {
       switch fam {
@@ -200,7 +201,7 @@ private extension View {
 //  SMALL
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// One travel briefing, with more itinerary detail as space grows.
+// One travel briefing on the trip's photo, with more itinerary detail as space grows.
 private struct TripBriefing: View {
   let d: TD
   let dark: Bool
@@ -208,79 +209,73 @@ private struct TripBriefing: View {
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var ink: Color { dark ? .white : Color(hex: "#151719") }
-  private var secondary: Color { dark ? .white.opacity(0.78) : Color(hex: "#565E64") }
+  private var secondary: Color { dark ? .white.opacity(0.8) : Color(hex: "#565E64") }
   private var accent: Color { dark ? d.accent : Color(hex: "#007B6D") }
+  private var dayLine: String { d.totalDays > 0 ? "Today, day \(d.currentDay) of \(d.totalDays)" : "Today, day \(d.currentDay)" }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: small ? 7 : 10) {
+    VStack(alignment: .leading, spacing: small ? 4 : 6) {
       if d.state == "upcoming" {
-        HStack(spacing: 5) {
-          Image(systemName: "airplane.departure")
-          Text("Your next trip")
-        }
-        .font(.system(size: 12, weight: .medium)).foregroundStyle(secondary)
-        Spacer(minLength: 8)
-        Text(d.name)
-          .font(.system(size: small ? 23 : 30, weight: .semibold))
-          .lineLimit(2).minimumScaleFactor(0.85)
+        Label(small ? "Next trip" : "Your next trip", systemImage: "airplane.departure")
+          .font(.system(size: 12, weight: .semibold)).foregroundStyle(secondary)
+        Spacer(minLength: 6)
+        // Countdown first: it's the number you glance at
         HStack(alignment: .firstTextBaseline, spacing: 5) {
-          Text("\(d.daysLeft)").font(.system(size: small ? 27 : 32, weight: .semibold)).monospacedDigit()
-          Text(d.daysLeft == 1 ? "day to go" : "days to go")
-            .font(.system(size: 13, weight: .medium))
+          Text("\(d.daysLeft)").font(.system(size: small ? 38 : 44, weight: .bold)).monospacedDigit()
+          Text(d.daysLeft == 1 ? "day to go" : "days to go").font(.system(size: small ? 13 : 15, weight: .semibold))
         }
-        Text("Departing \(d.startDate)")
+        Text(d.name)
+          .font(.system(size: small ? 17 : 22, weight: .semibold))
+          .lineLimit(small ? 2 : 1).minimumScaleFactor(0.85)
+        Text(small ? d.startDate : "Departing \(d.startDate), \(d.totalDays) days")
           .font(.system(size: 12, weight: .medium)).foregroundStyle(secondary)
-        if large {
-          Text(d.tripName).font(.system(size: 15)).foregroundStyle(secondary).lineLimit(2).padding(.top, 8)
+        if large && !d.event1.isEmpty {
+          Rectangle().fill(.white.opacity(0.22)).frame(height: 1).padding(.vertical, 8)
+          Text("First day").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondary)
+          itineraryLine(d.event1)
+          if !d.event2.isEmpty { itineraryLine(d.event2) }
+          if !d.event3.isEmpty { itineraryLine(d.event3) }
         }
       } else if d.state == "active" {
         HStack(alignment: .firstTextBaseline) {
-          Text("Today · Day \(d.currentDay)")
-            .font(.system(size: 12, weight: .medium)).foregroundStyle(secondary)
+          Text(small ? "Day \(d.currentDay) of \(d.totalDays)" : dayLine)
+            .font(.system(size: 12, weight: .semibold)).foregroundStyle(secondary)
           if !small {
             Spacer(minLength: 12)
             Text(d.name).font(.system(size: 12, weight: .medium)).foregroundStyle(secondary).lineLimit(1)
           }
         }
+        Spacer(minLength: 6)
         if !d.eventTitle.isEmpty {
-          Spacer(minLength: 0)
           HStack(alignment: .firstTextBaseline, spacing: 7) {
             Text(d.eventTime.isEmpty ? "Time TBC" : d.eventTime)
-              .font(.system(size: small ? 23 : 28, weight: .semibold)).monospacedDigit()
+              .font(.system(size: small ? 26 : 30, weight: .bold)).monospacedDigit()
             if !small {
-              Text(d.eventLabel).font(.system(size: 12, weight: .medium))
+              Text(d.eventLabel).font(.system(size: 13, weight: .semibold))
             }
           }.foregroundStyle(accent)
-          Text(d.eventTitle).font(.system(size: small ? 16 : 21, weight: .semibold)).lineLimit(small ? 2 : 2)
+          Text(d.eventTitle).font(.system(size: small ? 15 : 20, weight: .semibold)).lineLimit(2)
           if !d.eventLocation.isEmpty && !small {
-            Label(d.eventLocation, systemImage: "mappin")
-              .font(.system(size: 13)).foregroundStyle(secondary).lineLimit(1)
+            Text(d.eventLocation).font(.system(size: 13)).foregroundStyle(secondary).lineLimit(1)
           }
-          if large {
-            Spacer(minLength: 10)
-            if !d.event2.isEmpty || !d.event3.isEmpty {
-              Rectangle().fill(secondary.opacity(0.2)).frame(height: 1)
-              Text("Later today").font(.system(size: 12, weight: .medium)).foregroundStyle(secondary)
-              if !d.event2.isEmpty { itineraryLine(d.event2) }
-              if !d.event3.isEmpty { itineraryLine(d.event3) }
-            }
+          if large && (!d.event2.isEmpty || !d.event3.isEmpty) {
+            Rectangle().fill(.white.opacity(0.22)).frame(height: 1).padding(.vertical, 8)
+            Text("Later today").font(.system(size: 12, weight: .semibold)).foregroundStyle(secondary)
+            if !d.event2.isEmpty { itineraryLine(d.event2) }
+            if !d.event3.isEmpty { itineraryLine(d.event3) }
           }
         } else {
-          Spacer(minLength: 4)
-          Text("Time to explore")
-            .font(.system(size: small ? 22 : 27, weight: .semibold)).lineLimit(2)
-          Text("No more plans today")
-            .font(.system(size: 13)).foregroundStyle(secondary)
-          if !small { Text(d.name).font(.system(size: 16, weight: .medium)).lineLimit(1) }
-          Spacer(minLength: 0)
+          Text("Free for the rest of the day")
+            .font(.system(size: small ? 18 : 24, weight: .semibold)).lineLimit(2)
+          if !small { Text(d.name).font(.system(size: 14, weight: .medium)).foregroundStyle(secondary).lineLimit(1) }
         }
       } else {
         Label("Dalefy", systemImage: "airplane")
-          .font(.system(size: 12, weight: .medium)).foregroundStyle(secondary)
+          .font(.system(size: 12, weight: .semibold)).foregroundStyle(secondary)
         Spacer(minLength: 8)
-        Text("Your next\nadventure")
-          .font(.system(size: small ? 24 : 30, weight: .semibold)).lineLimit(2)
-        Text("Join a trip to get started")
+        Text("No trips yet")
+          .font(.system(size: small ? 22 : 28, weight: .semibold)).lineLimit(2)
+        Text("Join with the PIN from your organiser")
           .font(.system(size: 13)).foregroundStyle(secondary).lineLimit(2)
       }
     }
@@ -292,11 +287,11 @@ private struct TripBriefing: View {
   private func itineraryLine(_ line: String) -> some View {
     let parts = line.components(separatedBy: "  ")
     return HStack(alignment: .firstTextBaseline, spacing: 12) {
-      Text(parts.first ?? "").font(.system(size: 13, weight: .medium)).foregroundStyle(secondary)
-        .frame(width: 70, alignment: .leading)
+      Text(parts.first ?? "").font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(accent)
+        .frame(width: 52, alignment: .leading)
       Text(parts.dropFirst().joined(separator: "  "))
-        .font(.system(size: 15, weight: .medium)).lineLimit(2)
-    }
+        .font(.system(size: 15, weight: .medium)).lineLimit(1)
+    }.padding(.top, 2)
   }
 }
 
@@ -327,13 +322,13 @@ private struct LockRect: View {
         Text(d.name).font(.system(size: 15, weight: .semibold)).lineLimit(1)
         Text("Departing \(d.startDate)").font(.system(size: 12)).foregroundStyle(.secondary)
       } else if d.state == "active" {
-        Text("Today · Day \(d.currentDay)").font(.system(size: 12, weight: .medium))
+        Text(d.totalDays > 0 ? "Today, day \(d.currentDay) of \(d.totalDays)" : "Today, day \(d.currentDay)").font(.system(size: 12, weight: .medium))
         Text(d.eventTitle.isEmpty ? "Time to explore" : d.eventTitle).font(.system(size: 15, weight: .semibold)).lineLimit(1)
         Text(d.eventTime.isEmpty ? d.name : d.eventTime).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
       } else {
         Text("Dalefy").font(.system(size: 12, weight: .medium))
-        Text("Your next adventure").font(.system(size: 15, weight: .semibold))
-        Text("Join a trip to get started").font(.system(size: 12)).foregroundStyle(.secondary)
+        Text("No trips yet").font(.system(size: 15, weight: .semibold))
+        Text("Join with your organiser's PIN").font(.system(size: 12)).foregroundStyle(.secondary)
       }
     }.frame(maxWidth: .infinity, alignment: .leading)
   }
@@ -351,7 +346,7 @@ private struct LockInline: View {
     case "active":
       HStack(spacing: 4) {
         Image(systemName: "airplane")
-        Text("\(d.destination) - Day \(d.currentDay)/\(d.totalDays)")
+        Text("\(d.name), day \(d.currentDay) of \(d.totalDays)")
       }
     default:
       HStack(spacing: 4) {
@@ -379,26 +374,43 @@ private struct FlightProps {
   let gate: String
   let duration: String
   let progress: Double
+  let boardsAt: Double
+  let departsAt: Double
+  let arrivesAt: Double
+  /** The airline's colour, already adjusted by the app to read on the dark Lock Screen */
+  let accent: Color
 
+  private var now: Double { Date().timeIntervalSince1970 * 1000 }
+  var isBoarding: Bool { boardsAt > 0 && now >= boardsAt && now < departsAt }
+
+  // Plain words, sentence case
   var statusLabel: String {
     let s = status.lowercased()
-    if s.contains("cancel") { return "CANCELLED" }
-    if s.contains("delay") { return "DELAYED" }
-    if s.contains("landed") || s.contains("arrived") { return "LANDED" }
-    if s.contains("boarding") { return "BOARDING" }
-    if s.contains("in flight") || s.contains("airborne") { return "IN FLIGHT" }
-    if s.contains("on time") { return "ON TIME" }
+    if s.contains("cancel") { return "Cancelled" }
+    if s.contains("delay") { return "Delayed" }
+    if s.contains("landed") || s.contains("arrived") { return "Landed" }
+    if s.contains("boarding") || isBoarding { return "Boarding" }
+    if s.contains("in flight") || s.contains("airborne") || s.contains("departed") || (departsAt > 0 && now >= departsAt) { return "In the air" }
+    if s.contains("on time") { return "On time" }
     return "Scheduled"
   }
 
   var statusColor: Color {
-    let s = status.lowercased()
-    if s.contains("cancel") { return Color(hex: "#ef4444") }
-    if s.contains("delay") { return Color(hex: "#f59e0b") }
-    if s.contains("landed") || s.contains("arrived") { return Color(hex: "#22c55e") }
-    if s.contains("boarding") { return teal }
-    if s.contains("in flight") || s.contains("airborne") { return Color(hex: "#3b82f6") }
-    return .white.opacity(0.75)
+    switch statusLabel {
+    case "Cancelled": return Color(hex: "#ef4444")
+    case "Delayed": return Color(hex: "#f59e0b")
+    case "Landed": return Color(hex: "#22c55e")
+    default: return .white.opacity(0.75)
+    }
+  }
+
+  /** What the countdown runs to right now; nil once the flight has landed */
+  var countdown: (lead: String, target: Date)? {
+    let n = now
+    if boardsAt > n { return ("Boards in", Date(timeIntervalSince1970: boardsAt / 1000)) }
+    if departsAt > n { return ("Departs in", Date(timeIntervalSince1970: departsAt / 1000)) }
+    if arrivesAt > n { return ("Lands in", Date(timeIntervalSince1970: arrivesAt / 1000)) }
+    return nil
   }
 
   var airlineCode: String {
@@ -417,6 +429,10 @@ private struct FlightProps {
     gate       = d["gate"] as? String ?? ""
     duration   = d["duration"] as? String ?? ""
     progress   = d["progress"] as? Double ?? 0
+    boardsAt   = d["boardsAt"] as? Double ?? 0
+    departsAt  = d["departsAt"] as? Double ?? 0
+    arrivesAt  = d["arrivesAt"] as? Double ?? 0
+    accent     = (d["accentDark"] as? String).map { Color(hex: $0) } ?? teal
   }
 }
 
@@ -429,8 +445,10 @@ private struct EventProps {
   let icon: String
   let startTimestamp: Double
   let endTimestamp: Double
+  /** The category colour from the app, same as the timeline dot */
+  let accent: Color
 
-  var typeLabel: String { type.uppercased() }
+  var typeLabel: String { type.prefix(1).uppercased() + type.dropFirst() }
   var displayTitle: String { shortTitle.isEmpty ? title : shortTitle }
 
   init(_ d: [String: Any]) {
@@ -442,6 +460,7 @@ private struct EventProps {
     icon       = d["icon"] as? String ?? "calendar"
     startTimestamp = d["startTimestamp"] as? Double ?? 0
     endTimestamp = d["endTimestamp"] as? Double ?? 0
+    accent = (d["accent"] as? String).map { Color(hex: $0) } ?? teal
   }
 }
 
@@ -509,34 +528,77 @@ private struct BannerView: View {
 private struct FlightBanner: View {
   let p: FlightProps
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Label(p.flightNum, systemImage: "airplane")
-          .font(.system(size: 13, weight: .semibold))
+    VStack(alignment: .leading, spacing: 12) {
+      // Flight and airline, status in words
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Text(p.flightNum).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.accent)
+        if !p.airline.isEmpty {
+          Text(p.airline).font(.system(size: 13)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+        }
         Spacer()
-        Text(p.statusLabel).font(.system(size: 12, weight: .medium)).foregroundStyle(p.statusColor)
+        Text(p.statusLabel).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.statusColor)
       }
-      HStack {
+      // The route, with the plane travelling along it
+      HStack(alignment: .center) {
         airport(p.from, time: p.departTime, alignment: .leading)
-        Spacer(minLength: 12)
-        Image(systemName: "airplane").font(.system(size: 17)).foregroundStyle(teal)
-        Spacer(minLength: 12)
+        Spacer(minLength: 10)
+        RouteTrack(progress: p.progress, accent: p.accent, duration: p.duration, width: 84)
+        Spacer(minLength: 10)
         airport(p.to, time: p.arriveTime, alignment: .trailing)
       }
-      if !p.gate.isEmpty {
-        HStack(spacing: 6) {
-          Text("Gate").foregroundStyle(.white.opacity(0.7))
-          Text(p.gate).fontWeight(.semibold).foregroundStyle(teal)
-          Spacer()
-          Text("Scheduled times").font(.system(size: 11)).foregroundStyle(.white.opacity(0.6))
-        }.font(.system(size: 16))
+      // Live countdown, gate once it's known
+      HStack(alignment: .firstTextBaseline) {
+        FlightCountdown(p: p, size: 15)
+        Spacer()
+        if !p.gate.isEmpty {
+          Text("Gate \(p.gate)").font(.system(size: 15, weight: .semibold)).foregroundStyle(p.accent)
+        }
       }
     }.foregroundStyle(.white)
   }
   private func airport(_ name: String, time: String, alignment: HorizontalAlignment) -> some View {
     VStack(alignment: alignment, spacing: 3) {
-      Text(name).font(.system(size: name.count > 4 ? 18 : 28, weight: .semibold)).lineLimit(1)
-      Text(time.isEmpty ? "Time TBC" : time).font(.system(size: 17, weight: .medium)).monospacedDigit().foregroundStyle(.white.opacity(0.8))
+      Text(name).font(.system(size: name.count > 4 ? 18 : 28, weight: .bold)).lineLimit(1)
+      Text(time.isEmpty ? "Time TBC" : time).font(.system(size: 15, weight: .medium)).monospacedDigit().foregroundStyle(.white.opacity(0.75))
+    }
+  }
+}
+
+private struct RouteTrack: View {
+  let progress: Double
+  let accent: Color
+  let duration: String
+  let width: CGFloat
+  var body: some View {
+    let done = max(0, min(1, progress))
+    VStack(spacing: 4) {
+      ZStack(alignment: .leading) {
+        Capsule().fill(.white.opacity(0.22)).frame(width: width, height: 2)
+        Capsule().fill(accent).frame(width: width * done, height: 2)
+        Image(systemName: "airplane").font(.system(size: 13, weight: .semibold)).foregroundStyle(accent)
+          .offset(x: (width - 15) * done)
+      }.frame(width: width, height: 15)
+      if !duration.isEmpty {
+        Text(duration).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+      }
+    }.accessibilityElement(children: .ignore).accessibilityLabel(duration.isEmpty ? "Flight" : "Flight, \(duration)")
+  }
+}
+
+// A system timer keeps counting while the app is suspended; it stops at zero instead of counting past
+private struct FlightCountdown: View {
+  let p: FlightProps
+  let size: CGFloat
+  var body: some View {
+    if let c = p.countdown {
+      HStack(spacing: 4) {
+        Text(c.lead).foregroundStyle(.white.opacity(0.7))
+        Text(timerInterval: Date()...c.target, countsDown: true)
+          .monospacedDigit().fontWeight(.semibold)
+          .frame(maxWidth: 76, alignment: .leading)
+      }.font(.system(size: size))
+    } else if !p.departTime.isEmpty {
+      Text("Departed \(p.departTime)").font(.system(size: size)).foregroundStyle(.white.opacity(0.7))
     }
   }
 }
@@ -544,15 +606,50 @@ private struct FlightBanner: View {
 private struct EventBanner: View {
   let p: EventProps
   var body: some View {
-    VStack(alignment: .leading, spacing: 9) {
-      HStack {
-        Label("At \(p.time)", systemImage: p.icon).font(.system(size: 14, weight: .medium)).foregroundStyle(teal)
-        Spacer()
-        EventTimer(p: p)
+    VStack(alignment: .leading, spacing: 10) {
+      // Category tile, then what and when
+      HStack(alignment: .center, spacing: 12) {
+        CategoryTile(p: p, size: 44)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(p.time.isEmpty ? p.typeLabel : "\(p.typeLabel), \(p.time)")
+            .font(.system(size: 13, weight: .medium)).foregroundStyle(p.accent)
+          Text(p.title).font(.system(size: 19, weight: .semibold)).foregroundStyle(.white).lineLimit(2)
+        }
       }
-      Text(p.title).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white).lineLimit(2)
+      // The countdown is what you glance at
+      EventCountdown(p: p, leadSize: 15, timerSize: 26)
       if !p.location.isEmpty {
-        Label(p.location, systemImage: "mappin").font(.system(size: 14)).foregroundStyle(.white.opacity(0.75)).lineLimit(2)
+        Text(p.location).font(.system(size: 14)).foregroundStyle(.white.opacity(0.75)).lineLimit(3)
+      }
+    }
+  }
+}
+
+private struct CategoryTile: View {
+  let p: EventProps
+  let size: CGFloat
+  var body: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: size * 0.27, style: .continuous).fill(p.accent.opacity(0.2))
+      Image(systemName: p.icon).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(p.accent)
+    }.frame(width: size, height: size).accessibilityHidden(true)
+  }
+}
+
+// "Starts in 24:10", then "On now, ends in 40:00" once it's under way
+private struct EventCountdown: View {
+  let p: EventProps
+  let leadSize: CGFloat
+  let timerSize: CGFloat
+  var body: some View {
+    let now = Date().timeIntervalSince1970 * 1000
+    let (lead, target): (String, Double) = p.startTimestamp > now ? ("Starts in", p.startTimestamp) : ("On now, ends in", p.endTimestamp)
+    if target > now {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Text(lead).font(.system(size: leadSize)).foregroundStyle(.white.opacity(0.7))
+        Text(timerInterval: Date()...Date(timeIntervalSince1970: target / 1000), countsDown: true)
+          .font(.system(size: timerSize, weight: .semibold)).monospacedDigit().foregroundStyle(.white)
+          .frame(maxWidth: timerSize * 4, alignment: .leading)
       }
     }
   }
@@ -561,12 +658,16 @@ private struct EventBanner: View {
 // A system timer continues to advance while JavaScript is suspended.
 private struct EventTimer: View {
   let p: EventProps
+  var size: CGFloat = 13
+  var align: Alignment = .center
   var body: some View {
-    if p.startTimestamp > Date().timeIntervalSince1970 * 1000 {
-      Text(timerInterval: Date()...Date(timeIntervalSince1970: p.startTimestamp / 1000), countsDown: true, showsHours: false)
-        .monospacedDigit().font(.system(size: 13, weight: .medium)).foregroundStyle(teal).frame(maxWidth: 64)
+    let now = Date().timeIntervalSince1970 * 1000
+    let target = p.startTimestamp > now ? p.startTimestamp : p.endTimestamp
+    if target > now {
+      Text(timerInterval: Date()...Date(timeIntervalSince1970: target / 1000), countsDown: true, showsHours: false)
+        .monospacedDigit().font(.system(size: size, weight: .semibold)).foregroundStyle(p.accent).multilineTextAlignment(align == .trailing ? .trailing : .center).frame(maxWidth: size * 4.9, alignment: align)
     } else {
-      Text(p.time).font(.system(size: 13, weight: .medium)).foregroundStyle(teal)
+      Text(p.time).font(.system(size: size, weight: .semibold)).foregroundStyle(p.accent)
     }
   }
 }
@@ -577,10 +678,13 @@ private struct CmpLeading: View {
   var body: some View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
-      Label(p.to.count <= 4 ? p.to : "Flight", systemImage: "airplane")
-        .font(.system(size: 13, weight: .semibold)).foregroundStyle(teal).lineLimit(1)
+      HStack(spacing: 4) {
+        Image(systemName: "airplane").foregroundStyle(p.accent)
+        Text(p.from.count <= 4 ? p.from : "Flight").foregroundStyle(.white)
+      }.font(.system(size: 13, weight: .semibold)).lineLimit(1)
     } else {
-      Image(systemName: EventProps(props).icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(teal)
+      let p = EventProps(props)
+      Image(systemName: p.icon).font(.system(size: 14, weight: .semibold)).foregroundStyle(p.accent)
     }
   }
 }
@@ -591,8 +695,16 @@ private struct CmpTrailing: View {
   var body: some View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
-      Text(p.gate.isEmpty ? p.departTime : p.gate)
-        .font(.system(size: 13, weight: .semibold)).monospacedDigit().lineLimit(1)
+      // The countdown, until boarding starts and the gate matters more
+      if p.isBoarding && !p.gate.isEmpty {
+        Text(p.gate).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.accent).lineLimit(1)
+      } else if let c = p.countdown {
+        Text(timerInterval: Date()...c.target, countsDown: true)
+          .font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(p.accent)
+          .frame(maxWidth: 56)
+      } else {
+        Text(p.to).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+      }
     } else { EventTimer(p: EventProps(props)) }
   }
 }
@@ -602,7 +714,7 @@ private struct MinView: View {
   let props: [String: Any]
   var body: some View {
     Image(systemName: name == "FlightTracker" ? "airplane" : EventProps(props).icon)
-      .font(.system(size: 14, weight: .semibold)).foregroundStyle(teal)
+      .font(.system(size: 14, weight: .semibold)).foregroundStyle(name == "FlightTracker" ? FlightProps(props).accent : EventProps(props).accent)
   }
 }
 
@@ -617,9 +729,7 @@ private struct ExLeading: View {
         Text(p.departTime).font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.75))
       }.padding(.leading, 8)
     } else {
-      let p = EventProps(props)
-      Label("At \(p.time)", systemImage: p.icon)
-        .font(.system(size: 14, weight: .medium)).foregroundStyle(teal).padding(.leading, 8)
+      CategoryTile(p: EventProps(props), size: 36).padding(.leading, 8)
     }
   }
 }
@@ -634,7 +744,10 @@ private struct ExTrailing: View {
         Text(p.to).font(.system(size: 22, weight: .semibold)).lineLimit(1)
         Text(p.arriveTime).font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.75))
       }.padding(.trailing, 8)
-    } else { EventTimer(p: EventProps(props)).padding(.trailing, 8) }
+    } else {
+      // Just the countdown, flush right; the line below says what it counts to
+      EventTimer(p: EventProps(props), size: 22, align: .trailing).padding(.trailing, 8)
+    }
   }
 }
 
@@ -642,13 +755,8 @@ private struct ExCenter: View {
   let name: String
   let props: [String: Any]
   var body: some View {
-    if name == "FlightTracker" {
-      Image(systemName: "airplane")
-        .font(.system(size: 17, weight: .semibold))
-        .foregroundStyle(teal)
-        .padding(.horizontal, 8)
-        .accessibilityLabel("Flight")
-    }
+    // Left empty: this region sits beside the camera, where the plane used to be hidden
+    EmptyView()
   }
 }
 
@@ -658,22 +766,29 @@ private struct ExBottom: View {
   var body: some View {
     if name == "FlightTracker" {
       let p = FlightProps(props)
-      HStack {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(p.flightNum).font(.system(size: 13, weight: .semibold))
-          Text(p.statusLabel).font(.system(size: 12)).foregroundStyle(p.statusColor)
+      VStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+          Text(p.flightNum).font(.system(size: 13, weight: .semibold)).foregroundStyle(p.accent)
+          Text(p.statusLabel).font(.system(size: 13)).foregroundStyle(p.statusColor)
+          Spacer()
+          RouteTrack(progress: p.progress, accent: p.accent, duration: "", width: 72)
         }
-        Spacer()
-        if !p.gate.isEmpty {
-          Text("Gate \(p.gate)").font(.system(size: 17, weight: .semibold)).foregroundStyle(teal)
+        HStack(alignment: .firstTextBaseline) {
+          FlightCountdown(p: p, size: 14)
+          Spacer()
+          if !p.gate.isEmpty {
+            Text("Gate \(p.gate)").font(.system(size: 15, weight: .semibold)).foregroundStyle(p.accent)
+          }
         }
       }.padding(8)
     } else {
       let p = EventProps(props)
-      VStack(alignment: .leading, spacing: 6) {
-        Text(p.title).font(.system(size: 19, weight: .semibold)).lineLimit(2)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(p.time.isEmpty ? p.typeLabel : "\(p.typeLabel), \(p.time)")
+          .font(.system(size: 12, weight: .medium)).foregroundStyle(p.accent)
+        Text(p.title).font(.system(size: 18, weight: .semibold)).lineLimit(2)
         if !p.location.isEmpty {
-          Label(p.location, systemImage: "mappin").font(.system(size: 13)).foregroundStyle(.white.opacity(0.75)).lineLimit(2)
+          Text(p.location).font(.system(size: 13)).foregroundStyle(.white.opacity(0.75)).lineLimit(2)
         }
       }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
     }

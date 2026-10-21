@@ -13,6 +13,10 @@ import type { SFSymbols7_0 } from "sf-symbols-typescript";
 export type UpcomingEventProps = {
   startTimestamp?: number;
   endTimestamp?: number;
+  /** True once the event has started, as of the last update */
+  live?: boolean;
+  /** The category colour, readable on the dark Lock Screen */
+  accent?: string;
   title: string;
   shortTitle?: string;
   type: "dining" | "activity" | "transfer" | "hotel" | "flight";
