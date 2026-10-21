@@ -9,6 +9,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
+import { BlurView } from "expo-blur";
 import { CachedImage } from "@/components/CachedImage";
 import { FlightRouteMap } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
@@ -953,8 +954,8 @@ function FlightDetailScreen({
       {/* A soft glow in the airline's colour behind the page, so each flight has its own feel */}
       <LinearGradient
         pointerEvents="none"
-        colors={[withAlpha(bandColor, isDark ? 0.55 : 0.3), withAlpha(bandColor, isDark ? 0.22 : 0.1), withAlpha(bandColor, 0)]}
-        locations={[0, 0.5, 0.95]}
+        colors={[withAlpha(bandColor, isDark ? 0.32 : 0.18), withAlpha(bandColor, isDark ? 0.24 : 0.12), withAlpha(bandColor, isDark ? 0.1 : 0.05)]}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
       <Stack.Screen options={{
@@ -1018,7 +1019,9 @@ function FlightDetailScreen({
 
           <View style={fs.body}>
             {/* The pass: one object with everything you need at the airport */}
-            <Animated.View style={[fs.pass, { backgroundColor: C.card }, shadow("deep", isDark)]}>
+            {/* Frosted ticket: the airline glow shows through a little instead of a solid slab sitting on it */}
+            <Animated.View style={[fs.pass, { backgroundColor: isDark ? "rgba(20,20,24,0.62)" : "rgba(255,255,255,0.72)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)" }, shadow("subtle", isDark)]}>
+              <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={60} style={[StyleSheet.absoluteFill, { borderRadius: R.lg, overflow: "hidden" }]} />
               <View style={[fs.airlineRow, { backgroundColor: bandColor }]}>
                 <View style={fs.airlineTile}>
                   {airlineIata && !logoError ? (
@@ -1027,7 +1030,7 @@ function FlightDetailScreen({
                       accessible={false}
                       style={fs.airlineLogo}
                       onError={() => setLogoError(true)}
-                      resizeMode="contain"
+                      resizeMode="cover"
                     />
                   ) : (
                     <Text style={fs.airlineIata}>
@@ -1076,7 +1079,7 @@ function FlightDetailScreen({
                   <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Departs</Text>
                   <Text style={[fs.time, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
                   <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={2}>
-                    {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : `${depTerminal} terminal`) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
+                    {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : depTerminal === "International" ? "Intl terminal" : `${depTerminal} terminal`) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
@@ -1104,7 +1107,7 @@ function FlightDetailScreen({
               {/* With no gate or seat yet, one line says so instead of a row of TBCs */}
               {!stubFields[0].value && !stubFields[1].value ? (
                 <Text style={[fs.stubNote, { color: C.textSecondary }]}>
-                  Gate and seat at check-in{boardingEst ? <>, boarding from about <Text style={{ color: C.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text></> : null}
+                  {boardingEst ? <>Boarding from about <Text style={{ color: C.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text>{"\n"}<Text style={{ fontSize: T.sm, color: C.textTertiary }}>Gate and seat at check-in</Text></> : "Gate and seat at check-in"}
                 </Text>
               ) : null}
               <View style={fs.stub}>
@@ -1149,7 +1152,7 @@ function FlightDetailScreen({
                       {step.sub ? <Text style={[fs.jSub, { color: C.textSecondary }]} numberOfLines={2}>{step.sub}</Text> : null}
                       {step.note ? <Text style={[fs.jNote, { color: C.textTertiary }]}>{step.note}</Text> : null}
                     </View>
-                    <Text style={[fs.jTime, { color: step.time ? C.tealText : C.textTertiary }]}>{step.time ?? "TBC"}</Text>
+                    <Text style={[fs.jTime, { color: step.time ? C.textPrimary : C.textTertiary }]}>{step.time ?? "TBC"}</Text>
                   </View>
                 </Pressable>
               ))}
@@ -1211,12 +1214,13 @@ function makeFlightStyles(C: ThemeColors) {
     pass: { borderRadius: R.lg, overflow: "visible" },
     airlineRow: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.md, paddingVertical: S.md, borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg },
     airlineTile: {
-      width: 40, height: 40, borderRadius: 10,
+      width: 34, height: 34, borderRadius: 17, overflow: "hidden",
       backgroundColor: LOGO_PLATE,
       alignItems: "center", justifyContent: "center",
     },
     airlineIata: { fontSize: T.xs, fontWeight: T.black, color: LOGO_INK, letterSpacing: 0.5 },
-    airlineLogo: { width: 30, height: 30, borderRadius: 4 },
+    // The logo fills the circle: carrier marks are square artwork, and a smaller square inside a circle shows its corners
+    airlineLogo: { width: 34, height: 34 },
     airlineName: { fontSize: T.md, fontWeight: T.semibold },
     flightNum: { fontSize: T.sm, marginTop: 1 },
 
@@ -1236,7 +1240,7 @@ function makeFlightStyles(C: ThemeColors) {
     plusOneText: { fontSize: T["2xs"], fontWeight: T.bold },
 
     tear: { height: 20, justifyContent: "center", position: "relative", marginTop: S.xs },
-    tearLine: { marginHorizontal: S.md, borderTopWidth: 1, borderStyle: "dashed" },
+    tearLine: { marginHorizontal: S.md, borderTopWidth: StyleSheet.hairlineWidth },
     stub: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.md, rowGap: S.md },
     // A cell takes a third of the row but widens when the row has room, so "International" never truncates
     stubField: { flexGrow: 1, flexBasis: "33.33%", paddingRight: S.xs },
