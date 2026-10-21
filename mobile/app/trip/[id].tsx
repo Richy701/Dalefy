@@ -1,5 +1,5 @@
 import { PhotoBlend } from "@/components/ui/PhotoBlend";
-import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
+import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { Skeleton, ListSkeleton } from "@/components/Skeleton";
 import * as Clipboard from "expo-clipboard";
 import { useBannerStretch } from "@/hooks/useBannerStretch";
@@ -22,16 +22,16 @@ import { T, R, S, shadow, categoryTone, type ThemeColors } from "@/constants/the
 import { MicroLabel } from "@/components/ui/MicroLabel";
 import { Pill } from "@/components/ui/Pill";
 import { CategoryDot } from "@/components/ui/CategoryDot";
+import { rowTitle, rowSub } from "@/shared/eventDisplay";
 import { ScalePress } from "@/components/ScalePress";
 import { geocode } from "@/services/geocode";
 import { parseTripDate } from "@/shared/dates";
 import { tripFactLine, shortDay, tripDays, todayKey, destinationFlag, nextEvent, untilLabel } from "@/shared/tripSummary";
 import { useBrand } from "@/context/BrandContext";
 import { Avatar } from "@/components/ui/Avatar";
-import { OrganizerCard } from "@/components/OrganizerCard";
 import { useTripRole } from "@/hooks/useTripRole";
 import { useLinkedTravelerId } from "@/hooks/useLinkedTravelerId";
-import { InfoDocsRow } from "@/components/InfoDocsRow";
+import { TripQuickTiles } from "@/components/TripQuickTiles";
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -452,6 +452,16 @@ export default function TripScreen() {
               </PhotoBlend>
             )}
             {photoPage && <PhotoDissolve uri={trip.image} scrollY={scrollY} />}
+            {/* Shade behind the title block so the dates and host line hold over bright photos */}
+            {photoPage && (
+              <LinearGradient
+                pointerEvents="none"
+                // Fades back out at the foot so it melts into the page instead of ending in a line
+                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.36)", "rgba(0,0,0,0.36)", "rgba(0,0,0,0)"]}
+                locations={[0.3, 0.6, 0.86, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
           </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
             {flag ? (
@@ -497,9 +507,16 @@ export default function TripScreen() {
         {/* ── Next up: the one thing a traveller needs right now ── */}
         {upNext && (
           <View style={styles.nextCard}>
+            {/* Just when: the icon beside the title already says what it is. Time, or a live countdown on the day itself */}
             <View style={styles.nextHeader}>
-              <Text style={styles.nextEyebrow}>Next up</Text>
-              <Text style={styles.nextWhen}>{untilLabel(upNext, now)}</Text>
+              <Text style={[styles.nextEyebrow, { flex: 1 }]} numberOfLines={1}>
+                {upNext.date === todayKey() ? "Today" : untilLabel(upNext, now) === "Tomorrow" ? "Tomorrow" : parseTripDate(upNext.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+              </Text>
+              {upNext.date === todayKey() ? (
+                <Text style={styles.nextWhen}>{untilLabel(upNext, now)}</Text>
+              ) : !isPlaceholderTime(upNext.time) && upNext.time ? (
+                <Text style={[styles.nextWhen, { color: C.textPrimary }]}>{upNext.time}</Text>
+              ) : null}
             </View>
             <Pressable
               onPress={() => { router.push(`/trip/event?tripId=${trip.id}&eventId=${upNext.id}`); }}
@@ -515,7 +532,16 @@ export default function TripScreen() {
                 </Text>
               </View>
             </Pressable>
-            {upNext.location ? (
+            {upNext.type === "flight" ? (
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/trip/event?tripId=${trip.id}&eventId=${upNext.id}`); }}
+                accessibilityRole="button"
+                accessibilityLabel="View flight"
+                style={({ pressed }) => [styles.nextAction, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={styles.nextActionText}>View flight</Text>
+              </Pressable>
+            ) : upNext.location ? (
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -533,6 +559,14 @@ export default function TripScreen() {
             ) : null}
           </View>
         )}
+
+        {/* ── Documents and the organiser, where travellers look first ── */}
+        <TripQuickTiles
+          C={C}
+          docCount={(trip.info ?? []).filter(i => isLeader || !i.leaderOnly).length}
+          onDocs={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
+          organizer={trip.organizer}
+        />
 
         {/* ── Per-traveller filter ── */}
         {hasFilter && (
@@ -570,7 +604,8 @@ export default function TripScreen() {
                   </Text>
                   {isToday && <Pill tone="accent" size="sm" label="Today" />}
                   <View style={{ flex: 1 }} />
-                  <Text style={styles.dayHeaderMeta}>{events.length ? `${events.length} event${events.length === 1 ? "" : "s"}` : "Free day"}</Text>
+                  {/* "Times TBC" lives here once, rather than on each row */}
+                  <Text style={styles.dayHeaderMeta}>{events.length ? `${events.length} event${events.length === 1 ? "" : "s"}${events.every(e => isPlaceholderTime(e.time)) ? ", times TBC" : ""}` : "Free day"}</Text>
                 </View>
 
                 {events.length > 0 && (
@@ -604,15 +639,15 @@ export default function TripScreen() {
                         >
                           <CategoryDot palette={C} base={photoPage ? "transparent" : undefined} type={ev.type} transferType={ev.transferType} size={DOT} />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.tlTitle} numberOfLines={2}>{ev.type === "hotel" ? cleanTitle(ev.title).split(" – ")[0] : cleanTitle(ev.title)}</Text>
+                            <Text style={styles.tlTitle} numberOfLines={2}>{ev.type === "hotel" ? cleanTitle(ev.title).split(" – ")[0] : rowTitle(cleanTitle(ev.title), rowSub(ev))}</Text>
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
                               <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
-                            ) : ev.location ? (
-                              <Text style={styles.tlSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text>
+                            ) : rowSub(ev) ? (
+                              <Text style={styles.tlSub} numberOfLines={1}>{rowSub(ev)}</Text>
                             ) : null}
                           </View>
-                          {ev.time ? (
-                            <Text style={[styles.tlTime, isPlaceholderTime(ev.time) && { color: C.textTertiary }]}>{isPlaceholderTime(ev.time) ? "TBC" : ev.time}</Text>
+                          {ev.time && !isPlaceholderTime(ev.time) ? (
+                            <Text style={styles.tlTime}>{ev.time}</Text>
                           ) : null}
                         </Pressable>
 
@@ -643,25 +678,6 @@ export default function TripScreen() {
             );
           })}
         </View>
-
-        {/* ── Organiser ── */}
-        {trip.organizer && (
-          <View style={styles.section}>
-            <OrganizerCard organizer={trip.organizer} C={C} isLeader={isLeader} />
-          </View>
-        )}
-
-        {/* ── Information & Documents ── */}
-        {trip.info && trip.info.length > 0 && (() => {
-          const visibleInfo = isLeader ? trip.info : trip.info.filter(i => !i.leaderOnly);
-          return visibleInfo.length > 0 ? (
-            <InfoDocsRow
-              count={visibleInfo.length}
-              C={C}
-              onPress={() => router.push({ pathname: "/trip/info", params: { tripId: trip.id } })}
-            />
-          ) : null;
-        })()}
 
         {/* ── Map (only when native module is linked) ── */}
         {mapCenter && MapboxGL && (
@@ -775,7 +791,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: photoBackdrop ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
     },
     heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
-    heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textPrimary, textAlign: "center" },
+    heroDates: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.88)" : C.textPrimary, textAlign: "center" },
     flagWrap: {
       width: 44, height: 44, borderRadius: 22, marginBottom: S.xs,
       backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center",
@@ -790,7 +806,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       borderWidth: 2, borderColor: "rgba(0,0,0,0.28)",
     },
     avatarMoreText: { fontSize: 9, fontWeight: T.bold, color: "#fff" },
-    groupText: { fontSize: T.sm, fontWeight: T.medium, color: isDark ? "rgba(255,255,255,0.85)" : C.textPrimary, flexShrink: 1 },
+    groupText: { fontSize: T.sm, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.94)" : C.textPrimary, flexShrink: 1 },
     hostLogo: { width: 16, height: 16, borderRadius: 4 },
 
     // Next up
@@ -802,7 +818,7 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       paddingHorizontal: S.md, paddingTop: S.sm2, paddingBottom: S.xs,
     },
-    nextEyebrow: { fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },
+    nextEyebrow: { fontSize: T.sm, fontWeight: T.semibold, color: C.textSecondary },
     nextWhen: { fontSize: T.sm, fontWeight: T.bold, color: C.tealText, fontVariant: ["tabular-nums"] },
     nextBody: { flexDirection: "row", alignItems: "center", gap: S.sm2, paddingHorizontal: S.md, paddingBottom: S.sm2 },
     nextTitle: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2 },

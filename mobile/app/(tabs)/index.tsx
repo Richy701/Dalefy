@@ -32,6 +32,7 @@ import { openJoinSheet, openSheet } from "@/services/openJoin";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
 import { tidyTitleSeparators, tidyLocation } from "@/shared/eventTitle";
+import { rowTitle, rowSub } from "@/shared/eventDisplay";
 import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Logo } from "@/components/Logo";
@@ -671,8 +672,8 @@ export default function HomeScreen() {
                       >
                         <CategoryDot palette={C} type={ev.type} transferType={ev.transferType} />
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.evTitle} numberOfLines={1}>{eventTitle(ev)}</Text>
-                          {ev.location ? <Text style={styles.evSub} numberOfLines={1}>{tidyLocation(ev.location)}</Text> : null}
+                          <Text style={styles.evTitle} numberOfLines={1}>{rowTitle(eventTitle(ev), rowSub(ev))}</Text>
+                          {rowSub(ev) ? <Text style={styles.evSub} numberOfLines={1}>{rowSub(ev)}</Text> : null}
                         </View>
                         {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
                       </Pressable>
