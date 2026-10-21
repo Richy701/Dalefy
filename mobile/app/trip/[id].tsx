@@ -601,7 +601,7 @@ export default function TripScreen() {
                   <Text accessibilityRole="header" style={[styles.dayHeaderText, dimPast && isPast && { color: C.textTertiary }]}>
                     {d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   </Text>
-                  {isToday && <Pill tone="accent" size="sm" label="Today" />}
+                  {isToday && <Pill tone="custom" bg={C.tealDim} color={C.tealText} size="sm" label="Today" />}
                   <View style={{ flex: 1 }} />
                   {/* "Times TBC" lives here once, rather than on each row */}
                   <Text style={styles.dayHeaderMeta}>{events.length ? `${events.length} event${events.length === 1 ? "" : "s"}${events.every(e => isPlaceholderTime(e.time)) ? ", times TBC" : ""}` : "Free day"}</Text>
@@ -694,7 +694,7 @@ export default function TripScreen() {
           <ScalePress style={styles.mapSection} onPress={openInMaps} accessibilityRole="button" accessibilityLabel="Open location in Maps">
             <View style={styles.sectionHeader}>
               <MapTrifold size={13} color={C.textTertiary} weight="regular" />
-              <MicroLabel>Location</MicroLabel>
+              <MicroLabel color={C.textPrimary}>Location</MicroLabel>
               <View style={{ flex: 1 }} />
               <MicroLabel color={C.tealText}>Open in Maps ›</MicroLabel>
             </View>

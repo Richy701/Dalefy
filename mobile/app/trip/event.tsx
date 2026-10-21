@@ -699,7 +699,7 @@ export default function EventDetailScreen() {
         {/* Notes / description — single section, no double label */}
         {(ev.description || ev.notes) && (
           <Animated.View style={styles.infoCard}>
-            <MicroLabel style={{ marginBottom: S.sm }}>Good to know</MicroLabel>
+            <MicroLabel color={C.textPrimary} style={{ marginBottom: S.sm }}>Good to know</MicroLabel>
             {ev.description && (
               <Text style={[styles.infoValue, { color: C.textPrimary }]} selectable>{ev.description}</Text>
             )}
@@ -714,7 +714,7 @@ export default function EventDetailScreen() {
         {hasDocs && (
           <Animated.View style={[styles.infoCard, { paddingHorizontal: 0, paddingVertical: 0 }]}>
             <View style={{ paddingHorizontal: S.md, paddingTop: S.md, paddingBottom: S.xs }}>
-              <MicroLabel>Documents</MicroLabel>
+              <MicroLabel color={C.textPrimary}>Documents</MicroLabel>
             </View>
             {ev.documents!.map((doc, i) => {
               const parsed = parseDocFilename(doc.name, doc.size);
@@ -762,7 +762,7 @@ export default function EventDetailScreen() {
                   i < neighbours.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
                 ]}
               >
-                <CategoryDot type={e.type} transferType={e.transferType} size={28} />
+                <CategoryDot palette={C} type={e.type} transferType={e.transferType} size={28} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{label}</Text>
                   <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={1}>
@@ -1191,7 +1191,7 @@ function FlightDetailScreen({
             {/* Documents */}
             {ev.documents && ev.documents.length > 0 && (
               <Animated.View>
-                <MicroLabel style={{ marginBottom: S.xs }}>Documents</MicroLabel>
+                <MicroLabel color={C.textPrimary} style={{ marginBottom: S.xs }}>Documents</MicroLabel>
                 {ev.documents.map(doc => (
                   <Pressable
                     key={doc.id}
