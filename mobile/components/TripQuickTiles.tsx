@@ -78,6 +78,8 @@ export function TripQuickTiles({ C, docCount, onDocs, organizer }: {
           </View>
         </ScalePress>
       ) : null}
+      {/* A lone tile keeps its half width, so every trip's layout matches */}
+      {!docCount || !org ? <View style={{ flex: 1 }} /> : null}
     </View>
   );
 }

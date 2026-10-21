@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
-import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding, NavigationArrow } from "phosphor-react-native";
+import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -528,7 +528,7 @@ export default function TripScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextTitle} numberOfLines={2}>{cleanTitle(upNext.title)}</Text>
                 <Text style={styles.nextSub} numberOfLines={1}>
-                  {[isPlaceholderTime(upNext.time) ? null : upNext.time, upNext.location].filter(Boolean).join(", ")}
+                  {upNext.location ? tidyTitleSeparators(upNext.location) : ""}
                 </Text>
               </View>
             </Pressable>
@@ -553,7 +553,6 @@ export default function TripScreen() {
                 accessibilityLabel={`Directions to ${upNext.location}`}
                 style={({ pressed }) => [styles.nextAction, { opacity: pressed ? 0.6 : 1 }]}
               >
-                <NavigationArrow size={14} color={C.tealText} weight="fill" style={{ transform: [{ scaleX: -1 }] }} />
                 <Text style={styles.nextActionText}>Directions</Text>
               </Pressable>
             ) : null}
