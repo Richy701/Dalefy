@@ -344,7 +344,6 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
   const dateRange = sameMonth
     ? `${start.getDate()}–${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
     : `${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-  const whenLine = isPast ? dateRange : isActive ? tripFactLine(trip).split(", ")[0] : days === 1 ? "tomorrow" : `in ${days} days`;
   const photo = <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />;
   const tripLink = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${trip.id}`;
   const copyLink = () => { Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {}); };
@@ -378,12 +377,19 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
     >
       <View style={[styles.tripArt, { width: size, height: size }]}>
         {Platform.OS === "ios" && Link.AppleZoom ? <Link.AppleZoom>{photo}</Link.AppleZoom> : photo}
+        {/* When it is goes on the photo, so the caption is just what and where */}
+        {!isPast ? (
+          <View style={[styles.tripChip, isActive && { backgroundColor: C.teal }]} accessible={false}>
+            <Text style={[styles.tripChipText, isActive && { color: C.onAccent }]}>
+              {isActive ? "On now" : days === 1 ? "Tomorrow" : `${days} days`}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View style={styles.tripCardBody}>
-        <Text style={styles.tripCardName} numberOfLines={1}>{trip.name}</Text>
+        <Text style={styles.tripCardName} numberOfLines={2}>{trip.name}</Text>
         <Text style={styles.tripCardSub} numberOfLines={1}>
-          {flag ? `${flag}  ` : ""}{!isPast && trip.destination ? `${trip.destination}, ` : ""}
-          <Text style={isActive ? { color: C.tealText, fontWeight: T.semibold } : undefined}>{whenLine}</Text>
+          {flag ? `${flag}  ` : ""}{isPast ? dateRange : trip.destination || dateRange}
         </Text>
       </View>
     </ScalePress>
@@ -450,6 +456,19 @@ export default function HomeScreen() {
     const events = date ? heroTrip.events.filter(e => e.date === date) : [];
     return { date, events, dayCount: dates.length };
   }, [heroTrip, todayStr]);
+  // Every calendar day of the trip for the day strip, with the day's first real event for its icon
+  const tripDays = useMemo(() => {
+    if (!heroTrip) return [] as { date: string; weekday: string; day: number; ev?: TravelEvent }[];
+    const out: { date: string; weekday: string; day: number; ev?: TravelEvent }[] = [];
+    const end = parseTripDate(heroTrip.end);
+    for (let d = parseTripDate(heroTrip.start); d <= end && out.length < 60; d = new Date(d.getTime() + 86400000)) {
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      // Itinerary order, the same as the card above, so untimed days still lead with the right event
+      const ev = heroTrip.events.find(e => e.date === date);
+      out.push({ date, weekday: d.toLocaleDateString("en-GB", { weekday: "short" }), day: d.getDate(), ev });
+    }
+    return out;
+  }, [heroTrip]);
   const nextEvent = heroDay.events[0];
   const restEvents = heroDay.events.slice(1, 4);
   const hasTime = (ev: TravelEvent) => !!ev.time && !/^tb[acd]$/i.test(ev.time);
@@ -656,15 +675,46 @@ export default function HomeScreen() {
                         {hasTime(ev) ? <Text style={styles.evTime}>{ev.time}</Text> : null}
                       </Pressable>
                     ))}
-                    <Pressable
-                      onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
-                      accessibilityRole="button"
-                      style={({ pressed }) => [styles.cardFooter, restEvents.length === 0 && { borderTopWidth: 0, paddingTop: 0 }, { opacity: pressed ? 0.6 : 1 }]}
-                    >
-                      <Text style={styles.cardLink}>
-                        {heroDay.dayCount > 1 ? `See all ${heroDay.dayCount} days` : "Open itinerary"}
-                      </Text>
-                    </Pressable>
+                    {/* Jump to any day of the trip; the day shown above is picked out */}
+                    {tripDays.length > 1 ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={[styles.dayStrip, restEvents.length === 0 && { borderTopWidth: 0 }]}
+                        contentContainerStyle={styles.dayStripContent}
+                      >
+                        {tripDays.map(d => {
+                          const current = d.date === heroDay.date;
+                          const DayIcon = d.ev ? categoryIcon(d.ev.type, d.ev.transferType) : null;
+                          return (
+                            <ScalePress
+                              key={d.date}
+                              activeScale={0.94}
+                              onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${heroTrip.id}?date=${d.date}`); }}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${parseTripDate(d.date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}${d.ev ? `, ${eventTitle(d.ev)}` : ", nothing planned"}`}
+                              style={[styles.dayChip, current && styles.dayChipCurrent]}
+                            >
+                              <Text style={[styles.dayChipWeekday, current && { color: C.tealText }]}>{d.weekday}</Text>
+                              <Text style={[styles.dayChipNum, current && { color: C.tealText }]}>{d.day}</Text>
+                              {DayIcon ? (
+                                <DayIcon size={14} color={categoryTone(d.ev!.type, C).fg} weight="fill" />
+                              ) : (
+                                <View style={styles.dayChipEmpty} />
+                              )}
+                            </ScalePress>
+                          );
+                        })}
+                      </ScrollView>
+                    ) : (
+                      <Pressable
+                        onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
+                        accessibilityRole="button"
+                        style={({ pressed }) => [styles.cardFooter, restEvents.length === 0 && { borderTopWidth: 0, paddingTop: 0 }, { opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <Text style={styles.cardLink}>Open itinerary</Text>
+                      </Pressable>
+                    )}
                   </View>
                 </>
               )}
@@ -805,6 +855,16 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     cardEmpty: { fontSize: T.sm, color: C.textTertiary, lineHeight: 19, paddingHorizontal: S.md, paddingBottom: S.md },
     cardFooter: { paddingHorizontal: S.md, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
     cardLink: { fontSize: T.sm, fontWeight: T.semibold, color: C.tealText },
+    dayStrip: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+    dayStripContent: { paddingHorizontal: S.md, paddingVertical: S.sm2, gap: S.xs },
+    dayChip: {
+      width: 54, paddingVertical: S.xs2, borderRadius: R.lg, alignItems: "center", gap: 2,
+      backgroundColor: C.elevated, borderWidth: 1.5, borderColor: "transparent",
+    },
+    dayChipCurrent: { borderColor: C.teal, backgroundColor: C.tealDim },
+    dayChipWeekday: { fontSize: T.xs, fontWeight: T.medium, color: C.textSecondary },
+    dayChipNum: { fontSize: T.xl, fontWeight: T.semibold, color: C.textPrimary, fontVariant: ["tabular-nums"], marginBottom: 2 },
+    dayChipEmpty: { width: 14, height: 14 },
     groupHeader: {
       fontSize: T.lg, fontWeight: T.semibold, color: C.textPrimary, letterSpacing: -0.2,
       paddingHorizontal: S.md, marginBottom: S.xs,
@@ -832,6 +892,13 @@ function makeStyles(C: ThemeColors, isDark: boolean) {
     tripCardBody: { gap: 1 },
     tripCardName: { fontSize: T.sm, fontWeight: T.semibold, color: C.textPrimary, lineHeight: 17 },
     tripCardSub: { fontSize: T.xs, color: C.textSecondary },
+    // Dark enough that white text holds over a bright photo
+    tripChip: {
+      position: "absolute", top: S.xs, left: S.xs,
+      paddingHorizontal: S.xs2, paddingVertical: 4, borderRadius: R.sm,
+      backgroundColor: "rgba(0,0,0,0.62)",
+    },
+    tripChipText: { fontSize: T.xs, fontWeight: T.semibold, color: "#fff" },
     photoStrip: { gap: S.sm2, paddingHorizontal: S.md, paddingBottom: S.md },
     latestPhoto: {
       width: 104, height: 138, borderRadius: R.sm,

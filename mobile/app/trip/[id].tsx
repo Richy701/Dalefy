@@ -203,10 +203,17 @@ export default function TripScreen() {
   // Day positions inside the scroll content, for the week strip to jump to
   const timelineY = useRef(0);
   const dayY = useRef<Record<string, number>>({});
+  // A tapped or linked day stays highlighted even when the page can't scroll it to the top
+  // (the last days sit near the end); scrolling by hand hands control back to the scroll position
+  const chosenDay = useRef<string | null>(null);
+  const viewH = useRef(0);
+  const contentH = useRef(0);
   const jumpToDay = useCallback((date: string) => {
     const y = dayY.current[date];
     if (y == null) return;
     Haptics.selectionAsync();
+    chosenDay.current = date;
+    setActiveDay(date);
     scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: true });
   }, [insets.top]);
 
@@ -218,12 +225,16 @@ export default function TripScreen() {
     (now, prev) => { if (now !== prev) runOnJS(setStripPinned)(now); },
   );
   const updateActiveDay = useCallback((y: number) => {
+    if (chosenDay.current) return;
     if (y <= 0) { setActiveDay(null); return; }
     const line = y + insets.top + HEADER_H + stripH.current + S.md;
+    const ordered = Object.entries(dayY.current).sort((a, b) => a[1] - b[1]);
     let cur: string | null = null;
-    for (const [date, dy] of Object.entries(dayY.current).sort((a, b) => a[1] - b[1])) {
+    for (const [date, dy] of ordered) {
       if (timelineY.current + dy <= line) cur = date;
     }
+    // At the very bottom the last day is what you're looking at, even if its header never reached the top
+    if (ordered.length && viewH.current && y + viewH.current >= contentH.current - 24) cur = ordered[ordered.length - 1][0];
     setActiveDay(prev => (prev === cur ? prev : cur));
   }, [insets.top]);
   useAnimatedReaction(
@@ -240,6 +251,8 @@ export default function TripScreen() {
     const y = dayY.current[date];
     if (y == null || !timelineY.current) return;
     pendingDate.current = null;
+    chosenDay.current = date;
+    setActiveDay(date);
     scrollRef.current?.scrollTo({ y: Math.max(0, timelineY.current + y - insets.top - HEADER_H - stripH.current - S.sm), animated: false });
   }, [insets.top]);
 
@@ -257,7 +270,14 @@ export default function TripScreen() {
     if (!trip) return [];
     const grouped: Record<string, TravelEvent[]> = {};
     for (const ev of visibleEvents) (grouped[ev.date] ??= []).push(ev);
-    for (const evs of Object.values(grouped)) evs.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    // Timed events go in time order; untimed ones (TBC) keep the organiser's order rather than
+    // being treated as noon, so an airport transfer stays before its flight
+    const timed = (ev: TravelEvent) => /^\d{1,2}:\d{2}/.test((ev.time || "").trim());
+    for (const evs of Object.values(grouped)) {
+      const slots = evs.map((ev, i) => (timed(ev) ? i : -1)).filter(i => i >= 0);
+      const sorted = slots.map(i => evs[i]).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      slots.forEach((slot, k) => { evs[slot] = sorted[k]; });
+    }
     // Calendar days first, then any event dates that fall outside the trip window
     const keys = tripDays(trip);
     for (const k of Object.keys(grouped)) if (!keys.includes(k)) keys.push(k);
@@ -389,6 +409,9 @@ export default function TripScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        onScrollBeginDrag={() => { chosenDay.current = null; }}
+        onLayout={(e) => { viewH.current = e.nativeEvent.layout.height; }}
+        onContentSizeChange={(_, h) => { contentH.current = h; }}
       >
 
         {/* ── Hero: parallax photo that dissolves into the wash ── */}
