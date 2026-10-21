@@ -15,6 +15,9 @@ try {
   MapboxGL = require("@rnmapbox/maps").default;
 } catch {}
 
+/** False where Mapbox isn't in the build (the admin's web preview), so screens can show a photo instead */
+export const ROUTE_MAP_AVAILABLE = !!MapboxGL;
+
 interface Props {
   from: [number, number]; // [lng, lat]
   to: [number, number];   // [lng, lat]

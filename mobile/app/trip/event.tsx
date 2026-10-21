@@ -9,9 +9,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
-import { BlurView } from "expo-blur";
 import { CachedImage } from "@/components/CachedImage";
-import { FlightRouteMap } from "@/components/FlightRouteMap";
+import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import {
@@ -53,6 +52,38 @@ function withAlpha(hex: string, a: number): string {
   if (!m) return `rgba(0,0,0,${a})`;
   const n = parseInt(m[1], 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+/** White text shades on the airline-coloured ticket */
+const P = {
+  textPrimary: "#fff",
+  textSecondary: "rgba(255,255,255,0.86)",
+  textTertiary: "rgba(255,255,255,0.74)",
+  border: "rgba(255,255,255,0.22)",
+  elevated: "rgba(255,255,255,0.16)",
+  panel: "rgba(255,255,255,0.1)",
+};
+
+function luminance(r: number, g: number, b: number): number {
+  const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/** Top and bottom of the ticket gradient: the brand colour mixed toward black until 74% white on it reads at 4.5:1 */
+function passFill(hex: string): [string, string] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const n = m ? parseInt(m[1], 16) : 0x2a2a33;
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const at = (k: number) => rgb.map(c => Math.round(c * (1 - k)));
+  const hexOf = (c: number[]) => "#" + c.map(v => v.toString(16).padStart(2, "0")).join("");
+  let k = 0;
+  for (; k < 0.9; k += 0.04) {
+    const bg = at(k);
+    // the faintest text: P.textTertiary composited over the fill
+    const txt = bg.map(c => 0.74 * 255 + 0.26 * c);
+    const ratio = (luminance(txt[0], txt[1], txt[2]) + 0.05) / (luminance(bg[0], bg[1], bg[2]) + 0.05);
+    if (ratio >= 4.5) break;
+  }
+  return [hexOf(at(k)), hexOf(at(Math.min(k + 0.22, 0.95)))];
 }
 const EV_PHOTO_H = 260;
 // Photo pages: tall enough that the photo itself shows before it melts into the blur
@@ -786,7 +817,7 @@ function FlightDetailScreen({
     Array.isArray(c) && c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]);
   const depCoords = isFiniteCoord(rawDep) ? rawDep : undefined;
   const arrCoords = isFiniteCoord(rawArr) ? rawArr : undefined;
-  const hasMap = !!(depCoords && arrCoords);
+  const hasMap = ROUTE_MAP_AVAILABLE && !!(depCoords && arrCoords);
 
   // LOCATION_COORDS is [lat, lng], Mapbox needs [lng, lat]
   const mapFrom = depCoords ? [depCoords[1], depCoords[0]] as [number, number] : undefined;
@@ -937,17 +968,8 @@ function FlightDetailScreen({
   const flightColor = airlineAccent(airlineIata, C.card, isDark) ?? categoryTone("flight", C).fg;
   // The ticket band always uses the true brand colour; the lightened accent is only for small icons on dark cards
   const bandColor = airlineBrand(airlineIata) ?? (isDark ? "#2a2a33" : categoryTone("flight", C).fg);
-  // Text on the airline band: whichever of white or near-black has the higher WCAG contrast with the brand colour
-  const bandText = useMemo(() => {
-    const m = /^#?([0-9a-f]{6})$/i.exec(bandColor.trim());
-    if (!m) return "#fff";
-    const n = parseInt(m[1], 16);
-    const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-    const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-    const onWhite = 1.05 / (L + 0.05);
-    const onDark = (L + 0.05) / (0.0056 + 0.05);
-    return onDark > onWhite ? "#111" : "#fff";
-  }, [bandColor]);
+  // The ticket fill: the brand colour, deepened until the faintest white text on it still clears 4.5:1
+  const passColors = useMemo(() => passFill(bandColor), [bandColor]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -1019,10 +1041,10 @@ function FlightDetailScreen({
 
           <View style={fs.body}>
             {/* The pass: one object with everything you need at the airport */}
-            {/* Frosted ticket: the airline glow shows through a little instead of a solid slab sitting on it */}
-            <Animated.View style={[fs.pass, { backgroundColor: isDark ? "rgba(20,20,24,0.62)" : "rgba(255,255,255,0.72)", borderWidth: StyleSheet.hairlineWidth, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)" }, shadow("subtle", isDark)]}>
-              <BlurView tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"} intensity={60} style={[StyleSheet.absoluteFill, { borderRadius: R.lg, overflow: "hidden" }]} />
-              <View style={[fs.airlineRow, { backgroundColor: bandColor }]}>
+            {/* Invites-style ticket: the whole card is the airline's colour, details on a frosted inner panel */}
+            <Animated.View style={[fs.pass, { backgroundColor: passColors[1], borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.14)" }, shadow("subtle", isDark)]}>
+              <LinearGradient colors={passColors} style={[StyleSheet.absoluteFill, { borderRadius: R.lg }]} pointerEvents="none" />
+              <View style={fs.airlineRow}>
                 <View style={fs.airlineTile}>
                   {airlineIata && !logoError ? (
                     <Image
@@ -1039,60 +1061,61 @@ function FlightDetailScreen({
                   )}
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={[fs.airlineName, { color: bandText }]} numberOfLines={1}>
+                  <Text style={[fs.airlineName, { color: P.textPrimary }]} numberOfLines={1}>
                     {ev.airline || "Airline"}
                   </Text>
-                  <Text style={[fs.flightNum, { color: bandText }]} numberOfLines={1}>
+                  <Text style={[fs.flightNum, { color: P.textPrimary }]} numberOfLines={1}>
                     {[ev.flightNum, live?.aircraft || ev.aircraft].filter(Boolean).join(", ")}
                   </Text>
                 </View>
                 {showStatus ? (
-                  <Text style={[fs.untilText, { color: bandText }]}>{statusLabel === "On Time" ? "On time" : statusLabel}</Text>
+                  <Text style={[fs.untilText, { color: P.textPrimary }]}>{statusLabel === "On Time" ? "On time" : statusLabel}</Text>
                 ) : untilLabel ? (
-                  <Text style={[fs.untilText, { color: bandText, opacity: 0.9 }]}>{untilLabel}</Text>
+                  <Text style={[fs.untilText, { color: P.textSecondary }]}>{untilLabel}</Text>
                 ) : null}
               </View>
 
               <View style={fs.routeRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[fs.code, { color: C.textPrimary }]}>{depCode || "---"}</Text>
-                  <Text style={[fs.city, { color: C.textSecondary }]} numberOfLines={1}>{depCity || depAirportName || " "}</Text>
+                  <Text style={[fs.code, { color: P.textPrimary }]}>{depCode || "---"}</Text>
+                  <Text style={[fs.city, { color: P.textSecondary }]} numberOfLines={1}>{depCity || depAirportName || " "}</Text>
                 </View>
                 <View style={fs.routeMid}>
                   <View style={fs.routeLine}>
-                    <View style={[fs.routeRule, { backgroundColor: C.border }]} />
-                    <PlaneIcon size={18} color={flightColor} />
-                    <View style={[fs.routeRule, { backgroundColor: C.border }]} />
+                    <View style={[fs.routeRule, { backgroundColor: P.border }]} />
+                    <PlaneIcon size={18} color={P.textPrimary} />
+                    <View style={[fs.routeRule, { backgroundColor: P.border }]} />
                   </View>
-                  <Text style={[fs.durLabel, { color: C.textTertiary }]} numberOfLines={1}>
+                  <Text style={[fs.durLabel, { color: P.textTertiary }]} numberOfLines={1}>
                     {[dur ? `${dur.h}h${dur.m > 0 ? ` ${dur.m}m` : ""}` : null, distance ? `${distance.toLocaleString()} km` : null].filter(Boolean).join(", ") || " "}
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
-                  <Text style={[fs.code, { color: C.textPrimary }]}>{arrCode || "---"}</Text>
-                  <Text style={[fs.city, { color: C.textSecondary, textAlign: "right" }]} numberOfLines={1}>{arrCity || arrAirportName || " "}</Text>
+                  <Text style={[fs.code, { color: P.textPrimary }]}>{arrCode || "---"}</Text>
+                  <Text style={[fs.city, { color: P.textSecondary, textAlign: "right" }]} numberOfLines={1}>{arrCity || arrAirportName || " "}</Text>
                 </View>
               </View>
 
+              <View style={[fs.passPanel, { backgroundColor: P.panel }]}>
               <View style={fs.timesRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Departs</Text>
-                  <Text style={[fs.time, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
-                  <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={2}>
+                  <Text style={[fs.timeLabel, { color: P.textTertiary }]}>Departs</Text>
+                  <Text style={[fs.time, { color: P.textPrimary }]}>{depTime || "--:--"}</Text>
+                  <Text style={[fs.timeMeta, { color: P.textTertiary }]} numberOfLines={2}>
                     {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : depTerminal === "International" ? "Intl terminal" : `${depTerminal} terminal`) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "flex-end" }}>
-                  <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Arrives</Text>
+                  <Text style={[fs.timeLabel, { color: P.textTertiary }]}>Arrives</Text>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 4 }}>
-                    <Text style={[fs.time, { color: C.textPrimary }]}>{arrTime || "--:--"}</Text>
+                    <Text style={[fs.time, { color: P.textPrimary }]}>{arrTime || "--:--"}</Text>
                     {dayOffset > 0 && (
-                      <View style={[fs.plusOneBadge, { backgroundColor: C.elevated }]}>
-                        <Text style={[fs.plusOneText, { color: C.textSecondary }]}>+{dayOffset}</Text>
+                      <View style={[fs.plusOneBadge, { backgroundColor: P.elevated }]}>
+                        <Text style={[fs.plusOneText, { color: P.textSecondary }]}>+{dayOffset}</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={[fs.timeMeta, { color: C.textTertiary, textAlign: "right" }]} numberOfLines={2}>
+                  <Text style={[fs.timeMeta, { color: P.textTertiary, textAlign: "right" }]} numberOfLines={2}>
                     {[arrivalDate ? formatShortDate(arrivalDate) : null, arrTz?.abbr || arrTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>
@@ -1100,32 +1123,33 @@ function FlightDetailScreen({
 
               {/* perforation */}
               <View style={fs.tear}>
-                <View style={[fs.tearLine, { borderColor: C.border }]} />
+                <View style={[fs.tearLine, { borderColor: P.border }]} />
               </View>
 
               {/* stub: fixed slots, TBC until the airline or organiser confirms */}
               {/* With no gate or seat yet, one line says so instead of a row of TBCs */}
               {!stubFields[0].value && !stubFields[1].value ? (
-                <Text style={[fs.stubNote, { color: C.textSecondary }]}>
-                  {boardingEst ? <>Boarding from about <Text style={{ color: C.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text>{"\n"}<Text style={{ fontSize: T.sm, color: C.textTertiary }}>Gate and seat at check-in</Text></> : "Gate and seat at check-in"}
+                <Text style={[fs.stubNote, { color: P.textSecondary }]}>
+                  {boardingEst ? <>Boarding from about <Text style={{ color: P.textPrimary, fontWeight: T.semibold }}>{boardingEst}</Text>{"\n"}<Text style={{ fontSize: T.sm, color: P.textTertiary }}>Gate and seat at check-in</Text></> : "Gate and seat at check-in"}
                 </Text>
               ) : null}
               <View style={fs.stub}>
                 {(!stubFields[0].value && !stubFields[1].value ? stubFields.slice(3) : stubFields).map(f => (
                   <View key={f.label} style={fs.stubField}>
-                    <Text style={[fs.stubLabel, { color: C.textTertiary }]} numberOfLines={1}>{f.label}</Text>
-                    <Text style={[fs.stubValue, { color: f.value ? C.textPrimary : C.textTertiary }]} numberOfLines={1}>{f.value ?? "TBC"}</Text>
+                    <Text style={[fs.stubLabel, { color: P.textTertiary }]} numberOfLines={1}>{f.label}</Text>
+                    <Text style={[fs.stubValue, { color: f.value ? P.textPrimary : P.textTertiary }]} numberOfLines={1}>{f.value ?? "TBC"}</Text>
                   </View>
                 ))}
               </View>
 
               {isLeader && ev.confNumber ? (
-                <Pressable onPress={copyConf} accessibilityRole="button" accessibilityLabel="Copy booking reference" style={({ pressed }) => [fs.refRow, { borderTopColor: C.border, opacity: pressed ? 0.6 : 1 }]}>
-                  <Text style={[fs.stubLabel, { color: C.textTertiary, flex: 1 }]}>Booking reference</Text>
-                  <Text style={[fs.stubValue, { color: C.textPrimary }]}>{ev.confNumber}</Text>
-                  <Copy size={14} color={C.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
+                <Pressable onPress={copyConf} accessibilityRole="button" accessibilityLabel="Copy booking reference" style={({ pressed }) => [fs.refRow, { borderTopColor: P.border, opacity: pressed ? 0.6 : 1 }]}>
+                  <Text style={[fs.stubLabel, { color: P.textTertiary, flex: 1 }]}>Booking reference</Text>
+                  <Text style={[fs.stubValue, { color: P.textPrimary }]}>{ev.confNumber}</Text>
+                  <Copy size={14} color={P.textTertiary} weight="regular" style={{ marginLeft: S.xs }} />
                 </Pressable>
               ) : null}
+              </View>
             </Animated.View>
 
             {/* Your journey: the day around the flight as one timeline */}
@@ -1239,6 +1263,7 @@ function makeFlightStyles(C: ThemeColors) {
     plusOneBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
     plusOneText: { fontSize: T["2xs"], fontWeight: T.bold },
 
+    passPanel: { marginHorizontal: S.sm, marginTop: S.md, marginBottom: S.sm, borderRadius: R.md, overflow: "hidden" },
     tear: { height: 20, justifyContent: "center", position: "relative", marginTop: S.xs },
     tearLine: { marginHorizontal: S.md, borderTopWidth: StyleSheet.hairlineWidth },
     stub: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: S.md, paddingTop: S.xs, paddingBottom: S.md, rowGap: S.md },
