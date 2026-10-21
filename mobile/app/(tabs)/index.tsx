@@ -569,12 +569,13 @@ export default function HomeScreen() {
             {/* ── Actions ── */}
             <View style={styles.actions}>
               {heroActions.map(a => (
-                <Pressable
+                <ScalePress
                   key={a.label}
+                  activeScale={0.9}
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); a.go(); }}
                   accessibilityRole="button"
                   accessibilityLabel={a.label}
-                  style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
+                  style={styles.action}
                 >
                   {LIQUID_GLASS ? (
                     // Always the dark glass: the page under it is the dark photo backdrop in either theme
@@ -587,7 +588,7 @@ export default function HomeScreen() {
                     </View>
                   )}
                   <Text style={[styles.actionLabel, { color: onGround }]}>{a.label}</Text>
-                </Pressable>
+                </ScalePress>
               ))}
             </View>
 
