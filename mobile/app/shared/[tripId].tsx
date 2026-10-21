@@ -208,7 +208,7 @@ export default function SharedTripScreen() {
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const url = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/#/shared/${trip.id}`;
+    const url = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${trip.id}`;
     try {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(url, { dialogTitle: trip.name });

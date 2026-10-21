@@ -94,7 +94,7 @@ export default async function handler(req: any, res: any) {
     end: String(decodeValue(f.end_date) ?? ""),
     image: (decodeValue(f.image) as string) || null,
     message,
-    shareUrl: `${APP_URL}/#/shared/${tripId}`,
+    shareUrl: `${APP_URL}/shared/${tripId}`,
     shortCode: (decodeValue(f.short_code) as string) || null,
     organizer,
   });

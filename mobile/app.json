@@ -27,7 +27,10 @@
             ]
           }
         ]
-      }
+      },
+      "associatedDomains": [
+        "applinks:dalefy.vercel.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +39,24 @@
       },
       "package": "com.dafadventures.app",
       "backgroundColor": "#131316",
-      "versionCode": 3
+      "versionCode": 3,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "dalefy.vercel.app",
+              "pathPrefix": "/shared/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "extra": {
       "router": {},

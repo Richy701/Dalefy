@@ -54,7 +54,7 @@ export function ShareTripDialog({ open, onOpenChange, tripId, tripName, onPublis
 
   const webUrl =
     typeof window !== "undefined"
-      ? `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${tripId}`
+      ? `${(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "")}/shared/${tripId}`
       : "";
   const displayUrl = webUrl.replace(/^https?:\/\//, "");
   const appLink = `${APP_SCHEME}://shared/${tripId}`;

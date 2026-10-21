@@ -1058,7 +1058,7 @@ export function DashboardPage() {
               {/* Getting travellers into the next trip is the job; put the PIN and link where they are needed */}
               {upcomingCards[0] && (() => {
                 const trip = upcomingCards[0];
-                const link = `${import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`}#/shared/${trip.id}`;
+                const link = `${(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "")}/shared/${trip.id}`;
                 const copy = (text: string, what: string) => {
                   navigator.clipboard?.writeText(text).then(() => toast.success(`${what} copied`)).catch(() => toast.error(`Couldn't copy the ${what.toLowerCase()}`));
                 };

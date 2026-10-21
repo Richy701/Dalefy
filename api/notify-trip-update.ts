@@ -180,7 +180,7 @@ async function emailUpdate(input: EmailUpdateInput): Promise<number> {
       destination: (decodeValue(input.tripFields.destination) as string) || null,
       image: (decodeValue(input.tripFields.image) as string) || null,
       changes: input.changes.map(String),
-      shareUrl: `${APP_URL}/#/shared/${input.tripId}`,
+      shareUrl: `${APP_URL}/shared/${input.tripId}`,
       shortCode: (decodeValue(input.tripFields.short_code) as string) || null,
     });
     const organizer = decodeValue(input.tripFields.organizer);

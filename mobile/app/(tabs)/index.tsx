@@ -354,7 +354,7 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
           Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
         } else if (e.nativeEvent.index === 1) {
           const base = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
-          Clipboard.setStringAsync(`${base}/#/shared/${trip.id}`).then(() => toast("Link copied")).catch(() => {});
+          Clipboard.setStringAsync(`${base}/shared/${trip.id}`).then(() => toast("Link copied")).catch(() => {});
         }
       }}
     >
@@ -512,7 +512,7 @@ export default function HomeScreen() {
     // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
     {
       label: "Share", Icon: Export, symbol: "square.and.arrow.up" as const,
-      go: () => Share.share({ message: `${heroTrip.name}: ${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/#/shared/${heroTrip.id}` }),
+      go: () => Share.share({ message: `${heroTrip.name}: ${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${heroTrip.id}` }),
     },
   ] : [];
 
