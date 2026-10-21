@@ -362,11 +362,15 @@ export default function EventDetailScreen() {
   const { trips } = useTrips();
   const router = useRouter();
   const { C: themeC, isDark: themeDark } = useTheme();
-  // Invites-style photo page for events with their own photo (flights keep their own map design)
-  const photoPage = (() => {
-    const e = trips.find(t => t.id === tripId)?.events.find(x => x.id === eventId);
-    return !!e?.image && e.type !== "transfer" && e.type !== "flight";
+  // Every event page uses the same photo style so trips look alike: the event's own photo, or the
+  // trip cover behind it when the event has none (flights keep their own map design)
+  const backdropImage = (() => {
+    const t = trips.find(x => x.id === tripId);
+    const e = t?.events.find(x => x.id === eventId);
+    if (!e || e.type === "flight") return null;
+    return e.image || t?.image || null;
   })();
+  const photoPage = !!backdropImage;
   const C = useMemo(() => (photoPage ? photoPalette(themeC, themeDark) : themeC), [photoPage, themeC, themeDark]);
   const isDark = photoPage || themeDark;
   const { isLeader } = useTripRole(tripId);
@@ -508,7 +512,7 @@ export default function EventDetailScreen() {
 
   return (
     <View style={[styles.safe, photoPage && { backgroundColor: "#000" }]}>
-      {photoPage && <PhotoBackdrop uri={ev.image!} />}
+      {photoPage && <PhotoBackdrop uri={backdropImage!} />}
       <Stack.Screen options={{
         headerShown: true,
         title: typeLabel,
