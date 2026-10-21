@@ -386,7 +386,7 @@ export default function ProfileScreen() {
 
       </Animated.ScrollView>
       </ScrollViewMarker>
-      <CompactHeader title="Profile" barStyle={barStyle} />
+      <CompactHeader title="Profile" barStyle={barStyle} colors={C} dark={isDark} />
     </View>
   );
 }

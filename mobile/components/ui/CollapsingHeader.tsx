@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { S, T } from "@/constants/theme";
+import { S, T, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
 
 /**
@@ -31,12 +31,17 @@ export function useCollapsingHeader(threshold = 40) {
 const BAR_H = 44;
 
 /** Absolute compact bar. Render AFTER the scroll view so it sits on top. */
-export function CompactHeader({ title, barStyle, right }: {
+export function CompactHeader({ title, barStyle, right, colors, dark }: {
   title: string;
   barStyle: { opacity: number } | object;
   right?: React.ReactNode;
+  /** Page palette override, e.g. photoPalette on photo-backdrop pages */
+  colors?: ThemeColors;
+  dark?: boolean;
 }) {
-  const { C, isDark } = useTheme();
+  const theme = useTheme();
+  const C = colors ?? theme.C;
+  const isDark = dark ?? theme.isDark;
   const insets = useSafeAreaInsets();
   return (
     <Animated.View
