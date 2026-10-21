@@ -394,7 +394,9 @@ export default function TripScreen() {
         {/* ── Hero: parallax photo that dissolves into the wash ── */}
         <View style={styles.hero}>
           <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-            <PhotoBlend>
+            {photoPage ? (
+              // The dissolve alone carries the photo into the blur; PhotoBlend's fade and dark band would fight it
+              <>
               <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
                 {Platform.OS === "ios" && Link.AppleZoomTarget ? (
                   <Link.AppleZoomTarget>
@@ -404,7 +406,21 @@ export default function TripScreen() {
                   <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
                 )}
               </Animated.View>
-            </PhotoBlend>
+                <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+              </>
+            ) : (
+              <PhotoBlend>
+              <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
+                {Platform.OS === "ios" && Link.AppleZoomTarget ? (
+                  <Link.AppleZoomTarget>
+                    <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                  </Link.AppleZoomTarget>
+                ) : (
+                  <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} contentPosition={{ top: "35%", left: "50%" }} />
+                )}
+              </Animated.View>
+              </PhotoBlend>
+            )}
             {photoPage && <PhotoDissolve uri={trip.image} scrollY={scrollY} />}
           </Animated.View>
           <Animated.View style={[styles.heroContent, heroContentStyle]}>
@@ -558,7 +574,7 @@ export default function TripScreen() {
                         >
                           <CategoryDot palette={C} base={photoPage ? "transparent" : undefined} type={ev.type} transferType={ev.transferType} size={DOT} />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.tlTitle} numberOfLines={2}>{cleanTitle(ev.title)}</Text>
+                            <Text style={styles.tlTitle} numberOfLines={2}>{ev.type === "hotel" ? cleanTitle(ev.title).split(" – ")[0] : cleanTitle(ev.title)}</Text>
                             {ev.type === "flight" && (ev.airline || ev.flightNum) ? (
                               <Text style={styles.tlSub} numberOfLines={1}>{[ev.airline, ev.flightNum].filter(Boolean).join(" ")}</Text>
                             ) : ev.location ? (

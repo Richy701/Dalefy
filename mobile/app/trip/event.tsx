@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import MaskedView from "@react-native-masked-view/masked-view";
 import { CachedImage } from "@/components/CachedImage";
 import { FlightRouteMap } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
@@ -44,7 +45,17 @@ import { MicroLabel } from "@/components/ui/MicroLabel";
 const HERO_H = 460;
 const PASS_OVERLAP = 120;
 const EV_HERO_H = 320;
+
+/** "#rrggbb" plus an alpha, as an rgba() string */
+function withAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return `rgba(0,0,0,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
 const EV_PHOTO_H = 260;
+// Photo pages: tall enough that the photo itself shows before it melts into the blur
+const EV_PHOTO_PAGE_H = 400;
 const LOGO_PLATE = "#fff";
 const LOGO_INK = "#111";
 
@@ -498,12 +509,20 @@ export default function EventDetailScreen() {
       >
         {/* Cover: only the event's own photo, with nothing written over it */}
         {showPhoto ? (
-          <View style={{ height: EV_PHOTO_H + insets.top }}>
+          <View style={{ height: (photoPage ? EV_PHOTO_PAGE_H : EV_PHOTO_H) + insets.top }}>
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
-              <PhotoBlend>
-                <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
-              </PhotoBlend>
-              {photoPage && <PhotoDissolve uri={ev.image!} scrollY={scrollY} />}
+              {photoPage ? (
+                // The dissolve alone carries the photo into the blur; PhotoBlend's own fade and dark band would fight it
+                <>
+                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+                  <LinearGradient colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                  <PhotoDissolve uri={ev.image!} scrollY={scrollY} />
+                </>
+              ) : (
+                <PhotoBlend>
+                  <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
+                </PhotoBlend>
+              )}
             </Animated.View>
           </View>
         ) : (
@@ -517,17 +536,18 @@ export default function EventDetailScreen() {
               <Pill tone="custom" bg={sp.bg} color={sp.text} size="sm" icon={<StatusIndicator state={sp.state} size={8} color={sp.color} />} label={sp.label} />
             </View>
           )}
-          {!isHotel && (
-            <>
-              {ev.date ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{formatLongDate(ev.date)}</Text> : null}
-              <View style={styles.timeSlot}>
-                <Text style={[styles.timeBig, { color: whenText ? C.textPrimary : C.textTertiary }]}>{whenText ?? "--:--"}</Text>
-                {!whenText ? <Text style={[styles.tbcTag, { color: C.textSecondary, backgroundColor: C.elevated }]}>{isTransfer ? "Pickup time TBC" : "Time TBC"}</Text> : null}
-                {ev.duration ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{ev.duration}</Text> : null}
-              </View>
-            </>
-          )}
+          {/* The title leads; when it happens sits under it as one line */}
           <Text style={[styles.heroTitle, { color: C.textPrimary }]} numberOfLines={3}>{isHotel ? stayName : title}</Text>
+          {!isHotel && (
+            <Text style={[styles.whenLine, { color: C.textSecondary }]}>
+              {[
+                ev.date ? formatLongDate(ev.date) : null,
+                whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
+                ev.duration || null,
+              ].filter(Boolean).join(", ")}
+            </Text>
+          )}
+          {!isHotel && whenText ? <Text style={[styles.timeBig, { color: C.textPrimary }]}>{whenText}</Text> : null}
           {isHotel && stayDetail ? <Text style={[styles.heroFact, { color: C.textSecondary }]}>{stayDetail}</Text> : null}
           {liveLine ? <Text style={[styles.heroFact, { color: C.tealText, fontWeight: T.semibold }]}>{liveLine}</Text> : null}
         </View>
@@ -607,7 +627,7 @@ export default function EventDetailScreen() {
               )}
               {locationCoords && (
                 <View style={{ borderRadius: R.md, overflow: "hidden" }}>
-                  <EventLocationMap coords={locationCoords} accentColor={categoryTone(ev.type, C).fg} isDark={isDark} />
+                  <EventLocationMap coords={locationCoords} accentColor={categoryTone(ev.type, C).fg} isDark={isDark} label={(isHotel ? stayName : title).split(" – ")[0]} />
                 </View>
               )}
             </Pressable>
@@ -710,7 +730,7 @@ export default function EventDetailScreen() {
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontSize: T.sm, color: C.textTertiary }}>{label}</Text>
                   <Text style={[styles.detailListValue, { color: C.textPrimary }]} numberOfLines={1}>
-                    {cleanEventTitle(e.title, e.type, e.transferType)}
+                    {e.type === "hotel" ? cleanEventTitle(e.title, e.type, e.transferType).split(" – ")[0] : cleanEventTitle(e.title, e.type, e.transferType)}
                   </Text>
                 </View>
                 {e.time ? <Text style={{ fontSize: T.sm, color: /^tb[acd]$/i.test(e.time) ? C.textTertiary : C.tealText, fontWeight: T.medium, fontVariant: ["tabular-nums"] }}>{/^tb[acd]$/i.test(e.time) ? "TBC" : e.time}</Text> : null}
@@ -930,6 +950,13 @@ function FlightDetailScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      {/* A soft glow in the airline's colour behind the page, so each flight has its own feel */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[withAlpha(bandColor, isDark ? 0.55 : 0.3), withAlpha(bandColor, isDark ? 0.22 : 0.1), withAlpha(bandColor, 0)]}
+        locations={[0, 0.5, 0.95]}
+        style={StyleSheet.absoluteFill}
+      />
       <Stack.Screen options={{
         headerShown: true,
         title: "",
@@ -963,6 +990,11 @@ function FlightDetailScreen({
           {/* Hero: the route on a map, or the trip's photo when we don't know both airports */}
           <Animated.View style={[fs.hero, { height: HERO_H + insets.top }, stretchStyle]}>
             {hasMap && mapFrom && mapTo ? (
+              // The map melts away at the bottom so the airline wash shows through, not a hard page-colour fade
+              <MaskedView
+                style={StyleSheet.absoluteFill}
+                maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.5, 0.92]} style={{ flex: 1 }} />}
+              >
               <FlightRouteMap
                 from={mapFrom}
                 to={mapTo}
@@ -974,13 +1006,14 @@ function FlightDetailScreen({
                 accentColor={flightColor}
                 isDark={isDark}
               />
+              </MaskedView>
             ) : trip?.image ? (
               <PhotoBlend><CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} /></PhotoBlend>
             ) : (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: C.elevated }]} />
             )}
             {(hasMap || !trip?.image) && <>{isDark && <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent"]} locations={[0, 0.3]} style={StyleSheet.absoluteFill} pointerEvents="none" />}
-            <LinearGradient colors={[`${C.bg}00`, `${C.bg}B3`, C.bg]} locations={[0.45, 0.75, 0.95]} style={StyleSheet.absoluteFill} pointerEvents="none" /></>}
+            {!hasMap && <LinearGradient colors={[`${C.bg}00`, `${C.bg}B3`, C.bg]} locations={[0.45, 0.75, 0.95]} style={StyleSheet.absoluteFill} pointerEvents="none" />}</>}
           </Animated.View>
 
           <View style={fs.body}>
@@ -1235,9 +1268,8 @@ function makeStyles(C: ThemeColors) {
     heroBody: { paddingHorizontal: S.md, paddingBottom: S.md, gap: S.xs },
     heroTypeRow: { flexDirection: "row", alignItems: "center", gap: S.xs },
     titleBlock: { paddingHorizontal: S.md, paddingBottom: S.lg, gap: 4 },
-    timeSlot: { flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: 2 },
+    whenLine: { fontSize: T.base, lineHeight: 22, marginTop: S.xs },
     timeBig: { fontSize: 32, fontWeight: T.bold, letterSpacing: -0.8, fontVariant: ["tabular-nums"] },
-    tbcTag: { fontSize: T.sm, fontWeight: T.semibold, paddingHorizontal: S.xs, paddingVertical: 3, borderRadius: 6, overflow: "hidden" },
     stayRow: { flexDirection: "row", alignItems: "center", marginHorizontal: S.md, marginBottom: S.lg, paddingVertical: S.sm2, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
     stayDivider: { width: StyleSheet.hairlineWidth, alignSelf: "stretch", marginHorizontal: S.md },
     stayLabel: { fontSize: T.sm },

@@ -12,7 +12,8 @@ import { darkColors, applyAccentHex, type ThemeColors } from "@/constants/theme"
  */
 
 const BLUR = 70;
-const SCALE = 1.3;
+// Just enough zoom to hide the blur's soft edges; more shifts colours away from the sharp photo above
+const SCALE = 1.12;
 // Dark enough that white text at 0.75 stays above 4.5:1 even over a bright photo
 const SHADE = "rgba(8,8,10,0.66)";
 
@@ -46,7 +47,7 @@ export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedV
     <MaskedView
       pointerEvents="none"
       style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}
-      maskElement={<LinearGradient colors={["transparent", "rgba(0,0,0,0.55)", "#000"]} locations={[0.4, 0.72, 0.97]} style={{ flex: 1 }} />}
+      maskElement={<LinearGradient colors={["transparent", "rgba(0,0,0,0.5)", "#000"]} locations={[0.55, 0.8, 1]} style={{ flex: 1 }} />}
     >
       <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, height }, follow]}>
         <BlurredPhoto uri={uri} />
@@ -59,6 +60,7 @@ export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedV
 export function photoPalette(base: ThemeColors, isDark: boolean): ThemeColors {
   // Light mode still gets the dark palette here, with the brand accent re-derived for dark backgrounds
   const dark = isDark ? base : applyAccentHex(darkColors, base.teal);
-  return { ...dark, textSecondary: "rgba(255,255,255,0.82)", textTertiary: "rgba(255,255,255,0.75)", border: "rgba(255,255,255,0.16)" };
+  // elevated is the pressed-row fill: a soft lift of the backdrop rather than a solid dark slab
+  return { ...dark, elevated: "rgba(255,255,255,0.1)", textSecondary: "rgba(255,255,255,0.82)", textTertiary: "rgba(255,255,255,0.75)", border: "rgba(255,255,255,0.16)" };
 }
 

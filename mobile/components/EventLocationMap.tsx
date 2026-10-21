@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { T } from "@/constants/theme";
 
 let MapboxGL: any = null;
 try {
@@ -11,10 +12,12 @@ interface Props {
   height?: number;
   accentColor: string;
   isDark: boolean;
+  /** Name shown on the pin */
+  label?: string;
 }
 
 /** Frozen map snippet centred on one point. Renders nothing when Mapbox is unavailable. */
-export function EventLocationMap({ coords, height = 140, accentColor, isDark }: Props) {
+export function EventLocationMap({ coords, height = 140, accentColor, isDark, label }: Props) {
   const [ready, setReady] = useState(false);
 
   const shape = useMemo(() => ({
@@ -47,14 +50,15 @@ export function EventLocationMap({ coords, height = 140, accentColor, isDark }: 
           existing
           config={{
             lightPreset: isDark ? "night" : "day",
-            showPointOfInterestLabels: true,
+            // Mapbox's own café and bar icons were louder than the stop itself
+            showPointOfInterestLabels: false,
             showTransitLabels: false,
             showPlaceLabels: true,
             showRoadLabels: false,
             show3dObjects: false,
           } as any}
         />
-        <MapboxGL.Camera centerCoordinate={coords} zoomLevel={15} animationDuration={0} />
+        <MapboxGL.Camera centerCoordinate={coords} zoomLevel={15} animationDuration={0} padding={label ? { paddingTop: 40, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 } : undefined} />
         {ready && (
           <MapboxGL.ShapeSource id="event-location" shape={shape}>
             <MapboxGL.CircleLayer
@@ -72,7 +76,22 @@ export function EventLocationMap({ coords, height = 140, accentColor, isDark }: 
             />
           </MapboxGL.ShapeSource>
         )}
+        {ready && label ? (
+          <MapboxGL.MarkerView coordinate={coords} anchor={{ x: 0.5, y: 1.55 }} allowOverlap>
+            <View style={[styles.label, { backgroundColor: isDark ? "rgba(24,24,28,0.88)" : "rgba(255,255,255,0.95)" }]}>
+              <Text style={[styles.labelText, { color: isDark ? "#fff" : "#111" }]} numberOfLines={1}>{label}</Text>
+            </View>
+          </MapboxGL.MarkerView>
+        ) : null}
       </MapboxGL.MapView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  label: {
+    maxWidth: 240, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 14,
+    shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+  },
+  labelText: { fontSize: T.sm, fontWeight: T.semibold },
+});
