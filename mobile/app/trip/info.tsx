@@ -19,6 +19,7 @@ import type { TripInfo } from "@/shared/types";
 import { openDocument } from "@/services/openDocument";
 import { CachedImage } from "@/components/CachedImage";
 import { CategoryDot } from "@/components/ui/CategoryDot";
+import * as Haptics from "@/services/haptics";
 import { PhotoBackdrop, photoPalette } from "@/components/ui/PhotoBackdrop";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 
@@ -249,9 +250,10 @@ export default function InfoScreen() {
     ],
     onPress: (e: any) => {
       const text = `${item.title}\n\n${item.body ?? ""}`;
-      if (e.nativeEvent.index === 0) Share.share({ message: text });
+      if (e.nativeEvent.index === 0) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Share.share({ message: text }); }
       else if (e.nativeEvent.index === 1) {
-        import("expo-clipboard").then(Clipboard => Clipboard.setStringAsync(text)).catch(() => {});
+        import("expo-clipboard").then(Clipboard => Clipboard.setStringAsync(text))
+          .then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)).catch(() => {});
       }
     },
   });
@@ -291,7 +293,13 @@ export default function InfoScreen() {
     return (
       <ContextMenu key={item.id} {...shareMenu(item)}>
         <View style={styles.topic}>
-          <Text style={styles.groupTitle} accessibilityRole="header">{heading}</Text>
+          <Text
+            style={styles.groupTitle}
+            accessibilityRole="header"
+            // Long-press Share and Copy, reachable from VoiceOver too
+            accessibilityActions={[{ name: "share", label: "Share" }, { name: "copy", label: "Copy text" }]}
+            onAccessibilityAction={(e) => shareMenu(item).onPress({ nativeEvent: { index: e.nativeEvent.actionName === "share" ? 0 : 1 } })}
+          >{heading}</Text>
           {sc ? <Text style={[styles.metaText, { color: sc.tone.text }]}>{sc.label}</Text> : null}
 
           {receipt.length > 0 && (
@@ -329,7 +337,7 @@ export default function InfoScreen() {
                   <Pressable
                     key={i}
                     disabled={!linked}
-                    onPress={() => linked && router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: linked.id } })}
+                    onPress={() => { if (!linked) return; Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: linked.id } }); }}
                     accessibilityRole={linked ? "button" : undefined}
                     style={({ pressed }) => [styles.listRow, kind === "todo" && { alignItems: "flex-start" }, i > 0 && styles.rowBorder, pressed && linked ? { backgroundColor: C.elevated } : null]}
                   >
@@ -360,7 +368,7 @@ export default function InfoScreen() {
                   <Pressable
                     key={i}
                     disabled={!phone}
-                    onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+                    onPress={() => { if (!phone) return; Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(`tel:${phone}`); }}
                     accessibilityRole={phone ? "button" : undefined}
                     accessibilityLabel={phone ? `Call ${pr.name}, ${pr.detail}` : undefined}
                     style={({ pressed }) => [styles.pairRow, i > 0 && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}
@@ -412,7 +420,7 @@ export default function InfoScreen() {
             <View style={styles.card}>
               {item.actionUrl && (
                 <Pressable
-                  onPress={() => Linking.openURL(item.actionUrl!)}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Linking.openURL(item.actionUrl!); }}
                   accessibilityRole="button"
                   accessibilityLabel={item.actionLabel ?? "Open link"}
                   style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: C.elevated }]}
@@ -427,7 +435,7 @@ export default function InfoScreen() {
               {item.documents?.map((d, i) => (
                 <Pressable
                   key={d.id}
-                  onPress={() => openDocument(d.url, d.name).catch(() => {})}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); openDocument(d.url, d.name).catch(() => {}); }}
                   accessibilityRole="button"
                   accessibilityLabel={`Open attachment ${d.name}`}
                   style={({ pressed }) => [styles.listRow, (i > 0 || !!item.actionUrl) && styles.rowBorder, pressed && { backgroundColor: C.elevated }]}

@@ -76,8 +76,8 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
   }));
 
   const nights = Math.max(0, Math.ceil((parseTripDate(trip.end).getTime() - parseTripDate(trip.start).getTime()) / 86400000));
-  const startDate = parseTripDate(trip.start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endDate = parseTripDate(trip.end).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const startDate = parseTripDate(trip.start).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const endDate = parseTripDate(trip.end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   const flag = destinationFlag(trip.destination);
   return (
@@ -90,7 +90,7 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
               style={StyleSheet.absoluteFill}
               maskElement={<LinearGradient colors={["#000", "#000", "transparent"]} locations={[0, 0.55, 1]} style={{ flex: 1 }} />}
             >
-              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} />
+              <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />
             </MaskedView>
           </Animated.View>
         </View>
@@ -126,6 +126,7 @@ function TripFoundReveal({ trip, C, onContinue }: { trip: Trip; C: ThemeColors; 
       <Animated.View style={[{ marginTop: S.md }, ctaStyle]}>
         <ScalePress
           onPress={onContinue}
+          accessibilityRole="button"
           style={{
             height: 50, borderRadius: R.lg,
             backgroundColor: C.teal,
@@ -185,6 +186,7 @@ function QRScanPane({ C, styles, onScanned }: {
         </Text>
         <Pressable
           onPress={requestPermission}
+          accessibilityRole="button"
           style={[styles.codeSubmit, { backgroundColor: C.teal, width: "100%" }]}
         >
           <Text style={[styles.codeSubmitText, { color: C.onAccent }]}>Allow camera</Text>
@@ -298,6 +300,7 @@ export default function JoinScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setPreviewTrip(trip);
     } catch (err: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       triggerShake();
       setCodeError(err?.message || "Couldn't reach the server. Try again.");
     } finally {
@@ -470,6 +473,7 @@ export default function JoinScreen() {
                     onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else if (pinComplete) submitPin(pinValue); }}
                     disabled={resolving || (!previewTrip && !pinComplete)}
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: resolving || (!previewTrip && !pinComplete), busy: resolving }}
                     style={({ pressed }) => [
                       styles.codeSubmit,
                       {
@@ -570,6 +574,7 @@ export default function JoinScreen() {
                       <Pressable
                         onPress={async () => {
                           try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             const text = await Clipboard.getStringAsync();
                             if (text) { setLinkValue(text.trim()); setCodeError(null); }
                           } catch {}
@@ -607,6 +612,7 @@ export default function JoinScreen() {
                     onPress={() => { if (previewTrip) revealAndNavigate(previewTrip); else submitLink(); }}
                     disabled={resolving || (!previewTrip && !linkValue.trim())}
                     accessibilityRole="button"
+                    accessibilityState={{ disabled: resolving || (!previewTrip && !linkValue.trim()), busy: resolving }}
                     style={({ pressed }) => [
                       styles.codeSubmit,
                       {

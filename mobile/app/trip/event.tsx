@@ -501,7 +501,7 @@ export default function EventDetailScreen() {
           <View style={{ height: EV_PHOTO_H + insets.top }}>
             <Animated.View style={[StyleSheet.absoluteFill, { overflow: "hidden" }, stretchStyle]}>
               <PhotoBlend>
-                <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} />
+                <CachedImage uri={ev.image!} style={StyleSheet.absoluteFill} contentPosition={{ top: "35%", left: "50%" }} accessible={false} />
               </PhotoBlend>
               {photoPage && <PhotoDissolve uri={ev.image!} scrollY={scrollY} />}
             </Animated.View>
@@ -916,13 +916,16 @@ function FlightDetailScreen({
   const flightColor = airlineAccent(airlineIata, C.card, isDark) ?? categoryTone("flight", C).fg;
   // The ticket band always uses the true brand colour; the lightened accent is only for small icons on dark cards
   const bandColor = airlineBrand(airlineIata) ?? (isDark ? "#2a2a33" : categoryTone("flight", C).fg);
-  // Text on the airline band: white on dark brand colours, near-black on light ones
+  // Text on the airline band: whichever of white or near-black has the higher WCAG contrast with the brand colour
   const bandText = useMemo(() => {
     const m = /^#?([0-9a-f]{6})$/i.exec(bandColor.trim());
     if (!m) return "#fff";
     const n = parseInt(m[1], 16);
-    const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
-    return lum > 0.6 ? "#111" : "#fff";
+    const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    const onWhite = 1.05 / (L + 0.05);
+    const onDark = (L + 0.05) / (0.0056 + 0.05);
+    return onDark > onWhite ? "#111" : "#fff";
   }, [bandColor]);
 
   return (
@@ -988,6 +991,7 @@ function FlightDetailScreen({
                   {airlineIata && !logoError ? (
                     <Image
                       source={{ uri: `https://images.kiwi.com/airlines/64/${airlineIata}.png` }}
+                      accessible={false}
                       style={fs.airlineLogo}
                       onError={() => setLogoError(true)}
                       resizeMode="contain"
@@ -1002,7 +1006,7 @@ function FlightDetailScreen({
                   <Text style={[fs.airlineName, { color: bandText }]} numberOfLines={1}>
                     {ev.airline || "Airline"}
                   </Text>
-                  <Text style={[fs.flightNum, { color: bandText, opacity: 0.8 }]} numberOfLines={1}>
+                  <Text style={[fs.flightNum, { color: bandText }]} numberOfLines={1}>
                     {[ev.flightNum, live?.aircraft || ev.aircraft].filter(Boolean).join(", ")}
                   </Text>
                 </View>
@@ -1038,7 +1042,7 @@ function FlightDetailScreen({
                 <View style={{ flex: 1 }}>
                   <Text style={[fs.timeLabel, { color: C.textTertiary }]}>Departs</Text>
                   <Text style={[fs.time, { color: C.textPrimary }]}>{depTime || "--:--"}</Text>
-                  <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={1}>
+                  <Text style={[fs.timeMeta, { color: C.textTertiary }]} numberOfLines={2}>
                     {[ev.date ? formatShortDate(ev.date) : null, depTerminal ? (/^\d|^[A-Z]$/.test(depTerminal) ? `Terminal ${depTerminal}` : `${depTerminal} terminal`) : depTz?.abbr || depTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>
@@ -1052,7 +1056,7 @@ function FlightDetailScreen({
                       </View>
                     )}
                   </View>
-                  <Text style={[fs.timeMeta, { color: C.textTertiary, textAlign: "right" }]} numberOfLines={1}>
+                  <Text style={[fs.timeMeta, { color: C.textTertiary, textAlign: "right" }]} numberOfLines={2}>
                     {[arrivalDate ? formatShortDate(arrivalDate) : null, arrTz?.abbr || arrTz?.offset].filter(Boolean).join(", ")}
                   </Text>
                 </View>

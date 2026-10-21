@@ -93,7 +93,7 @@ export function ScreenTitle({ children, color, right }: {
         justifyContent: "space-between",
       }}
     >
-      <Text style={{ fontSize: 34, fontWeight: T.bold, letterSpacing: 0.4, color: color ?? C.textPrimary }}>
+      <Text accessibilityRole="header" style={{ fontSize: 34, fontWeight: T.bold, letterSpacing: 0.4, color: color ?? C.textPrimary }}>
         {children}
       </Text>
       {right}

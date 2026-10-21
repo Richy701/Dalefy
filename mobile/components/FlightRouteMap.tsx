@@ -218,7 +218,12 @@ export function FlightRouteMap({
   };
 
   return (
-    <View style={{ height, overflow: "hidden" }}>
+    <View
+      style={{ height, overflow: "hidden" }}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={fromCode && toCode ? `Route map, ${fromCode} to ${toCode}` : "Flight route map"}
+    >
       <MapboxGL.MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}

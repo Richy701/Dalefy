@@ -424,7 +424,7 @@ export default function WelcomeScreen() {
                 onPress={pickAvatar}
                 style={({ pressed }) => [styles.avatarWrap, isEdit && styles.avatarLarge, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
                 accessibilityRole="button"
-                accessibilityLabel="Add profile photo"
+                accessibilityLabel={avatar ? "Change profile photo" : "Add profile photo"}
               >
                 <View style={[styles.avatarCircle, isEdit && styles.avatarLarge]}>
                   {avatar ? (

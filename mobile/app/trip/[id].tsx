@@ -413,8 +413,8 @@ export default function TripScreen() {
                 <Text style={styles.flag}>{flag}</Text>
               </View>
             ) : null}
-            {trip.destination ? <Text style={[styles.heroDest, styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
-            <Text style={[styles.heroName, styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
+            {trip.destination ? <Text style={[styles.heroDest, photoPage && styles.heroShadow]} numberOfLines={1}>{trip.destination}</Text> : null}
+            <Text style={[styles.heroName, photoPage && styles.heroShadow]} numberOfLines={2}>{trip.name}</Text>
             <Text style={[styles.heroFact, isDark && styles.heroShadow]} numberOfLines={1}>{tripFactLine(trip)}</Text>
             <Text style={[styles.heroDates, isDark && styles.heroShadow]}>{shortDay(trip.start)} – {shortDay(trip.end)}</Text>
 
@@ -515,10 +515,11 @@ export default function TripScreen() {
               <View
                 key={date}
                 onLayout={e => { dayY.current[date] = e.nativeEvent.layout.y; landOnPendingDate(); }}
-                style={[styles.dayBlock, dimPast && isPast && { opacity: 0.6 }]}
+                // Past days stay full strength (fading the whole block fails contrast); only the date dims
+                style={styles.dayBlock}
               >
                 <View style={styles.dayHeader}>
-                  <Text style={styles.dayHeaderText}>
+                  <Text accessibilityRole="header" style={[styles.dayHeaderText, dimPast && isPast && { color: C.textTertiary }]}>
                     {d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   </Text>
                   {isToday && <Pill tone="accent" size="sm" label="Today" />}
@@ -719,12 +720,13 @@ function makeStyles(C: ThemeColors, isDark: boolean, photoBackdrop = false) {
       textShadowColor: "rgba(0,0,0,0.6)",
       textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
     },
+    // White sits on the photo; a trip without one shows the title on the plain page
     heroDest: {
-      fontSize: T.sm, fontWeight: T.bold, color: "rgba(255,255,255,0.9)",
+      fontSize: T.sm, fontWeight: T.bold, color: photoBackdrop ? "rgba(255,255,255,0.9)" : C.textSecondary,
       textTransform: "uppercase", letterSpacing: 0.6, textAlign: "center",
     },
     heroName: {
-      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: "#fff", letterSpacing: -0.4, textAlign: "center",
+      fontSize: 30, lineHeight: 34, fontWeight: T.bold, color: photoBackdrop ? "#fff" : C.textPrimary, letterSpacing: -0.4, textAlign: "center",
     },
     heroFact: { fontSize: T.base, fontWeight: T.semibold, color: isDark ? "rgba(255,255,255,0.92)" : C.textPrimary, marginTop: 2, textAlign: "center" },
     heroDates: { fontSize: T.sm, color: isDark ? "rgba(255,255,255,0.72)" : C.textPrimary, textAlign: "center" },

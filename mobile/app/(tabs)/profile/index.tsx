@@ -57,11 +57,13 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
+    // A light tap when the pull triggers a refresh, like Mail
+    haptic.light();
     setRefreshing(true);
     await reload();
     setRefreshing(false);
     toast("Trips synced");
-  }, [reload, toast]);
+  }, [reload, toast, haptic]);
 
   const firstName = (prefs.name || "").trim().split(/\s+/)[0] || "";
   const initials = firstName ? firstName[0].toUpperCase() : "";
@@ -174,6 +176,7 @@ export default function ProfileScreen() {
             <IconTile Icon={Palette} color={"#5E5CE6"} />
             <View style={s.rowLabelGroup}><Text style={s.rowLabel}>Theme</Text></View>
             <SegmentedControl
+              accessibilityLabel="Theme"
               values={["Light", "Dark", "Auto"]}
               selectedIndex={mode === "light" ? 0 : mode === "dark" ? 1 : 2}
               onChange={(e) => {
@@ -197,6 +200,7 @@ export default function ProfileScreen() {
               <Text style={s.rowSub}>Subtle vibrations on actions</Text>
             </View>
             <Switch
+              accessibilityLabel="Haptic feedback"
               value={prefs.haptics}
               onValueChange={(v) => { haptic.selection(); setPref("haptics", v); }}
               trackColor={{ false: C.toggleTrack, true: C.teal }}
@@ -216,6 +220,7 @@ export default function ProfileScreen() {
               <Text style={s.rowSub}>Push notifications before each event</Text>
             </View>
             <Switch
+              accessibilityLabel="Trip reminders"
               value={prefs.tripReminders}
               onValueChange={(v) => { haptic.selection(); setPref("tripReminders", v); }}
               trackColor={{ false: C.toggleTrack, true: C.teal }}
@@ -229,6 +234,7 @@ export default function ProfileScreen() {
               <Text style={s.rowSub}>When your organiser changes the plan</Text>
             </View>
             <Switch
+              accessibilityLabel="Itinerary updates"
               value={prefs.itineraryUpdates}
               onValueChange={(v) => { haptic.selection(); setPref("itineraryUpdates", v); }}
               trackColor={{ false: C.toggleTrack, true: C.teal }}
@@ -244,6 +250,7 @@ export default function ProfileScreen() {
                   <Text style={s.rowSub}>Flight progress on lock screen and Dynamic Island</Text>
                 </View>
                 <Switch
+                  accessibilityLabel="Live Activity"
                   value={prefs.liveActivity !== false}
                   onValueChange={(v) => { haptic.selection(); setPref("liveActivity", v); }}
                   trackColor={{ false: C.toggleTrack, true: C.teal }}
@@ -336,7 +343,7 @@ export default function ProfileScreen() {
                       style: "destructive",
                       onPress: async () => {
                         const error = await auth.deleteAccount();
-                        if (error) { toast(error); return; }
+                        if (error) { toast(error, "error"); return; }
                         toast("Account deleted");
                         router.replace("/auth");
                       },

@@ -636,7 +636,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
           {/* Top chrome */}
           <Animated.View style={[{
             position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-          }, chromeOpacity]}>
+          }, chromeOpacity]} accessibilityElementsHidden={!chromeVisible} importantForAccessibility={chromeVisible ? "auto" : "no-hide-descendants"}>
             <LinearGradient
               // No dark band: the controls sit straight on the photo and its blurred surround
               colors={["transparent", "transparent"]}
@@ -665,7 +665,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
           {/* Bottom chrome */}
           <Animated.View style={[{
             position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
-          }, chromeOpacity]}>
+          }, chromeOpacity]} accessibilityElementsHidden={!chromeVisible} importantForAccessibility={chromeVisible ? "auto" : "no-hide-descendants"}>
             <LinearGradient
               colors={["transparent", "transparent"]}
               style={{ paddingBottom: insets.bottom + S.md, paddingHorizontal: S.md, paddingTop: 48 }}
@@ -673,7 +673,7 @@ function MediaViewer({ items, initialIndex, visible, origin, onClose, onDelete, 
               {/* One glass toolbar: share, favourite, and delete on your own photos */}
               <ViewerGlass style={viewerStyles.toolbar}>
                 <Pressable
-                  onPress={() => { Share.share({ url: current.url, message: Platform.OS === "android" ? current.url : undefined }); }}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); Share.share({ url: current.url, message: Platform.OS === "android" ? current.url : undefined }); }}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Share"
@@ -724,7 +724,7 @@ const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C
   item: TripMedia;
   size: number;
   onPress: (origin: OriginRect | null) => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   C: ThemeColors;
 }) {
   const tileRef = useRef<View>(null);
@@ -741,12 +741,13 @@ const GridItem = React.memo(function GridItem({ item, size, onPress, onDelete, C
       actions={[
         { title: "View", systemIcon: "eye" },
         { title: "Share", systemIcon: "square.and.arrow.up" },
-        { title: "Delete", systemIcon: "trash", destructive: true },
+        // Delete only on your own photos
+        ...(onDelete ? [{ title: "Delete", systemIcon: "trash", destructive: true }] : []),
       ]}
       onPress={(e: any) => {
         if (e.nativeEvent.index === 0) open();
         else if (e.nativeEvent.index === 1) Share.share({ url: item.url });
-        else if (e.nativeEvent.index === 2) onDelete();
+        else if (e.nativeEvent.index === 2) onDelete?.();
       }}
     >
     <Pressable
@@ -830,6 +831,8 @@ export default function MediaScreen() {
   }, []);
 
   const onRefresh = useCallback(async () => {
+    // A light tap when the pull triggers a refresh, like Mail
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     // Clear pending media cache — Firestore is the source of truth
     setPendingMedia(() => ({}));
@@ -880,7 +883,10 @@ export default function MediaScreen() {
     [trips, pendingMedia, isValidMediaUrl],
   );
 
-  const tripsWithMedia = useMemo(() => mergedTrips.filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
+  // Photos only until the app has a video player: a video tile would open to a play button that does nothing
+  const tripsWithMedia = useMemo(() => mergedTrips
+    .map(t => ({ ...t, media: t.media?.filter(m => m.type === "image") }))
+    .filter(t => (t.media?.length ?? 0) > 0), [mergedTrips]);
 
   // Default to everything. Only a trip that is live right now narrows the
   // gallery, so an upcoming trip with no photos never makes it look empty.
@@ -954,12 +960,18 @@ export default function MediaScreen() {
     { length: rowHeight(galleryRows[index]), offset: rowOffsets[index] ?? 0, index }
   ), [galleryRows, rowOffsets]);
 
+  const isMine = useCallback((item: TripMedia) =>
+    !!item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid), [deviceId]);
+
   const handleDelete = useCallback((item: TripMedia & { tripId: string }) => {
     const isOwner = item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid);
     if (!isOwner) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Can't delete", "You can only remove photos you uploaded.");
       return;
     }
+    // A warning tap ahead of a destructive confirm
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert("Delete photo?", `Remove "${item.name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -977,10 +989,9 @@ export default function MediaScreen() {
           try {
             await updateTrip(updated);
           } catch {
-            toast("Couldn't remove this photo. Please try again.");
+            toast("Couldn't remove this photo. Please try again.", "error");
             return;
           }
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           toast("Removed");
         },
       },
@@ -1016,13 +1027,13 @@ export default function MediaScreen() {
             item={m}
             size={GRID_ITEM_SIZE}
             onPress={(origin) => { setViewerOrigin(origin); setViewerIndex(allItemsIndex.get(m.id) ?? -1); }}
-            onDelete={() => handleDelete({ ...m, tripId: row.tripId })}
+            onDelete={isMine(m) ? () => handleDelete({ ...m, tripId: row.tripId }) : undefined}
             C={C}
           />
         ))}
       </View>
     );
-  }, [C, allItemsIndex, handleDelete]);
+  }, [C, allItemsIndex, handleDelete, isMine]);
 
   const handleUploadToTrip = useCallback((tripId: string) => {
     const trip = trips.find(t => t.id === tripId);
@@ -1082,7 +1093,7 @@ export default function MediaScreen() {
         .catch((err) => {
           console.warn("[Media] Upload failed:", err);
           const msg = err?.message ?? "";
-          toast(msg.includes("too large") ? msg : "Couldn't upload. Try again later");
+          toast(msg.includes("too large") ? msg : "Couldn't upload. Try again later", "error");
         })
         .finally(() => {
           setUploadProgress(null);
@@ -1151,13 +1162,7 @@ export default function MediaScreen() {
             </ContextMenu>
           )}
           <View style={{ flex: 1 }} />
-          <SegmentedControl
-            values={mediaChips.map(chip => chip.label)}
-            selectedIndex={Math.max(0, mediaChips.findIndex(chip => chip.id === mediaFilter))}
-            onChange={(e) => { Haptics.selectionAsync(); setMediaFilter(mediaChips[e.nativeEvent.selectedSegmentIndex].id); }}
-            style={{ width: 210 }}
-            appearance={isDark ? "dark" : "light"}
-          />
+
         </View>
       )}
 
@@ -1227,7 +1232,7 @@ export default function MediaScreen() {
               right={trips.length > 0 ? (
                 <IconCircleButton
                   variant="glass" size={36}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleUploadNew(); }}
+                  onPress={handleUploadNew}
                   accessibilityLabel="Upload photos"
                 >
                   <Plus size={18} color={C.textPrimary} weight="bold" />
@@ -1268,7 +1273,7 @@ export default function MediaScreen() {
         origin={viewerOrigin}
         onClose={() => setViewerIndex(-1)}
         onDelete={(item) => { setViewerIndex(-1); handleDelete(item); }}
-        canDelete={(item) => !!item.uploaderId && (item.uploaderId === deviceId || item.uploaderId === firebaseAuth().currentUser?.uid)}
+        canDelete={isMine}
         hearted={hearted}
         onToggleHeart={toggleHeart}
         C={C}

@@ -300,6 +300,37 @@ function aaTextShade(hex: string): string {
   return "#000000";
 }
 
+/** Dark mode: lighten the accent until it reads at 4.5:1 on the dark card colour */
+function aaTextShadeOnDark(hex: string, bgHex: string): string {
+  const [br, bg, bb] = hexToRgbTuple(bgHex);
+  const bgL = relLuminance(br, bg, bb);
+  const ratio = (r: number, g: number, b: number) => (relLuminance(r, g, b) + 0.05) / (bgL + 0.05);
+  const [r0, g0, b0] = hexToRgbTuple(hex);
+  if (ratio(r0, g0, b0) >= 4.5) return hex;
+  const [r, g, b] = [r0, g0, b0].map((v) => v / 255) as [number, number, number];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  const l0 = (max + min) / 2;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+  }
+  const s0 = d === 0 ? 0 : d / (1 - Math.abs(2 * l0 - 1));
+  for (let l = l0; l <= 0.95; l += 0.01) {
+    const [cr, cg, cb] = hslToRgb(h, s0, l);
+    if (ratio(cr, cg, cb) >= 4.5) return `#${[cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+  }
+  return "#ffffff";
+}
+
+/** Black or white, whichever reads better on the accent fill */
+function onAccentFor(hex: string): string {
+  const [r, g, b] = hexToRgbTuple(hex);
+  const L = relLuminance(r, g, b);
+  return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? "#000000" : "#ffffff";
+}
+
 export function applyAccent(base: ThemeColors, accent: AccentId, isDark: boolean): ThemeColors {
   const preset = ACCENT_PALETTE.find((p) => p.id === accent) ?? ACCENT_PALETTE[0];
   const hex = isDark ? preset.dark : preset.light;
@@ -317,7 +348,8 @@ export function applyAccentHex(base: ThemeColors, hex: string): ThemeColors {
     ...base,
     teal: hex,
     // On light backgrounds a raw accent rarely passes AA as text — derive a darker shade.
-    tealText: isLight ? aaTextShade(hex) : hex,
+    tealText: isLight ? aaTextShade(hex) : aaTextShadeOnDark(hex, base.card),
+    onAccent: onAccentFor(hex),
     tealDim: `rgba(${r},${g},${b},0.1)`,
     tealMid: `rgba(${r},${g},${b},0.25)`,
   };

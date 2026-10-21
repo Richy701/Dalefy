@@ -361,6 +361,8 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
     <Link href={`/trip/${trip.id}`} asChild>
     <ScalePress
       style={StyleSheet.flatten([styles.tripCard, { width: size }])}
+      // Link owns onPress for navigation; the tick goes on press-in
+      onPressIn={() => { Haptics.selectionAsync(); }}
       accessibilityRole="button"
       accessibilityLabel={`${trip.name}, ${trip.destination || ""}, ${isPast ? "past trip" : isActive ? "active now" : `${days} days away`}`}
     >
@@ -390,10 +392,12 @@ export default function HomeScreen() {
   const { prefs } = usePreferences();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
+    // A light tap when the pull triggers a refresh, like Mail
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     const ok = await reload();
     setRefreshing(false);
-    toast(ok ? "You're all up to date" : "You're offline");
+    toast(ok ? "You're all up to date" : "You're offline", ok ? "success" : "error");
   }, [reload, toast]);
 
   const sorted = useMemo(() =>
@@ -543,7 +547,7 @@ export default function HomeScreen() {
         ) : heroTrip ? (
           <>
             <Pressable
-              onPress={() => { router.push(`/trip/${heroTrip.id}`); }}
+              onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${heroTrip.id}`); }}
               accessibilityRole="button"
               accessibilityLabel={`${heroTrip.name}. ${factLine(heroTrip)}`}
             >
@@ -567,7 +571,7 @@ export default function HomeScreen() {
               {heroActions.map(a => (
                 <Pressable
                   key={a.label}
-                  onPress={() => { a.go(); }}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); a.go(); }}
                   accessibilityRole="button"
                   accessibilityLabel={a.label}
                   style={({ pressed }) => [styles.action, { opacity: pressed ? 0.6 : 1 }]}
@@ -599,13 +603,13 @@ export default function HomeScreen() {
             <FadeIn delay={0}>
               {!nextEvent ? (
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Itinerary</Text>
+                  <Text style={styles.cardTitle} accessibilityRole="header">Itinerary</Text>
                   <Text style={[styles.cardEmpty, { paddingHorizontal: 0, marginTop: S.xs }]}>Nothing on the itinerary yet. Your organiser is still adding to it.</Text>
                 </View>
               ) : (
                 <>
                   <Pressable
-                    onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${nextEvent.id}`); }}
+                    onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${nextEvent.id}`); }}
                     accessibilityRole="button"
                     accessibilityLabel={`Next up, ${dayLabel}${hasTime(nextEvent) ? ` at ${nextEvent.time}` : ""}, ${eventTitle(nextEvent)}`}
                     style={({ pressed }) => [styles.card, styles.nextUp, { opacity: pressed ? 0.7 : 1 }]}
@@ -622,14 +626,14 @@ export default function HomeScreen() {
                   <View style={styles.card}>
                     {restEvents.length > 0 && (
                       <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>Then on {dayLabel}</Text>
+                        <Text style={styles.cardTitle} accessibilityRole="header">Then on {dayLabel}</Text>
                         {restEvents.some(ev => !hasTime(ev)) ? <Text style={styles.cardMeta}>{restEvents.every(ev => !hasTime(ev)) ? "Times TBC" : "Some times TBC"}</Text> : null}
                       </View>
                     )}
                     {restEvents.map((ev, i) => (
                       <Pressable
                         key={ev.id}
-                        onPress={() => { router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
+                        onPress={() => { Haptics.selectionAsync(); router.push(`/trip/event?tripId=${heroTrip.id}&eventId=${ev.id}`); }}
                         accessibilityRole="button"
                         accessibilityLabel={`${eventTitle(ev)}${hasTime(ev) ? `, ${ev.time}` : ""}`}
                         style={({ pressed }) => [styles.evRow, i > 0 && styles.evRowBorder, { opacity: pressed ? 0.6 : 1 }]}
@@ -661,9 +665,9 @@ export default function HomeScreen() {
             <FadeIn delay={0}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Photos</Text>
+                  <Text style={styles.cardTitle} accessibilityRole="header">Photos</Text>
                   <Pressable
-                    onPress={() => { router.push("/(tabs)/media"); }}
+                    onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel={latestPhotos.length > 0 ? "See all photos" : "Add a photo"}
@@ -683,7 +687,7 @@ export default function HomeScreen() {
                       return (
                         <Pressable
                           key={photo.id}
-                          onPress={() => { router.push("/(tabs)/media"); }}
+                          onPress={() => { Haptics.selectionAsync(); router.push("/(tabs)/media"); }}
                           accessibilityRole="button"
                           accessibilityLabel={firstName ? `Photo by ${firstName}` : "Trip photo"}
                           style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
@@ -717,7 +721,7 @@ export default function HomeScreen() {
         ].filter(g => g.list.length > 0).map(g => (
           <FadeIn key={g.key} delay={80}>
             <View style={styles.section}>
-              <Text style={styles.groupHeader}>{g.title}</Text>
+              <Text style={styles.groupHeader} accessibilityRole="header">{g.title}</Text>
               <ScrollView horizontal scrollEnabled={g.list.length > 2} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripCards}>
                 {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} />)}
               </ScrollView>

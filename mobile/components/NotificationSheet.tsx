@@ -156,7 +156,7 @@ export function NotificationList({ onClose }: Props) {
             stickySectionHeadersEnabled={false}
             renderSectionHeader={({ section }) => (
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{section.label}</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">{section.label}</Text>
               </View>
             )}
             renderItem={({ item }) => (
@@ -256,7 +256,16 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
           <Pressable
             onPress={onPress}
             accessibilityRole="button"
-            accessibilityLabel={n.detail ? `${n.message}. ${n.detail}` : n.message}
+            accessibilityLabel={`${n.read ? "" : "Unread, "}${n.detail ? `${n.message}. ${n.detail}` : n.message}`}
+            // Swipe and long-press have VoiceOver equivalents
+            accessibilityActions={[
+              ...(!n.read ? [{ name: "markRead", label: "Mark read" }] : []),
+              { name: "delete", label: "Delete" },
+            ]}
+            onAccessibilityAction={(e) => {
+              if (e.nativeEvent.actionName === "markRead") onMarkRead();
+              if (e.nativeEvent.actionName === "delete") onRemove();
+            }}
             style={({ pressed }) => [
               styles.item,
               pressed && styles.itemPressed,

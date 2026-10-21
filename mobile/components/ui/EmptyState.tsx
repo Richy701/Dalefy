@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from "react-native";
 import { R, S, T } from "@/constants/theme";
 import { useTheme } from "@/context/ThemeContext";
+import * as Haptics from "@/services/haptics";
 
 /**
  * The app's one empty-state layout: tinted icon circle, title, message,
@@ -24,7 +25,7 @@ export function EmptyState({ icon, title, message, cta, compact }: {
       )}
       {cta && (
         <Pressable
-          onPress={cta.onPress}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); cta.onPress(); }}
           accessibilityRole="button"
           hitSlop={8}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}

@@ -167,6 +167,8 @@ export default function TodayScreen() {
   const mapH = Math.round(winH * 0.54);
 
   const onRefresh = useCallback(async () => {
+    // A light tap when the pull triggers a refresh, like Mail
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     await reload();
     setRefreshing(false);
@@ -804,10 +806,12 @@ export default function TodayScreen() {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel={`${normaliseTitle(ev.title, ev.type, ev.transferType)}, ${ev.time}`}
+                    // The map dot inside the row can't be reached by VoiceOver on its own
+                    accessibilityActions={ev.location || ev.locationCoords ? [{ name: "showOnMap", label: "Show on map" }] : undefined}
+                    onAccessibilityAction={(e) => { if (e.nativeEvent.actionName === "showOnMap") flyToEvent(ev.id); }}
                   >
                     <View style={[
                       styles.eventRow,
-                      isPast && { opacity: 0.8 },
                       isHighlighted && { backgroundColor: C.tealDim, borderRadius: R.lg, marginHorizontal: -S["2xs"], paddingHorizontal: S["2xs"] },
                     ]}>
                       <Pressable
@@ -852,6 +856,7 @@ export default function TodayScreen() {
             <View style={{ marginTop: S.md }}>
               <Pressable
                 onPress={() => { router.push(`/trip/${displayTrip.id}`); }}
+                accessibilityRole="button"
                 style={({ pressed }) => [styles.seeAllBtn, { backgroundColor: C.card, opacity: pressed ? 0.85 : 1 }]}
               >
                 <Text style={[styles.seeAllBtnText, { color: C.tealText }]}>See full itinerary</Text>
@@ -933,7 +938,7 @@ function makeStyles(C: ThemeColors) {
       paddingVertical: S.sm2, gap: S.sm,
     },
     eventTitle: { fontSize: T.lg, lineHeight: 23, fontWeight: "600" },
-    eventTime: { fontSize: T.base, maxWidth: 80, fontWeight: "600" },
+    eventTime: { fontSize: T.base, fontWeight: "600" },
     eventLocation: { fontSize: T.base, lineHeight: 21, fontWeight: "500" },
     divider: { height: StyleSheet.hairlineWidth, marginLeft: 48 },
     nowLineWrap: {

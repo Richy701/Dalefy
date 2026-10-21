@@ -3,7 +3,7 @@ import Animated, { useAnimatedStyle, type SharedValue } from "react-native-reani
 import MaskedView from "@react-native-masked-view/masked-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { CachedImage } from "@/components/CachedImage";
-import { darkColors, type ThemeColors } from "@/constants/theme";
+import { darkColors, applyAccentHex, type ThemeColors } from "@/constants/theme";
 
 /*
  * Invites-style photo pages: the cover photo, blurred and darkened, fills the whole page,
@@ -13,7 +13,8 @@ import { darkColors, type ThemeColors } from "@/constants/theme";
 
 const BLUR = 70;
 const SCALE = 1.3;
-const SHADE = "rgba(8,8,10,0.58)";
+// Dark enough that white text at 0.75 stays above 4.5:1 even over a bright photo
+const SHADE = "rgba(8,8,10,0.66)";
 
 function BlurredPhoto({ uri }: { uri: string }) {
   return (
@@ -56,7 +57,8 @@ export function PhotoDissolve({ uri, scrollY }: { uri: string; scrollY?: SharedV
 
 /** The palette for text on a photo backdrop. */
 export function photoPalette(base: ThemeColors, isDark: boolean): ThemeColors {
-  const dark = isDark ? base : { ...darkColors, teal: base.teal, tealText: darkColors.tealText };
-  return { ...dark, textSecondary: "rgba(255,255,255,0.8)", textTertiary: "rgba(255,255,255,0.66)", border: "rgba(255,255,255,0.16)" };
+  // Light mode still gets the dark palette here, with the brand accent re-derived for dark backgrounds
+  const dark = isDark ? base : applyAccentHex(darkColors, base.teal);
+  return { ...dark, textSecondary: "rgba(255,255,255,0.82)", textTertiary: "rgba(255,255,255,0.75)", border: "rgba(255,255,255,0.16)" };
 }
 

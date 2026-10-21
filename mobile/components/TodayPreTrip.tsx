@@ -8,6 +8,7 @@ import { ScalePress } from "@/components/ScalePress";
 import { FadeIn } from "@/components/FadeIn";
 import { Avatar } from "@/components/ui/Avatar";
 import { CategoryDot } from "@/components/ui/CategoryDot";
+import * as Haptics from "@/services/haptics";
 import { tidyTitleSeparators } from "@/shared/eventTitle";
 import { Pill } from "@/components/ui/Pill";
 import { useTheme } from "@/context/ThemeContext";
@@ -100,7 +101,7 @@ async function fetchFirstDayForecast(destination: string, date: string): Promise
 function SectionHeader({ title, action, onAction, C, first }: { title: string; action?: string; onAction?: () => void; C: ThemeColors; first?: boolean }) {
   return (
     <View style={[s.sectionHeader, first && { marginTop: S.xs }]}>
-      <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{title}</Text>
+      <Text style={[s.sectionTitle, { color: C.textPrimary }]} accessibilityRole="header">{title}</Text>
       {action && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" accessibilityLabel={action} style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.6 : 1 })}>
           <Text style={[s.sectionAction, { color: C.tealText }]}>{action}</Text>
@@ -155,8 +156,8 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
 
   // One neutral tint: people shouldn't borrow the hotel, dining or activity colours
   const AVATAR_COLORS = [C.textSecondary];
-  const openTrip = () => { router.push(`/trip/${trip.id}`); };
-  const openInfo = () => { router.push({ pathname: "/trip/info", params: { tripId: trip.id } }); };
+  const openTrip = () => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); };
+  const openInfo = () => { Haptics.selectionAsync(); router.push({ pathname: "/trip/info", params: { tripId: trip.id } }); };
 
   let delay = 0;
   const next = () => { const d = delay; delay = Math.min(delay + 60, 360); return d; };
@@ -208,7 +209,7 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
             <SectionHeader title={daysBetween(todayISO, flight.date) === 0 ? "Your flight today" : "Your first flight"} C={C} first={todo.tasks.length === 0} />
             <ScalePress
               activeScale={0.985}
-              onPress={() => { router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
+              onPress={() => { Haptics.selectionAsync(); router.push({ pathname: "/trip/event", params: { tripId: trip.id, eventId: flight.id } }); }}
               accessibilityRole="button"
               accessibilityLabel={`Flight ${flight.flightNum || ""} on ${fmtLong(flight.date)} at ${flight.time}`}
             >
@@ -289,7 +290,7 @@ export function PreTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO: 
                 </Text>
               </View>
             )}
-            <Pressable onPress={openTrip} accessibilityRole="button" accessibilityLabel="See full itinerary" style={({ pressed }) => [s.row, (docCount > 0 || (trip.travelers?.length ?? 0) > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}>
+            <Pressable onPress={openTrip} accessibilityRole="button" accessibilityLabel="Full itinerary" style={({ pressed }) => [s.row, (docCount > 0 || (trip.travelers?.length ?? 0) > 0) && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}>
               <View style={s.rowIcon}>
                 <Calendar size={16} color={C.textSecondary} weight="regular" />
               </View>
@@ -318,7 +319,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: S.sm }}>
             <Pressable
-              onPress={() => { router.push(`/trip/${trip.id}`); }}
+              onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); }}
               style={{ flex: 1 }}
               accessibilityRole="button"
               accessibilityLabel={`Open trip ${trip.name}`}
@@ -340,7 +341,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
         <SectionHeader title="Look back" C={C} />
         <Card C={C} isDark={isDark}>
           <Pressable
-            onPress={() => { router.navigate("/(tabs)/media"); }}
+            onPress={() => { Haptics.selectionAsync(); router.navigate("/(tabs)/media"); }}
             accessibilityRole="button"
             accessibilityLabel="Open gallery"
             style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}
@@ -353,7 +354,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => { router.push(`/trip/${trip.id}`); }}
+            onPress={() => { Haptics.selectionAsync(); router.push(`/trip/${trip.id}`); }}
             accessibilityRole="button"
             accessibilityLabel="Open itinerary"
             style={({ pressed }) => [s.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border }, pressed && { opacity: 0.7 }]}
@@ -364,7 +365,7 @@ export function PostTripSheetContent({ trip, todayISO }: { trip: Trip; todayISO:
             <Text style={[s.rowTitle, { color: C.textPrimary, flex: 1 }]}>Itinerary</Text>
           </Pressable>
         </Card>
-        <Text style={[s.footnote, { color: C.textTertiary }]}>Your next trip will appear here once your agent shares it.</Text>
+        <Text style={[s.footnote, { color: C.textTertiary }]}>Your next trip will appear here once your organiser shares it.</Text>
       </FadeIn>
     </View>
   );
