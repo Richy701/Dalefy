@@ -40,7 +40,7 @@ function getAppGroupImagesDir(): Directory | null {
   }
 }
 
-async function prepareWidgetImage(remoteUrl: string): Promise<string> {
+export async function prepareWidgetImage(remoteUrl: string): Promise<string> {
   if (!remoteUrl || Platform.OS !== "ios") return "";
 
   const cached = _imageCache.get(remoteUrl);

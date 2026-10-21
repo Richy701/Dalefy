@@ -21,6 +21,7 @@ import { PlaneIcon } from "@/components/ui/PlaneIcon";
 import type { Notification } from "@/shared/types";
 
 const ON_RED = "#fff";
+const SWIPE_SLOT = 76;
 
 interface Props {
   onClose: () => void;
@@ -195,31 +196,31 @@ function NotificationRow({ notification: n, C, styles, onPress, onMarkRead, onRe
   const tone = getNotifTone(n, Icon, C);
   const navigable = n.tripId != null;
 
-  const actionWidth = n.read ? 56 : 112;
-  // Rows are see-through on the glass sheet, so the actions only appear once a swipe starts
-  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>) => {
+  const actionWidth = n.read ? SWIPE_SLOT : SWIPE_SLOT * 2;
+  // Rows are see-through on the glass sheet, so the panels travel with the row's edge and only ever
+  // fill the gap it leaves, never sitting underneath the row's text
+  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const opacity = progress.interpolate({ inputRange: [0, 0.02, 1], outputRange: [0, 1, 1] });
+    const translateX = dragX.interpolate({ inputRange: [-actionWidth, 0], outputRange: [0, actionWidth], extrapolate: "clamp" });
     return (
-      <Animated.View style={[styles.swipeActions, { width: actionWidth, opacity }]}>
+      <Animated.View style={[styles.swipeActions, { width: actionWidth, opacity, transform: [{ translateX }] }]}>
         {!n.read && (
           <Pressable
-            style={[styles.swipeBtn, { backgroundColor: C.toggleTrack }]}
+            style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.teal, opacity: pressed ? 0.8 : 1 }]}
             onPress={() => { swipeRef.current?.close(); onMarkRead(); }}
             accessibilityRole="button"
             accessibilityLabel="Mark read"
           >
-            <Check size={16} color={C.textPrimary} weight="bold" />
-            <Text style={[styles.swipeBtnLabel, { color: C.textPrimary }]}>Mark read</Text>
+            <Check size={22} color={C.onAccent} weight="bold" />
           </Pressable>
         )}
         <Pressable
-          style={[styles.swipeBtn, { backgroundColor: C.red }]}
+          style={({ pressed }) => [styles.swipeSlot, { backgroundColor: C.red, opacity: pressed ? 0.8 : 1 }]}
           onPress={() => { swipeRef.current?.close(); onRemove(); }}
           accessibilityRole="button"
           accessibilityLabel="Delete notification"
         >
-          <Trash size={16} color={ON_RED} weight="regular" />
-          <Text style={[styles.swipeBtnLabel, { color: ON_RED }]}>Delete</Text>
+          <Trash size={22} color={ON_RED} weight="bold" />
         </Pressable>
       </Animated.View>
     );
@@ -429,22 +430,15 @@ function makeStyles(C: ThemeColors) {
     },
 
     // Swipe actions
+    // Mail-style: flush full-height panels, icon only, no gaps
     swipeActions: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "stretch",
     },
-    swipeBtn: {
-      width: 52,
-      height: "100%" as any,
+    swipeSlot: {
+      width: SWIPE_SLOT,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: R.lg,
-      marginLeft: S["2xs"],
-      gap: 3,
-    },
-    swipeBtnLabel: {
-      fontSize: T["2xs"],
-      fontWeight: T.semibold,
     },
 
     // Empty state

@@ -98,17 +98,21 @@ export default async function handler(req: any, res: any) {
     }
 
     // 3. Build notification
-    const title = `${tripName} Updated`;
-    const body = changes.length === 1
-      ? changes[0]
-      : changes.slice(0, 3).join(", ") + (changes.length > 3 ? ` +${changes.length - 3} more` : "");
+    // The trip goes in the iOS subtitle; the changes read one per line
+    const title = changes.every((c: string) => / added \d+ photo/.test(c)) ? "New photos from the trip"
+      : changes.length === 1 && changes[0] === "Trip published" ? "Your trip is ready"
+      : "Your itinerary has changed";
+    const extra = changes.length - 3;
+    const body = changes.slice(0, 3).join("\n") + (extra > 0 ? `\nand ${extra} more change${extra === 1 ? "" : "s"}` : "");
 
     // 4. Send via Expo Push API (batches of 100)
     const messages = tokens.map(token => ({
       to: token,
       title,
+      subtitle: tripName,
       body,
       data: { tripId, category: "update" },
+      categoryId: "trip",
       sound: "default" as const,
     }));
 

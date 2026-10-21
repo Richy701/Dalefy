@@ -28,6 +28,18 @@ try {
       };
     },
   });
+  // Buttons under an expanded notification; app/_layout.tsx handles the identifiers
+  const open = { opensAppToForeground: true };
+  Notifications!.setNotificationCategoryAsync("flight", [
+    { identifier: "view-event", buttonTitle: "View flight", options: open },
+  ]).catch(() => {});
+  Notifications!.setNotificationCategoryAsync("event", [
+    { identifier: "view-event", buttonTitle: "View details", options: open },
+    { identifier: "directions", buttonTitle: "Directions", options: open },
+  ]).catch(() => {});
+  Notifications!.setNotificationCategoryAsync("trip", [
+    { identifier: "view-trip", buttonTitle: "Open itinerary", options: open },
+  ]).catch(() => {});
 } catch {
   /* native module not available in Expo Go */
 }
@@ -51,9 +63,11 @@ export async function registerForPushNotifications(
     if (finalStatus !== "granted") return null;
 
     if (Platform.OS === "android") {
+      // The name shows in Android's notification settings for the app
       await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
+        name: "Trip reminders and updates",
         importance: Notifications.AndroidImportance.MAX,
+        lightColor: "#0bd2b5",
       });
     }
 

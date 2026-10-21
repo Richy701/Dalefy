@@ -17,13 +17,15 @@ const PRESSED_SCALE = 0.88;
  * Circular icon-only button. accessibilityLabel is required — icon-only
  * controls are invisible to screen readers without one.
  */
-export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style }: {
+export function IconCircleButton({ size = 44, onPress, variant = "elevated", accessibilityLabel, children, style, badge }: {
   size?: number;
   onPress: () => void;
   variant?: Variant;
   accessibilityLabel: string;
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Drawn over the top-right edge; kept outside the glass, which clips to the circle */
+  badge?: React.ReactNode;
 }) {
   const { C, isDark } = useTheme();
   // Every round icon button gives the same light tap
@@ -63,6 +65,7 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
             {children}
           </Pressable>
         </GlassView>
+        {badge}
         </Animated.View>
       </Pressable>
     );
@@ -85,6 +88,7 @@ export function IconCircleButton({ size = 44, onPress, variant = "elevated", acc
       }, scaleStyle, style]}
     >
       {children}
+      {badge}
     </AnimatedPressable>
   );
 }

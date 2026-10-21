@@ -29,8 +29,12 @@
         ]
       },
       "associatedDomains": [
-        "applinks:dalefy.vercel.app"
-      ]
+        "applinks:dalefy.vercel.app",
+        "applinks:dalefy.app"
+      ],
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -48,6 +52,11 @@
             {
               "scheme": "https",
               "host": "dalefy.vercel.app",
+              "pathPrefix": "/shared/"
+            },
+            {
+              "scheme": "https",
+              "host": "dalefy.app",
               "pathPrefix": "/shared/"
             }
           ],

@@ -77,6 +77,8 @@ export default async function handler(req: any, res: any) {
           tripName,
           flightNum: ev.flightNum,
           title: ev.title ?? "",
+          eventId: ev.id ?? "",
+          status: result.status && result.status !== ev.status ? result.status : undefined,
           changes,
         });
       }
@@ -117,6 +119,9 @@ interface FlightUpdate {
   tripName: string;
   flightNum: string;
   title: string;
+  eventId: string;
+  /** Set when the flight's status itself changed, e.g. "Delayed" */
+  status?: string;
   changes: string[];
 }
 
@@ -219,30 +224,31 @@ function timeToMins(t: string | undefined): number | null {
 function detectChanges(stored: any, live: LiveFlightData): string[] {
   const changes: string[] = [];
 
+  // Written as the lines a traveller reads in the notification, most useful first
   if (live.status && live.status !== stored.status) {
     changes.push(`Status: ${live.status}`);
   }
+  if (live.gate && live.gate !== stored.gate) {
+    changes.push(`Departs from gate ${live.gate}`);
+  }
   if (live.terminal && live.terminal !== stored.terminal) {
-    changes.push(`Terminal: ${live.terminal}`);
+    changes.push(`Departs from terminal ${live.terminal}`);
   }
   if (live.arrTerminal && live.arrTerminal !== stored.arrTerminal) {
-    changes.push(`Arrival terminal: ${live.arrTerminal}`);
-  }
-  if (live.gate && live.gate !== stored.gate) {
-    changes.push(`Gate: ${live.gate}`);
+    changes.push(`Arrives at terminal ${live.arrTerminal}`);
   }
   if (live.arrGate && live.arrGate !== stored.arrGate) {
-    changes.push(`Arrival gate: ${live.arrGate}`);
+    changes.push(`Arrives at gate ${live.arrGate}`);
   }
   if (live.baggageBelt && live.baggageBelt !== stored.baggageBelt) {
-    changes.push(`Baggage belt: ${live.baggageBelt}`);
+    changes.push(`Bags on belt ${live.baggageBelt}`);
   }
   if (live.departTime) {
     const liveMins = timeToMins(live.departTime);
     const storedMins = timeToMins(stored.time);
     // Compare by wall-clock minutes so "07:35" vs "7:35 AM" is not a false change
     if (liveMins !== null && liveMins !== storedMins) {
-      changes.push(`Departure: ${live.departTime}`);
+      changes.push(`Now departs at ${live.departTime}`);
     }
   }
 
@@ -287,14 +293,17 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
     const tokens = tokensByTrip.get(update.tripId) ?? [];
     if (tokens.length === 0) continue;
 
-    const title = `Flight ${update.flightNum} Update`;
-    const body = update.changes.join(" · ");
+    const { title, body } = flightPushCopy(update);
 
     const messages = tokens.map(token => ({
       to: token,
       title,
+      subtitle: update.tripName,
       body,
-      data: { tripId: update.tripId, category: "flight_status", flightNum: update.flightNum },
+      data: { tripId: update.tripId, eventId: update.eventId, category: "flight_status", flightNum: update.flightNum },
+      // "View flight" button, and it comes through Focus modes
+      categoryId: "flight",
+      interruptionLevel: "time-sensitive" as const,
       sound: "default" as const,
     }));
 
@@ -314,6 +323,25 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** The title says what happened ("QR 843 is delayed"), the body lists the details one per line */
+function flightPushCopy(update: FlightUpdate): { title: string; body: string } {
+  const flight = update.flightNum || update.title || "Your flight";
+  const status = (update.status ?? "").toLowerCase().replace(/\s+/g, "");
+  const lines = update.changes.filter(c => !c.startsWith("Status: "));
+  const has = (prefix: string) => lines.some(l => l.startsWith(prefix));
+  const title =
+    status.startsWith("cancel") ? `${flight} is cancelled`
+    : status === "delayed" ? `${flight} is delayed`
+    : status === "boarding" ? `${flight} is boarding`
+    : status === "departed" || status === "enroute" ? `${flight} has departed`
+    : status === "arrived" || status === "landed" ? `${flight} has landed`
+    : has("Departs from gate") ? `${flight} gate change`
+    : has("Now departs") ? `${flight} has a new departure time`
+    : `${flight} update`;
+  const body = lines.length ? lines.join("\n") : "Open the trip for the latest details.";
+  return { title, body };
+}
 
 function nextDay(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00Z");

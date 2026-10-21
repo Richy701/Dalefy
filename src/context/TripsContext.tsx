@@ -125,14 +125,14 @@ function detectTripChanges(old: Trip, next: Trip): string[] {
   // New events
   for (const [id, ev] of nextEvents) {
     if (!oldEvents.has(id)) {
-      changes.push(`New ${ev.type}: ${ev.title}`);
+      changes.push(`Added ${ev.title}`);
     }
   }
 
   // Removed events
   for (const [id, ev] of oldEvents) {
     if (!nextEvents.has(id)) {
-      changes.push(`Removed: ${ev.title}`);
+      changes.push(`Removed ${ev.title}`);
     }
   }
 
@@ -141,17 +141,17 @@ function detectTripChanges(old: Trip, next: Trip): string[] {
     const prev = oldEvents.get(id);
     if (!prev) continue;
     if (prev.time !== ev.time || prev.date !== ev.date) {
-      changes.push(`${ev.title} rescheduled`);
+      changes.push(`${ev.title} has a new time`);
     } else if (prev.location !== ev.location) {
-      changes.push(`${ev.title} location updated`);
+      changes.push(`${ev.title} has moved`);
     } else if (prev.status !== ev.status && ev.type === "flight") {
-      changes.push(`${ev.flightNum || ev.title}: ${ev.status}`);
+      changes.push(`${ev.flightNum || ev.title} is now ${String(ev.status).toLowerCase()}`);
     }
   }
 
   // Trip-level changes (skip media-only changes)
   if (old.start !== next.start || old.end !== next.end) {
-    changes.push("Trip dates updated");
+    changes.push("The trip dates have changed");
   }
 
   return changes;

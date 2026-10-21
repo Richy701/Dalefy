@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import type { Trip, TravelEvent } from "@/shared/types";
 import { parseTripDate } from "@/shared/dates";
 import { getDepAirportTz, getDestinationTz, getUtcOffsetMins } from "@/shared/timezones";
+import { darkColors } from "@/constants/theme";
+import { File, Paths } from "expo-file-system";
+import { prepareWidgetImage } from "@/hooks/useWidgetSync";
+
+// Tints the small icon on Android notifications
+const NOTIFICATION_ACCENT = darkColors.teal;
 
 let Notifications: typeof import("expo-notifications") | null = null;
 try {
@@ -165,6 +171,8 @@ async function scheduleReminders(trips: Trip[]) {
 
   for (const trip of trips) {
     if (trip.status === "Draft") continue;
+    // The trip's photo as the notification thumbnail, from the same on-device copy the widget uses
+    const photo = await prepareWidgetImage(trip.image || "").catch(() => "");
     const tripDestTz = getDestinationTz(trip.destination);
 
     // --- Trip starts tomorrow (9 AM day before) ---
@@ -175,14 +183,17 @@ async function scheduleReminders(trips: Trip[]) {
       dayBefore.setHours(9, 0, 0, 0);
 
       if (dayBefore.getTime() > now) {
-        const body = `"${trip.name}" starts tomorrow, make sure you're packed!`;
+        const first = firstEventOf(trip);
+        const body = first ? `First up: ${first}` : "Your itinerary is ready in the app.";
 
         await scheduleOne(
           `${REMINDER_PREFIX}trip-${trip.id}`,
-          "Trip Tomorrow",
+          "Your trip starts tomorrow",
           body,
           dayBefore,
           { tripId: trip.id, category: "reminder" },
+          trip.name,
+          { kind: "trip", photo },
         );
       }
 
@@ -191,14 +202,17 @@ async function scheduleReminders(trips: Trip[]) {
       morningOf.setHours(8, 0, 0, 0);
 
       if (morningOf.getTime() > now) {
-        const body = `"${trip.name}" starts today, have an amazing time!`;
+        const first = firstEventOf(trip);
+        const body = first ? `First up: ${first}` : "Have a wonderful trip.";
 
         await scheduleOne(
           `${REMINDER_PREFIX}trip-today-${trip.id}`,
-          "Trip Day!",
+          "Your trip starts today",
           body,
           morningOf,
           { tripId: trip.id, category: "reminder" },
+          trip.name,
+          { kind: "trip", photo },
         );
       }
     }
@@ -210,26 +224,26 @@ async function scheduleReminders(trips: Trip[]) {
       lastMorning.setHours(9, 0, 0, 0);
 
       if (lastMorning.getTime() > now) {
-        let body = `"${trip.name}" wraps up today, don't forget to pack and check out!`;
+        const lines: string[] = [];
         const hotel = findHotelForDate(trip.events, trip.end);
-        if (hotel) {
-          const checkout = hotel.checkout || "11:00 AM";
-          body += `\nCheck-out: ${checkout} · ${hotel.title}`;
-        }
+        if (hotel) lines.push(`Check out of ${hotel.title} by ${hotel.checkout || "11:00 AM"}`);
         const returnFlight = [...trip.events]
           .reverse()
           .find(ev => ev.type === "flight" && ev.date === trip.end);
         if (returnFlight) {
           const label = returnFlight.flightNum || returnFlight.title;
-          body += `\n${label} departs at ${returnFlight.time}`;
+          lines.push(returnFlight.time ? `${label} departs at ${returnFlight.time}` : `${label} departs today`);
         }
+        const body = lines.length ? lines.join("\n") : "Leave a little time to pack.";
 
         await scheduleOne(
           `${REMINDER_PREFIX}trip-end-${trip.id}`,
-          "Last Day!",
+          "Last day of your trip",
           body,
           lastMorning,
           { tripId: trip.id, category: "reminder" },
+          trip.name,
+          { kind: "trip", photo },
         );
       }
     }
@@ -243,28 +257,22 @@ async function scheduleReminders(trips: Trip[]) {
         const remind = new Date(evDate.getTime() - 3 * 60 * 60 * 1000);
         if (remind.getTime() > now) {
           const label = ev.flightNum || ev.title;
-          const route = ev.location ? friendlyRoute(ev.location) : "the airport";
-          const gate = ev.gate ? ` · Gate ${ev.gate}` : "";
-
-          let body = `Departing from ${route}${gate}. Safe travels!`;
-          const details: string[] = [];
-          if (ev.airline) details.push(ev.airline);
-          if (ev.terminal) details.push(`Terminal ${ev.terminal}`);
-          if (ev.duration) details.push(ev.duration);
-          if (details.length) body += `\n${details.join(" · ")}`;
-
-          // Show what's next after this flight
+          // Where to be first, then the airline and length, then what follows the flight
+          const where = [ev.location ? `From ${friendlyRoute(ev.location)}` : null, ev.terminal ? `Terminal ${ev.terminal}` : null, ev.gate ? `Gate ${ev.gate}` : null].filter(Boolean).join(", ");
+          const lines = [where || "Time to head to the airport"];
+          const details = [ev.airline, ev.duration].filter(Boolean).join(", ");
+          if (details) lines.push(details);
           const next = findNextEvent(trip.events, ev, tripDestTz);
-          if (next) {
-            body += `\nNext: ${next.title} at ${next.time}`;
-          }
+          if (next) lines.push(next.time ? `Then ${next.title} at ${next.time}` : `Then ${next.title}`);
 
           await scheduleOne(
             `${REMINDER_PREFIX}flight-${trip.id}-${ev.id}`,
-            `${label} in 3 Hours`,
-            body,
+            `${label} departs in 3 hours`,
+            lines.join("\n"),
             remind,
-            { tripId: trip.id, category: "reminder" },
+            { tripId: trip.id, category: "reminder", eventId: ev.id, location: ev.location || "" },
+            trip.name,
+            { kind: "flight", photo, timeSensitive: true },
           );
         }
       }
@@ -277,16 +285,18 @@ async function scheduleReminders(trips: Trip[]) {
           if (!isToday) {
             checkinDate.setHours(9, 0, 0, 0);
             if (checkinDate.getTime() > now) {
-              let body = `${ev.title}, check-in is tomorrow${ev.time ? ` at ${ev.time}` : ""}.`;
-              if (ev.checkout) body += `\nCheck-out: ${ev.checkout}`;
-              if (ev.location) body += `\n${ev.location}`;
+              const lines = [ev.time ? `${ev.title}, from ${ev.time}` : ev.title];
+              if (ev.checkout) lines.push(`Check-out ${ev.checkout}`);
+              if (ev.location) lines.push(ev.location);
 
               await scheduleOne(
                 `${REMINDER_PREFIX}hotel-${trip.id}-${ev.id}`,
-                "Hotel Check-in Tomorrow",
-                body,
+                "Hotel check-in tomorrow",
+                lines.join("\n"),
                 checkinDate,
-                { tripId: trip.id, category: "reminder" },
+                { tripId: trip.id, category: "reminder", eventId: ev.id, location: ev.location || "" },
+                trip.name,
+                { kind: "event", photo },
               );
             }
           }
@@ -296,18 +306,19 @@ async function scheduleReminders(trips: Trip[]) {
       if (ev.type === "transfer") {
         const remind = new Date(evDate.getTime() - 60 * 60 * 1000);
         if (remind.getTime() > now) {
-          let body = ev.location
-            ? `Pickup at ${ev.location}`
-            : "Your transfer is coming up, be ready!";
+          const lines = [ev.title];
+          if (ev.location) lines.push(`Pickup at ${ev.location}`);
           const next = findNextEvent(trip.events, ev, tripDestTz);
-          if (next) body += `\nHeading to: ${next.title}`;
+          if (next) lines.push(`Heading to ${next.title}`);
 
           await scheduleOne(
             `${REMINDER_PREFIX}transfer-${trip.id}-${ev.id}`,
-            `${ev.title} in 1 Hour`,
-            body,
+            "Your pickup is in 1 hour",
+            lines.join("\n"),
             remind,
-            { tripId: trip.id, category: "reminder" },
+            { tripId: trip.id, category: "reminder", eventId: ev.id, location: ev.location || "" },
+            trip.name,
+            { kind: "event", photo, timeSensitive: true },
           );
         }
       }
@@ -318,19 +329,43 @@ async function scheduleReminders(trips: Trip[]) {
 
         const remind = new Date(evDate.getTime() - 60 * 60 * 1000);
         if (remind.getTime() > now) {
-          const body = ev.location ? `At ${ev.location}` : "Coming up soon, get ready!";
+          const body = ev.location || (ev.type === "dining" ? "Your table is booked." : "Starts in an hour.");
 
           await scheduleOne(
             `${REMINDER_PREFIX}event-${trip.id}-${ev.id}`,
-            `${ev.title} in 1 Hour`,
+            `${ev.title} in 1 hour`,
             body,
             remind,
-            { tripId: trip.id, category: "reminder" },
+            { tripId: trip.id, category: "reminder", eventId: ev.id, location: ev.location || "" },
+            trip.name,
+            { kind: "event", photo },
           );
         }
       }
     }
   }
+}
+
+/** iOS moves an attachment's file into its own store, so each notification gets its own copy of the photo */
+function notificationPhoto(path: string, id: string) {
+  try {
+    const src = new File(path.startsWith("file://") ? path : `file://${path}`);
+    if (!src.exists) return null;
+    const dest = new File(Paths.cache, `${id}.jpg`);
+    if (dest.exists) dest.delete();
+    src.copy(dest);
+    return [{ identifier: "photo", url: dest.uri, type: null, typeHint: "public.jpeg" }];
+  } catch {
+    return null;
+  }
+}
+
+/** "Arrival into Chiang Mai at 08:20", the first thing on the trip's first day */
+function firstEventOf(trip: Trip): string | null {
+  const firstDay = trip.events.filter(ev => ev.date === trip.start);
+  const ev = firstDay.find(e => e.time) ?? firstDay[0];
+  if (!ev) return null;
+  return ev.time ? `${ev.title} at ${ev.time}` : ev.title;
 }
 
 async function scheduleOne(
@@ -339,12 +374,24 @@ async function scheduleOne(
   body: string,
   date: Date,
   data: Record<string, string>,
+  tripName?: string,
+  opts: { kind?: "flight" | "event" | "trip"; photo?: string; timeSensitive?: boolean } = {},
 ) {
   if (!Notifications) return;
   try {
+    const attachments = opts.photo ? notificationPhoto(opts.photo, id) : null;
     await Notifications.scheduleNotificationAsync({
       identifier: id,
-      content: { title, body, data, sound: "default" },
+      // iOS shows the trip as its own line under the title; Android has no subtitle, so the trip leads the body
+      content: Platform.OS === "ios"
+        ? {
+            title, subtitle: tripName, body, data, sound: "default",
+            categoryIdentifier: opts.kind,
+            // Flights and pickups come through Focus modes once the app has the entitlement
+            interruptionLevel: opts.timeSensitive ? "timeSensitive" : "active",
+            ...(attachments ? { attachments } : {}),
+          }
+        : { title, body: tripName ? `${tripName}\n${body}` : body, data, sound: "default", color: NOTIFICATION_ACCENT, categoryIdentifier: opts.kind },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },
     });
   } catch {

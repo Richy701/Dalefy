@@ -142,15 +142,15 @@ function GreetingHero({ nextTrip, isActive, onPress, scrollY, overPhoto = !!next
           <IconCircleButton variant="glass" size={36}
             onPress={() => openSheet("/notifications")}
             accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-          >
-            <Bell size={18} color={barIcon} weight="fill" />
-            {unreadCount > 0 && (
+            badge={unreadCount > 0 ? (
               <View pointerEvents="none" accessible={false} style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </Text>
               </View>
-            )}
+            ) : undefined}
+          >
+            <Bell size={18} color={barIcon} weight="fill" />
           </IconCircleButton>
         </View>
       </Animated.View>
