@@ -323,10 +323,15 @@ function makeGreetingStyles(C: ThemeColors, isDark: boolean) {
   });
 }
 
+/** On iOS the link goes in as a URL so the share sheet (and Messages) show the trip's photo and name */
+function shareTrip(name: string, link: string) {
+  Share.share(Platform.OS === "ios" ? { url: link, message: name } : { message: `${name}: ${link}` }).catch(() => {});
+}
+
 // ── Trip cards ──────────────────────────────────────────────────────────────
 // Other trips as Spotify-style squares, name and dates underneath. All one size: two fill the
 // width as a pair, more become a shelf that runs off the edge.
-function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number }) {
+function TripCard({ trip, styles, size, previewBg }: { trip: Trip; styles: ReturnType<typeof makeStyles>; size: number; previewBg: string }) {
   const { C } = useTheme();
   const { toast } = useToast();
   const start   = parseTripDate(trip.start);
@@ -342,19 +347,22 @@ function TripCard({ trip, styles, size }: { trip: Trip; styles: ReturnType<typeo
     : `${start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
   const whenLine = isPast ? dateRange : isActive ? tripFactLine(trip).split(", ")[0] : days === 1 ? "tomorrow" : `in ${days} days`;
   const photo = <CachedImage uri={trip.image} style={StyleSheet.absoluteFill} accessible={false} />;
+  const tripLink = `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${trip.id}`;
 
   return (
     <ContextMenu
+      // The lifted preview sits on the page's own card colour, so the card's text stays readable
+      previewBackgroundColor={previewBg}
       actions={[
         { title: "Share Trip", systemIcon: "square.and.arrow.up" },
         { title: "Copy Link", systemIcon: "link" },
       ]}
       onPress={(e: { nativeEvent: { index: number } }) => {
         if (e.nativeEvent.index === 0) {
-          Share.share({ message: `Check out ${trip.name}${trip.destination ? ` in ${trip.destination}` : ""}` });
+          // Same as the Share button on Home: the trip and its link, which opens the app if it's installed
+          shareTrip(trip.name, tripLink);
         } else if (e.nativeEvent.index === 1) {
-          const base = process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app";
-          Clipboard.setStringAsync(`${base}/shared/${trip.id}`).then(() => toast("Link copied")).catch(() => {});
+          Clipboard.setStringAsync(tripLink).then(() => toast("Link copied")).catch(() => {});
         }
       }}
     >
@@ -512,7 +520,7 @@ export default function HomeScreen() {
     // Today and Photos are already tabs; sharing the trip isn't anywhere else on Home
     {
       label: "Share", Icon: Export, symbol: "square.and.arrow.up" as const,
-      go: () => Share.share({ message: `${heroTrip.name}: ${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${heroTrip.id}` }),
+      go: () => shareTrip(heroTrip.name, `${process.env.EXPO_PUBLIC_APP_URL ?? "https://dalefy.vercel.app"}/shared/${heroTrip.id}`),
     },
   ] : [];
 
@@ -724,7 +732,7 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.groupHeader} accessibilityRole="header">{g.title}</Text>
               <ScrollView horizontal scrollEnabled={g.list.length > 2} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tripCards}>
-                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} />)}
+                {g.list.map(trip => <TripCard key={trip.id} trip={trip} styles={styles} size={g.list.length > 2 ? shelfCard : pairCard} previewBg={C.card} />)}
               </ScrollView>
             </View>
           </FadeIn>

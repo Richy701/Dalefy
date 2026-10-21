@@ -10,7 +10,7 @@
   "rewrites": [
     {
       "source": "/shared/:tripId",
-      "destination": "/index.html"
+      "destination": "/api/share-page?tripId=:tripId"
     },
     {
       "source": "/__/auth/:path*",
