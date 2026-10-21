@@ -9,6 +9,8 @@ module.exports = ({ config }) => ({
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
+        // The mark is the middle quarter of the image; 320pt makes it about 90pt on screen
+        imageWidth: 320,
         resizeMode: "contain",
         backgroundColor: "#131316",
       },

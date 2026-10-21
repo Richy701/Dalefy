@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
-import { Appearance, Platform, View, AppState, InteractionManager, Text, TextInput } from "react-native";
+import { Appearance, Platform, View, AppState, InteractionManager, Text, TextInput, Linking } from "react-native";
 import { Stack, ThemeProvider as NavThemeProvider, DefaultTheme, DarkTheme } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -63,6 +63,7 @@ import { useWidgetSync } from "@/hooks/useWidgetSync";
 import { useFlightAlerts } from "@/hooks/useFlightAlerts";
 import { useTripReminders } from "@/hooks/useTripReminders";
 import { useTripNotifications } from "@/hooks/useTripNotifications";
+import { LaunchHandoff } from "@/components/LaunchHandoff";
 import { useFlightLiveActivity } from "@/hooks/useFlightLiveActivity";
 import { useUpcomingEventLiveActivity } from "@/hooks/useUpcomingEventLiveActivity";
 
@@ -176,12 +177,23 @@ function AppStack() {
       });
     });
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const tripId = response.notification.request.content.data?.tripId as string | undefined;
+      const data = response.notification.request.content.data ?? {};
+      const tripId = data.tripId as string | undefined;
+      const eventId = data.eventId as string | undefined;
+      const location = data.location as string | undefined;
+      // "Directions" goes straight to Maps; everything else opens the event, or the trip
+      if (response.actionIdentifier === "directions" && location) {
+        Linking.openURL(`maps://?q=${encodeURIComponent(location)}`).catch(() => {});
+        return;
+      }
       if (!tripId) return;
+      const path = eventId && response.actionIdentifier !== "view-trip"
+        ? `/trip/event?tripId=${encodeURIComponent(tripId)}&eventId=${encodeURIComponent(eventId)}`
+        : `/trip/${tripId}`;
       if (ready) {
-        router.push(`/trip/${tripId}`);
+        router.push(path as any);
       } else {
-        pendingTripNav.current = tripId;
+        pendingTripNav.current = path;
       }
     });
     return () => { recvSub.remove(); tapSub.remove(); };
@@ -189,9 +201,9 @@ function AppStack() {
 
   useEffect(() => {
     if (ready && pendingTripNav.current) {
-      const tripId = pendingTripNav.current;
+      const path = pendingTripNav.current;
       pendingTripNav.current = null;
-      router.push(`/trip/${tripId}`);
+      router.push(path as any);
     }
   }, [ready, router]);
 
@@ -269,6 +281,7 @@ function AppStack() {
           </Stack>
         </NavThemeProvider>
       </ErrorBoundary>
+      <LaunchHandoff />
     </View>
   );
 }
