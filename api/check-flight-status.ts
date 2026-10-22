@@ -2,12 +2,14 @@ import { listCollection, updateDocument, decodeValue, encodeValue, docId, type F
 import { pickBestFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
+import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
 
 /**
- * Cron job: checks AeroDataBox for status updates on today's flights,
+ * Cron job: checks AeroDataBox for status updates on upcoming flights,
  * updates Firestore trip events, and sends push notifications to travelers.
  *
- * Runs daily at 06:00 UTC via Vercel Cron (see vercel.json).
+ * Runs every 15 minutes via Vercel Cron (see vercel.json); _flightSchedule.ts
+ * decides which flights are due on each run.
  */
 export default async function handler(req: any, res: any) {
   // Verify cron secret to prevent unauthorized calls
@@ -18,9 +20,9 @@ export default async function handler(req: any, res: any) {
   const rapidApiKey = process.env.RAPIDAPI_KEY;
   if (!rapidApiKey) return res.status(500).json({ error: "RAPIDAPI_KEY not configured" });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = prevDay(today);
-  const tomorrow = nextDay(today);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  let flightsChecked = 0;
 
   try {
     // 1. Fetch all trips from Firestore
@@ -38,17 +40,27 @@ export default async function handler(req: any, res: any) {
         const ev = rawEvents[i];
         if (ev.type !== "flight" || !ev.flightNum || !ev.date) continue;
 
-        // Check yesterday (long-haul landing today), today, and tomorrow
+        if (!isDue(ev, now)) continue;
         const eventDate = (ev.date as string).slice(0, 10);
-        if (eventDate !== yesterday && eventDate !== today && eventDate !== tomorrow) continue;
 
         // Query AeroDataBox
+        flightsChecked++;
         const result = await lookupFlight(ev.flightNum, eventDate, rapidApiKey);
         if (!result) continue;
+
+        // Save missing route details even when nothing changed: without the
+        // departure zone, later runs would time their checks hours off
+        for (const k of ["depTz", "arrTz", "depAirport", "arrAirport", "depCoords", "arrCoords"] as const) {
+          if (!ev[k] && result[k]) { rawEvents[i][k] = result[k]; tripChanged = true; }
+        }
 
         // Detect changes
         const changes = detectChanges(ev, result);
         if (changes.length === 0) continue;
+
+        // Every change is saved, but only the ones travelers act on send a push
+        const statusNews = statusGroup(result.status) !== statusGroup(ev.status) && NOTIFY_GROUPS.has(statusGroup(result.status));
+        const notify = statusNews || changes.some(c => !c.startsWith("Status: "));
 
         // Update event fields
         if (result.status) rawEvents[i].status = result.status;
@@ -71,6 +83,7 @@ export default async function handler(req: any, res: any) {
           rawEvents[i].location = `${result.depAirport} to ${result.arrAirport}`;
         }
         tripChanged = true;
+        if (!notify) continue;
 
         updates.push({
           tripId: docId(tripDoc),
@@ -88,23 +101,32 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 2. Write updated events back to Firestore
-    for (const [id, { events }] of tripsToUpdate) {
-      await updateDocument("trips", id, {
-        events: encodeValue(events),
-      }, ["events"]);
+    // 2. Write updated events back to Firestore, only if nobody edited the
+    // trip since we read it. A skipped trip is picked up again next run.
+    const written = new Set<string>();
+    for (const [id, { doc, events }] of tripsToUpdate) {
+      try {
+        await updateDocument("trips", id, {
+          events: encodeValue(events),
+        }, ["events"], doc.updateTime);
+        written.add(id);
+      } catch (err) {
+        console.warn(`check-flight-status: skipped trip ${id}:`, err instanceof Error ? err.message : err);
+      }
     }
 
-    // 3. Send push notifications
-    if (updates.length > 0) {
-      await sendFlightNotifications(updates);
+    // 3. Send push notifications for what was saved
+    const sent = updates.filter(u => written.has(u.tripId));
+    if (sent.length > 0) {
+      await sendFlightNotifications(sent);
     }
 
     res.json({
       checked: today,
       tripsScanned: tripDocs.length,
-      flightsUpdated: updates.length,
-      updates: updates.map(u => ({ flight: u.flightNum, changes: u.changes })),
+      flightsChecked,
+      tripsWritten: written.size,
+      notified: sent.map(u => ({ flight: u.flightNum, changes: u.changes })),
     });
   } catch (err: any) {
     console.error("check-flight-status error:", err);
@@ -203,20 +225,6 @@ async function lookupFlight(
 function formatTime(t: string): string {
   const match = t.match(/(\d{2}:\d{2})/);
   return match ? match[1] : "";
-}
-
-/** Minutes from midnight for "HH:MM" or "H:MM AM/PM"; null if unparseable.
- *  Lets us compare a 24h live time against a stored 12h AM/PM time. */
-function timeToMins(t: string | undefined): number | null {
-  if (!t) return null;
-  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-  if (!m) return null;
-  let h = parseInt(m[1], 10);
-  const min = parseInt(m[2], 10);
-  const ap = m[3]?.toUpperCase();
-  if (ap === "PM" && h < 12) h += 12;
-  if (ap === "AM" && h === 12) h = 0;
-  return h * 60 + min;
 }
 
 // ── Change detection ───────────────────────────────────────────────────────
@@ -332,6 +340,7 @@ function flightPushCopy(update: FlightUpdate): { title: string; body: string } {
   const has = (prefix: string) => lines.some(l => l.startsWith(prefix));
   const title =
     status.startsWith("cancel") ? `${flight} is cancelled`
+    : status === "diverted" ? `${flight} has been diverted`
     : status === "delayed" ? `${flight} is delayed`
     : status === "boarding" ? `${flight} is boarding`
     : status === "departed" || status === "enroute" ? `${flight} has departed`
@@ -341,16 +350,4 @@ function flightPushCopy(update: FlightUpdate): { title: string; body: string } {
     : `${flight} update`;
   const body = lines.length ? lines.join("\n") : "Open the trip for the latest details.";
   return { title, body };
-}
-
-function nextDay(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00Z");
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-function prevDay(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00Z");
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
 }

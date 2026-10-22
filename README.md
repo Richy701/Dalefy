@@ -156,7 +156,7 @@ Serverless functions in `api/` — all endpoints validate input and return gener
 | `/api/send-invite` | Bearer | Send team invitation emails via Resend |
 | `/api/send-push` | Bearer | Send a push notification to one device; caller must organize a trip that device has joined |
 | `/api/share-page` | — | Serves `/shared/{id}` with the trip's Open Graph tags (title, dates, cover photo) and forwards to the trip page |
-| `/api/check-flight-status` | Bearer | Cron (daily): checks flight status, saves airport codes/coordinates, and pushes updates to travelers |
+| `/api/check-flight-status` | Bearer | Cron (every 15 min): checks flights around departure (3-hourly from 24h out, every run from 3h before to 1h after, hourly in the air), saves airport codes/coordinates, and pushes delays, cancellations, gate and time changes to travelers |
 
 ## Security
 

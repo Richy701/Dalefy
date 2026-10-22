@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { PhotoBackdrop, PhotoDissolve, photoPalette } from "@/components/ui/PhotoBackdrop";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Link, Stack } from "expo-router";
-import { CaretLeft, MapTrifold, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
+import { CaretLeft, AirplaneTakeoff, AirplaneLanding } from "phosphor-react-native";
 import { Image, Linking as RNLinking } from "react-native";
 import { useTrips } from "@/context/TripsContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -693,7 +693,6 @@ export default function TripScreen() {
           >
           <ScalePress style={styles.mapSection} onPress={openInMaps} accessibilityRole="button" accessibilityLabel="Open location in Maps">
             <View style={styles.sectionHeader}>
-              <MapTrifold size={13} color={C.textTertiary} weight="regular" />
               <MicroLabel color={C.textPrimary}>Location</MicroLabel>
               <View style={{ flex: 1 }} />
               <MicroLabel color={C.tealText}>Open in Maps ›</MicroLabel>

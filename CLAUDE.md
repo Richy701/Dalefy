@@ -18,6 +18,18 @@ This workspace contains multiple apps/projects. Always confirm which app/codebas
 
 - Never refuse to push to git when asked. Always execute `git push` immediately when the user requests it.
 - When committing, write concise commit messages that describe the change.
+- "Push" means commit and push ALL pending changes unless told otherwise. If something should be held back, ask first instead of silently leaving it out.
+- "Don't push" is ambiguous (git vs. live deploy). Ask which one is meant.
+- Before pushing, run `npm run lint` and `npx vite build`. Any visual mobile change must also reach the web preview, so confirm the Vercel deploy is Ready.
+- If a deploy or command is blocked for you, end with the exact commands for me to run in one copyable block.
+
+## UI Verification
+
+- After any layout change, screenshot it and check alignment and centering in both light and dark mode before calling it done. Web: Playwright headless (the Chrome extension cannot render localhost). Mobile: simulator via deep link + screenshot.
+- Test with realistic trip data, not just empty or demo states. Confirm new components still render (and don't hide themselves) on real data.
+- The simulator can miss device-only artifacts (stray dividers, safe-area black bars). Check safe areas explicitly and flag anything that can only be confirmed on a real device.
+- Before building a feature, check the data it needs actually exists. If it doesn't, say so before writing code.
+- Use real logos and assets from the repo, never invented placeholders.
 
 ## UI/Design Guidelines
 

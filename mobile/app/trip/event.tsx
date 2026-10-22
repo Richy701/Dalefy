@@ -110,6 +110,17 @@ function formatLongDate(d: string): string {
   return date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
+/** "yesterday", "3 days ago"; null unless the date is before today */
+function daysAgoText(d: string): string | null {
+  const date = new Date(d.includes("T") ? d : d + "T12:00:00");
+  if (isNaN(date.getTime())) return null;
+  const today = new Date();
+  const days = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+    - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86400000);
+  if (days < 1) return null;
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
 function formatShortDate(d: string): string {
   const raw = d.includes("T") ? d : d + "T12:00:00";
   const date = new Date(raw);
@@ -567,7 +578,7 @@ export default function EventDetailScreen() {
 
         {/* Title block: the date and a time slot first (TBC holds its place), then the title */}
         <View style={styles.titleBlock}>
-          {sp.state !== "upcoming" && (
+          {sp.state !== "upcoming" && sp.state !== "past" && (
             <View style={styles.heroTypeRow}>
               <Pill tone="custom" bg={sp.bg} color={sp.text} size="sm" icon={<StatusIndicator state={sp.state} size={8} color={sp.color} />} label={sp.label} />
             </View>
@@ -578,6 +589,7 @@ export default function EventDetailScreen() {
             <Text style={[styles.whenLine, { color: C.textSecondary }]}>
               {[
                 ev.date ? formatLongDate(ev.date) : null,
+                ev.date ? daysAgoText(ev.date) : null,
                 whenText ? null : isTransfer ? "pickup time to be confirmed" : "time to be confirmed",
                 ev.duration || null,
               ].filter(Boolean).join(", ")}
