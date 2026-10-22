@@ -7,8 +7,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
-export const PARSE_MODEL = "claude-sonnet-5";
-export const ASSIST_MODEL = "claude-haiku-4-5-20251001";
+export const PARSE_MODEL = "claude-sonnet-5-5";
+export const ASSIST_MODEL = "claude-haiku-5-5";
 
 // Base64 PDF payload cap (~21MB binary) — keeps the total request under the
 // Claude API's 32MB request limit with room for the prompt and text blocks.
@@ -105,8 +105,10 @@ Info sections — extract ALL of these if present, and rewrite into clear, well-
 const ASSIST_PROMPT = `You are a travel planning assistant. Given details about a travel event (type, title, location, date, time), generate a polished public-facing description and internal agent notes.
 
 Result fields:
-- "description": Warm, helpful public description that travelers will see. Bring the experience to life - describe the place, what to expect, practical tips. 2-3 sentences max.
-- "notes": Concise internal/operational notes for the travel agent. Confirmation details, supplier tips, things to watch out for. 1-2 sentences max. If nothing relevant, return empty string.
+- "description": Warm, helpful public description that travelers will see. Bring the experience to life - describe the place and what to expect. 2-3 sentences max.
+- "notes": Concise internal/operational notes for the travel agent, such as things to watch out for with this kind of event. 1-2 sentences max. If you have nothing useful and accurate to add, return an empty string.
+
+Accuracy matters more than color. Travelers read the description as fact and may plan around it, so only state things you were given or that are widely known and stable about the place (for example a famous landmark's setting or a restaurant's well-known cuisine). Never invent specifics such as dress codes, prices, opening hours, menus, booking policies, durations, or what is included. If you know little about the venue, describe the experience in general terms instead of guessing.
 
 Write warm, professional copy. Never use em dashes - use commas, hyphens, or periods instead.`;
 
@@ -215,9 +217,12 @@ export async function runParse(client: Anthropic, input: ParseInput) {
       { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     ],
     messages: [{ role: "user", content: contentBlocks }],
-    output_config: { format: zodOutputFormat(ItinerarySchema) },
+    output_config: { effort: "medium", format: zodOutputFormat(ItinerarySchema) },
   });
 
+  if (message.stop_reason === "refusal") {
+    throw new ParseHttpError(422, "AI couldn't process this itinerary. Try pasting the text instead");
+  }
   if (message.stop_reason === "max_tokens") {
     throw new ParseHttpError(422, "Itinerary too large for AI parsing — output was cut off");
   }
@@ -246,12 +251,15 @@ export async function runAssist(client: Anthropic, input: AssistInput) {
 
   const message = await client.messages.parse({
     model: ASSIST_MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: ASSIST_PROMPT,
     messages: [{ role: "user", content: prompt }],
-    output_config: { format: zodOutputFormat(AssistSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(AssistSchema) },
   });
 
+  if (message.stop_reason === "refusal") {
+    throw new ParseHttpError(422, "AI couldn't write copy for this event");
+  }
   if (!message.parsed_output) {
     throw new ParseHttpError(500, "AI returned an unreadable result");
   }
