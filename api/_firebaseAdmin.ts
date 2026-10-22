@@ -185,6 +185,20 @@ export async function setDocument(collectionName: string, id: string, fields: Re
   if (!resp.ok) throw new Error(`Firestore set ${collectionName}/${id}: ${resp.status}`);
 }
 
+/** Atomically adds to a numeric field, creating the document if needed; returns the new total */
+export async function incrementCounter(collectionName: string, id: string, field: string, by = 1): Promise<number> {
+  const resp = await firestoreFetch(`${BASE}:commit`, {
+    method: "POST",
+    body: JSON.stringify({ writes: [{ transform: {
+      document: `projects/${PROJECT_ID}/databases/(default)/documents/${collectionName}/${id}`,
+      fieldTransforms: [{ fieldPath: field, increment: { integerValue: String(by) } }],
+    } }] }),
+  });
+  if (!resp.ok) throw new Error(`Firestore increment ${collectionName}/${id}: ${resp.status}`);
+  const data = await resp.json() as { writeResults?: { transformResults?: { integerValue?: string }[] }[] };
+  return Number(data.writeResults?.[0]?.transformResults?.[0]?.integerValue ?? NaN);
+}
+
 /** Delete a document; a missing document counts as deleted */
 export async function deleteDocument(collectionName: string, id: string): Promise<void> {
   const resp = await firestoreFetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { method: "DELETE" });
