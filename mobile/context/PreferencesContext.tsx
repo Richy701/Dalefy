@@ -19,6 +19,10 @@ export interface Preferences {
   accent: AccentId;
   haptics: boolean;
   themeMode: ThemeMode;
+  /** The how-the-app-works tour has been shown (or skipped) */
+  seenTour: boolean;
+  /** Trips that have had their intro on this phone; a trip not in here gets one the first time it shows up */
+  introducedTrips: string[];
 }
 
 const DEFAULT_PREFS: Preferences = {
@@ -33,6 +37,8 @@ const DEFAULT_PREFS: Preferences = {
   accent: "teal",
   haptics: true,
   themeMode: "system",
+  seenTour: false,
+  introducedTrips: [],
 };
 
 interface PreferencesContextType {

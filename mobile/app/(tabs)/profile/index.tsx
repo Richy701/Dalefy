@@ -18,7 +18,7 @@ import { useHaptic } from "@/hooks/useHaptic";
 import {
   User, Palette, Bell, LockSimple, UserCirclePlus,
   Vibrate, ArrowSquareOut,
-  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Newspaper,
+  CalendarCheck, Pulse, ChatCircle, FileText as FileCheckIcon, Newspaper, Compass, CaretRight,
 } from "phosphor-react-native";
 import { T, R, S, SCROLL_BOTTOM_PAD, type ThemeColors } from "@/constants/theme";
 
@@ -265,6 +265,17 @@ export default function ProfileScreen() {
         <FadeIn delay={240}>
         <MicroLabel style={s.sectionLabel}>About</MicroLabel>
         <View style={s.card}>
+          <Pressable
+            style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => { haptic.selection(); router.push("/tour"); }}
+            accessibilityRole="button"
+            accessibilityLabel="How the app works"
+          >
+            <IconTile Icon={Compass} color={"#0bd2b5"} />
+            <View style={s.rowLabelGroup}><Text style={s.rowLabel}>How the app works</Text></View>
+            <CaretRight size={14} color={C.textTertiary} weight="regular" />
+          </Pressable>
+          <View style={s.divider} />
           <Pressable
             style={({ pressed }) => [s.row, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => { haptic.selection(); WebBrowser.openBrowserAsync("https://dalefy.app/support.html"); }}

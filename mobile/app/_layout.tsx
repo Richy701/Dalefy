@@ -43,6 +43,7 @@ if (Platform.OS === "android" && NavigationBar) {
 import { useFonts } from "expo-font";
 import { useRouter, usePathname } from "expo-router";
 import { TripsProvider, useTrips } from "@/context/TripsContext";
+import { parseTripDate } from "@/shared/dates";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { NotificationProvider, useNotifications } from "@/context/NotificationContext";
 import { PreferencesProvider, usePreferences } from "@/context/PreferencesContext";
@@ -106,7 +107,7 @@ try {
 
 function AppStack() {
   const { isDark, C } = useTheme();
-  const { ready: tripsReady } = useTrips();
+  const { ready: tripsReady, trips } = useTrips();
   const { ready: prefsReady } = usePreferences();
   const router = useRouter();
   const pathname = usePathname();
@@ -142,7 +143,7 @@ function AppStack() {
   }, []);
 
   const { addNotification } = useNotifications();
-  const { prefs } = usePreferences();
+  const { prefs, setPref } = usePreferences();
   const auth = useAuth();
   const ready = (fontsLoaded || fontError) && tripsReady && prefsReady && !auth.isLoading;
 
@@ -157,6 +158,7 @@ function AppStack() {
     return () => { task.cancel(); if (t) clearTimeout(t); };
   }, [ready]);
   const pendingTripNav = useRef<string | null>(null);
+  const tourShown = useRef(false);
 
   useEffect(() => {
     if (!Notifications) return;
@@ -222,7 +224,28 @@ function AppStack() {
       router.replace("/welcome");
       return;
     }
-  }, [ready, auth.isAuthenticated, prefs.name, pathname, router]);
+    // The first time a trip shows up on this phone (joined by code, invite link, or added by the organiser) it
+    // gets an intro: the full tour if they've never seen it, otherwise just its welcome page. One per launch.
+    if (!prefs.name || !tripsReady || tourShown.current || onAuthScreen || pathname === "/welcome" || pathname === "/tour") return;
+    // Anyone who finished the tour before trips were tracked (no "*" marker): count their current trips as
+    // introduced quietly, so they don't get a welcome for a trip they already know
+    if (prefs.seenTour && !prefs.introducedTrips.includes("*")) {
+      setPref("introducedTrips", ["*", ...prefs.introducedTrips, ...trips.map(t => t.id)]);
+      return;
+    }
+    const introduced = new Set(prefs.introducedTrips);
+    const now = new Date();
+    const fresh = trips
+      .filter(t => !introduced.has(t.id) && t.status !== "Draft" && parseTripDate(t.end) >= now)
+      .sort((a, b) => parseTripDate(a.start).getTime() - parseTripDate(b.start).getTime());
+    if (!prefs.seenTour) {
+      tourShown.current = true;
+      router.push(fresh[0] ? `/tour?tripId=${encodeURIComponent(fresh[0].id)}` : "/tour");
+    } else if (fresh[0]) {
+      tourShown.current = true;
+      router.push(`/tour?tripId=${encodeURIComponent(fresh[0].id)}`);
+    }
+  }, [ready, auth.isAuthenticated, prefs.name, prefs.seenTour, prefs.introducedTrips, tripsReady, trips, pathname, router, setPref]);
 
   // Navigator containers (behind tabs, pushed screens, overscroll) paint the page colour
   // instead of React Navigation's default grey/white.
@@ -278,6 +301,7 @@ function AppStack() {
             <Stack.Screen name="join" options={glassSheetOptions} />
             <Stack.Screen name="notifications" options={glassSheetOptions} />
             <Stack.Screen name="edit-profile" options={glassSheetOptions} />
+            <Stack.Screen name="tour" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
           </Stack>
         </NavThemeProvider>
       </ErrorBoundary>
@@ -296,9 +320,13 @@ function DeferredServices() {
   useUpcomingEventLiveActivity(surfaceTrips);
 
   const hasTrips = surfaceTrips.trips.length > 0;
+  // Until the tour has asked (it explains why first), only re-register an existing permission.
+  // Read at mount, so tapping "Not now" in the tour doesn't fire the system prompt straight after.
+  const { prefs } = usePreferences();
+  const [seenTourAtLaunch] = useState(prefs.seenTour);
   useEffect(() => {
-    registerForPushNotifications({ prompt: hasTrips });
-  }, [hasTrips]);
+    registerForPushNotifications({ prompt: hasTrips && seenTourAtLaunch });
+  }, [hasTrips, seenTourAtLaunch]);
 
   useEffect(() => {
     let Upd: typeof import("expo-updates") | null = null;
