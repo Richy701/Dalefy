@@ -62,11 +62,19 @@ export function LocationAutocomplete({ value, onChange, placeholder, className, 
     debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
   };
 
-  const handleSelect = (s: Suggestion) => {
-    onChange(s.place_name, s.center);
+  const handleSelect = async (s: Suggestion) => {
     setSuggestions([]);
     setOpen(false);
     setStatus("idle");
+    // Suggestions are temporary results, which Mapbox doesn't allow saving; the
+    // single lookup is permanent, so its coordinates are the ones that get saved
+    let coords: [number, number] | undefined;
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(s.place_name)}&proximity=${s.center[0]},${s.center[1]}`);
+      const c: [number, number] | null = res.ok ? (await res.json()).coord : null;
+      if (c) coords = [c[1], c[0]]; // [lat, lng] -> the picker's [lng, lat]
+    } catch { /* saved without coordinates; the map looks the place up when shown */ }
+    onChange(s.place_name, coords);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

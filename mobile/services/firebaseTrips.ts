@@ -7,9 +7,11 @@ import { firebaseDb, firebaseAuth, waitForAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { Trip } from "@/shared/types";
 import { getDeviceId } from "./deviceId";
+import { AppState } from "react-native";
 
 const TRIPS = "trips";
 const TRIP_MEMBERS = "trip_members";
+const TRIP_VERSIONS = "trip_versions";
 // The filtered API is deployed. Only an explicit local override uses the legacy reader.
 const USE_TRIP_API = process.env.EXPO_PUBLIC_TRIP_API_ENABLED !== "false";
 
@@ -64,29 +66,109 @@ export async function fetchTrips(): Promise<Trip[]> {
   return trips.filter((t): t is Trip => t !== null).sort((a, b) => b.start.localeCompare(a.start));
 }
 
-export function subscribeToTrips(onChange: (trips: Trip[]) => void): Unsubscribe {
+/** Full reload as a safety net; edits arrive through the trip_versions listeners */
+const SAFETY_POLL_MS = 60 * 60_000;
+/** Used only if the version listeners are refused (e.g. rules not deployed yet) */
+const FALLBACK_POLL_MS = 5 * 60_000;
+
+/**
+ * Keeps the trip list current without re-downloading it on a timer.
+ * Travellers can't read trip documents (they hold private fields), so each trip has
+ * a tiny trip_versions/{id} stamp they can listen to. When a stamp moves, only that
+ * trip is reloaded through the filtered /api/trip. Joining or leaving a trip, and
+ * coming back to the app, reload the whole list.
+ *
+ * The initial list comes from TripsContext's query, so nothing is fetched here on start.
+ */
+export function subscribeToTrips(
+  onChange: (trips: Trip[]) => void,
+  onTrip: (id: string, trip: Trip | null) => void,
+): Unsubscribe {
   let cancelled = false;
   let fetching = false;
+  let lastFull = Date.now();
+  let membershipIds: string | null = null;
   let membershipUnsub: Unsubscribe = () => {};
+  const versionUnsubs = new Map<string, Unsubscribe>();
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let pollMs = 0;
+
   const refresh = async () => {
     if (cancelled || fetching) return;
     fetching = true;
+    lastFull = Date.now();
     try {
       const trips = await fetchTrips();
       if (!cancelled) onChange(trips);
     } catch { /* Preserve offline cache on network failure, never on successful empty results. */ }
     finally { fetching = false; }
   };
+
+  const refreshOne = async (id: string) => {
+    try {
+      const trip = await fetchTripById(id);
+      if (!cancelled) onTrip(id, trip);
+    } catch { /* Offline: the next foreground or hourly check catches up */ }
+  };
+
+  const poll = (ms: number) => {
+    if (ms === pollMs) return;
+    pollMs = ms;
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => { void refresh(); }, ms);
+  };
+
+  const listenToVersions = (ids: string[]) => {
+    for (const [id, unsub] of versionUnsubs) {
+      if (!ids.includes(id)) { unsub(); versionUnsubs.delete(id); }
+    }
+    for (const id of ids) {
+      if (versionUnsubs.has(id)) continue;
+      // The first value is the stamp for what's already loaded; only later moves are edits
+      let seen: string | undefined;
+      versionUnsubs.set(id, onSnapshot(doc(firebaseDb(), TRIP_VERSIONS, id), snap => {
+        const stamp = snap.exists() ? JSON.stringify(snap.data().updated_at ?? null) : "none";
+        if (seen === undefined || stamp === seen) { seen = stamp; return; }
+        seen = stamp;
+        void refreshOne(id);
+      }, () => {
+        versionUnsubs.delete(id);
+        poll(FALLBACK_POLL_MS);
+      }));
+    }
+  };
+
   const authUnsub = onAuthStateChanged(firebaseAuth(), user => {
     membershipUnsub();
+    membershipIds = null;
     const uid = user?.uid;
     if (cancelled || !uid) return;
-    membershipUnsub = onSnapshot(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)), () => { void refresh(); });
+    membershipUnsub = onSnapshot(query(collection(firebaseDb(), TRIP_MEMBERS), where("uid", "==", uid)), snap => {
+      const ids = [...new Set(snap.docs.map(d => d.data().trip_id).filter((id): id is string => typeof id === "string" && !!id))];
+      listenToVersions(ids);
+      if (snap.metadata.fromCache) return;
+      const key = [...ids].sort().join(",");
+      // Joined or left a trip since the last server answer
+      if (membershipIds !== null && key !== membershipIds) void refresh();
+      membershipIds = key;
+    });
   });
-  void refresh();
-  // Working trip documents are no longer readable by travelers.
-  const timer = setInterval(() => { void refresh(); }, 30000);
-  return () => { cancelled = true; clearInterval(timer); membershipUnsub(); authUnsub(); };
+
+  // Listeners can pause while the app is in the background; catch up on return
+  const appStateSub = AppState.addEventListener("change", state => {
+    if (state === "active" && Date.now() - lastFull > 60_000) void refresh();
+  });
+
+  poll(SAFETY_POLL_MS);
+  return () => {
+    cancelled = true;
+    if (timer) clearInterval(timer);
+    for (const unsub of versionUnsubs.values()) unsub();
+    versionUnsubs.clear();
+    membershipUnsub();
+    authUnsub();
+    appStateSub.remove();
+  };
 }
 
 export async function changeTripMedia(tripId: string, add: NonNullable<Trip["media"]>, remove: string[] = []): Promise<void> {

@@ -10,6 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient";
 import MaskedView from "@react-native-masked-view/masked-view";
 import { CachedImage } from "@/components/CachedImage";
+import { airlineLogo } from "@/shared/airlineLogos";
 import { FlightRouteMap, ROUTE_MAP_AVAILABLE } from "@/components/FlightRouteMap";
 import * as Haptics from "@/services/haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
@@ -885,7 +886,7 @@ function FlightDetailScreen({
   const arrTz = useMemo(() => arrivalDate ? getTzLabel(arrCode, arrivalDate) : null, [arrCode, arrivalDate]);
 
   const airlineIata = ev.flightNum?.match(/^([A-Z0-9]{2})/)?.[1] || "";
-  const [logoError, setLogoError] = useState(false);
+  const logo = airlineLogo(airlineIata);
 
   const statusLower = (live?.status || "").toLowerCase();
   const isPast = useMemo(() => {
@@ -1062,12 +1063,11 @@ function FlightDetailScreen({
               <LinearGradient colors={passColors} style={[StyleSheet.absoluteFill, { borderRadius: R.lg }]} pointerEvents="none" />
               <View style={fs.airlineRow}>
                 <View style={fs.airlineTile}>
-                  {airlineIata && !logoError ? (
+                  {logo ? (
                     <Image
-                      source={{ uri: `https://images.kiwi.com/airlines/64/${airlineIata}.png` }}
+                      source={logo}
                       accessible={false}
                       style={fs.airlineLogo}
-                      onError={() => setLogoError(true)}
                       resizeMode="cover"
                     />
                   ) : (

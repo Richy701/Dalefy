@@ -1,4 +1,4 @@
-import { getDocument, queryDocuments, updateDocument, decodeValue, encodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { getDocument, queryDocuments, updateDocument, touchTripVersion, decodeValue, encodeValue, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { record, publishedTripView, membershipMatches, mergeTravelerMedia } from "./_tripView.js";
@@ -50,6 +50,7 @@ export default async function handler(req: Request, res: Response) {
     // Precondition prevents replacing a concurrent organizer/gallery update.
     if (!found.updateTime) throw new Error("Missing database revision");
     await updateDocument("trips", tripId, { media: encodeValue(media) }, ["media"], found.updateTime);
+    await touchTripVersion(tripId);
     return res.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === "Database conflict") return res.status(409).json({ error: "Trip changed. Refresh and try again." });

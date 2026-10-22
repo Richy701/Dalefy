@@ -42,3 +42,6 @@ screenshot*.png
 
 # Private production release backups
 .release-backups/
+
+# Local data backups (e.g. before Firestore cleanups)
+backups/

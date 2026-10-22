@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, query, orderBy, where, onSnapshot,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, query, orderBy, where, onSnapshot, serverTimestamp,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -131,6 +131,10 @@ export async function upsertTrip(trip: Trip, orgId?: string | null): Promise<Tri
 
   logger.log("upsertTrip", "saving:", trip.id, trip.name, orgId ? `org:${orgId}` : "no-org", isNew ? "(new)" : "(update)");
   await setDoc(tripRef, data, { merge: true });
+  // Travellers' apps listen to this stamp and reload the filtered trip when it moves.
+  // Best-effort: a missed stamp only delays their update to the app's next check.
+  setDoc(doc(firebaseDb(), "trip_versions", trip.id), { updated_at: serverTimestamp() })
+    .catch((err) => logger.error("upsertTrip", "trip_versions stamp failed:", err));
   return cleanTrip;
 }
 

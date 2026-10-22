@@ -163,6 +163,17 @@ export function TripsProvider({ children }: { children: React.ReactNode }) {
       qc.setQueryData<Trip[]>(["trips"], freshTrips);
       setLocalCache(freshTrips);
       save(freshTrips);
+    }, (id, trip) => {
+      // One trip changed: swap it in, or drop it if it's no longer published to us
+      if (pendingWrites.current > 0) return;
+      const prev = qc.getQueryData<Trip[]>(["trips"]) ?? [];
+      const next = trip
+        ? (prev.some(t => t.id === id) ? prev.map(t => t.id === id ? trip : t) : [...prev, trip])
+            .sort((a, b) => b.start.localeCompare(a.start))
+        : prev.filter(t => t.id !== id);
+      qc.setQueryData<Trip[]>(["trips"], next);
+      setLocalCache(next);
+      save(next);
     });
     return () => unsub();
   }, [qc]);

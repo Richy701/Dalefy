@@ -12,13 +12,13 @@
  * Response: { sent (push count), emailed, results }
  */
 
-import { listCollection, getDocument, decodeValue } from "./_firebaseAdmin.js";
+import { queryDocuments, queryDocumentsIn, getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
 import { sendEmail, emailEnabled } from "./_mailer.js";
+import { sendPush } from "./_expoPush.js";
 import { tripUpdatedEmail } from "../src/lib/email/templates.js";
 
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const APP_URL = (process.env.VITE_APP_URL || "https://dalefy.app").trim().replace(/\/$/, "");
 const PLATFORM_NAME = "Dalefy";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,8 +55,8 @@ export default async function handler(req: any, res: any) {
     }
     if (!allowed) return res.status(403).json({ error: "Not authorized for this trip" });
 
-    // 1. Get all trip members for this trip
-    const allMembers = await listCollection("trip_members");
+    // 1. This trip's members
+    const allMembers = await queryDocuments("trip_members", "trip_id", String(tripId), 20000);
     const memberDeviceIds = new Set<string>();
     interface Member { deviceId: string; email: string; linkedTravelerId: string }
     const members: Member[] = [];
@@ -75,8 +75,8 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 2. Get push tokens for those devices
-    const allTokens = await listCollection("push_tokens");
+    // 2. Push tokens for those devices
+    const allTokens = await queryDocumentsIn("push_tokens", "device_id", [...memberDeviceIds]);
     const tokens: string[] = [];
     const pushedDevices = new Set<string>();
 
@@ -116,20 +116,7 @@ export default async function handler(req: any, res: any) {
       sound: "default" as const,
     }));
 
-    const results: any[] = [];
-    for (let i = 0; i < messages.length; i += 100) {
-      const chunk = messages.slice(i, i + 100);
-      try {
-        const resp = await fetch(EXPO_PUSH_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(chunk),
-        });
-        results.push(await resp.json());
-      } catch {
-        results.push({ error: "Failed to send chunk" });
-      }
-    }
+    const results = await sendPush(messages);
 
     res.json({ sent: tokens.length, emailed, results });
   } catch (err: any) {

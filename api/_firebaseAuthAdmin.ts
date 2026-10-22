@@ -70,6 +70,14 @@ function getClient(): Promise<AuthClient | null> {
   return clientPromise;
 }
 
+/** A short-lived Google access token for the service account, or null when keyless access isn't configured */
+export async function getServiceAccessToken(): Promise<string | null> {
+  const client = await getClient();
+  if (!client) return null;
+  const { token } = await client.getAccessToken();
+  return token ?? null;
+}
+
 type RequestType = "EMAIL_SIGNIN" | "VERIFY_EMAIL" | "PASSWORD_RESET";
 
 async function mintLink(requestType: RequestType, email: string, settings?: ActionCodeSettings): Promise<LinkResult> {

@@ -1,8 +1,9 @@
-import { listCollection, updateDocument, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
+import { listCollection, queryDocumentsIn, updateDocument, touchTripVersion, decodeValue, encodeValue, docId, type FirestoreDoc } from "./_firebaseAdmin.js";
 import { pickBestFlight } from "./_validate.js";
 import { airportTz } from "./_airportTz.js";
 import { isCronRequest } from "./_cronAuth.js";
 import { isDue, statusGroup, timeToMins, NOTIFY_GROUPS } from "./_flightSchedule.js";
+import { sendPush, checkPushReceipts } from "./_expoPush.js";
 
 /**
  * Cron job: checks AeroDataBox for status updates on upcoming flights,
@@ -110,6 +111,7 @@ export default async function handler(req: any, res: any) {
           events: encodeValue(events),
         }, ["events"], doc.updateTime);
         written.add(id);
+        await touchTripVersion(id);
       } catch (err) {
         console.warn(`check-flight-status: skipped trip ${id}:`, err instanceof Error ? err.message : err);
       }
@@ -121,8 +123,15 @@ export default async function handler(req: any, res: any) {
       await sendFlightNotifications(sent);
     }
 
+    // Receipts of earlier pushes: drops tokens of phones that uninstalled the app
+    const receipts = await checkPushReceipts().catch((err) => {
+      console.warn("push receipts:", err instanceof Error ? err.message : err);
+      return null;
+    });
+
     res.json({
       checked: today,
+      receipts,
       tripsScanned: tripDocs.length,
       flightsChecked,
       tripsWritten: written.size,
@@ -271,10 +280,9 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
   let memberDocs: FirestoreDoc[] = [];
   let tokenDocs: FirestoreDoc[] = [];
   try {
-    [memberDocs, tokenDocs] = await Promise.all([
-      listCollection("trip_members"),
-      listCollection("push_tokens"),
-    ]);
+    // Only the updated trips' members, then only their devices' tokens
+    memberDocs = await queryDocumentsIn("trip_members", "trip_id", updates.map(u => u.tripId));
+    tokenDocs = await queryDocumentsIn("push_tokens", "device_id", memberDocs.map(m => String(decodeValue(m.fields?.device_id) ?? "")));
   } catch {
     return;
   }
@@ -315,18 +323,7 @@ async function sendFlightNotifications(updates: FlightUpdate[]) {
       sound: "default" as const,
     }));
 
-    for (let i = 0; i < messages.length; i += 100) {
-      const chunk = messages.slice(i, i + 100);
-      try {
-        await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(chunk),
-        });
-      } catch {
-        // best-effort
-      }
-    }
+    await sendPush(messages);
   }
 }
 

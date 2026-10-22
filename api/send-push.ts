@@ -1,8 +1,7 @@
-import { listCollection, queryDocuments, getDocument, decodeValue } from "./_firebaseAdmin.js";
+import { queryDocuments, getDocument, decodeValue } from "./_firebaseAdmin.js";
 import { verifyFirebaseToken } from "./_verifyToken.js";
 import { rateLimit } from "./_rateLimit.js";
-
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+import { sendPush } from "./_expoPush.js";
 
 /** True if the user owns the trip or belongs to the trip's organization. */
 async function canManageTrip(uid: string, tripId: string): Promise<boolean> {
@@ -44,7 +43,7 @@ export default async function handler(req: any, res: any) {
     }
     if (!allowed) return res.status(403).json({ error: "Not authorized to message this user" });
 
-    const allTokens = await listCollection("push_tokens");
+    const allTokens = await queryDocuments("push_tokens", "device_id", deviceId, 10);
     let pushToken: string | null = null;
 
     for (const doc of allTokens) {
@@ -59,14 +58,9 @@ export default async function handler(req: any, res: any) {
       return res.json({ sent: 0, reason: "No push token found for this device" });
     }
 
-    const resp = await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify([{ to: pushToken, title, body, sound: "default" }]),
-    });
-    const result = await resp.json();
+    const [result] = await sendPush([{ to: pushToken, title, body, sound: "default" }]);
 
-    res.json({ sent: 1, result });
+    res.json({ sent: result?.status === "ok" ? 1 : 0, result });
   } catch (err: any) {
     console.error("[send-push] Error:", err);
     res.status(500).json({ error: "Internal error" });

@@ -1,7 +1,12 @@
 /**
  * Lightweight Firestore REST client for serverless functions.
- * Authenticates via a dedicated cron user (Firebase Auth email/password).
+ *
+ * Authenticates keylessly as the Firebase Admin service account (Vercel OIDC ->
+ * Google, see _firebaseAuthAdmin.ts). If that isn't configured, or Google refuses
+ * it, it falls back to the dedicated cron user (Firebase Auth email/password),
+ * which local dev still uses.
  */
+import { getServiceAccessToken } from "./_firebaseAuthAdmin.js";
 
 const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID ?? "";
 if (!PROJECT_ID) throw new Error("VITE_FIREBASE_PROJECT_ID is required");
@@ -21,7 +26,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 }
 
 /** Sign in via Firebase Auth REST API and get an ID token */
-async function getAuthToken(): Promise<string> {
+async function getPasswordToken(): Promise<string> {
   // Reuse token if still valid (with 5 min buffer)
   if (cachedToken && Date.now() < cachedToken.expiresAt - 300_000) {
     return cachedToken.idToken;
@@ -62,6 +67,26 @@ function authHeaders(token: string): Record<string, string> {
   };
 }
 
+// Set once Google refuses the service account, so this instance stops trying it
+let keylessRefused = false;
+
+/** A Firestore request with the server's credentials: keyless first, the cron sign-in as fallback */
+async function firestoreFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!keylessRefused) {
+    const token = await getServiceAccessToken().catch((err) => {
+      console.warn("Keyless Firestore access unavailable:", err instanceof Error ? err.message : err);
+      return null;
+    });
+    if (token) {
+      const resp = await fetchWithTimeout(url, { ...init, headers: authHeaders(token) });
+      if (resp.status !== 401 && resp.status !== 403) return resp;
+      keylessRefused = true;
+      console.warn(`Firestore refused keyless access (${resp.status}); using the cron sign-in`);
+    }
+  }
+  return fetchWithTimeout(url, { ...init, headers: authHeaders(await getPasswordToken()) });
+}
+
 // ── Firestore REST operations ──────────────────────────────────────────────
 
 export interface FirestoreDoc {
@@ -71,10 +96,8 @@ export interface FirestoreDoc {
 }
 
 export async function queryDocuments(collection: string, field: string, value: string, limit = 1): Promise<FirestoreDoc[]> {
-  const token = await getAuthToken();
-  const response = await fetchWithTimeout(`${BASE}:runQuery`, {
+  const response = await firestoreFetch(`${BASE}:runQuery`, {
     method: "POST",
-    headers: authHeaders(token),
     body: JSON.stringify({ structuredQuery: {
       from: [{ collectionId: collection }],
       where: { fieldFilter: { field: { fieldPath: field }, op: "EQUAL", value: { stringValue: value } } },
@@ -86,15 +109,34 @@ export async function queryDocuments(collection: string, field: string, value: s
   return rows.flatMap(row => row.document ? [row.document] : []);
 }
 
+/** Every document whose field equals any of the values (Firestore's IN takes 30 at a time; no result cap) */
+export async function queryDocumentsIn(collection: string, field: string, values: string[]): Promise<FirestoreDoc[]> {
+  const unique = [...new Set(values.filter(Boolean))];
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += 30) batches.push(unique.slice(i, i + 30));
+  const results = await Promise.all(batches.map(async (batch) => {
+    const response = await firestoreFetch(`${BASE}:runQuery`, {
+      method: "POST",
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: { fieldFilter: { field: { fieldPath: field }, op: "IN", value: { arrayValue: { values: batch.map(v => ({ stringValue: v })) } } } },
+      } }),
+    });
+    if (!response.ok) throw new Error(`Firestore query: ${response.status}`);
+    const rows = await response.json() as Array<{ document?: FirestoreDoc }>;
+    return rows.flatMap(row => row.document ? [row.document] : []);
+  }));
+  return results.flat();
+}
+
 /** List all documents in a collection */
 export async function listCollection(collectionName: string): Promise<FirestoreDoc[]> {
-  const token = await getAuthToken();
   const docs: FirestoreDoc[] = [];
   let pageToken = "";
 
   do {
     const url = `${BASE}/${collectionName}?pageSize=300${pageToken ? `&pageToken=${pageToken}` : ""}`;
-    const resp = await fetchWithTimeout(url, { headers: authHeaders(token) });
+    const resp = await firestoreFetch(url);
     if (!resp.ok) throw new Error(`Firestore list ${collectionName}: ${resp.status}`);
     const data = await resp.json();
     if (data.documents) docs.push(...data.documents);
@@ -106,8 +148,7 @@ export async function listCollection(collectionName: string): Promise<FirestoreD
 
 /** Get a single document, or null if it does not exist / is not readable */
 export async function getDocument(collectionName: string, id: string): Promise<FirestoreDoc | null> {
-  const token = await getAuthToken();
-  const resp = await fetchWithTimeout(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { headers: authHeaders(token) });
+  const resp = await firestoreFetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`);
   if (resp.status === 404 || resp.status === 403) return null;
   if (!resp.ok) throw new Error(`Firestore get ${collectionName}/${id}: ${resp.status}`);
   return (await resp.json()) as FirestoreDoc;
@@ -121,19 +162,49 @@ export async function updateDocument(
   fieldPaths: string[],
   updateTime?: string,
 ): Promise<void> {
-  const token = await getAuthToken();
   const mask = fieldPaths.map(f => `updateMask.fieldPaths=${f}`).join("&");
   const condition = updateTime ? `&currentDocument.updateTime=${encodeURIComponent(updateTime)}` : "&currentDocument.exists=true";
   const url = `${BASE}/${collectionName}/${encodeURIComponent(docId)}?${mask}${condition}`;
-  const resp = await fetchWithTimeout(url, {
+  const resp = await firestoreFetch(url, {
     method: "PATCH",
-    headers: authHeaders(token),
     body: JSON.stringify({ fields }),
   });
   if (!resp.ok) {
     if (resp.status === 409 || resp.status === 412 || (updateTime && resp.status === 400)) throw new Error("Database conflict");
     console.error(`Firestore update ${collectionName}/${docId}:`, resp.status, await resp.text());
     throw new Error("Database update failed");
+  }
+}
+
+/** Create or overwrite a document */
+export async function setDocument(collectionName: string, id: string, fields: Record<string, unknown>): Promise<void> {
+  const resp = await firestoreFetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields }),
+  });
+  if (!resp.ok) throw new Error(`Firestore set ${collectionName}/${id}: ${resp.status}`);
+}
+
+/** Delete a document; a missing document counts as deleted */
+export async function deleteDocument(collectionName: string, id: string): Promise<void> {
+  const resp = await firestoreFetch(`${BASE}/${collectionName}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!resp.ok && resp.status !== 404) throw new Error(`Firestore delete ${collectionName}/${id}: ${resp.status}`);
+}
+
+/**
+ * Moves a trip's "last changed" stamp so travellers' apps reload it. Call after
+ * a successful trip write. Never throws: a missed stamp only delays the update
+ * until the app's next foreground or hourly check.
+ */
+export async function touchTripVersion(tripId: string): Promise<void> {
+  try {
+    const resp = await firestoreFetch(`${BASE}/trip_versions/${encodeURIComponent(tripId)}?updateMask.fieldPaths=updated_at`, {
+      method: "PATCH",
+      body: JSON.stringify({ fields: { updated_at: { timestampValue: new Date().toISOString() } } }),
+    });
+    if (!resp.ok) console.warn(`trip_versions/${tripId}: ${resp.status}`);
+  } catch (err) {
+    console.warn(`trip_versions/${tripId}:`, err instanceof Error ? err.message : err);
   }
 }
 
